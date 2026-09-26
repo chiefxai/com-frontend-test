@@ -96,6 +96,7 @@ export default function EnquiriesView() {
 
   return (
     <PageShell
+      className="min-h-0"
       title="Enquiries"
       subtitle={`Callers who asked something mid-call and need a follow-up — ${openCount} still open.`}
       onRefresh={() => load()}
@@ -166,7 +167,7 @@ export default function EnquiriesView() {
                 <DataTable
                   bare
                   resizable
-                  className="flex-1 min-h-0 h-full overflow-hidden"
+                  className="flex-1 min-h-0"
                   columns={columns}
                   rows={filteredEnquiries}
                   rowKey={(e) => e.id}
