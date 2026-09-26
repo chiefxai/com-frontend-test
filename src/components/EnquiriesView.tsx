@@ -123,8 +123,8 @@ export default function EnquiriesView() {
       }
       layout="fill"
     >
-      <div className="flex-1 min-h-0 h-full flex flex-col overflow-hidden px-8 pb-8 pt-6">
-        <Widget className="flex-1 min-h-0 h-full" bodyClassName="flex flex-col min-h-0 h-full" showHeader={false} padding="none">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-4 sm:px-5 md:px-6 xl:px-8 pb-6 pt-4">
+        <Widget className="flex-1 min-h-0 w-full" bodyClassName="flex-1 min-h-0 overflow-hidden flex flex-col" showHeader={false} padding="none">
         {total === 0
           ? <EmptyState icon={MessageCircleQuestion} heading="No enquiries captured yet" message="Enquiries from AI calls will appear here automatically." />
           : (() => {
@@ -166,7 +166,7 @@ export default function EnquiriesView() {
                 <DataTable
                   bare
                   resizable
-                  className="flex-1 min-h-0 h-full"
+                  className="flex-1 min-h-0 h-full overflow-hidden"
                   columns={columns}
                   rows={filteredEnquiries}
                   rowKey={(e) => e.id}
