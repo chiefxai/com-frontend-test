@@ -656,37 +656,37 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             of the same length. Not to be confused with the task-scoped
             row below (that's "how did this one run do"). */}
         <KpiCard
-          colSpan={2} icon={PhoneOutgoing} iconBg="#eff6ff" iconColor="#2563eb" label="Total Calls"
+          colSpan={3} icon={PhoneOutgoing} iconBg="#eff6ff" iconColor="#2563eb" label="Total Calls"
           value={periodSummary.totalCalls}
           badge={trendBadge(periodSummary.totalCalls, prevPeriodSummary.totalCalls).label}
           badgeColor={trendBadge(periodSummary.totalCalls, prevPeriodSummary.totalCalls).color}
         />
         <KpiCard
-          colSpan={2} icon={Clock} iconBg="#f0fdf4" iconColor="#16a34a" label="Avg Call Duration"
+          colSpan={3} icon={Clock} iconBg="#f0fdf4" iconColor="#16a34a" label="Avg Call Duration"
           value={formatDuration(periodSummary.avgCallDuration)}
           badge={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).label}
           badgeColor={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).color}
         />
         <KpiCard
-          colSpan={2} icon={UserCheck} iconBg="#f0fdf4" iconColor="#16a34a" label="Success Rate"
+          colSpan={3} icon={UserCheck} iconBg="#f0fdf4" iconColor="#16a34a" label="Success Rate"
           value={`${periodSummary.successRate}%`}
           badge={trendBadge(periodSummary.successRate, prevPeriodSummary.successRate).label}
           badgeColor={trendBadge(periodSummary.successRate, prevPeriodSummary.successRate).color}
         />
         <KpiCard
-          colSpan={2} icon={Clock} iconBg="#eff6ff" iconColor="#2563eb" label="Total Talk Time"
+          colSpan={3} icon={Clock} iconBg="#eff6ff" iconColor="#2563eb" label="Total Talk Time"
           value={formatDuration(periodSummary.totalTalkTime)}
           badge={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).label}
           badgeColor={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).color}
         />
         <KpiCard
-          colSpan={2} icon={MessageCircleQuestion} iconBg="#fffbeb" iconColor="#d97706" label="Total Enquiries"
+          colSpan={3} icon={MessageCircleQuestion} iconBg="#fffbeb" iconColor="#d97706" label="Total Enquiries"
           value={filteredEnquiries.length}
           badge={trendBadge(filteredEnquiries.length, prevFilteredEnquiries.length).label}
           badgeColor={trendBadge(filteredEnquiries.length, prevFilteredEnquiries.length).color}
         />
         <KpiCard
-          colSpan={2} icon={DollarSign} iconBg="#fffbeb" iconColor="#d97706" label="Total Cost"
+          colSpan={3} icon={DollarSign} iconBg="#fffbeb" iconColor="#d97706" label="Total Cost"
           value={formatInr(periodSummary.totalCost)} sub={`at ₹${costPerMinuteInr}/min`}
           badge={trendBadge(periodSummary.totalCost, prevPeriodSummary.totalCost).label}
           badgeColor={trendBadge(periodSummary.totalCost, prevPeriodSummary.totalCost).color}
@@ -700,7 +700,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
 
         {/* Row 1a: Call Volume Over Time */}
         <Widget colSpan={6} title="Call Volume Over Time" subtitle="Inbound vs. outbound calls per day." icon={PhoneIncoming} accent="#2563eb" padding="md" hover bodyOverflow="hidden">
-          <div className="h-64 w-full mt-1">
+          <div className="h-52 sm:h-56 md:h-64 w-full mt-1">
             {callVolumeOverTime.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={callVolumeOverTime} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
@@ -754,13 +754,13 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             </button>
           }
         >
-          <div className="w-full mt-1" style={{ height: 300 }}>
+          <div className="w-full mt-1" className="min-h-[240px] h-[clamp(240px,32vw,300px)]">
             {campaignSuccessRate.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={campaignSuccessRate} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                   <XAxis type="number" domain={[0, 100]} unit="%" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="campaign" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={120} />
+                  <YAxis type="category" dataKey="campaign" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={window.innerWidth < 640 ? 82 : 120} />
                   <RechartsTooltip {...CHART_TOOLTIP} formatter={(v: number, _n, p: any) => [`${v}% (${p?.payload?.successful ?? 0}/${p?.payload?.total ?? 0})`, 'Success Rate']} />
                   <Bar dataKey="rate" name="Success Rate" fill="#059669" radius={[0, 3, 3, 0]} barSize={16} />
                 </BarChart>
@@ -774,7 +774,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             this row line up instead of one looking squashed. */}
         <Widget colSpan={6} title="Outcome Analysis" subtitle="Distribution of call outcomes (intent) this period." icon={PieChartIcon} accent="#d97706" padding="md" hover>
           {outcomeAnalysis.length > 0 ? (
-            <div className="flex flex-col items-center justify-center gap-5 overflow-y-auto" style={{ height: 300 }}>
+            <div className="flex flex-col items-center justify-center gap-5 overflow-y-auto" className="min-h-[240px] h-[clamp(240px,32vw,300px)]">
               <PieChart slices={outcomeAnalysis} size={180} />
               <div className="w-full max-w-xs space-y-1.5">
                 {outcomeAnalysis.map(s => (
@@ -805,7 +805,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             <select
               value={agentMetric}
               onChange={(e) => setAgentMetric(e.target.value as typeof agentMetric)}
-              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border bg-[var(--bg-surface)] cursor-pointer"
+              className="text-[11px] font-semibold px-2 py-1.5 rounded-lg border bg-[var(--bg-surface)] cursor-pointer max-w-[46vw] truncate"
               style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               <option value="successRate">Success Rate</option>
@@ -817,7 +817,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             </select>
           }
         >
-          <div className="w-full mt-1" style={{ height: Math.max(160, agentPerformance.length * 36) }}>
+          <div className="w-full mt-1" style={{ height: Math.max(150, Math.min(300, agentPerformance.length * 34)) }}>
             {agentPerformance.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={agentPerformance} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
@@ -843,7 +843,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
           hover
           bodyOverflow="hidden"
           action={
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-full">
               <select
                 value={ioCampaignFilter}
                 onChange={(e) => setIoCampaignFilter(e.target.value)}
@@ -994,7 +994,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             <span className="text-slate-500">Cost / Call: <strong className="text-slate-700">{formatInr(costPerCall)}</strong></span>
             <span className="text-slate-500">Cost / Successful Outcome: <strong className="text-slate-700">{successfulOutcomesInPeriod > 0 ? formatInr(costPerSuccessfulOutcome) : '—'}</strong></span>
           </div>
-          <div className="h-52 w-full">
+          <div className="h-44 sm:h-48 md:h-52 w-full">
             {costOverTime.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={costOverTime} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
