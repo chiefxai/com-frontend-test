@@ -25,6 +25,7 @@ export default function CommonDropdown({
 }: CommonDropdownProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [style, setStyle] = useState<React.CSSProperties>({});
+  const [positioned, setPositioned] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const open = controlledOpen ?? internalOpen;
@@ -32,6 +33,7 @@ export default function CommonDropdown({
 
   useLayoutEffect(() => {
     if (!open || !rootRef.current || !panelRef.current) return;
+    setPositioned(false);
     const update = () => {
       const trigger = rootRef.current!.getBoundingClientRect();
       const panel = panelRef.current!.getBoundingClientRect();
@@ -52,6 +54,7 @@ export default function CommonDropdown({
       left = Math.max(margin, Math.min(left, window.innerWidth - panel.width - margin));
       top = Math.max(margin, Math.min(top, window.innerHeight - panel.height - margin));
       setStyle({ position: 'fixed', top, left, width: width === 'auto' ? undefined : width, maxHeight });
+      setPositioned(true);
     };
     update();
     window.addEventListener('resize', update);
@@ -86,7 +89,16 @@ export default function CommonDropdown({
       {open && (
         <div ref={panelRef} role="menu"
           className={`z-[100] overflow-auto rounded-xl border shadow-xl ${contentClassName}`}
-          style={{ ...style, background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            ...style,
+            visibility: positioned ? 'visible' : 'hidden',
+            pointerEvents: positioned ? 'auto' : 'none',
+            background: 'var(--bg-surface)',
+            borderColor: 'var(--border)',
+          }}>
           {children}
         </div>
       )}
