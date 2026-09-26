@@ -348,6 +348,7 @@ export default function DialerSimulator({
   // not a route/sub-route.
   const [showAssignTask, setShowAssignTask] = useState(false);
   const [isCampaignNavigatorOpen, setIsCampaignNavigatorOpen] = useState(false);
+  const [campaignSearch, setCampaignSearch] = useState('');
   const taskPage = showAssignTask;
   useEffect(() => {
     if (!isActive || dialerMode !== 'outbound') setShowAssignTask(false);
@@ -1806,10 +1807,6 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
           <div className="grid grid-cols-12 gap-5 xl:gap-6 items-start">
         {/* Left: campaign navigator */}
-        {(() => {
-          const [campaignSearch, setCampaignSearch] = [undefined, undefined] as never;
-          return null;
-        })()}
         <Widget
           colSpan={4}
           title="Campaigns"
