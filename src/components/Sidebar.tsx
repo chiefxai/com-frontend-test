@@ -290,6 +290,9 @@ export default function Sidebar({
     { id: 'dashboard', label: 'Executive Desk', icon: LayoutDashboard },
     { id: 'reports',   label: 'Reports',        icon: BarChart3 },
   ].filter((item) => {
+    // Keep Reports visible when the feature flag is enabled.
+    // TAB_TO_FLAG is derived from the feature registry.
+
     const flagKey = TAB_TO_FLAG[item.id];
     return !flagKey || isEnabled(flagKey);
   });
