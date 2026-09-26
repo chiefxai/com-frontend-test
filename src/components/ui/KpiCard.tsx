@@ -63,7 +63,9 @@ export default function KpiCard({
   className = '',
   onClick,
 }: KpiCardProps) {
-  const colClass = COL_SPAN[colSpan] ?? 'col-span-3';
+  const colClass = colSpan === 3
+    ? 'col-span-12 sm:col-span-6 lg:col-span-3'
+    : (COL_SPAN[colSpan] ?? 'col-span-12');
 
   const iconBubble = Icon ? (
     <div
