@@ -65,6 +65,8 @@ export default function ContactDirectoryView({
   const [sourceFilter, setSourceFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [groupFilter, setGroupFilter] = useState('All');
+  const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || statusFilter !== 'All' || groupFilter !== 'All';
+  const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setStatusFilter('All'); setGroupFilter('All'); };
 
   // Groups
   const [contactGroups, setContactGroups] = useState<ContactGroup[]>([]);
@@ -482,17 +484,18 @@ export default function ContactDirectoryView({
       }
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6 gap-6">
-      {/* Filters — total contact count lives here instead of its own KPI
-          card row, to save vertical space. */}
-      <div className="grid grid-cols-12 gap-6 shrink-0">
-      <Widget showHeader={false} padding="md" colSpan={12}>
+      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+        <Widget className="flex-1" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
         <FilterBar
           search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search contacts by name, email, phone number, employer…' }}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+          resultCount={{ filtered: filteredLeads.length, total: leads.length, label: 'contacts' }}
           actions={
             <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 whitespace-nowrap">
               <Users className="h-3.5 w-3.5 text-blue-600" />
-              {totalContacts} Total Contact{totalContacts === 1 ? '' : 's'}
+              {filteredLeads.length} Contacts
             </div>
           }
           selects={[
@@ -529,11 +532,8 @@ export default function ContactDirectoryView({
             },
           ]}
         />
-      </Widget>
-      </div>
+          </div>
 
-      {/* Main Table View — fills the remaining page height */}
-      <Widget className="flex-1" title="All Contacts" icon={Users} accent="#2563eb" padding="none">
         {(() => {
           const columns: Column<Lead>[] = [
             {
@@ -622,7 +622,9 @@ export default function ContactDirectoryView({
             />
           );
         })()}
-      </Widget>
+      </Widget
+        </Widget>
+      </div>>
       </div>
 
       {/* MODAL: Add / Edit Single Contact */}
