@@ -126,7 +126,7 @@ export default function AuditLogView() {
           <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0 gap-3">
-            <Widget className="flex-1 min-h-0" showHeader={false} padding="none">
+            <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
               <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
                 <FilterBar
                   search={{ value: search, onChange: setSearch, placeholder: 'Search audit actions, users, targets…' }}
