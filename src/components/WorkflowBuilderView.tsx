@@ -259,7 +259,7 @@ export default function WorkflowBuilderView({
     >
       <div className="overflow-y-auto flex-1 px-8 pb-8 pt-6 space-y-6">
 
-      <Widget title="Workflow Filters" icon={Compass} accent="#6366f1" padding="sm">
+      <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 rounded-xl">
         <FilterBar
           search={{ value: workflowSearch, onChange: setWorkflowSearch, placeholder: 'Search workflows…' }}
           selects={[
@@ -270,7 +270,7 @@ export default function WorkflowBuilderView({
           hasActiveFilters={hasWorkflowFilters}
           resultCount={{ filtered: filteredWorkflows.length, total: workflows.length, label: 'workflows' }}
         />
-      </Widget>
+      </div>
 
       {/* Manual run panel */}
       <Widget title="Run Workflow" icon={Play} accent="#6366f1" padding="md">
