@@ -189,7 +189,7 @@ export default function DataTable<T>({
   };
 
   return (
-    <div className={`${wrapper} ${isPaginated ? 'flex flex-col flex-1 min-h-0 h-0' : ''}`}>
+    <div className={`${wrapper} ${isPaginated ? 'flex flex-col flex-1 min-h-0' : ''}`}>
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
