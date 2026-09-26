@@ -523,8 +523,8 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
-      <Widget className="flex-1" showHeader={false} padding="none">
-        <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
+      <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
+        <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)] shrink-0">
           <FilterBar
             search={{
               value: workflowSearch,
@@ -581,6 +581,7 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
             bare
             resizable
             paginated
+            className="flex-1 min-h-0"
             columns={columns}
             rows={filteredFlows}
             rowKey={(flow) => flow.id}
