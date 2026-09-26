@@ -100,27 +100,26 @@ export default function EnquiriesView() {
       title="Enquiries"
       subtitle={`Callers who asked something mid-call and need a follow-up — ${openCount} still open.`}
       onRefresh={() => load()}
-      toolbar={
-        <div className="w-full flex items-center justify-end">
-          <FilterBar
-            search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
-            selects={[{
-              key: 'Status',
-              label: 'Status',
-              value: statusFilter,
-              onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
-              options: [
-                { label: 'All statuses', value: 'all' },
-                { label: 'New', value: 'new' },
-                { label: 'Contacted', value: 'contacted' },
-                { label: 'Resolved', value: 'resolved' },
-              ],
-            }]}
-            onClear={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-            resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
-          />
-        </div>      }
+      action={
+        <FilterBar
+          search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
+          selects={[{
+            key: 'Status',
+            label: 'Status',
+            value: statusFilter,
+            onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
+            options: [
+              { label: 'All statuses', value: 'all' },
+              { label: 'New', value: 'new' },
+              { label: 'Contacted', value: 'contacted' },
+              { label: 'Resolved', value: 'resolved' },
+            ],
+          }]}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+          resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
+        />
+      }
       layout="fill"
     >
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-4 sm:px-5 md:px-6 xl:px-8 pb-6 pt-4">
