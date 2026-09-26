@@ -1795,28 +1795,33 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
       {dialerMode === 'outbound' ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <KpiCard colSpan={1} label="Targets Loaded" value={totalLeadsInTask} icon={FileSpreadsheet} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
             <KpiCard colSpan={1} label="Recorded Dialed" value={completedLeadsInTask} icon={CheckCircle2} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
             <KpiCard colSpan={1} label="Skipped/No Answer" value={skippedLeadsInTask} icon={XCircle} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
             <KpiCard colSpan={1} label="Conversion Rate" value={`${conversionPercent}%`} icon={Activity} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="#059669" className="!rounded-xl !min-h-0 !p-3.5" />
           </div>
 
-          <div className="grid grid-cols-12 gap-6">
-        {/* Left Column: Today's Assigned Tasks list */}
+          <div className="grid grid-cols-12 gap-5 xl:gap-6 items-start">
+        {/* Left: compact campaign navigator */}
         <Widget
-          colSpan={4}
+          colSpan={3}
           title="Campaigns"
           icon={Megaphone}
-          className="min-h-[60vh]"
+          className="min-h-[60vh] xl:sticky xl:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+          headerClassName="!px-4 !py-3"
+
           action={
             <Badge color="blue" className="font-mono">{tasks.length} total</Badge>
           }
         >
-          <div className="space-y-4">
-            <p className="text-xs text-[var(--text-muted)]">Each row is one outbound campaign run. Select a campaign to view its queue, callbacks, and results.</p>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Campaign navigator</p>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Select a run to inspect its live queue and results.</p>
+            </div>
 
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[58vh] overflow-y-auto pr-1">
               {tasks.map((task) => {
                 const isActive = task.id === selectedTaskId;
                 const completed = Object.keys(task.callResults).map(k => task.callResults[k]).filter((r) => r.status === 'Completed').length;
@@ -1831,7 +1836,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                       setPlayingTapeId(null);
                       setIsTapePlaying(false);
                     }}
-                    className={`w-full p-4 rounded-xl text-left border transition-all flex flex-col space-y-2.5 cursor-pointer ${
+                    className={`w-full p-3 rounded-xl text-left border transition-all flex flex-col space-y-2 cursor-pointer ${
                       isActive
                         ? 'border-blue-600 bg-blue-50/25 shadow-sm'
                         : 'border-[var(--border)] hover:bg-[var(--bg-subtle)]'
@@ -1876,7 +1881,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         </Widget>
 
         {/* Center Main Column: Selected Task Queue Workspace */}
-        <Widget colSpan={8} showHeader={false} className="min-h-[60vh]">
+        <Widget colSpan={9} showHeader={false} className="min-h-[60vh] border-[var(--border)] shadow-sm overflow-hidden">
           {!selectedTask ? (
             <EmptyState
               icon={FileSpreadsheet}
@@ -1890,7 +1895,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             />
           ) : (
           <div className="flex flex-col h-full gap-4">
-            <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
+            <div className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0">
                 <h3 className="text-lg font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
                   <Megaphone className="h-5 w-5 text-blue-600 shrink-0" />
@@ -1938,7 +1943,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                 per workflow variable actually extracted for this campaign
                 (same shape as Reports' Campaign Details table, scoped to
                 just this task). */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--bg-surface)]">
             {showWorkflowDetailView ? (
               workflowDetailLoading ? (
                 <div className="flex items-center justify-center py-16 text-[var(--text-muted)] text-sm">Loading campaign answers…</div>
