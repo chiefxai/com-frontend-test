@@ -845,7 +845,7 @@ export default function App() {
         );
       case 'dialer':
         if (activeSubTab === 'scheduled') {
-          return <ScheduledCallbacksView />;
+          return <ScheduledCallbacksView leads={leads} />;
         }
         return (
           <DialerSimulator
