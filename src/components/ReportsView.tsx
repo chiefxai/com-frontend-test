@@ -770,7 +770,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             this row line up instead of one looking squashed. */}
         <Widget colSpan={6} title="Outcome Analysis" subtitle="Distribution of call outcomes (intent) this period." icon={PieChartIcon} accent="#d97706" padding="md" hover>
           {outcomeAnalysis.length > 0 ? (
-            <div className="flex flex-col items-center justify-center gap-5 overflow-y-auto" className="min-h-[240px] h-[clamp(240px,32vw,300px)]">
+            <div className="flex flex-col items-center justify-center gap-5 overflow-y-auto min-h-[240px] h-[clamp(240px,32vw,300px)]">
               <PieChart slices={outcomeAnalysis} size={180} />
               <div className="w-full max-w-xs space-y-1.5">
                 {outcomeAnalysis.map(s => (
