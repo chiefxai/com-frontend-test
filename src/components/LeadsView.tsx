@@ -245,48 +245,49 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       subtitle={`Contacts currently in the ${stageLabel(stages, 'lead')} stage — advance one to ${stageLabel(stages, 'opportunity')} or ${stageLabel(stages, 'client')} as it moves forward.`}
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6 gap-6">
-        <Widget showHeader={false} padding="md">
-          <FilterBar
-            search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search lead, phone, or email…' }}
-            selects={[
-              {
-                key: 'campaign',
-                label: 'Campaign',
-                value: campaignFilter,
-                onChange: setCampaignFilter,
-                options: [{ label: 'All campaigns', value: 'All' }, ...campaignOptions.map((t) => ({ label: t.name, value: t.id }))],
-              },
-              {
-                key: 'source',
-                label: 'Source',
-                value: sourceFilter,
-                onChange: setSourceFilter,
-                options: [{ label: 'All sources', value: 'All' }, ...uniqueSources.map((src) => ({ label: src, value: src }))],
-              },
-              {
-                key: 'status',
-                label: 'Status',
-                value: statusFilter,
-                onChange: setStatusFilter,
-                options: [{ label: 'All statuses', value: 'All' }, ...statusOptions.map((status) => ({ label: status, value: status }))],
-              },
-            ]}
-            onClear={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-            resultCount={{ filtered: filteredLeads.length, total: activeLeads.length, label: 'leads' }}
-            actions={
-              <button
-                onClick={() => setExportOpen(true)}
-                disabled={filteredLeads.length === 0}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-              >
-                <Download className="h-3.5 w-3.5" /> Export CSV
-              </button>
-            }
-          />
-        </Widget>
-        <Widget className="flex-1" showHeader title="Leads" icon={UserPlus} accent="#2563eb" padding="none">
+      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+        <Widget className="flex-1" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+      <FilterBar
+        search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search lead, phone, or email…' }}
+        selects={[
+          {
+            key: 'campaign',
+            label: 'Campaign',
+            value: campaignFilter,
+            onChange: setCampaignFilter,
+            options: [{ label: 'All campaigns', value: 'All' }, ...campaignOptions.map((t) => ({ label: t.name, value: t.id }))],
+          },
+          {
+            key: 'source',
+            label: 'Source',
+            value: sourceFilter,
+            onChange: setSourceFilter,
+            options: [{ label: 'All sources', value: 'All' }, ...uniqueSources.map((src) => ({ label: src, value: src }))],
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: [{ label: 'All statuses', value: 'All' }, ...statusOptions.map((status) => ({ label: status, value: status }))],
+          },
+        ]}
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+        resultCount={{ filtered: filteredLeads.length, total: activeLeads.length, label: 'leads' }}
+        actions={
+          <button
+            onClick={() => setExportOpen(true)}
+            disabled={filteredLeads.length === 0}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+          >
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </button>
+        }
+      />
+          </div>
+
           {activeLeads.length === 0 ? (
             <EmptyState
               icon={UserPlus}
@@ -301,7 +302,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
         </Widget>
       </div>
 
-      <ContactDetailsSlideOver
+      <ContactDetailsSlideOver      <ContactDetailsSlideOver
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
         stages={stages}
