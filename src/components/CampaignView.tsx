@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   Activity,
-  AlertCircle,
   ArrowRight,
   BarChart3,
   CalendarDays,
@@ -16,7 +15,6 @@ import {
   Pause,
   PhoneCall,
   Play,
-  RefreshCw,
   Search,
   Target,
   TrendingUp,
