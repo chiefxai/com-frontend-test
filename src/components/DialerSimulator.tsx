@@ -53,6 +53,7 @@ import DataTable, { Column } from './ui/DataTable';
 import SlideOver from './ui/SlideOver';
 import Badge from './ui/Badge';
 import Tooltip from './ui/Tooltip';
+import VoiceSimulatorWorkspace from './VoiceSimulatorWorkspace';
 import { apiFetch, getPlayableRecordingUrl } from '../lib/api';
 import { callCostInr, formatInr } from '../lib/pricing';
 import { useToast } from './ui/Toast';
@@ -1808,7 +1809,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             <KpiCard colSpan={1} label="Conversion Rate" value={`${conversionPercent}%`} icon={Activity} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="#059669" className="!rounded-xl !min-h-0 !p-3.5" />
           </div>
 
-          <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm h-full min-h-0">
+          <VoiceSimulatorWorkspace>
         {/* Unified simulator workspace: campaign navigator + active campaign */}
         <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
           {isSimulatorNavigatorCollapsed ? (
@@ -2398,9 +2399,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             </div>
           )}
         </Widget>
-        </div>
-        )}
-        </div>
+        </VoiceSimulatorWorkspace>
         </>
       ) : (
         /* REAL INBOUND CALL HISTORY */
@@ -2433,7 +2432,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           />
         </div>
 
-        <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm">
+        <VoiceSimulatorWorkspace>
           {/* Unified inbound workspace: receiving numbers + call history */}
           <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
             {isSimulatorNavigatorCollapsed ? (
@@ -2628,7 +2627,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               </div>
             </Widget>
           </div>
-        </div>
+        </VoiceSimulatorWorkspace>
 
         </>
       )}
