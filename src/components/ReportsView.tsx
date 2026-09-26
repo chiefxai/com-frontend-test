@@ -656,34 +656,30 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             of the same length. Not to be confused with the task-scoped
             row below (that's "how did this one run do"). */}
         <KpiCard
-          colSpan={3} icon={PhoneOutgoing} iconBg="#eff6ff" iconColor="#2563eb" label="Call Volume"
-          value={periodSummary.totalCalls}
+          colSpan={3} icon={PhoneOutgoing} iconBg="#eff6ff" iconColor="#2563eb" label="Calls"
+          value={`${periodSummary.totalCalls} / ${formatDuration(periodSummary.totalTalkTime)}`}
+          sub="Calls / Talk Time"
           badge={trendBadge(periodSummary.totalCalls, prevPeriodSummary.totalCalls).label}
           badgeColor={trendBadge(periodSummary.totalCalls, prevPeriodSummary.totalCalls).color}
-          secondaryLabel="Total Talk Time"
-          secondaryValue={formatDuration(periodSummary.totalTalkTime)}
-          secondaryBadge={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).label}
-          secondaryBadgeColor={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).color}
         />
         <KpiCard
-          colSpan={3} icon={UserCheck} iconBg="#f0fdf4" iconColor="#16a34a" label="Call Performance"
-          value={`${periodSummary.successRate}%`}
+          colSpan={3} icon={UserCheck} iconBg="#f0fdf4" iconColor="#16a34a" label="Performance"
+          value={`${periodSummary.successRate}% / ${formatDuration(periodSummary.avgCallDuration)}`}
+          sub="Success Rate / Avg Call"
           badge={trendBadge(periodSummary.successRate, prevPeriodSummary.successRate).label}
           badgeColor={trendBadge(periodSummary.successRate, prevPeriodSummary.successRate).color}
-          secondaryLabel="Avg Call Duration"
-          secondaryValue={formatDuration(periodSummary.avgCallDuration)}
-          secondaryBadge={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).label}
-          secondaryBadgeColor={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).color}
         />
         <KpiCard
-          colSpan={3} icon={MessageCircleQuestion} iconBg="#fffbeb" iconColor="#d97706" label="Total Enquiries"
-          value={filteredEnquiries.length}
+          colSpan={3} icon={MessageCircleQuestion} iconBg="#fffbeb" iconColor="#d97706" label="Enquiries"
+          value={`${filteredEnquiries.length} / ${filteredEnquiries.length > 0 ? Math.round((filteredEnquiries.filter(e => e.status === 'resolved').length / filteredEnquiries.length) * 100) : 0}%`}
+          sub="Total / Resolved Performance"
           badge={trendBadge(filteredEnquiries.length, prevFilteredEnquiries.length).label}
           badgeColor={trendBadge(filteredEnquiries.length, prevFilteredEnquiries.length).color}
         />
         <KpiCard
-          colSpan={3} icon={DollarSign} iconBg="#fffbeb" iconColor="#d97706" label="Total Cost"
-          value={formatInr(periodSummary.totalCost)} sub={`at ₹${costPerMinuteInr}/min`}
+          colSpan={3} icon={DollarSign} iconBg="#fffbeb" iconColor="#d97706" label="Cost"
+          value={formatInr(periodSummary.totalCost)}
+          sub={`at ₹${costPerMinuteInr}/min`}
           badge={trendBadge(periodSummary.totalCost, prevPeriodSummary.totalCost).label}
           badgeColor={trendBadge(periodSummary.totalCost, prevPeriodSummary.totalCost).color}
         />
