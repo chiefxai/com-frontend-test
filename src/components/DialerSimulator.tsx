@@ -2340,7 +2340,9 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             </div>
           )}
         </Widget>
+        </aside>
         </div>
+        </>
       ) : (
         /* REAL INBOUND CALL HISTORY */
         <>
