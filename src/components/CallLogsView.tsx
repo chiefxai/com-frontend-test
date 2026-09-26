@@ -205,8 +205,8 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
-        <Widget className="flex-1" showHeader={false} padding="none">
-          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+        <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
             <FilterBar
               search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search by caller or summary…' }}
               dates={[
@@ -248,7 +248,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
             return sorted.length === 0 ? (
               <EmptyState heading={searchTerm ? 'No calls match your search' : 'No calls yet'} message="Real inbound and outbound calls will appear here automatically." />
             ) : (
-              <DataTable bare resizable paginated defaultPageSize={25} columns={columns} rows={sorted} rowKey={(c) => c.id} />
+              <DataTable bare resizable paginated defaultPageSize={25} className="flex-1 min-h-0" columns={columns} rows={sorted} rowKey={(c) => c.id} />
             );
           })()}
         </Widget>
