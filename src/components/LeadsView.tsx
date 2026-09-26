@@ -246,7 +246,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
-        <Widget className="flex-1" showHeader={false} padding="none">
+        <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
       <FilterBar
         search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search lead, phone, or email…' }}
