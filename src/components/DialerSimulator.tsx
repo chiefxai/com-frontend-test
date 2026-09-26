@@ -1805,19 +1805,23 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           </div>
 
           <div className="grid grid-cols-12 gap-5 xl:gap-6 items-start">
-        {/* Left: compact campaign navigator */}
+        {/* Left: campaign navigator */}
+        {(() => {
+          const [campaignSearch, setCampaignSearch] = [undefined, undefined] as never;
+          return null;
+        })()}
         <Widget
-          colSpan={3}
+          colSpan={4}
           title="Campaigns"
           icon={Megaphone}
-          className="!col-span-12 lg:!col-span-3 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+          className="!col-span-12 lg:!col-span-4 xl:!col-span-3 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
           action={
             <div className="flex items-center gap-2">
-              <Badge color="blue" className="font-mono">{tasks.length}</Badge>
+              <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
               <button
                 type="button"
                 onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
-                className="lg:hidden h-7 w-7 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
                 aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
                 aria-expanded={isCampaignNavigatorOpen}
               >
@@ -1826,73 +1830,110 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             </div>
           }
         >
-          <div className={`space-y-3 ${isCampaignNavigatorOpen ? 'block' : 'hidden lg:block'}`}>
-            <div className="hidden lg:block rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Campaign navigator</p>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Select a run to inspect its live queue and results.</p>
+          <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
+            <div className="px-3 pb-3 border-b border-[var(--border)]">
+              <div className="relative">
+                <SearchInput
+                  value={campaignSearch}
+                  onChange={setCampaignSearch}
+                  placeholder="Search campaigns..."
+                />
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-[45vh] lg:max-h-[58vh] overflow-y-auto pr-1">
-              {tasks.map((task) => {
-                const isActive = task.id === selectedTaskId;
-                const completed = Object.keys(task.callResults).map(k => task.callResults[k]).filter((r) => r.status === 'Completed').length;
-                const total = task.leadIds.length;
-                const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-                return (
-                  <button
-                    key={task.id}
-                    onClick={() => {
-                      setSelectedTaskId(task.id);
-                      setPlayingTapeId(null);
-                      setIsTapePlaying(false);
-                    }}
-                    className={`w-full p-3 rounded-xl text-left border transition-all flex flex-col space-y-2 cursor-pointer ${
-                      isActive
-                        ? 'border-blue-600 bg-blue-50/25 shadow-sm'
-                        : 'border-[var(--border)] hover:bg-[var(--bg-subtle)]'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start w-full gap-2">
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1 block">{task.name}</span>
-                        <span className="text-[9px] text-[var(--text-muted)] block mt-0.5">
-                          Started {new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleString()}
-                          {(task.workflowName || task.workflowRunMetadata?.workflowName)
-                            ? ` · Script: ${task.workflowName || task.workflowRunMetadata?.workflowName}`
-                            : ''}
-                        </span>
-                      </div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        task.status === 'Completed'
-                          ? 'bg-emerald-700 text-emerald-50'
-                          : task.status === 'In Progress'
-                          ? 'bg-blue-700 text-blue-50 animate-pulse'
-                          : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'
-                      }`}>
-                        {task.status}
-                      </span>
-                    </div>
-
-                    <div className="w-full space-y-1">
-                      <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
-                        <span>Questions: {task.questions.length}</span>
-                        <span>{completed}/{total} Dialed</span>
-                      </div>
-                      <div className="w-full bg-[var(--bg-subtle)] rounded-full h-1">
-                        <div className="bg-blue-600 h-1 rounded-full transition-all" style={{ width: `${percent}%` }}></div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between px-3 py-2.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">All campaigns</span>
+              <span className="text-[10px] text-[var(--text-muted)]">{tasks.length}</span>
             </div>
 
+            <div className="space-y-1.5 max-h-[52vh] lg:max-h-[62vh] overflow-y-auto px-2 pb-2">
+              {tasks
+                .filter((task) => {
+                  const q = campaignSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return task.name.toLowerCase().includes(q)
+                    || (task.workflowName || task.workflowRunMetadata?.workflowName || '').toLowerCase().includes(q);
+                })
+                .map((task) => {
+                  const isActive = task.id === selectedTaskId;
+                  const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
+                  const total = task.leadIds.length;
+                  const pending = Math.max(0, total - completed);
+                  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                  const scriptName = task.workflowName || task.workflowRunMetadata?.workflowName || 'No script';
+                  const statusDot = task.status === 'Completed'
+                    ? 'bg-emerald-500'
+                    : task.status === 'In Progress'
+                    ? 'bg-blue-500 animate-pulse'
+                    : 'bg-slate-400';
+
+                  return (
+                    <button
+                      key={task.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTaskId(task.id);
+                        setPlayingTapeId(null);
+                        setIsTapePlaying(false);
+                      }}
+                      className={`w-full text-left rounded-xl border transition-all p-3 group ${
+                        isActive
+                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 shadow-sm'
+                          : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-bold text-[var(--text-primary)] truncate">{task.name}</p>
+                            <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isActive ? 'text-blue-600 translate-x-0.5' : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100'}`} />
+                          </div>
+
+                          <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{scriptName}</p>
+
+                          <div className="flex items-center gap-2 mt-2 text-[9px] text-[var(--text-muted)]">
+                            <span>{completed}/{total} dialed</span>
+                            <span>•</span>
+                            <span>{pending} pending</span>
+                            <span className="ml-auto font-medium">{percent}%</span>
+                          </div>
+
+                          <div className="h-1 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mt-1.5">
+                            <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${percent}%` }} />
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            <span className="text-[9px] text-[var(--text-muted)] truncate">
+                              {new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                            <span className={`text-[9px] font-semibold ${
+                              task.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-400'
+                              : task.status === 'In Progress' ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-[var(--text-muted)]'
+                            }`}>
+                              {task.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+
+              {tasks.length === 0 && (
+                <div className="px-3 py-10 text-center">
+                  <Megaphone className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">No campaigns yet</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">Create your first outbound campaign.</p>
+                </div>
+              )}
+            </div>
           </div>
         </Widget>
 
-        {/* Center Main Column: Selected Task Queue Workspace */}
-        <Widget colSpan={9} showHeader={false} className="!col-span-12 lg:!col-span-9 min-h-[65vh] lg:min-h-[60vh] border-[var(--border)] shadow-sm overflow-hidden">
+        {/* Main Column: Selected Task Queue Workspace */}
+        <Widget colSpan={8} showHeader={false} className="!col-span-12 lg:!col-span-8 xl:!col-span-9 min-h-[65vh] lg:min-h-[60vh] border-[var(--border)] shadow-sm overflow-hidden">
           {!selectedTask ? (
             <EmptyState
               icon={FileSpreadsheet}
