@@ -52,6 +52,7 @@ import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
 import SlideOver from './ui/SlideOver';
 import Badge from './ui/Badge';
+import Tooltip from './ui/Tooltip';
 import { apiFetch, getPlayableRecordingUrl } from '../lib/api';
 import { callCostInr, formatInr } from '../lib/pricing';
 import { useToast } from './ui/Toast';
@@ -1833,20 +1834,41 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                     ? 'bg-blue-500'
                     : 'bg-slate-400';
 
+                  const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
+                  const total = task.leadIds.length;
+                  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                  const runAt = task.workflowRunMetadata?.runAt || task.createdAt;
+                  const runDateTime = new Date(runAt).toLocaleString(undefined, {
+                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                  });
+                  const statusBorder = task.status === 'Completed'
+                    ? 'border-emerald-500'
+                    : task.status === 'In Progress'
+                    ? 'border-blue-500'
+                    : 'border-slate-400';
+
                   return (
-                    <button
+                    <Tooltip
                       key={task.id}
-                      type="button"
-                      onClick={() => setSelectedTaskId(task.id)}
-                      title={`${task.name} · Run ${new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
-                      className={`relative h-10 w-10 rounded-xl border flex items-center justify-center transition-all ${
-                        active
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 shadow-sm'
-                          : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
-                      }`}
+                      side="right"
+                      className="w-full flex justify-center"
+                      label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${task.status}`} 
                     >
-                      <span className={`h-2.5 w-2.5 rounded-full ${statusClass}`} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTaskId(task.id)}
+                        aria-label={`${task.name}, ${runDateTime}, ${completed} of ${total} completed`}
+                        className={`relative h-10 w-10 rounded-xl border-2 flex items-center justify-center transition-colors ${
+                          active
+                            ? `${statusBorder} bg-blue-50 dark:bg-blue-950/40 shadow-sm`
+                            : `${statusBorder} bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]`
+                        }`}
+                      >
+                        <span className="text-[9px] font-bold tabular-nums text-[var(--text-primary)]">
+                          {completed}/{total}
+                        </span>
+                      </button>
+                    </Tooltip>
                   );
                 })}
 
@@ -1930,10 +1952,14 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         : 'bg-slate-400';
 
                       return (
-                        <button
+                        <Tooltip
                           key={task.id}
+                          side="right"
+                          className="w-full flex"
+                          label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${task.status}`}
+                        >
+                        <button
                           type="button"
-                          title={`${task.name} · Run ${runDateTime}`}
                           onClick={() => {
                             setSelectedTaskId(task.id);
                             setPlayingTapeId(null);
@@ -1977,6 +2003,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                             </div>
                           </div>
                         </button>
+                        </Tooltip>
                       );
                     })}
 
