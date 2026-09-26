@@ -25,6 +25,7 @@ import {
   FileSpreadsheet,
   Check,
   ChevronRight,
+  ChevronDown,
   ArrowLeft,
   ChevronLeft,
   Inbox,
@@ -346,6 +347,7 @@ export default function DialerSimulator({
   // header and dialer state stay mounted. This is intentionally UI state,
   // not a route/sub-route.
   const [showAssignTask, setShowAssignTask] = useState(false);
+  const [isCampaignNavigatorOpen, setIsCampaignNavigatorOpen] = useState(false);
   const taskPage = showAssignTask;
   useEffect(() => {
     if (!isActive || dialerMode !== 'outbound') setShowAssignTask(false);
@@ -1808,19 +1810,29 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           colSpan={3}
           title="Campaigns"
           icon={Megaphone}
-          className="min-h-[60vh] xl:sticky xl:top-4 border-[var(--border)] shadow-sm overflow-hidden"
-
+          className="!col-span-12 lg:!col-span-3 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
           action={
-            <Badge color="blue" className="font-mono">{tasks.length} total</Badge>
+            <div className="flex items-center gap-2">
+              <Badge color="blue" className="font-mono">{tasks.length}</Badge>
+              <button
+                type="button"
+                onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
+                className="lg:hidden h-7 w-7 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
+                aria-expanded={isCampaignNavigatorOpen}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
           }
         >
-          <div className="space-y-3">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
+          <div className={`space-y-3 ${isCampaignNavigatorOpen ? 'block' : 'hidden lg:block'}`}>
+            <div className="hidden lg:block rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Campaign navigator</p>
               <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Select a run to inspect its live queue and results.</p>
             </div>
 
-            <div className="space-y-2 max-h-[58vh] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[45vh] lg:max-h-[58vh] overflow-y-auto pr-1">
               {tasks.map((task) => {
                 const isActive = task.id === selectedTaskId;
                 const completed = Object.keys(task.callResults).map(k => task.callResults[k]).filter((r) => r.status === 'Completed').length;
@@ -1880,7 +1892,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         </Widget>
 
         {/* Center Main Column: Selected Task Queue Workspace */}
-        <Widget colSpan={9} showHeader={false} className="min-h-[60vh] border-[var(--border)] shadow-sm overflow-hidden">
+        <Widget colSpan={9} showHeader={false} className="!col-span-12 lg:!col-span-9 min-h-[65vh] lg:min-h-[60vh] border-[var(--border)] shadow-sm overflow-hidden">
           {!selectedTask ? (
             <EmptyState
               icon={FileSpreadsheet}
