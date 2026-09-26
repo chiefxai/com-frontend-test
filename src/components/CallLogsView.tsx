@@ -155,6 +155,9 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
     return () => { cancelled = true; };
   }, [selected]);
 
+  const hasActiveFilters = Boolean(searchTerm.trim() || fromDate || toDate);
+  const clearFilters = () => { setSearchTerm(''); setFromDate(''); setToDate(''); };
+
   function toggleField(key: string) {
     setExportFields(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   }
@@ -201,73 +204,55 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
       }
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6 gap-6">
-      <Widget showHeader={false} padding="md" className="shrink-0">
-        <FilterBar
-          search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search by caller or summary…' }}
-          dates={[
-            { key: 'from', label: 'From', value: fromDate, onChange: setFromDate },
-            { key: 'to', label: 'To', value: toDate, onChange: setToDate },
-          ]}
-          actions={
-            <>
-              {(fromDate || toDate) && (
-                <button onClick={() => { setFromDate(''); setToDate(''); }} className="text-[11px] pb-0.5 underline" style={{ color: 'var(--text-muted)' }}>Clear</button>
-              )}
-              <span className="text-xs rounded-lg px-3 py-1.5 border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
-                <strong>{filtered.length}</strong> <span style={{ color: 'var(--text-muted)' }}>calls</span>
-              </span>
-              <span className="text-xs rounded-lg px-3 py-1.5 border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
-                <strong>{formatDuration(totalDuration)}</strong> <span style={{ color: 'var(--text-muted)' }}>duration</span>
-              </span>
-              <span className="text-xs rounded-lg px-3 py-1.5 border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
-                <strong>{formatInr(totalCost)}</strong> <span style={{ color: 'var(--text-muted)' }}>cost</span>
-              </span>
-            </>
-          }
-        />
-      </Widget>
+      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+        <Widget className="flex-1" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+            <FilterBar
+              search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search by caller or summary…' }}
+              dates={[
+                { key: 'from', label: 'From', value: fromDate, onChange: setFromDate },
+                { key: 'to', label: 'To', value: toDate, onChange: setToDate },
+              ]}
+              onClear={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              resultCount={{ filtered: filtered.length, total: callLogs.length, label: 'calls' }}
+              actions={
+                <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <span><strong className="text-[var(--text-primary)]">{formatDuration(totalDuration)}</strong> duration</span>
+                  <span className="h-4 w-px bg-[var(--border)]" />
+                  <span><strong className="text-[var(--text-primary)]">{formatInr(totalCost)}</strong> cost</span>
+                </div>
+              }
+            />
+          </div>
 
-      <Widget className="flex-1" showHeader={false} padding="none">
-        {(() => {
-          const columns: Column<CallLog>[] = [
-            {
-              key: 'caller',
-              header: 'Caller',
-              cell: (c) => (
-                <>
-                  <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{resolveCallerName(c)}</div>
-                  {c.direction && <div className="text-[10px] font-normal mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.direction}</div>}
-                </>
-              ),
-            },
-            { key: 'duration', header: 'Duration', cell: (c) => <span className="font-mono">{formatDuration(c.duration)}</span> },
-            { key: 'cost', header: 'Cost', cell: (c) => <span className="font-mono">{formatInr(callCostInr(c.duration, costPerMinuteInr))}</span> },
-            { key: 'status', header: 'Status', cell: (c) => {
-  const outcome = formatCallOutcome(c);
-  return <Badge color={outcome.color}>{outcome.label}</Badge>;
-} },
-            { key: 'sentiment', header: 'Sentiment', cell: (c) => <Badge color={SENTIMENT_COLOR[c.sentiment] ?? 'slate'}>{c.sentiment}</Badge> },
-            { key: 'when', header: 'When', cell: (c) => <span style={{ color: 'var(--text-muted)' }}>{new Date(c.createdAt).toLocaleString()}</span> },
-            {
-              key: 'actions',
-              header: 'Actions',
-              align: 'right',
-              cell: (c) => (
-                <Button variant="secondary" size="xs" icon={Eye} onClick={() => setSelected(c)} className="ml-auto">
-                  View
-                </Button>
-              ),
-            },
-          ];
-          return sorted.length === 0 ? (
-            <EmptyState heading={searchTerm ? 'No calls match your search' : 'No calls yet'} message="Real inbound and outbound calls will appear here automatically." />
-          ) : (
-            <DataTable bare resizable paginated defaultPageSize={25} columns={columns} rows={sorted} rowKey={(c) => c.id} />
-          );
-        })()}
-      </Widget>
-
+          {(() => {
+            const columns: Column<CallLog>[] = [
+              {
+                key: 'caller',
+                header: 'Caller',
+                cell: (c) => (
+                  <>
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{resolveCallerName(c)}</div>
+                    {c.direction && <div className="text-[10px] font-normal mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.direction}</div>}
+                  </>
+                ),
+              },
+              { key: 'duration', header: 'Duration', cell: (c) => <span className="font-mono">{formatDuration(c.duration)}</span> },
+              { key: 'cost', header: 'Cost', cell: (c) => <span className="font-mono">{formatInr(callCostInr(c.duration, costPerMinuteInr))}</span> },
+              { key: 'status', header: 'Status', cell: (c) => { const outcome = formatCallOutcome(c); return <Badge color={outcome.color}>{outcome.label}</Badge>; } },
+              { key: 'sentiment', header: 'Sentiment', cell: (c) => <Badge color={SENTIMENT_COLOR[c.sentiment] ?? 'slate'}>{c.sentiment}</Badge> },
+              { key: 'when', header: 'When', cell: (c) => <span style={{ color: 'var(--text-muted)' }}>{new Date(c.createdAt).toLocaleString()}</span> },
+              { key: 'actions', header: 'Actions', align: 'right', cell: (c) => <Button variant="secondary" size="xs" icon={Eye} onClick={() => setSelected(c)} className="ml-auto">View</Button> },
+            ];
+            return sorted.length === 0 ? (
+              <EmptyState heading={searchTerm ? 'No calls match your search' : 'No calls yet'} message="Real inbound and outbound calls will appear here automatically." />
+            ) : (
+              <DataTable bare resizable paginated defaultPageSize={25} columns={columns} rows={sorted} rowKey={(c) => c.id} />
+            );
+          })()}
+        </Widget>
+      </div>
       {/* Detail modal */}
       {selected && (
         <SlideOver
