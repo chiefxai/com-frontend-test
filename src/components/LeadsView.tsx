@@ -302,7 +302,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
         </Widget>
       </div>
 
-      <ContactDetailsSlideOver      <ContactDetailsSlideOver
+      <ContactDetailsSlideOver
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
         stages={stages}
