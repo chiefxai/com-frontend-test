@@ -1837,7 +1837,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                       key={task.id}
                       type="button"
                       onClick={() => setSelectedTaskId(task.id)}
-                      title={task.name}
+                      title={`${task.name} · Run ${new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                       className={`relative h-10 w-10 rounded-xl border flex items-center justify-center transition-all ${
                         active
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 shadow-sm'
@@ -1914,6 +1914,14 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                       const pending = Math.max(0, total - completed);
                       const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
                       const scriptName = task.workflowName || task.workflowRunMetadata?.workflowName || 'No script';
+                      const runAt = task.workflowRunMetadata?.runAt || task.createdAt;
+                      const runDateTime = new Date(runAt).toLocaleString(undefined, {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
                       const statusDot = task.status === 'Completed'
                         ? 'bg-emerald-500'
                         : task.status === 'In Progress'
@@ -1924,6 +1932,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         <button
                           key={task.id}
                           type="button"
+                          title={`${task.name} · Run ${runDateTime}`}
                           onClick={() => {
                             setSelectedTaskId(task.id);
                             setPlayingTapeId(null);
