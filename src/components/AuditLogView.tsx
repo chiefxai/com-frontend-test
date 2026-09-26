@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollText, Loader2 } from 'lucide-react';
+import FilterBar from './ui/FilterBar';
 import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
@@ -57,6 +58,40 @@ export default function AuditLogView() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('all');
+  const [actorFilter, setActorFilter] = useState('all');
+  const [targetTypeFilter, setTargetTypeFilter] = useState('all');
+
+  const actionOptions = Array.from(new Set(entries.map((entry) => entry.action)))
+    .sort()
+    .map((action) => ({ label: describeAction(action), value: action }));
+  const actorOptions = Array.from(new Set(entries.map((entry) => entry.actorEmail).filter(Boolean) as string[]))
+    .sort()
+    .map((actor) => ({ label: actor, value: actor }));
+  const targetTypeOptions = Array.from(new Set(entries.map((entry) => entry.targetType).filter(Boolean) as string[]))
+    .sort()
+    .map((type) => ({ label: type, value: type }));
+
+  const filteredEntries = entries.filter((entry) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query
+      || describeAction(entry.action).toLowerCase().includes(query)
+      || (entry.actorEmail || '').toLowerCase().includes(query)
+      || (entry.targetType || '').toLowerCase().includes(query)
+      || JSON.stringify(entry.metadata || {}).toLowerCase().includes(query);
+    return matchesSearch
+      && (actionFilter === 'all' || entry.action === actionFilter)
+      && (actorFilter === 'all' || entry.actorEmail === actorFilter)
+      && (targetTypeFilter === 'all' || entry.targetType === targetTypeFilter);
+  });
+  const hasActiveFilters = Boolean(search.trim()) || actionFilter !== 'all' || actorFilter !== 'all' || targetTypeFilter !== 'all';
+  const clearFilters = () => {
+    setSearch('');
+    setActionFilter('all');
+    setActorFilter('all');
+    setTargetTypeFilter('all');
+  };
 
   // Server-side pagination: the backend only returns this one page's rows
   // plus the true total count (see /api/audit-log?page=&limit=), so the
@@ -90,7 +125,19 @@ export default function AuditLogView() {
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
-          <Widget className="flex-1" showHeader={false} padding="none">
+          <div className="flex-1 flex flex-col min-h-0 gap-3">
+            <FilterBar
+              search={{ value: search, onChange: setSearch, placeholder: 'Search audit actions, users, targets…' }}
+              selects={[
+                { key: 'Action', label: 'Action', value: actionFilter, onChange: setActionFilter, options: [{ label: 'All actions', value: 'all' }, ...actionOptions] },
+                { key: 'Actor', label: 'Actor', value: actorFilter, onChange: setActorFilter, options: [{ label: 'All actors', value: 'all' }, ...actorOptions] },
+                { key: 'Target Type', label: 'Target Type', value: targetTypeFilter, onChange: setTargetTypeFilter, options: [{ label: 'All target types', value: 'all' }, ...targetTypeOptions] },
+              ]}
+              onClear={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              resultCount={{ filtered: filteredEntries.length, total: entries.length, label: 'loaded entries' }}
+            />
+            <Widget className="flex-1 min-h-0" showHeader={false} padding="none">
             {total === 0
               ? <EmptyState icon={ScrollText} heading="No admin actions recorded yet" />
               : (
@@ -98,7 +145,7 @@ export default function AuditLogView() {
                   bare
                   resizable
                   columns={COLUMNS}
-                  rows={entries}
+                  rows={filteredEntries}
                   rowKey={r => r.id}
                   serverPagination={{
                     page,
@@ -110,7 +157,8 @@ export default function AuditLogView() {
                 />
               )
             }
-          </Widget>
+            </Widget>
+          </div>
         )}
       </div>
     </PageShell>
