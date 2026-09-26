@@ -1883,7 +1883,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               colSpan={3}
               title="Campaigns"
               icon={Megaphone}
-              className="!col-span-12 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+              className="!col-span-12 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
               action={
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
@@ -2470,10 +2470,19 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                 colSpan={3}
                 title="Inbound numbers"
                 icon={PhoneForwarded}
-                className="!col-span-12 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+                className="!col-span-12 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
                 action={
                   <div className="flex items-center gap-1.5">
                     <Badge color="blue" className="font-mono">{activeVirtualNumbers.length} Online</Badge>
+                    <button
+                      type="button"
+                      onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
+                      className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                      aria-label={isCampaignNavigatorOpen ? 'Collapse inbound numbers' : 'Expand inbound numbers'}
+                      title={isCampaignNavigatorOpen ? 'Collapse inbound numbers' : 'Expand inbound numbers'}
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsSimulatorNavigatorCollapsed(true)}
