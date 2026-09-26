@@ -1808,11 +1808,11 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             <KpiCard colSpan={1} label="Conversion Rate" value={`${conversionPercent}%`} icon={Activity} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="#059669" className="!rounded-xl !min-h-0 !p-3.5" />
           </div>
 
-          <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm">
+          <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm h-full min-h-0">
         {/* Unified simulator workspace: campaign navigator + active campaign */}
         <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
           {isSimulatorNavigatorCollapsed ? (
-            <div className="hidden lg:flex min-h-[65vh] lg:min-h-[60vh] flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
+            <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
               <button
                 type="button"
                 onClick={() => setIsSimulatorNavigatorCollapsed(false)}
@@ -2022,7 +2022,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
         {/* Main Column: Selected Task Queue Workspace */}
         <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
-        <Widget colSpan={12} showHeader={false} className="!col-span-12 min-h-[65vh] lg:min-h-[60vh] border-0 shadow-none overflow-hidden">
+        <Widget colSpan={12} showHeader={false} className="!col-span-12 h-full min-h-0 border-0 shadow-none overflow-hidden">
           {!selectedTask ? (
             <EmptyState
               icon={FileSpreadsheet}
@@ -2437,7 +2437,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           {/* Unified inbound workspace: receiving numbers + call history */}
           <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
             {isSimulatorNavigatorCollapsed ? (
-              <div className="hidden lg:flex min-h-[65vh] lg:min-h-[60vh] flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
+              <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setIsSimulatorNavigatorCollapsed(false)}
@@ -2545,7 +2545,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
             <Widget
               showHeader={false}
-              className="!col-span-12 min-h-[65vh] lg:min-h-[60vh] border-0 shadow-none overflow-hidden"
+              className="!col-span-12 h-full min-h-0 border-0 shadow-none overflow-hidden"
               bodyClassName="h-full"
             >
               <div className="flex flex-col h-full gap-4">
