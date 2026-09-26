@@ -348,6 +348,7 @@ export default function DialerSimulator({
   // not a route/sub-route.
   const [showAssignTask, setShowAssignTask] = useState(false);
   const [isCampaignNavigatorOpen, setIsCampaignNavigatorOpen] = useState(false);
+  const [isSimulatorNavigatorCollapsed, setIsSimulatorNavigatorCollapsed] = useState(false);
   const [campaignSearch, setCampaignSearch] = useState('');
   const taskPage = showAssignTask;
   useEffect(() => {
@@ -1805,29 +1806,41 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             <KpiCard colSpan={1} label="Conversion Rate" value={`${conversionPercent}%`} icon={Activity} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="#059669" className="!rounded-xl !min-h-0 !p-3.5" />
           </div>
 
-          <div className="grid grid-cols-12 gap-5 xl:gap-6 items-start">
+          <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm">
+        {/* Unified simulator workspace: campaign navigator + active campaign */}
+        <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-4 xl:col-span-3'}`}>
         {/* Left: campaign navigator */}
         <Widget
           colSpan={4}
           title="Campaigns"
           icon={Megaphone}
-          className="!col-span-12 lg:!col-span-4 xl:!col-span-3 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+          className={`!col-span-12 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-none bg-transparent overflow-hidden ${isSimulatorNavigatorCollapsed ? 'lg:!p-1' : ''}`}
           action={
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
-              <button
-                type="button"
-                onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
-                className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
-                aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
-                aria-expanded={isCampaignNavigatorOpen}
-              >
-                <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
+                  className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                  aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSimulatorNavigatorCollapsed((collapsed) => !collapsed)}
+                  className="hidden lg:flex h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  aria-label={isSimulatorNavigatorCollapsed ? 'Expand campaigns' : 'Collapse campaigns'}
+                  title={isSimulatorNavigatorCollapsed ? 'Expand campaigns' : 'Collapse campaigns'}
+                >
+                  {isSimulatorNavigatorCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           }
         >
-          <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
+          <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'} ${isSimulatorNavigatorCollapsed ? 'lg:hidden' : ''}`}>
             <div className="px-3 pb-3 border-b border-[var(--border)]">
               <div className="relative">
                 <SearchInput
@@ -1928,9 +1941,30 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             </div>
           </div>
         </Widget>
+        </aside>
+
+        {isSimulatorNavigatorCollapsed && (
+          <div className="hidden lg:flex lg:col-span-1 xl:col-span-1 min-h-[65vh] lg:min-h-[60vh] flex-col items-center gap-2 py-2">
+            {tasks.slice(0, 10).map((task) => {
+              const active = task.id === selectedTaskId;
+              return (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => setSelectedTaskId(task.id)}
+                  title={task.name}
+                  className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors ${active ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' : 'border-[var(--border)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-subtle)]'}`}
+                >
+                  <span className={`h-2.5 w-2.5 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-400'}`} />
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Main Column: Selected Task Queue Workspace */}
-        <Widget colSpan={8} showHeader={false} className="!col-span-12 lg:!col-span-8 xl:!col-span-9 min-h-[65vh] lg:min-h-[60vh] border-[var(--border)] shadow-sm overflow-hidden">
+        <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-10 xl:col-span-10' : 'lg:col-span-8 xl:col-span-9'}`}>
+        <Widget colSpan={12} showHeader={false} className="!col-span-12 min-h-[65vh] lg:min-h-[60vh] border-0 shadow-none overflow-hidden">
           {!selectedTask ? (
             <EmptyState
               icon={FileSpreadsheet}
@@ -2306,8 +2340,8 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             </div>
           )}
         </Widget>
-      </div>
-      )}
+        </div>
+          </div>
         </>
       ) : (
         /* REAL INBOUND CALL HISTORY */
