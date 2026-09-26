@@ -168,8 +168,8 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
           {children}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-8 py-6">
-          <div className="grid grid-cols-12 gap-6 content-start">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-6 xl:px-8 py-4 md:py-6">
+          <div className="grid grid-cols-12 gap-4 md:gap-5 xl:gap-6 content-start">
             {children}
           </div>
         </div>
