@@ -236,8 +236,8 @@ export default function WorkflowBuilderView({
       title="AI Calling Workflow Builder"
       subtitle="Design logical decision loops, write voice prompts, and trigger smart actions dynamically."
       layout="fill"
-      action={
-        <div className="flex items-center justify-end gap-2 flex-wrap">
+      toolbar={
+        <div className="w-full flex items-center justify-between gap-3 flex-wrap">
           <FilterBar
             search={{ value: workflowSearch, onChange: setWorkflowSearch, placeholder: 'Search workflows…' }}
             selects={[
@@ -248,24 +248,23 @@ export default function WorkflowBuilderView({
             hasActiveFilters={hasWorkflowFilters}
             resultCount={{ filtered: filteredWorkflows.length, total: workflows.length, label: 'workflows' }}
           />
-          {filteredWorkflows.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => {
-                setActiveWorkflow(w);
-                setSelectedNode(w.nodes[0]);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-                activeWorkflow.id === w.id
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {w.name}
-            </button>
-          ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            {filteredWorkflows.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => {
+                  setActiveWorkflow(w);
+                  setSelectedNode(w.nodes[0]);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${activeWorkflow.id === w.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+              >
+                {w.name}
+              </button>
+            ))}
+          </div>
         </div>
       }
+
     >
       <div className="overflow-y-auto flex-1 px-8 pb-8 pt-6 space-y-6">
 
