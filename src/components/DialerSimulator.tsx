@@ -347,7 +347,8 @@ export default function DialerSimulator({
   // header and dialer state stay mounted. This is intentionally UI state,
   // not a route/sub-route.
   const [showAssignTask, setShowAssignTask] = useState(false);
-  const [isCampaignNavigatorOpen, setIsCampaignNavigatorOpen] = useState(false);
+  // Keep the navigator visible by default on small screens so campaign/number context is never hidden.
+  const [isCampaignNavigatorOpen, setIsCampaignNavigatorOpen] = useState(true);
   const [isSimulatorNavigatorCollapsed, setIsSimulatorNavigatorCollapsed] = useState(false);
   const [campaignSearch, setCampaignSearch] = useState('');
   const taskPage = showAssignTask;
