@@ -2402,6 +2402,8 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             </div>
           )}
         </Widget>
+        </div>
+        )}
         </VoiceSimulatorWorkspace>
         </>
       ) : (
