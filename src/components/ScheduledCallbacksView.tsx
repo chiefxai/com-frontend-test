@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Loader2, Phone, MessageCircleQuestion, Megaphone, ArrowUpRight, ArrowDownLeft, PhoneMissed, CalendarClock } from 'lucide-react';
+import { Clock, Loader2, Phone, MessageCircleQuestion, Megaphone, ArrowUpRight, ArrowDownLeft, PhoneMissed, CalendarClock, Search, Filter, X } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatPhone } from '../lib/phone';
 import PageShell from './ui/PageShell';
@@ -47,6 +47,61 @@ export default function ScheduledCallbacksView() {
   const [rows, setRows] = useState<ScheduledCallback[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [campaignFilter, setCampaignFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [kindFilter, setKindFilter] = useState('all');
+  const [directionFilter, setDirectionFilter] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const campaignOptions = Array.from(
+    new Map(
+      rows
+        .filter((r) => r.campaignId || r.campaignName || r.workflowName)
+        .map((r) => [
+          r.campaignId || r.campaignName || r.workflowName || '',
+          r.campaignName || r.workflowName || 'Unnamed campaign',
+        ])
+    ).entries()
+  ).map(([id, name]) => ({ id, name }));
+
+  const statusOptions = Array.from(
+    new Set(rows.map((r) => r.status).filter((v): v is string => Boolean(v)))
+  ).sort();
+
+  const filteredRows = rows.filter((r) => {
+    const campaignId = r.campaignId || r.campaignName || r.workflowName || '';
+    const haystack = [
+      r.leadName,
+      r.callerNumber,
+      r.reason,
+      r.callbackReason,
+      r.campaignName,
+      r.workflowName,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    return (
+      (campaignFilter === 'all' || campaignId === campaignFilter) &&
+      (statusFilter === 'all' || r.status === statusFilter) &&
+      (kindFilter === 'all' || (r.kind || 'not_answered') === kindFilter) &&
+      (directionFilter === 'all' || (r.direction || 'outbound') === directionFilter) &&
+      (!search.trim() || haystack.includes(search.trim().toLowerCase()))
+    );
+  });
+
+  const hasActiveFilters =
+    campaignFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    kindFilter !== 'all' ||
+    directionFilter !== 'all' ||
+    Boolean(search.trim());
+
+  const clearFilters = () => {
+    setCampaignFilter('all');
+    setStatusFilter('all');
+    setKindFilter('all');
+    setDirectionFilter('all');
+    setSearch('');
+  };
 
   const load = (showSpinner = false) => {
     if (showSpinner) setLoading(true);
@@ -193,16 +248,89 @@ export default function ScheduledCallbacksView() {
                   ];
                   return (
                     <>
+                      <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                        <div className="flex flex-col xl:flex-row xl:items-center gap-3">
+                          <div className="relative flex-1 min-w-[220px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                            <input
+                              value={search}
+                              onChange={(e) => setSearch(e.target.value)}
+                              placeholder="Search lead, phone, reason or campaign..."
+                              className="w-full h-9 pl-9 pr-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                              <Filter className="h-3.5 w-3.5" /> Filters
+                            </div>
+
+                            <select value={campaignFilter} onChange={(e) => setCampaignFilter(e.target.value)}
+                              className="h-9 min-w-[170px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
+                              <option value="all">All campaigns</option>
+                              {campaignOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+
+                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                              className="h-9 min-w-[130px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
+                              <option value="all">All statuses</option>
+                              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                            </select>
+
+                            <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}
+                              className="h-9 min-w-[125px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
+                              <option value="all">All types</option>
+                              <option value="callback">Callback</option>
+                              <option value="not_answered">Not Answered</option>
+                            </select>
+
+                            <select value={directionFilter} onChange={(e) => setDirectionFilter(e.target.value)}
+                              className="h-9 min-w-[120px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
+                              <option value="all">All directions</option>
+                              <option value="outbound">Outbound</option>
+                              <option value="inbound">Inbound</option>
+                            </select>
+
+                            {hasActiveFilters && (
+                              <button type="button" onClick={clearFilters}
+                                className="h-9 inline-flex items-center gap-1.5 px-3 rounded-lg border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">
+                                <X className="h-3.5 w-3.5" /> Clear
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-3 text-[10px] text-[var(--text-muted)]">
+                          <span>{filteredRows.length} of {rows.length} callbacks</span>
+                          {campaignFilter !== 'all' && (
+                            <span className="font-medium text-blue-600">
+                              Campaign filter active
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {filteredRows.length === 0 ? (
+                        <div className="py-14 text-center">
+                          <Filter className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">No callbacks match these filters</p>
+                          <p className="text-xs text-[var(--text-muted)] mt-1">Change the campaign, status, type, direction, or search term.</p>
+                          {hasActiveFilters && (
+                            <button type="button" onClick={clearFilters} className="mt-3 text-xs font-semibold text-blue-600 hover:underline">Clear all filters</button>
+                          )}
+                        </div>
+                      ) : (
                       <DataTable
                         bare
                         resizable
                         paginated
                         columns={columns}
-                        rows={rows}
+                        rows={filteredRows}
                         rowKey={(r) => r.id}
                       />
+                      )}
                       {expandedId && (() => {
-                        const row = rows.find((r) => r.id === expandedId);
+                        const row = filteredRows.find((r) => r.id === expandedId) || rows.find((r) => r.id === expandedId);
                         const questions = row.campaignQuestions || row.workflowQuestions;
                         const campaignLabel = row.campaignName || row.workflowName;
                         if (!row || !questions?.length) return null;
@@ -217,6 +345,7 @@ export default function ScheduledCallbacksView() {
                           </div>
                         );
                       })()}
+                      </div>
                     </>
                   );
                 })()
