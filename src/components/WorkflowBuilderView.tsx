@@ -17,6 +17,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Workflow, WorkflowNode, WorkflowEdge, NodeType, Lead } from '../types';
+import FilterBar from './ui/FilterBar';
 import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
@@ -88,6 +89,36 @@ export default function WorkflowBuilderView({
   const [runLeadId, setRunLeadId] = useState('');
   const [running, setRunning] = useState(false);
   const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
+  const [workflowSearch, setWorkflowSearch] = useState('');
+  const [workflowStatusFilter, setWorkflowStatusFilter] = useState('all');
+  const [nodeTypeFilter, setNodeTypeFilter] = useState('all');
+
+  const workflowStatusOptions = [
+    { label: 'All statuses', value: 'all' },
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' },
+  ];
+  const nodeTypeOptions = [
+    { label: 'All node types', value: 'all' },
+    { label: 'Trigger', value: 'trigger' },
+    { label: 'Call', value: 'call' },
+    { label: 'Question', value: 'question' },
+    { label: 'Action', value: 'action' },
+  ];
+  const filteredWorkflows = workflows.filter((workflow) => {
+    const matchesSearch = workflow.name.toLowerCase().includes(workflowSearch.toLowerCase());
+    const matchesStatus = workflowStatusFilter === 'all'
+      || (workflowStatusFilter === 'active' ? workflow.active : !workflow.active);
+    const matchesNodeType = nodeTypeFilter === 'all'
+      || workflow.nodes.some((node) => node.type === nodeTypeFilter);
+    return matchesSearch && matchesStatus && matchesNodeType;
+  });
+  const hasWorkflowFilters = workflowSearch.trim() !== '' || workflowStatusFilter !== 'all' || nodeTypeFilter !== 'all';
+  const clearWorkflowFilters = () => {
+    setWorkflowSearch('');
+    setWorkflowStatusFilter('all');
+    setNodeTypeFilter('all');
+  };
 
   const handleRunWorkflow = async () => {
     if (!runLeadId) return;
@@ -207,7 +238,7 @@ export default function WorkflowBuilderView({
       layout="fill"
       action={
         <div className="flex items-center space-x-2">
-          {workflows.map((w) => (
+          {filteredWorkflows.map((w) => (
             <button
               key={w.id}
               onClick={() => {
@@ -227,6 +258,19 @@ export default function WorkflowBuilderView({
       }
     >
       <div className="overflow-y-auto flex-1 px-8 pb-8 pt-6 space-y-6">
+
+      <Widget title="Workflow Filters" icon={Compass} accent="#6366f1" padding="sm">
+        <FilterBar
+          search={{ value: workflowSearch, onChange: setWorkflowSearch, placeholder: 'Search workflows…' }}
+          selects={[
+            { key: 'Status', label: 'Status', value: workflowStatusFilter, onChange: setWorkflowStatusFilter, options: workflowStatusOptions },
+            { key: 'Node Type', label: 'Node Type', value: nodeTypeFilter, onChange: setNodeTypeFilter, options: nodeTypeOptions },
+          ]}
+          onClear={clearWorkflowFilters}
+          hasActiveFilters={hasWorkflowFilters}
+          resultCount={{ filtered: filteredWorkflows.length, total: workflows.length, label: 'workflows' }}
+        />
+      </Widget>
 
       {/* Manual run panel */}
       <Widget title="Run Workflow" icon={Play} accent="#6366f1" padding="md">
