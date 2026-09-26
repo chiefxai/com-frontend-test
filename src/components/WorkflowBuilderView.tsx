@@ -259,7 +259,11 @@ export default function WorkflowBuilderView({
     >
       <div className="overflow-y-auto flex-1 px-8 pb-8 pt-6 space-y-6">
 
-      <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 rounded-xl">
+      <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[var(--border)] pb-4">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Workflows</h3>
+          <p className="text-[11px] text-[var(--text-muted)]">Filter and select the workflow you want to build or run.</p>
+        </div>
         <FilterBar
           search={{ value: workflowSearch, onChange: setWorkflowSearch, placeholder: 'Search workflows…' }}
           selects={[
