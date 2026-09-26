@@ -36,6 +36,7 @@ import {
   Bot,
   User,
   Megaphone,
+  Download,
 } from 'lucide-react';
 import { Lead, CallLog, VirtualNumber, TeamMember, ContactGroup, OrganizationSettings } from '../types';
 import { QuestionFlow } from '../features/workflows/types';
@@ -352,6 +353,79 @@ export default function DialerSimulator({
   // Keep the navigator visible by default on small screens so campaign/number context is never hidden.
   const [isCampaignNavigatorOpen, setIsCampaignNavigatorOpen] = useState(false);
   const [isSimulatorNavigatorCollapsed, setIsSimulatorNavigatorCollapsed] = useState(false);
+
+  const downloadOutboundCampaignCsv = (task: DialTask) => {
+    const escapeCsv = (value: unknown) => {
+      const text = value == null ? '' : String(value);
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const answerKeys = Array.from(new Set(
+      Object.values(task.callResults).flatMap((result) => Object.keys(result.answers || {}))
+    ));
+    const leadById = new Map(leadsDatabase.map((lead) => [lead.id, lead]));
+
+    const headers = [
+      'Campaign',
+      'Campaign Run At',
+      'Workflow',
+      'Lead Name',
+      'Phone',
+      'Status',
+      'Duration (s)',
+      'Sentiment',
+      'Intent',
+      'Summary',
+      'Call Answered',
+      'Callback Time',
+      'Callback Reason',
+      'Conversation Outcome',
+      'Callback Status',
+      'Enquiry Status',
+      'Call ID',
+      'Recording URL',
+      ...answerKeys,
+    ];
+
+    const rows = task.leadIds.map((leadId) => {
+      const lead = leadById.get(leadId);
+      const result = task.callResults[leadId];
+      return [
+        task.name,
+        task.workflowRunMetadata?.runAt || task.createdAt,
+        task.workflowName || task.workflowRunMetadata?.workflowName || '',
+        lead?.name || '',
+        lead?.phone || '',
+        result?.status || 'Pending',
+        result?.duration ?? '',
+        result?.sentiment || '',
+        result?.intent || '',
+        result?.summary || '',
+        result?.callAnswered == null ? '' : result.callAnswered ? 'Yes' : 'No',
+        result?.callbackTime || '',
+        result?.callbackReason || '',
+        result?.conversationOutcome || '',
+        result?.callbackStatus || '',
+        result?.enquiryStatus || '',
+        result?.callId || '',
+        result?.recordingUrl || '',
+        ...answerKeys.map((key) => result?.answers?.[key] || ''),
+      ];
+    });
+
+    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${task.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'campaign'}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+
   const [campaignSearch, setCampaignSearch] = useState('');
   const taskPage = showAssignTask;
   useEffect(() => {
@@ -2054,6 +2128,15 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               </div>
 
               <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Download}
+                  onClick={() => downloadOutboundCampaignCsv(selectedTask)}
+                  title="Download this campaign run as CSV"
+                >
+                  Download CSV
+                </Button>
                 <Button
                   variant={showWorkflowDetailView ? 'primary' : 'secondary'}
                   size="sm"
