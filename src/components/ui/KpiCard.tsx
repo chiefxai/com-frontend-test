@@ -98,32 +98,20 @@ export default function KpiCard({
   };
 
   const secondary = hasSecondary ? (
-    <div
-      className="mt-2 pt-2 border-t"
-      style={{ borderColor: 'var(--border)' }}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className="text-[10px] font-bold uppercase tracking-wider truncate"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          {secondaryLabel}
-        </span>
-        <span
-          className="text-xs font-semibold whitespace-nowrap"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          {secondaryValue}
-        </span>
-      </div>
-      {secondaryBadge ? (
-        <div className="mt-1">
-          <Chip
-            badge={secondaryBadge}
-            color={secondaryBadgeColor}
-          />
-        </div>
-      ) : null}
+    <div className="min-w-0 shrink-0 border-l pl-3 ml-1" style={{ borderColor: 'var(--border)' }}>
+      <span
+        className="text-[9px] font-bold uppercase tracking-wider block truncate"
+        style={{ color: 'var(--text-muted)' }}
+      >
+        {secondaryLabel}
+      </span>
+      <span
+        className="text-xs font-semibold whitespace-nowrap block mt-0.5"
+        style={{ color: 'var(--text-primary)' }}
+      >
+        {secondaryValue}
+      </span>
+      {secondaryBadge ? <div className="mt-0.5"><Chip badge={secondaryBadge} color={secondaryBadgeColor} /></div> : null}
     </div>
   ) : null;
 
@@ -140,6 +128,8 @@ export default function KpiCard({
         ) : null}
 
         <div className={iconPosition === 'top-left' ? 'mt-3' : ''}>
+          <div className={hasSecondary && iconPosition !== 'top-left' ? 'flex items-center min-w-0 gap-3' : ''}>
+            <div className="min-w-0">
           <span
             className="text-[10px] font-bold uppercase tracking-wider block"
             style={{ color: 'var(--text-muted)' }}
@@ -171,7 +161,9 @@ export default function KpiCard({
             <div className="pt-1">{chip}</div>
           ) : null}
 
-          {secondary}
+          </div>
+            {secondary}
+          </div>
         </div>
       </div>
 
