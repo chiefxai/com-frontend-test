@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, Loader2, Phone, MessageCircleQuestion, Megaphone, ArrowUpRight, ArrowDownLeft, PhoneMissed, CalendarClock } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatPhone } from '../lib/phone';
+import { Lead } from '../types';
 import PageShell from './ui/PageShell';
 import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
@@ -43,12 +44,12 @@ const KIND_CHIP: Record<'callback' | 'not_answered', { label: string; className:
   not_answered: { label: 'Not Answered', className: 'bg-rose-50 text-rose-700 border-rose-200' },
 };
 
-export default function ScheduledCallbacksView() {
+interface ScheduledCallbacksViewProps {\n  leads?: Lead[];\n}\n\nexport default function ScheduledCallbacksView({ leads = [] }: ScheduledCallbacksViewProps) {
   const navigate = useNavigate();
   const [rows, setRows] = useState<ScheduledCallback[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [campaignFilter, setCampaignFilter] = useState('all');
+  const [campaignFilter, setCampaignFilter] = useState('all');\n  const [leadFilter, setLeadFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
   const [directionFilter, setDirectionFilter] = useState('all');
@@ -65,12 +66,12 @@ export default function ScheduledCallbacksView() {
     ).entries()
   ).map(([id, name]) => ({ id, name }));
 
-  const statusOptions = Array.from(
+  const leadOptions = Array.from(\n    new Map(leads.map((lead) => [lead.id, lead.name || lead.phone || 'Unknown lead'])).entries()\n  ).map(([id, name]) => ({ id, name }));\n\n  const statusOptions = Array.from(
     new Set(rows.map((r) => r.status).filter((v): v is string => Boolean(v)))
   ).sort();
 
   const filteredRows = rows.filter((r) => {
-    const campaignId = r.campaignId || r.campaignName || r.workflowName || '';
+    const campaignId = r.campaignId || r.campaignName || r.workflowName || '';\n    const matchedLead = leads.find((lead) => lead.name === r.leadName || lead.phone === r.callerNumber);\n    const leadId = matchedLead?.id || '';
     const haystack = [
       r.leadName,
       r.callerNumber,
@@ -81,7 +82,7 @@ export default function ScheduledCallbacksView() {
     ].filter(Boolean).join(' ').toLowerCase();
 
     return (
-      (campaignFilter === 'all' || campaignId === campaignFilter) &&
+      (campaignFilter === 'all' || campaignId === campaignFilter) &&\n      (leadFilter === 'all' || leadId === leadFilter) &&
       (statusFilter === 'all' || r.status === statusFilter) &&
       (kindFilter === 'all' || (r.kind || 'not_answered') === kindFilter) &&
       (directionFilter === 'all' || (r.direction || 'outbound') === directionFilter) &&
@@ -90,14 +91,14 @@ export default function ScheduledCallbacksView() {
   });
 
   const hasActiveFilters =
-    campaignFilter !== 'all' ||
+    campaignFilter !== 'all' ||\n    leadFilter !== 'all' ||
     statusFilter !== 'all' ||
     kindFilter !== 'all' ||
     directionFilter !== 'all' ||
     Boolean(search.trim());
 
   const clearFilters = () => {
-    setCampaignFilter('all');
+    setCampaignFilter('all');\n    setLeadFilter('all');
     setStatusFilter('all');
     setKindFilter('all');
     setDirectionFilter('all');
@@ -251,17 +252,57 @@ export default function ScheduledCallbacksView() {
                     <>
                       <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
                         <FilterBar
-                          search={{ value: search, onChange: setSearch, placeholder: 'Search lead, phone, reason or campaign...' }}
-                          selects={[
-                            { key: 'campaign', label: 'Campaign', value: campaignFilter, onChange: setCampaignFilter, options: [{ label: 'All campaigns', value: 'all' }, ...campaignOptions.map((c) => ({ label: c.name, value: c.id }))] },
-                            { key: 'status', label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [{ label: 'All statuses', value: 'all' }, ...statusOptions.map((status) => ({ label: status, value: status }))] },
-                            { key: 'type', label: 'Type', value: kindFilter, onChange: setKindFilter, options: [{ label: 'All types', value: 'all' }, { label: 'Callback', value: 'callback' }, { label: 'Not Answered', value: 'not_answered' }] },
-                            { key: 'direction', label: 'Direction', value: directionFilter, onChange: setDirectionFilter, options: [{ label: 'All directions', value: 'all' }, { label: 'Outbound', value: 'outbound' }, { label: 'Inbound', value: 'inbound' }] },
-                          ]}
-                          hasActiveFilters={hasActiveFilters}
-                          onClear={clearFilters}
-                          resultCount={{ filtered: filteredRows.length, total: rows.length, label: 'callbacks' }}
-                        />
+              search={{ value: search, onChange: setSearch, placeholder: 'Search lead, phone, campaign…' }}
+              selects={[
+                {
+                  key: 'lead',
+                  label: 'Lead',
+                  value: leadFilter,
+                  onChange: setLeadFilter,
+                  options: [{ label: 'All leads', value: 'all' }, ...leadOptions.map((l) => ({ label: l.name, value: l.id }))],
+                },
+                {
+                  key: 'campaign',
+                  label: 'Campaign',
+                  value: campaignFilter,
+                  onChange: setCampaignFilter,
+                  options: [{ label: 'All campaigns', value: 'all' }, ...campaignOptions.map((c) => ({ label: c.name, value: c.id }))],
+                },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  value: statusFilter,
+                  onChange: setStatusFilter,
+                  options: [{ label: 'All statuses', value: 'all' }, ...statusOptions.map((s) => ({ label: s, value: s }))],
+                },
+                {
+                  key: 'type',
+                  label: 'Type',
+                  value: kindFilter,
+                  onChange: setKindFilter,
+                  options: [
+                    { label: 'All types', value: 'all' },
+                    { label: 'Callback', value: 'callback' },
+                    { label: 'Not Answered', value: 'not_answered' },
+                  ],
+                },
+                {
+                  key: 'direction',
+                  label: 'Direction',
+                  value: directionFilter,
+                  onChange: setDirectionFilter,
+                  options: [
+                    { label: 'All directions', value: 'all' },
+                    { label: 'Inbound', value: 'inbound' },
+                    { label: 'Outbound', value: 'outbound' },
+                  ],
+                },
+              ]}
+              onClear={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              resultCount={{ filtered: filteredRows.length, total: rows.length, label: 'callbacks' }}
+            />
+
                       </div>
 
                       {filteredRows.length === 0 ? (
