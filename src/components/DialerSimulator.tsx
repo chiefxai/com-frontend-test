@@ -1809,7 +1809,6 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           title="Campaigns"
           icon={Megaphone}
           className="min-h-[60vh] xl:sticky xl:top-4 border-[var(--border)] shadow-sm overflow-hidden"
-          headerClassName="!px-4 !py-3"
 
           action={
             <Badge color="blue" className="font-mono">{tasks.length} total</Badge>
