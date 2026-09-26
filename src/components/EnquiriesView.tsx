@@ -6,6 +6,7 @@ import Widget from './ui/Widget';
 import Badge from './ui/Badge';
 import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
+import FilterBar from './ui/FilterBar';
 
 interface Enquiry {
   id: string;
@@ -30,6 +31,27 @@ export default function EnquiriesView() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<Enquiry['status'] | 'all'>('all');
+
+  const filteredEnquiries = enquiries.filter((enquiry) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query
+      || (enquiry.name || '').toLowerCase().includes(query)
+      || (enquiry.phone || '').toLowerCase().includes(query)
+      || (enquiry.email || '').toLowerCase().includes(query)
+      || enquiry.queryText.toLowerCase().includes(query)
+      || (enquiry.location || '').toLowerCase().includes(query)
+      || (enquiry.callId || '').toLowerCase().includes(query);
+    const matchesStatus = statusFilter === 'all' || enquiry.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== 'all';
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+  };
 
   // Server-side pagination — the backend only sends this one page's rows,
   // the true total, and a separate openCount (computed across the whole
@@ -79,6 +101,36 @@ export default function EnquiriesView() {
         <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
       ) : (
       <Widget className="flex-1" showHeader={false} padding="none">
+        <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
+          <FilterBar
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: 'Search caller, phone, email, enquiry…',
+            }}
+            selects={[
+              {
+                key: 'Status',
+                label: 'Status',
+                value: statusFilter,
+                onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
+                options: [
+                  { label: 'All statuses', value: 'all' },
+                  { label: 'New', value: 'new' },
+                  { label: 'Contacted', value: 'contacted' },
+                  { label: 'Resolved', value: 'resolved' },
+                ],
+              },
+            ]}
+            onClear={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            resultCount={{
+              filtered: filteredEnquiries.length,
+              total: total,
+              label: 'enquiries',
+            }}
+          />
+        </div>
         {total === 0
           ? <EmptyState icon={MessageCircleQuestion} heading="No enquiries captured yet" message="Enquiries from AI calls will appear here automatically." />
           : (() => {
@@ -121,7 +173,7 @@ export default function EnquiriesView() {
                   bare
                   resizable
                   columns={columns}
-                  rows={enquiries}
+                  rows={filteredEnquiries}
                   rowKey={(e) => e.id}
                   serverPagination={{
                     page,
