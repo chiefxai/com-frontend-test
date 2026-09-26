@@ -411,7 +411,6 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
           </div>
         </SlideOver>
       )}
-      </div>
     </PageShell>
   );
 }
