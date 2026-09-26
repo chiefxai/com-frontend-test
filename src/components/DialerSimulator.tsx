@@ -1808,159 +1808,180 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
           <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm">
         {/* Unified simulator workspace: campaign navigator + active campaign */}
-        <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-4 xl:col-span-3'}`}>
-        {/* Left: campaign navigator */}
-        <Widget
-          colSpan={4}
-          title="Campaigns"
-          icon={Megaphone}
-          className={`!col-span-12 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-none bg-transparent overflow-hidden ${isSimulatorNavigatorCollapsed ? 'lg:!p-1' : ''}`}
-          action={
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
-                  className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
-                  aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
-                >
-                  <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSimulatorNavigatorCollapsed((collapsed) => !collapsed)}
-                  className="hidden lg:flex h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                  aria-label={isSimulatorNavigatorCollapsed ? 'Expand campaigns' : 'Collapse campaigns'}
-                  title={isSimulatorNavigatorCollapsed ? 'Expand campaigns' : 'Collapse campaigns'}
-                >
-                  {isSimulatorNavigatorCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          }
-        >
-          <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'} ${isSimulatorNavigatorCollapsed ? 'lg:hidden' : ''}`}>
-            <div className="px-3 pb-3 border-b border-[var(--border)]">
-              <div className="relative">
-                <SearchInput
-                  value={campaignSearch}
-                  onChange={setCampaignSearch}
-                  placeholder="Search campaigns..."
-                />
-              </div>
-            </div>
+        <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
+          {isSimulatorNavigatorCollapsed ? (
+            <div className="hidden lg:flex min-h-[65vh] lg:min-h-[60vh] flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSimulatorNavigatorCollapsed(false)}
+                className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-blue-400 transition-colors"
+                aria-label="Expand campaigns"
+                title="Expand campaigns"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
 
-            <div className="flex items-center justify-between px-3 py-2.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">All campaigns</span>
-              <span className="text-[10px] text-[var(--text-muted)]">{tasks.length}</span>
-            </div>
+              <div className="w-8 border-t border-[var(--border)] my-1" />
 
-            <div className="space-y-1.5 max-h-[52vh] lg:max-h-[62vh] overflow-y-auto px-2 pb-2">
-              {tasks
-                .filter((task) => {
-                  const q = campaignSearch.trim().toLowerCase();
-                  if (!q) return true;
-                  return task.name.toLowerCase().includes(q)
-                    || (task.workflowName || task.workflowRunMetadata?.workflowName || '').toLowerCase().includes(q);
-                })
-                .map((task) => {
-                  const isActive = task.id === selectedTaskId;
-                  const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
-                  const total = task.leadIds.length;
-                  const pending = Math.max(0, total - completed);
-                  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-                  const scriptName = task.workflowName || task.workflowRunMetadata?.workflowName || 'No script';
-                  const statusDot = task.status === 'Completed'
+              <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2">
+                {tasks.map((task) => {
+                  const active = task.id === selectedTaskId;
+                  const statusClass = task.status === 'Completed'
                     ? 'bg-emerald-500'
                     : task.status === 'In Progress'
-                    ? 'bg-blue-500 animate-pulse'
+                    ? 'bg-blue-500'
                     : 'bg-slate-400';
 
                   return (
                     <button
                       key={task.id}
                       type="button"
-                      onClick={() => {
-                        setSelectedTaskId(task.id);
-                        setPlayingTapeId(null);
-                        setIsTapePlaying(false);
-                      }}
-                      className={`w-full text-left rounded-xl border transition-all p-3 group ${
-                        isActive
-                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 shadow-sm'
-                          : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)]'
+                      onClick={() => setSelectedTaskId(task.id)}
+                      title={task.name}
+                      className={`relative h-10 w-10 rounded-xl border flex items-center justify-center transition-all ${
+                        active
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 shadow-sm'
+                          : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
                       }`}
                     >
-                      <div className="flex items-start gap-2.5">
-                        <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs font-bold text-[var(--text-primary)] truncate">{task.name}</p>
-                            <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isActive ? 'text-blue-600 translate-x-0.5' : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100'}`} />
-                          </div>
-
-                          <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{scriptName}</p>
-
-                          <div className="flex items-center gap-2 mt-2 text-[9px] text-[var(--text-muted)]">
-                            <span>{completed}/{total} dialed</span>
-                            <span>•</span>
-                            <span>{pending} pending</span>
-                            <span className="ml-auto font-medium">{percent}%</span>
-                          </div>
-
-                          <div className="h-1 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mt-1.5">
-                            <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${percent}%` }} />
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2 mt-2">
-                            <span className="text-[9px] text-[var(--text-muted)] truncate">
-                              {new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </span>
-                            <span className={`text-[9px] font-semibold ${
-                              task.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-400'
-                              : task.status === 'In Progress' ? 'text-blue-600 dark:text-blue-400'
-                              : 'text-[var(--text-muted)]'
-                            }`}>
-                              {task.status}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      <span className={`h-2.5 w-2.5 rounded-full ${statusClass}`} />
                     </button>
                   );
                 })}
 
-              {tasks.length === 0 && (
-                <div className="px-3 py-10 text-center">
-                  <Megaphone className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">No campaigns yet</p>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-1">Create your first outbound campaign.</p>
-                </div>
-              )}
+                {tasks.length === 0 && (
+                  <span className="text-[10px] text-[var(--text-muted)] text-center px-1">No campaigns</span>
+                )}
+              </div>
             </div>
-          </div>
-        </Widget>
-        </aside>
+          ) : (
+            <Widget
+              colSpan={3}
+              title="Campaigns"
+              icon={Megaphone}
+              className="!col-span-12 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+              action={
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
+                      className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                      aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSimulatorNavigatorCollapsed(true)}
+                      className="hidden lg:flex h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      aria-label="Collapse campaigns"
+                      title="Collapse campaigns"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              }
+            >
+              <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
+                <div className="px-3 pb-3 border-b border-[var(--border)]">
+                  <SearchInput
+                    value={campaignSearch}
+                    onChange={setCampaignSearch}
+                    placeholder="Search campaigns..."
+                  />
+                </div>
 
-        {isSimulatorNavigatorCollapsed && (
-          <div className="hidden lg:flex lg:col-span-1 xl:col-span-1 min-h-[65vh] lg:min-h-[60vh] flex-col items-center gap-2 py-2">
-            {tasks.slice(0, 10).map((task) => {
-              const active = task.id === selectedTaskId;
-              return (
-                <button
-                  key={task.id}
-                  type="button"
-                  onClick={() => setSelectedTaskId(task.id)}
-                  title={task.name}
-                  className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors ${active ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30' : 'border-[var(--border)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-subtle)]'}`}
-                >
-                  <span className={`h-2.5 w-2.5 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-400'}`} />
-                </button>
-              );
-            })}
-          </div>
-        )}
+                <div className="flex items-center justify-between px-3 py-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">All campaigns</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">{tasks.length}</span>
+                </div>
+
+                <div className="space-y-1.5 max-h-[52vh] lg:max-h-[62vh] overflow-y-auto px-2 pb-2">
+                  {tasks
+                    .filter((task) => {
+                      const q = campaignSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return task.name.toLowerCase().includes(q)
+                        || (task.workflowName || task.workflowRunMetadata?.workflowName || '').toLowerCase().includes(q);
+                    })
+                    .map((task) => {
+                      const isActive = task.id === selectedTaskId;
+                      const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
+                      const total = task.leadIds.length;
+                      const pending = Math.max(0, total - completed);
+                      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                      const scriptName = task.workflowName || task.workflowRunMetadata?.workflowName || 'No script';
+                      const statusDot = task.status === 'Completed'
+                        ? 'bg-emerald-500'
+                        : task.status === 'In Progress'
+                        ? 'bg-blue-500 animate-pulse'
+                        : 'bg-slate-400';
+
+                      return (
+                        <button
+                          key={task.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTaskId(task.id);
+                            setPlayingTapeId(null);
+                            setIsTapePlaying(false);
+                          }}
+                          className={`w-full text-left rounded-xl border transition-all p-3 group ${
+                            isActive
+                              ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 shadow-sm'
+                              : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)]'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-bold text-[var(--text-primary)] truncate">{task.name}</p>
+                                <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isActive ? 'text-blue-600 translate-x-0.5' : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100'}`} />
+                              </div>
+                              <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{scriptName}</p>
+                              <div className="flex items-center gap-2 mt-2 text-[9px] text-[var(--text-muted)]">
+                                <span>{completed}/{total} dialed</span>
+                                <span>•</span>
+                                <span>{pending} pending</span>
+                                <span className="ml-auto font-medium">{percent}%</span>
+                              </div>
+                              <div className="h-1 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mt-1.5">
+                                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${percent}%` }} />
+                              </div>
+                              <div className="flex items-center justify-between gap-2 mt-2">
+                                <span className="text-[9px] text-[var(--text-muted)] truncate">
+                                  {new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                                <span className={`text-[9px] font-semibold ${
+                                  task.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-400'
+                                  : task.status === 'In Progress' ? 'text-blue-600 dark:text-blue-400'
+                                  : 'text-[var(--text-muted)]'
+                                }`}>
+                                  {task.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                  {tasks.length === 0 && (
+                    <div className="px-3 py-10 text-center">
+                      <Megaphone className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">No campaigns yet</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-1">Create your first outbound campaign.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Widget>
+          )}
+        </aside>
 
         {/* Main Column: Selected Task Queue Workspace */}
         <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-10 xl:col-span-10' : 'lg:col-span-8 xl:col-span-9'}`}>
