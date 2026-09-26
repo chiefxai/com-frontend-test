@@ -1,4 +1,5 @@
 import React from 'react';
+import { Filter, X } from 'lucide-react';
 import SearchInput from './SearchInput';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -34,6 +35,12 @@ export interface FilterBarProps {
   actions?: React.ReactNode;
   /** Extra classes on the outer wrapper */
   className?: string;
+  /** Optional clear-all control for shared filter state. */
+  onClear?: () => void;
+  /** Whether any filter/search is currently active. */
+  hasActiveFilters?: boolean;
+  /** Optional result summary rendered before actions. */
+  resultCount?: { filtered: number; total: number; label?: string };
 }
 
 // ── Select control ───────────────────────────────────────────────────────────
@@ -113,6 +120,9 @@ export default function FilterBar({
   dates,
   actions,
   className = '',
+  onClear,
+  hasActiveFilters = false,
+  resultCount,
 }: FilterBarProps) {
   const hasFilters = (selects && selects.length > 0) || (dates && dates.length > 0);
 
@@ -136,6 +146,30 @@ export default function FilterBar({
           {selects?.map((s) => <Select key={s.key} {...s} />)}
           {dates?.map((d) => <DateInput key={d.key} {...d} />)}
         </div>
+      )}
+
+      {/* Filter controls */}
+      {(selects?.length || dates?.length) ? (
+        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] shrink-0">
+          <Filter className="h-3.5 w-3.5" /> Filters
+        </div>
+      ) : null}
+
+      {onClear && hasActiveFilters && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="h-8 inline-flex items-center gap-1.5 px-2.5 rounded-lg border text-[11px] font-semibold transition-colors hover:bg-[var(--bg-subtle)]"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+        >
+          <X className="h-3.5 w-3.5" /> Clear
+        </button>
+      )}
+
+      {resultCount && (
+        <span className="text-[11px] px-2.5 py-1.5 rounded-lg border whitespace-nowrap" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'var(--bg-subtle)' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>{resultCount.filtered}</strong> of {resultCount.total} {resultCount.label ?? 'results'}
+        </span>
       )}
 
       {/* Actions */}
