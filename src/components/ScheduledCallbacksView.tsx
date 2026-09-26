@@ -345,7 +345,6 @@ export default function ScheduledCallbacksView() {
                           </div>
                         );
                       })()}
-                      </div>
                     </>
                   );
                 })()
