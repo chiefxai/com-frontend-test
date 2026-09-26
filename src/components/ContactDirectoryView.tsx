@@ -485,8 +485,8 @@ export default function ContactDirectoryView({
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
-        <Widget className="flex-1" showHeader={false} padding="none">
-          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+        <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
         <FilterBar
           search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search contacts by name, email, phone number, employer…' }}
           onClear={clearFilters}
@@ -615,6 +615,7 @@ export default function ContactDirectoryView({
               bare
               resizable
               paginated
+              className="flex-1 min-h-0"
               columns={columns}
               rows={filteredLeads}
               rowKey={(lead) => lead.id}
