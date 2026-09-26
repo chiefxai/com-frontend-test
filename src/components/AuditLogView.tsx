@@ -126,18 +126,20 @@ export default function AuditLogView() {
           <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0 gap-3">
-            <FilterBar
-              search={{ value: search, onChange: setSearch, placeholder: 'Search audit actions, users, targets…' }}
-              selects={[
-                { key: 'Action', label: 'Action', value: actionFilter, onChange: setActionFilter, options: [{ label: 'All actions', value: 'all' }, ...actionOptions] },
-                { key: 'Actor', label: 'Actor', value: actorFilter, onChange: setActorFilter, options: [{ label: 'All actors', value: 'all' }, ...actorOptions] },
-                { key: 'Target Type', label: 'Target Type', value: targetTypeFilter, onChange: setTargetTypeFilter, options: [{ label: 'All target types', value: 'all' }, ...targetTypeOptions] },
-              ]}
-              onClear={clearFilters}
-              hasActiveFilters={hasActiveFilters}
-              resultCount={{ filtered: filteredEntries.length, total: entries.length, label: 'loaded entries' }}
-            />
             <Widget className="flex-1 min-h-0" showHeader={false} padding="none">
+              <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                <FilterBar
+                  search={{ value: search, onChange: setSearch, placeholder: 'Search audit actions, users, targets…' }}
+                  selects={[
+                    { key: 'Action', label: 'Action', value: actionFilter, onChange: setActionFilter, options: [{ label: 'All actions', value: 'all' }, ...actionOptions] },
+                    { key: 'Actor', label: 'Actor', value: actorFilter, onChange: setActorFilter, options: [{ label: 'All actors', value: 'all' }, ...actorOptions] },
+                    { key: 'Target Type', label: 'Target Type', value: targetTypeFilter, onChange: setTargetTypeFilter, options: [{ label: 'All target types', value: 'all' }, ...targetTypeOptions] },
+                  ]}
+                  onClear={clearFilters}
+                  hasActiveFilters={hasActiveFilters}
+                  resultCount={{ filtered: filteredEntries.length, total: entries.length, label: 'loaded entries' }}
+                />
+              </div>
             {total === 0
               ? <EmptyState icon={ScrollText} heading="No admin actions recorded yet" />
               : (
