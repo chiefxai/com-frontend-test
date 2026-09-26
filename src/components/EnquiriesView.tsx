@@ -100,30 +100,30 @@ export default function EnquiriesView() {
       title="Enquiries"
       subtitle={`Callers who asked something mid-call and need a follow-up — ${openCount} still open.`}
       onRefresh={() => load()}
-      action={
-        <FilterBar
-          search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
-          selects={[{
-            key: 'Status',
-            label: 'Status',
-            value: statusFilter,
-            onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
-            options: [
-              { label: 'All statuses', value: 'all' },
-              { label: 'New', value: 'new' },
-              { label: 'Contacted', value: 'contacted' },
-              { label: 'Resolved', value: 'resolved' },
-            ],
-          }]}
-          onClear={clearFilters}
-          hasActiveFilters={hasActiveFilters}
-          resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
-        />
-      }
       layout="fill"
     >
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-4 sm:px-5 md:px-6 xl:px-8 pb-6 pt-4">
         <Widget className="flex-1 min-h-0 w-full" bodyClassName="flex-1 min-h-0 overflow-hidden flex flex-col" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
+            <FilterBar
+              search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
+              selects={[{
+                key: 'Status',
+                label: 'Status',
+                value: statusFilter,
+                onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
+                options: [
+                  { label: 'All statuses', value: 'all' },
+                  { label: 'New', value: 'new' },
+                  { label: 'Contacted', value: 'contacted' },
+                  { label: 'Resolved', value: 'resolved' },
+                ],
+              }]}
+              onClear={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
+            />
+          </div>
         {total === 0
           ? <EmptyState icon={MessageCircleQuestion} heading="No enquiries captured yet" message="Enquiries from AI calls will appear here automatically." />
           : (() => {
