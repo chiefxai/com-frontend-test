@@ -10,6 +10,7 @@ export interface CommonFilterOption {
   placeholder?: string;
   onChange: (value: string) => void;
   active?: boolean;
+  type?: 'select' | 'date';
 }
 
 export interface CommonFilterDropdownProps {
@@ -125,18 +126,32 @@ export default function FilterDropdown({
                     {isActive && <Check className="h-3 w-3 text-blue-600" />}
                     {filter.key}
                   </span>
-                  <select
-                    value={filter.value}
-                    onChange={(event) => filter.onChange(event.target.value)}
-                    className="w-full text-xs rounded-lg px-2.5 py-2 border focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
-                    style={{
-                      background: 'var(--bg-surface)',
-                      borderColor: 'var(--border)',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {renderOptions(filter)}
-                  </select>
+                  {filter.type === 'date' ? (
+                    <input
+                      type="date"
+                      value={filter.value}
+                      onChange={(event) => filter.onChange(event.target.value)}
+                      className="w-full text-xs rounded-lg px-2.5 py-2 border focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      style={{
+                        background: 'var(--bg-surface)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                  ) : (
+                    <select
+                      value={filter.value}
+                      onChange={(event) => filter.onChange(event.target.value)}
+                      className="w-full text-xs rounded-lg px-2.5 py-2 border focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+                      style={{
+                        background: 'var(--bg-surface)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      {renderOptions(filter)}
+                    </select>
+                  )}
                 </label>
               );
             })}
