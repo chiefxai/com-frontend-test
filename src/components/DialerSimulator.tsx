@@ -2396,119 +2396,203 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           />
         </div>
 
-        <div className="grid grid-cols-12 gap-6 items-stretch">
-          {/* LEFT COLUMN: numbers that receive inbound calls */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col h-full space-y-6">
-            <Widget
-              className="flex-1 min-h-[60vh]"
-              title="Inbound numbers"
-              icon={PhoneForwarded}
-              action={
-                <Badge color="blue" className="font-mono">{activeVirtualNumbers.length} Online</Badge>
-              }
-            >
-              <div className="space-y-4">
-                <p className="text-xs text-[var(--text-muted)]">Virtual lines that accept incoming calls. Outbound campaigns use different caller IDs from Agent Studio.</p>
-                <div className="space-y-3.5">
-                {activeVirtualNumbers.map((vNum) => (
-                  <div
-                    key={vNum.id}
-                    className="w-full p-4 rounded-xl text-left border border-[var(--border)] flex flex-col space-y-2"
-                  >
-                    <div className="flex justify-between items-start w-full gap-2">
-                      <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{vNum.number}</span>
-                      <span className="text-[8px] font-mono font-bold bg-emerald-700 text-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
-                        {vNum.status}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-[var(--text-muted)] font-medium truncate">{vNum.friendlyName}</div>
-                    <div className="flex justify-between text-[9px] font-mono text-[var(--text-muted)] border-t border-[var(--border)] pt-1.5">
-                      <span>Inbound Logs: {vNum.incomingCallCount}</span>
-                      <span>Carrier: {vNum.provider}</span>
-                    </div>
-                  </div>
-                ))}
-                {activeVirtualNumbers.length === 0 && (
-                  <div className="text-center py-8 border border-dashed border-[var(--border)] rounded-xl bg-[var(--bg-subtle)]/50 space-y-2">
-                    <PhoneForwarded className="h-6 w-6 text-slate-300 mx-auto" />
-                    <p className="text-[11px] text-[var(--text-muted)]">No inbound numbers yet. Add a virtual number under Administration to receive calls here.</p>
-                  </div>
-                )}
+        <div className="grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm">
+          {/* Unified inbound workspace: receiving numbers + call history */}
+          <aside className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
+            {isSimulatorNavigatorCollapsed ? (
+              <div className="hidden lg:flex min-h-[65vh] lg:min-h-[60vh] flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSimulatorNavigatorCollapsed(false)}
+                  className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-blue-400 transition-colors"
+                  aria-label="Expand inbound numbers"
+                  title="Expand inbound numbers"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+
+                <div className="w-8 border-t border-[var(--border)] my-1" />
+
+                <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2">
+                  {activeVirtualNumbers.map((vNum) => (
+                    <button
+                      key={vNum.id}
+                      type="button"
+                      title={`${vNum.friendlyName || 'Inbound number'} · ${vNum.number}`}
+                      className="relative h-10 w-10 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 flex items-center justify-center transition-all"
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    </button>
+                  ))}
+                  {activeVirtualNumbers.length === 0 && (
+                    <span className="text-[10px] text-[var(--text-muted)] text-center px-1">No numbers</span>
+                  )}
                 </div>
               </div>
-            </Widget>
-          </div>
+            ) : (
+              <Widget
+                colSpan={3}
+                title="Inbound numbers"
+                icon={PhoneForwarded}
+                className="!col-span-12 min-h-0 lg:min-h-[60vh] lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+                action={
+                  <div className="flex items-center gap-1.5">
+                    <Badge color="blue" className="font-mono">{activeVirtualNumbers.length} Online</Badge>
+                    <button
+                      type="button"
+                      onClick={() => setIsSimulatorNavigatorCollapsed(true)}
+                      className="hidden lg:flex h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      aria-label="Collapse inbound numbers"
+                      title="Collapse inbound numbers"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                }
+              >
+                <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
+                  <div className="px-3 pb-3 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0">
+                        <PhoneIncoming className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Receiving lines</p>
+                        <p className="text-[11px] text-[var(--text-secondary)] truncate">Numbers configured for inbound calls</p>
+                      </div>
+                    </div>
+                  </div>
 
-          {/* RIGHT COLUMN: inbound call history (parallel to outbound campaign queue) */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col h-full space-y-6">
-            <Widget showHeader={false} className="h-full min-h-[60vh]" bodyClassName="flex flex-col h-full">
-              <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between shrink-0 border-b border-[var(--border)] pb-4">
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Connected numbers</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">{activeVirtualNumbers.length}</span>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-[52vh] lg:max-h-[62vh] overflow-y-auto px-2 pb-2">
+                    {activeVirtualNumbers.map((vNum) => (
+                      <div
+                        key={vNum.id}
+                        className="w-full text-left rounded-xl border border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] p-3 transition-all"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <span className="mt-1.5 h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-xs font-bold text-[var(--text-primary)] font-mono truncate">{vNum.number}</p>
+                              <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">{vNum.status}</span>
+                            </div>
+                            <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{vNum.friendlyName}</p>
+                            <div className="flex items-center justify-between gap-2 mt-2 text-[9px] text-[var(--text-muted)]">
+                              <span>{vNum.incomingCallCount} inbound calls</span>
+                              <span className="truncate">{vNum.provider}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {activeVirtualNumbers.length === 0 && (
+                      <div className="px-3 py-10 text-center">
+                        <PhoneForwarded className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
+                        <p className="text-xs font-semibold text-[var(--text-primary)]">No inbound numbers</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1">Add a virtual number under Administration to receive calls.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Widget>
+            )}
+          </aside>
+
+          {/* Main inbound history workspace */}
+          <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
+            <Widget
+              showHeader={false}
+              className="!col-span-12 min-h-[65vh] lg:min-h-[60vh] border-0 shadow-none overflow-hidden"
+              bodyClassName="h-full"
+            >
+              <div className="flex flex-col h-full gap-4">
+                <div className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="min-w-0">
                     <h3 className="text-lg font-bold text-[var(--text-primary)] uppercase tracking-widest flex items-center gap-2">
                       <PhoneIncoming className="h-5 w-5 text-blue-600 shrink-0" />
-                      Call history
+                      <span>Inbound call history</span>
                     </h3>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">Recorded inbound conversations with summaries, sentiment, and extracted answers (same analysis panel as outbound campaigns).</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      Recorded inbound conversations with summaries, sentiment, and extracted answers.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge color="blue" className="font-mono">{realInboundCallLogs.length} calls</Badge>
                   </div>
                 </div>
 
-                {/* Logs list */}
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 mt-4">
-                  {realInboundCallLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="p-4 border border-[var(--border)] rounded-xl bg-[var(--bg-subtle)]/50 hover:bg-[var(--bg-subtle)] transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                    >
-                      <div className="space-y-1.5 max-w-lg">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{log.leadName}</span>
-                          <span className="text-[9px] font-mono text-[var(--text-muted)]">•</span>
-                          <span className="text-[9px] font-mono text-[var(--text-muted)]">{new Date(log.createdAt).toLocaleString()}</span>
+                <div className="flex-1 min-h-0 rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--bg-surface)]">
+                  <div className="h-full overflow-y-auto p-3 space-y-2">
+                    {realInboundCallLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="p-3.5 rounded-xl border border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                      >
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{log.leadName}</span>
+                            <span className="text-[9px] text-[var(--text-muted)]">•</span>
+                            <span className="text-[9px] text-[var(--text-muted)]">{new Date(log.createdAt).toLocaleString()}</span>
+                          </div>
+
+                          <p className="text-[11px] italic font-medium leading-relaxed line-clamp-2 text-[var(--text-secondary)]">
+                            "{log.summary}"
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <Badge color={log.sentiment === 'Positive' ? 'green' : log.sentiment === 'Negative' ? 'rose' : 'slate'} className="font-mono">
+                              {log.sentiment}
+                            </Badge>
+                            <Badge color="blue" className="font-mono">{log.status}</Badge>
+                            <span className="text-[9px] text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full">
+                              {log.duration}s
+                            </span>
+                            <span className="text-[9px] text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full">
+                              {formatInr(callCostInr(log.duration))}
+                            </span>
+                            {log.status === 'Completed' && log.callAnswered === false && (
+                              <Badge color="rose">Not Answered</Badge>
+                            )}
+                          </div>
                         </div>
 
-                        <p className="text-[11px] italic font-medium leading-relaxed font-sans line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                          "{log.summary}"
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <Badge color={log.sentiment === 'Positive' ? 'green' : log.sentiment === 'Negative' ? 'rose' : 'slate'} className="font-mono">
-                            {log.sentiment}
-                          </Badge>
-                          <Badge color="blue" className="font-mono">
-                            {log.status}
-                          </Badge>
-                          <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full">
-                            Duration: {log.duration}s
-                          </span>
-                          <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full">
-                            {formatInr(callCostInr(log.duration))}
-                          </span>
-                          {log.status === 'Completed' && log.callAnswered === false && (
-                            <Badge color="rose">Not Answered</Badge>
-                          )}
-                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={Eye}
+                          onClick={() => handleOpenTapePlayer(log.id, 'inbound')}
+                          className="shrink-0"
+                        >
+                          View
+                        </Button>
                       </div>
+                    ))}
 
-                      <Button variant="secondary" size="sm" icon={Eye} onClick={() => handleOpenTapePlayer(log.id, 'inbound')} className="shrink-0">
-                        View
-                      </Button>
-                    </div>
-                  ))}
-
-                  {realInboundCallLogs.length === 0 && (
-                    <div className="text-center py-12 border border-dashed border-[var(--border)] rounded-xl bg-[var(--bg-subtle)]/50 space-y-2">
-                      <Inbox className="h-8 w-8 text-[var(--text-muted)] mx-auto" />
-                      <p className="text-xs text-[var(--text-muted)] font-medium">No inbound calls logged yet.</p>
-                      <p className="text-[10px] text-[var(--text-muted)]">Real calls to a connected virtual number will appear here automatically as they happen.</p>
-                    </div>
-                  )}
+                    {realInboundCallLogs.length === 0 && (
+                      <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center px-6">
+                        <div className="h-12 w-12 rounded-xl bg-[var(--bg-subtle)] flex items-center justify-center mb-3">
+                          <Inbox className="h-6 w-6 text-[var(--text-muted)]" />
+                        </div>
+                        <p className="text-xs text-[var(--text-primary)] font-semibold">No inbound calls logged yet</p>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-sm">
+                          Real calls to a connected virtual number will appear here automatically as they happen.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </Widget>
           </div>
         </div>
+
         </>
       )}
       </div>
