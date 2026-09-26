@@ -63,6 +63,8 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
   const [campaignFilter, setCampaignFilter] = React.useState('All');
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [exportOpen, setExportOpen] = React.useState(false);
+  const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || campaignFilter !== 'All';
+  const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setCampaignFilter('All'); };
 
   const ongoing = leads.filter((l) => l.pipelineStage === 'opportunity');
   const clients = leads.filter((l) => l.pipelineStage === 'client');
@@ -199,60 +201,28 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
       layout="fill"
       action={subTabToggle}
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6 gap-6">
-        <Widget showHeader={false} padding="md">
-          <FilterBar
-            search={{ value: searchTerm, onChange: setSearchTerm, placeholder: `Search by name, phone, or email…` }}
-            selects={[
-              {
-                key: 'source',
-                label: 'Source',
-                value: sourceFilter,
-                onChange: setSourceFilter,
-                options: [{ label: 'All Sources', value: 'All' }, ...uniqueSources.map((src) => ({ label: src, value: src }))],
-              },
-              {
-                key: 'campaign',
-                label: 'Campaign',
-                value: campaignFilter,
-                onChange: setCampaignFilter,
-                options: [{ label: 'All Campaigns', value: 'All' }, ...campaignOptions.map((t) => ({ label: t.name, value: t.id }))],
-              },
-            ]}
-            actions={
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 whitespace-nowrap">
-                  {subTab === 'ongoing' ? <Target className="h-3.5 w-3.5 text-blue-600" /> : <Trophy className="h-3.5 w-3.5 text-emerald-600" />}
-                  {filtered.length} {subTab === 'ongoing' ? stageLabel(stages, 'opportunity') : `${stageLabel(stages, 'client')}s`}
-                </div>
-                <button
-                  onClick={() => setExportOpen(true)}
-                  disabled={filtered.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-                >
+      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+        <Widget className="flex-1" showHeader={false} padding="none">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+            <FilterBar
+              search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search by name, phone, or email…' }}
+              selects={[
+                { key: 'campaign', label: 'Campaign', value: campaignFilter, onChange: setCampaignFilter, options: [{ label: 'All campaigns', value: 'All' }, ...campaignOptions.map((t) => ({ label: t.name, value: t.id }))] },
+                { key: 'source', label: 'Source', value: sourceFilter, onChange: setSourceFilter, options: [{ label: 'All sources', value: 'All' }, ...uniqueSources.map((src) => ({ label: src, value: src }))] },
+              ]}
+              onClear={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              resultCount={{ filtered: filtered.length, total: activeSet.length, label: subTab === 'ongoing' ? stageLabel(stages, 'opportunity') : stageLabel(stages, 'client') }}
+              actions={
+                <button onClick={() => setExportOpen(true)} disabled={filtered.length === 0} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap">
                   <Download className="h-3.5 w-3.5" /> Export CSV
                 </button>
-              </div>
-            }
-          />
-        </Widget>
-
-        <Widget
-          className="flex-1"
-          showHeader
-          title={subTab === 'ongoing' ? stageLabel(stages, 'opportunity') : `${stageLabel(stages, 'client')}s`}
-          icon={subTab === 'ongoing' ? Target : Trophy}
-          accent={subTab === 'ongoing' ? '#2563eb' : '#059669'}
-          padding="none"
-        >
-          {activeSet.length === 0 ? (
-            <EmptyState
-              icon={subTab === 'ongoing' ? Target : Trophy}
-              heading={subTab === 'ongoing' ? `No ${stageLabel(stages, 'opportunity').toLowerCase()} contacts yet` : `No ${stageLabel(stages, 'client').toLowerCase()}s yet`}
-              message={subTab === 'ongoing'
-                ? `Advance a lead to ${stageLabel(stages, 'opportunity')} from the Leads page once it's worth pursuing.`
-                : `Contacts show up here once they're marked ${stageLabel(stages, 'client')}.`}
+              }
             />
+          </div>
+
+          {activeSet.length === 0 ? (
+            <EmptyState icon={subTab === 'ongoing' ? Target : Trophy} heading={subTab === 'ongoing' ? `No ${stageLabel(stages, 'opportunity').toLowerCase()} contacts yet` : `No ${stageLabel(stages, 'client').toLowerCase()}s yet`} message={subTab === 'ongoing' ? `Advance a lead to ${stageLabel(stages, 'opportunity')} from the Leads page once it's worth pursuing.` : `Contacts show up here once they're marked ${stageLabel(stages, 'client')}.`} />
           ) : filtered.length === 0 ? (
             <EmptyState heading="No contacts match your search" />
           ) : (
@@ -260,7 +230,6 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
           )}
         </Widget>
       </div>
-
       <ContactDetailsSlideOver
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
