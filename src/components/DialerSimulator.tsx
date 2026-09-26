@@ -1984,7 +1984,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         </aside>
 
         {/* Main Column: Selected Task Queue Workspace */}
-        <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-10 xl:col-span-10' : 'lg:col-span-8 xl:col-span-9'}`}>
+        <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
         <Widget colSpan={12} showHeader={false} className="!col-span-12 min-h-[65vh] lg:min-h-[60vh] border-0 shadow-none overflow-hidden">
           {!selectedTask ? (
             <EmptyState
