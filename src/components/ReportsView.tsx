@@ -656,28 +656,24 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             of the same length. Not to be confused with the task-scoped
             row below (that's "how did this one run do"). */}
         <KpiCard
-          colSpan={3} icon={PhoneOutgoing} iconBg="#eff6ff" iconColor="#2563eb" label="Total Calls"
+          colSpan={3} icon={PhoneOutgoing} iconBg="#eff6ff" iconColor="#2563eb" label="Call Volume"
           value={periodSummary.totalCalls}
           badge={trendBadge(periodSummary.totalCalls, prevPeriodSummary.totalCalls).label}
           badgeColor={trendBadge(periodSummary.totalCalls, prevPeriodSummary.totalCalls).color}
+          secondaryLabel="Total Talk Time"
+          secondaryValue={formatDuration(periodSummary.totalTalkTime)}
+          secondaryBadge={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).label}
+          secondaryBadgeColor={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).color}
         />
         <KpiCard
-          colSpan={3} icon={Clock} iconBg="#f0fdf4" iconColor="#16a34a" label="Avg Call Duration"
-          value={formatDuration(periodSummary.avgCallDuration)}
-          badge={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).label}
-          badgeColor={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).color}
-        />
-        <KpiCard
-          colSpan={3} icon={UserCheck} iconBg="#f0fdf4" iconColor="#16a34a" label="Success Rate"
+          colSpan={3} icon={UserCheck} iconBg="#f0fdf4" iconColor="#16a34a" label="Call Performance"
           value={`${periodSummary.successRate}%`}
           badge={trendBadge(periodSummary.successRate, prevPeriodSummary.successRate).label}
           badgeColor={trendBadge(periodSummary.successRate, prevPeriodSummary.successRate).color}
-        />
-        <KpiCard
-          colSpan={3} icon={Clock} iconBg="#eff6ff" iconColor="#2563eb" label="Total Talk Time"
-          value={formatDuration(periodSummary.totalTalkTime)}
-          badge={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).label}
-          badgeColor={trendBadge(periodSummary.totalTalkTime, prevPeriodSummary.totalTalkTime).color}
+          secondaryLabel="Avg Call Duration"
+          secondaryValue={formatDuration(periodSummary.avgCallDuration)}
+          secondaryBadge={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).label}
+          secondaryBadgeColor={trendBadge(periodSummary.avgCallDuration, prevPeriodSummary.avgCallDuration).color}
         />
         <KpiCard
           colSpan={3} icon={MessageCircleQuestion} iconBg="#fffbeb" iconColor="#d97706" label="Total Enquiries"
