@@ -96,12 +96,12 @@ export default function EnquiriesView() {
 
   return (
     <PageShell title="Enquiries" subtitle={`Callers who asked something mid-call and need a follow-up — ${openCount} still open.`} onRefresh={() => load()} layout="fill">
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <div className="flex-1 min-h-0 h-full flex flex-col overflow-hidden px-8 pb-8 pt-6">
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
       ) : (
-      <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0" showHeader={false} padding="none">
-        <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
+      <Widget className="flex-1 min-h-0 h-full" bodyClassName="flex flex-col min-h-0 h-full" showHeader={false} padding="none">
+        <div className="shrink-0 border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
           <FilterBar
             search={{
               value: search,
@@ -172,7 +172,7 @@ export default function EnquiriesView() {
                 <DataTable
                   bare
                   resizable
-                  className="flex-1 min-h-0"
+                  className="flex-1 min-h-0 h-full"
                   columns={columns}
                   rows={filteredEnquiries}
                   rowKey={(e) => e.id}
