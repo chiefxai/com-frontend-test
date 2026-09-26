@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Filter, RotateCcw } from 'lucide-react';
+import { Check, ChevronDown, Filter, RotateCcw, Search } from 'lucide-react';
 
 export interface CommonFilterOption {
   key: string;
@@ -15,6 +15,7 @@ export interface CommonFilterOption {
 
 export interface CommonFilterDropdownProps {
   filters: CommonFilterOption[];
+  search?: { value: string; onChange: (value: string) => void; placeholder?: string };
   onClear?: () => void;
   hasActiveFilters?: boolean;
   label?: string;
@@ -22,6 +23,7 @@ export interface CommonFilterDropdownProps {
 
 export default function FilterDropdown({
   filters,
+  search,
   onClear,
   hasActiveFilters = false,
   label = 'Filters',
@@ -105,6 +107,20 @@ export default function FilterDropdown({
               </button>
             )}
           </div>
+
+          {search && (
+            <div className="mb-2 relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
+              <input
+                type="search"
+                value={search.value}
+                onChange={(event) => search.onChange(event.target.value)}
+                placeholder={search.placeholder ?? 'Search…'}
+                className="w-full h-9 rounded-lg border pl-8 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+              />
+            </div>
+          )}
 
           <div className="max-h-[min(60vh,420px)] overflow-y-auto space-y-2 pr-0.5">
             {filters.map((filter) => {
