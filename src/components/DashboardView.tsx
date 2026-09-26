@@ -480,7 +480,7 @@ export default function DashboardView({
       </Widget>
 
       <Widget colSpan={6} title="Inbound vs Outbound Calls" subtitle="Call volume over time, by direction." icon={PhoneOutgoing} accent="#2563eb" padding="md" hover bodyOverflow="hidden">
-        <div className="h-64 w-full mt-1">
+        <div className="h-56 sm:h-60 md:h-64 w-full mt-1">
           {inboundOutboundOverTime.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={inboundOutboundOverTime} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
@@ -517,7 +517,7 @@ export default function DashboardView({
         ) : <EmptyState heading="No calls in this period" />}
       </Widget>
 
-      <Widget colSpan={6} title="Scheduled Callbacks" subtitle="Upcoming automatic redials — busy callers and no-answers." icon={CalendarClock} accent="#2563eb" padding="none" hover scrollable maxBodyHeight="280px">
+      <Widget colSpan={6} title="Scheduled Callbacks" subtitle="Upcoming automatic redials — busy callers and no-answers." icon={CalendarClock} accent="#2563eb" padding="none" hover scrollable maxBodyHeight="min(280px, 42vh)">
         {upcomingCallbacks.length > 0 ? (
           <div className="divide-y divide-slate-100">
             {upcomingCallbacks.map(cb => (
@@ -582,7 +582,7 @@ export default function DashboardView({
           </select>
         }
       >
-        <div className="w-full mt-1" style={{ height: Math.max(160, campaignPerformance.length * 36) }}>
+        <div className="w-full mt-1" style={{ height: Math.max(150, campaignPerformance.length * 32) }}>
           {campaignPerformance.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={campaignPerformance} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
@@ -618,7 +618,7 @@ export default function DashboardView({
           </select>
         }
       >
-        <div className="w-full mt-1" style={{ height: Math.min(280, Math.max(140, agentPerformance.length * 28)) }}>
+        <div className="w-full mt-1" style={{ height: Math.min(260, Math.max(130, agentPerformance.length * 26)) }}>
           {agentPerformance.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={agentPerformance} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
