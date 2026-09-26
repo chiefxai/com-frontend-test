@@ -1,6 +1,5 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import SearchInput from './SearchInput';
 import FilterDropdown, { CommonFilterOption } from './FilterDropdown';
 
 export interface FilterSelect {
@@ -56,24 +55,16 @@ export default function FilterBar({
     })),
   ];
 
-  const hasFilters = filters.length > 0;
+  const hasFilters = filters.length > 0 || Boolean(search);
 
   return (
     <div className={`flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap ${className}`}>
-      {search && (
-        <SearchInput
-          value={search.value}
-          onChange={search.onChange}
-          placeholder={search.placeholder ?? 'Search…'}
-          className="flex-1 min-w-[180px] max-w-sm"
-        />
-      )}
-
       {hasFilters && (
         <FilterDropdown
           filters={filters}
+          search={search}
           onClear={onClear}
-          hasActiveFilters={hasActiveFilters}
+          hasActiveFilters={hasActiveFilters || Boolean(search?.value)}
         />
       )}
 
