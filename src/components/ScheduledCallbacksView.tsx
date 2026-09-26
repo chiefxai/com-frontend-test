@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Loader2, Phone, MessageCircleQuestion, Megaphone, ArrowUpRight, ArrowDownLeft, PhoneMissed, CalendarClock, Search, Filter, X } from 'lucide-react';
+import { Clock, Loader2, Phone, MessageCircleQuestion, Megaphone, ArrowUpRight, ArrowDownLeft, PhoneMissed, CalendarClock } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatPhone } from '../lib/phone';
 import PageShell from './ui/PageShell';
@@ -8,6 +8,7 @@ import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
 import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
+import FilterBar from './ui/FilterBar';
 
 interface ScheduledCallback {
   id: string;
@@ -249,65 +250,18 @@ export default function ScheduledCallbacksView() {
                   return (
                     <>
                       <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
-                        <div className="flex flex-col xl:flex-row xl:items-center gap-3">
-                          <div className="relative flex-1 min-w-[220px]">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                            <input
-                              value={search}
-                              onChange={(e) => setSearch(e.target.value)}
-                              placeholder="Search lead, phone, reason or campaign..."
-                              className="w-full h-9 pl-9 pr-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500"
-                            />
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                              <Filter className="h-3.5 w-3.5" /> Filters
-                            </div>
-
-                            <select value={campaignFilter} onChange={(e) => setCampaignFilter(e.target.value)}
-                              className="h-9 min-w-[170px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
-                              <option value="all">All campaigns</option>
-                              {campaignOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-
-                            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                              className="h-9 min-w-[130px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
-                              <option value="all">All statuses</option>
-                              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-                            </select>
-
-                            <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}
-                              className="h-9 min-w-[125px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
-                              <option value="all">All types</option>
-                              <option value="callback">Callback</option>
-                              <option value="not_answered">Not Answered</option>
-                            </select>
-
-                            <select value={directionFilter} onChange={(e) => setDirectionFilter(e.target.value)}
-                              className="h-9 min-w-[120px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500">
-                              <option value="all">All directions</option>
-                              <option value="outbound">Outbound</option>
-                              <option value="inbound">Inbound</option>
-                            </select>
-
-                            {hasActiveFilters && (
-                              <button type="button" onClick={clearFilters}
-                                className="h-9 inline-flex items-center gap-1.5 px-3 rounded-lg border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">
-                                <X className="h-3.5 w-3.5" /> Clear
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between mt-3 text-[10px] text-[var(--text-muted)]">
-                          <span>{filteredRows.length} of {rows.length} callbacks</span>
-                          {campaignFilter !== 'all' && (
-                            <span className="font-medium text-blue-600">
-                              Campaign filter active
-                            </span>
-                          )}
-                        </div>
+                        <FilterBar
+                          search={{ value: search, onChange: setSearch, placeholder: 'Search lead, phone, reason or campaign...' }}
+                          selects={[
+                            { key: 'campaign', label: 'Campaign', value: campaignFilter, onChange: setCampaignFilter, options: [{ label: 'All campaigns', value: 'all' }, ...campaignOptions.map((c) => ({ label: c.name, value: c.id }))] },
+                            { key: 'status', label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [{ label: 'All statuses', value: 'all' }, ...statusOptions.map((status) => ({ label: status, value: status }))] },
+                            { key: 'type', label: 'Type', value: kindFilter, onChange: setKindFilter, options: [{ label: 'All types', value: 'all' }, { label: 'Callback', value: 'callback' }, { label: 'Not Answered', value: 'not_answered' }] },
+                            { key: 'direction', label: 'Direction', value: directionFilter, onChange: setDirectionFilter, options: [{ label: 'All directions', value: 'all' }, { label: 'Outbound', value: 'outbound' }, { label: 'Inbound', value: 'inbound' }] },
+                          ]}
+                          hasActiveFilters={hasActiveFilters}
+                          onClear={clearFilters}
+                          resultCount={{ filtered: filteredRows.length, total: rows.length, label: 'callbacks' }}
+                        />
                       </div>
 
                       {filteredRows.length === 0 ? (
