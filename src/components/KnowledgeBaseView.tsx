@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BookOpen, Plus, Trash2, Search, Loader2, Upload } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Search, Loader2, Upload, FileText, Database, Sparkles } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
@@ -71,8 +71,8 @@ export default function KnowledgeBaseView() {
   return (
     <PageShell
       title="Knowledge Base"
-      subtitle="Documents your AI agent can search when answering calls, WhatsApp, and Instagram messages."
-      action={<IconButton icon={Plus} label="Add Document" onClick={() => setShowAdd(true)} />}
+      subtitle="Give your AI agents trusted information they can retrieve during calls and messages."
+      action={<Button variant="primary" size="sm" icon={Plus} onClick={() => setShowAdd(true)}>Add Document</Button>}
       onRefresh={() => loadDocuments()}
     >
       {loading ? (
@@ -80,13 +80,13 @@ export default function KnowledgeBaseView() {
       ) : (
       <>
       {/* Documents list */}
-      <Widget colSpan={6} title="Documents" subtitle="Facts your AI agent can reference during conversations." icon={BookOpen} accent="#2563eb" padding="md">
+      <Widget colSpan={12} className="lg:col-span-7 min-h-0" title="Documents" subtitle="Facts your AI agent can reference during conversations." icon={BookOpen} accent="#2563eb" padding="md">
         {documents.length === 0 && <p className="text-xs text-slate-400 mb-2">No documents yet. Add one to give your agent real facts to answer from.</p>}
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[min(52vh,520px)] overflow-auto pr-1">
           {documents.map(d => (
-            <div key={d.id} className="flex items-center justify-between bg-slate-50 dark:bg-[var(--bg-subtle)] rounded-lg px-3 py-2.5">
+            <div key={d.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-3">
               <div>
-                <div className="text-sm font-medium text-slate-700">{d.title}</div>
+                <div className="truncate text-sm font-medium text-[var(--text-primary)]">{d.title}</div>
                 <div className="text-[10px] text-slate-400">{d.chunkCount} chunk{d.chunkCount === 1 ? '' : 's'}</div>
               </div>
               <button onClick={() => handleDelete(d.id)} className="text-slate-300 hover:text-rose-500">
@@ -98,17 +98,17 @@ export default function KnowledgeBaseView() {
       </Widget>
 
       {/* Test search */}
-      <Widget colSpan={6} title="Test Search" subtitle="See exactly what your agent would retrieve for a question." icon={Search} accent="#7c3aed" padding="md">
+      <Widget colSpan={12} className="lg:col-span-5 min-h-0" title="Test Search" subtitle="See exactly what your agent would retrieve for a question." icon={Search} accent="#7c3aed" padding="md">
         <p className="text-[11px] text-slate-400 mb-3">No real call or message needed — just type a question to preview retrieval.</p>
-        <div className="flex gap-2 mb-3">
+        <div className="flex flex-col gap-2 mb-4 sm:flex-row">
           <input
             value={testQuery}
             onChange={e => setTestQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleTestSearch()}
             placeholder="Ask a question…"
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+            className="min-w-0 flex-1 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-violet-400"
           />
-          <Button variant="primary" size="sm" icon={searching ? Loader2 : Search} loading={searching} onClick={handleTestSearch} />
+          <Button variant="primary" size="sm" icon={searching ? Loader2 : Search} loading={searching} onClick={handleTestSearch} className="w-full justify-center sm:w-auto">Search</Button>
         </div>
         {results && (
           results.length === 0
