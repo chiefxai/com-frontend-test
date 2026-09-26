@@ -101,49 +101,30 @@ export default function EnquiriesView() {
       onRefresh={() => load()}
       toolbar={
         <div className="w-full flex items-center justify-end">
-<FilterBar
-            search={{
-              value: search,
-              onChange: setSearch,
-              placeholder: 'Search caller, phone, email, enquiry…',
-            }}
-            selects={[
-              {
-                key: 'Status',
-                label: 'Status',
-                value: statusFilter,
-                onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
-     one">
-        <div className="shrink-0 border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
           <FilterBar
-            search={{
-              value: search,
-              onChange: setSearch,
-              placeholder: 'Search caller, phone, email, enquiry…',
-            }}
-            selects={[
-              {
-                key: 'Status',
-                label: 'Status',
-                value: statusFilter,
-                onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
-                options: [
-                  { label: 'All statuses', value: 'all' },
-                  { label: 'New', value: 'new' },
-                  { label: 'Contacted', value: 'contacted' },
-                  { label: 'Resolved', value: 'resolved' },
-                ],
-              },
-            ]}
+            search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
+            selects={[{
+              key: 'Status',
+              label: 'Status',
+              value: statusFilter,
+              onChange: (value) => setStatusFilter(value as Enquiry['status'] | 'all'),
+              options: [
+                { label: 'All statuses', value: 'all' },
+                { label: 'New', value: 'new' },
+                { label: 'Contacted', value: 'contacted' },
+                { label: 'Resolved', value: 'resolved' },
+              ],
+            }]}
             onClear={clearFilters}
             hasActiveFilters={hasActiveFilters}
-            resultCount={{
-              filtered: filteredEnquiries.length,
-              total: total,
-              label: 'enquiries',
-            }}
+            resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
           />
         </div>
+      }
+      layout="fill"
+    >
+      <div className="flex-1 min-h-0 h-full flex flex-col overflow-hidden px-8 pb-8 pt-6">
+        <Widget className="flex-1 min-h-0 h-full" bodyClassName="flex flex-col min-h-0 h-full" showHeader={false} padding="none">
         {total === 0
           ? <EmptyState icon={MessageCircleQuestion} heading="No enquiries captured yet" message="Enquiries from AI calls will appear here automatically." />
           : (() => {
