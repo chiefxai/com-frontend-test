@@ -6,7 +6,7 @@ import Widget from './ui/Widget';
 import Badge from './ui/Badge';
 import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
-import FilterBar from './ui/FilterBar';
+import FilterDropdown from './ui/FilterDropdown';
 
 interface Enquiry {
   id: string;
@@ -101,10 +101,10 @@ export default function EnquiriesView() {
       subtitle={`Callers who asked something mid-call and need a follow-up — ${openCount} still open.`}
       onRefresh={() => load()}
       toolbar={
-        <div className="w-full flex items-center justify-end">
-          <FilterBar
+        <div className="w-full flex items-center justify-end gap-3">
+          <FilterDropdown
             search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
-            selects={[{
+            filters={[{
               key: 'Status',
               label: 'Status',
               value: statusFilter,
@@ -118,8 +118,10 @@ export default function EnquiriesView() {
             }]}
             onClear={clearFilters}
             hasActiveFilters={hasActiveFilters}
-            resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
           />
+          <span className="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap">
+            {filteredEnquiries.length} of {total} enquiries
+          </span>
         </div>
       }
       layout="fill"
