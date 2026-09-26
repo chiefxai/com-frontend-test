@@ -156,7 +156,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
-          <Widget className="flex-1" showHeader={false} padding="none">
+          <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
             {rows.length === 0
               ? <EmptyState icon={Clock} heading="Nothing pending a redial" message="A caller asking to be called back, or a call nobody answered, will show up here with the reason and next attempt time." />
               : (() => {
@@ -264,7 +264,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                   ];
                   return (
                     <>
-                      <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                      <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
                         <FilterBar
               search={{ value: search, onChange: setSearch, placeholder: 'Search lead, phone, campaign…' }}
               selects={[
@@ -333,6 +333,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                         bare
                         resizable
                         paginated
+                        className="flex-1 min-h-0"
                         columns={columns}
                         rows={filteredRows}
                         rowKey={(r) => r.id}
