@@ -622,9 +622,7 @@ export default function ContactDirectoryView({
             />
           );
         })()}
-      </Widget
-        </Widget>
-      </div>>
+      </Widget>
       </div>
 
       {/* MODAL: Add / Edit Single Contact */}
