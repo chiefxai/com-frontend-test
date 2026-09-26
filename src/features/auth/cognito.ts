@@ -32,7 +32,7 @@ export function configureCognito() {
         userPoolClientId: config.userPoolClientId,
         loginWith: {
           oauth: {
-            domain: String(config.domain).trim().replace(/^https?:\\/\\//, '').replace(/\\/+$/, ''),
+            domain: String(config.domain).trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
             // Request the OIDC profile scope so Cognito can return profile
             // claims such as name/given_name/family_name in the ID token.
             scopes: ['openid', 'email', 'profile'],
