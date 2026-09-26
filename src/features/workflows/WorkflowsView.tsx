@@ -26,6 +26,7 @@ import PageShell from '../../components/ui/PageShell';
 import BreadcrumbTitle from '../../components/ui/BreadcrumbTitle';
 import Widget from '../../components/ui/Widget';
 import IconButton from '../../components/ui/IconButton';
+import FilterBar from '../../components/ui/FilterBar';
 import ActionMenu from '../../components/ui/ActionMenu';
 import DataTable, { Column } from '../../components/ui/DataTable';
 import { apiFetch } from '../../lib/api';
@@ -100,6 +101,33 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [renamingFlow, setRenamingFlow] = useState(false);
   const [renameDraft, setRenameDraft] = useState('');
+  const [workflowSearch, setWorkflowSearch] = useState('');
+  const [workflowStatusFilter, setWorkflowStatusFilter] = useState('all');
+  const [workflowNodeFilter, setWorkflowNodeFilter] = useState('all');
+
+  const filteredFlows = flows.filter((flow) => {
+    const query = workflowSearch.trim().toLowerCase();
+    const matchesSearch = !query
+      || flow.name.toLowerCase().includes(query)
+      || (flow.description || '').toLowerCase().includes(query);
+    const matchesStatus = workflowStatusFilter === 'all'
+      || (workflowStatusFilter === 'active' ? flow.active : !flow.active);
+    const hasNodes = (flow.nodes ?? []).length > 0;
+    const matchesNodes = workflowNodeFilter === 'all'
+      || (workflowNodeFilter === 'configured' ? hasNodes : !hasNodes);
+    return matchesSearch && matchesStatus && matchesNodes;
+  });
+
+  const hasWorkflowFilters =
+    Boolean(workflowSearch.trim())
+    || workflowStatusFilter !== 'all'
+    || workflowNodeFilter !== 'all';
+
+  const clearWorkflowFilters = () => {
+    setWorkflowSearch('');
+    setWorkflowStatusFilter('all');
+    setWorkflowNodeFilter('all');
+  };
 
   const editingFlow = flows.find(f => f.id === editingId);
 
@@ -492,11 +520,53 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
       title="Workflow Builder"
       subtitle="Design question flows with conditional branching — skip, jump, or end based on answers."
       action={<IconButton icon={Plus} label="New Workflow" onClick={handleCreate} />}
+      toolbar={
+        <div className="w-full flex items-center justify-between gap-3 flex-wrap">
+          <FilterBar
+            search={{
+              value: workflowSearch,
+              onChange: setWorkflowSearch,
+              placeholder: 'Search workflows…',
+            }}
+            selects={[
+              {
+                key: 'Status',
+                label: 'Status',
+                value: workflowStatusFilter,
+                onChange: setWorkflowStatusFilter,
+                options: [
+                  { label: 'All statuses', value: 'all' },
+                  { label: 'Active', value: 'active' },
+                  { label: 'Inactive', value: 'inactive' },
+                ],
+              },
+              {
+                key: 'Nodes',
+                label: 'Nodes',
+                value: workflowNodeFilter,
+                onChange: setWorkflowNodeFilter,
+                options: [
+                  { label: 'All workflows', value: 'all' },
+                  { label: 'Configured', value: 'configured' },
+                  { label: 'Empty', value: 'empty' },
+                ],
+              },
+            ]}
+            onClear={clearWorkflowFilters}
+            hasActiveFilters={hasWorkflowFilters}
+            resultCount={{
+              filtered: filteredFlows.length,
+              total: flows.length,
+              label: 'workflows',
+            }}
+          />
+        </div>
+      }
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
       <Widget className="flex-1" showHeader={false} padding="none">
-        {flows.length === 0 ? (
+        {filteredFlows.length === 0 ? (
           <div className="text-center py-20">
             <GitBranch className="h-12 w-12 text-slate-200 mx-auto mb-4" />
             <p className="text-slate-500 text-sm font-medium">No workflows yet.</p>
@@ -514,7 +584,7 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
             resizable
             paginated
             columns={columns}
-            rows={flows}
+            rows={filteredFlows}
             rowKey={(flow) => flow.id}
             onRowClick={(flow) => setEditingId(flow.id)}
           />
