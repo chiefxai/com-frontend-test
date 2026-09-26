@@ -4,7 +4,7 @@ import keycloak from './keycloak';
 import { AlertCircle, Layers, RefreshCw } from 'lucide-react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithRedirect, signOut } from 'firebase/auth';
 import { identityAuth, isIdentityPlatformConfigured } from './firebase';
-import { configureCognito, getCognitoToken, getCognitoUser, isCognitoConfigured, signInWithCognito, signOutCognito } from './cognito';
+import { configureCognito, getCognitoProfile, getCognitoToken, getCognitoUser, isCognitoConfigured, signInWithCognito, signOutCognito } from './cognito';
 
 export interface AuthUser {
   id: string;
@@ -225,7 +225,11 @@ function CognitoAuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.removeItem('cognito_signin_attempted');
         const session = await (await import('aws-amplify/auth')).fetchAuthSession();
         const claims = session.tokens?.idToken?.payload ?? {};
-        setUser(extractCognitoUser(current, { ...claims, ...(current.attributes ?? {}) }));
+        // fetchUserAttributes() reads the profile attributes stored in the
+        // Cognito user pool. This complements ID-token claims and ensures
+        // the header can display the user's configured name.
+        const profile = await getCognitoProfile();
+        setUser(extractCognitoUser(current, { ...claims, ...profile, ...(current.attributes ?? {}) }));
         setInitState('ready');
       } catch (err: any) { setErrorMsg(err?.message ?? 'Could not connect to AWS Cognito.'); setInitState('error'); }
     })();
