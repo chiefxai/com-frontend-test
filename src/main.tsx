@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react';
+import React, { StrictMode, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App.tsx';
@@ -9,33 +9,32 @@ import { signInWithCognito } from './features/auth/cognito';
 import { FeatureFlagProvider } from './features/feature-flags/FeatureFlagContext.tsx';
 import { ThemeProvider } from './shared/theme/ThemeContext.tsx';
 import { ToastProvider } from './shared/toast/ToastContext.tsx';
-import { Globe2, LogOut, LogIn } from 'lucide-react';
+import { Globe2, LogOut } from 'lucide-react';
 import './index.css';
-
 
 function LoginPage() {
   const { user } = useAuth();
-  if (user) return <Navigate to="/" replace />;
-
+  const redirectStarted = useRef(false);
   const provider = String(import.meta.env.VITE_AUTH_PROVIDER || 'cognito').toLowerCase();
-  const startLogin = () => {
-    if (provider === 'cognito') void signInWithCognito();
-  };
+
+  useEffect(() => {
+    if (user || redirectStarted.current) return;
+    if (provider !== 'cognito') return;
+
+    redirectStarted.current = true;
+    void signInWithCognito().catch((error) => {
+      console.error('Cognito sign-in redirect failed:', error);
+      redirectStarted.current = false;
+    });
+  }, [user, provider]);
+
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-xl">
-        <div className="mx-auto mb-5 h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center">
-          <LogIn className="h-7 w-7 text-white" />
-        </div>
-        <h1 className="text-xl font-bold text-white">Sign in to ChiefVoice</h1>
-        <p className="mt-2 text-sm text-slate-400">Your session has been signed out.</p>
-        <button
-          onClick={startLogin}
-          className="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
-        >
-          Sign in
-        </button>
+      <div className="text-center">
+        <div className="mx-auto mb-4 h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+        <p className="text-sm text-slate-400">Redirecting to sign in…</p>
       </div>
     </div>
   );
