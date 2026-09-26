@@ -520,8 +520,11 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
       title="Workflow Builder"
       subtitle="Design question flows with conditional branching — skip, jump, or end based on answers."
       action={<IconButton icon={Plus} label="New Workflow" onClick={handleCreate} />}
-      toolbar={
-        <div className="w-full flex items-center justify-between gap-3 flex-wrap">
+      layout="fill"
+    >
+      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <Widget className="flex-1" showHeader={false} padding="none">
+        <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
           <FilterBar
             search={{
               value: workflowSearch,
@@ -561,11 +564,6 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
             }}
           />
         </div>
-      }
-      layout="fill"
-    >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
-      <Widget className="flex-1" showHeader={false} padding="none">
         {filteredFlows.length === 0 ? (
           <div className="text-center py-20">
             <GitBranch className="h-12 w-12 text-slate-200 mx-auto mb-4" />
