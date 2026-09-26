@@ -97,10 +97,15 @@ export async function signOutCognito() {
     console.warn('Cognito global sign-out failed; continuing with Hosted UI logout:', err);
   }
 
-  const domain = config.domain.replace(/\/+$/, '');
-  const logoutUri = config.redirectSignOut;
+  // Cognito managed logout requires the full HTTPS domain.
+  // Normalize it exactly like the OAuth configuration above.
+  const normalizedDomain = String(config.domain)
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/+$/, '');
+  const logoutUri = String(config.redirectSignOut).trim();
   const hostedLogoutUrl =
-    `${domain}/logout?client_id=${encodeURIComponent(config.userPoolClientId)}`
+    `https://${normalizedDomain}/logout?client_id=${encodeURIComponent(config.userPoolClientId)}`
     + `&logout_uri=${encodeURIComponent(logoutUri)}`;
 
   window.location.replace(hostedLogoutUrl);
