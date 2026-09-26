@@ -2023,7 +2023,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
         {isCampaignNavigatorOpen && <button type="button" aria-label="Close campaigns sidebar" onClick={() => setIsCampaignNavigatorOpen(false)} className="lg:hidden fixed inset-0 z-40 bg-black/35" />}
 
-        {/* Main Column: Selected Task Queue Workspace */
+        {/* Main Column: Selected Task Queue Workspace */}
         <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
         <div className="lg:hidden mb-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2"><span className="text-xs font-semibold text-[var(--text-primary)]">Campaign workspace</span><button type="button" onClick={() => setIsCampaignNavigatorOpen(true)} className="h-8 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--text-secondary)]">Campaigns</button></div>
         <Widget colSpan={12} showHeader={false} className="!col-span-12 h-full min-h-0 border-0 shadow-none overflow-hidden">
