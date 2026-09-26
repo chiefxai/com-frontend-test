@@ -91,6 +91,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sourceFilter, setSourceFilter] = React.useState('All');
   const [campaignFilter, setCampaignFilter] = React.useState('All');
+  const [statusFilter, setStatusFilter] = React.useState('All');
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [exportOpen, setExportOpen] = React.useState(false);
 
@@ -98,6 +99,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
   const uniqueSources = [...new Set(activeLeads.map((l) => l.source).filter(Boolean))].sort();
   const campaignOptions = [...dialerTasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const selectedCampaign = campaignOptions.find((t) => t.id === campaignFilter) || null;
+  const statusOptions = [...new Set(activeLeads.map((l) => l.status).filter(Boolean))].sort();
   const filteredLeads = activeLeads.filter((l) => {
     const matchesSearch = !searchTerm ||
       l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,8 +107,22 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       (l.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'All' || l.source === sourceFilter;
     const matchesCampaign = !selectedCampaign || selectedCampaign.leadIds.includes(l.id);
-    return matchesSearch && matchesSource && matchesCampaign;
+    const matchesStatus = statusFilter === 'All' || l.status === statusFilter;
+    return matchesSearch && matchesSource && matchesCampaign && matchesStatus;
   });
+
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) ||
+    sourceFilter !== 'All' ||
+    campaignFilter !== 'All' ||
+    statusFilter !== 'All';
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSourceFilter('All');
+    setCampaignFilter('All');
+    setStatusFilter('All');
+  };
 
   // Advances a lead's `status` the same way an edit in Contact Directory
   // would — just local state, same as every other Contact edit in this
@@ -232,37 +248,41 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6 gap-6">
         <Widget showHeader={false} padding="md">
           <FilterBar
-            search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search leads by name, phone, or email…' }}
+            search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search lead, phone, or email…' }}
             selects={[
-              {
-                key: 'source',
-                label: 'Source',
-                value: sourceFilter,
-                onChange: setSourceFilter,
-                options: [{ label: 'All Sources', value: 'All' }, ...uniqueSources.map((src) => ({ label: src, value: src }))],
-              },
               {
                 key: 'campaign',
                 label: 'Campaign',
                 value: campaignFilter,
                 onChange: setCampaignFilter,
-                options: [{ label: 'All Campaigns', value: 'All' }, ...campaignOptions.map((t) => ({ label: t.name, value: t.id }))],
+                options: [{ label: 'All campaigns', value: 'All' }, ...campaignOptions.map((t) => ({ label: t.name, value: t.id }))],
+              },
+              {
+                key: 'source',
+                label: 'Source',
+                value: sourceFilter,
+                onChange: setSourceFilter,
+                options: [{ label: 'All sources', value: 'All' }, ...uniqueSources.map((src) => ({ label: src, value: src }))],
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: [{ label: 'All statuses', value: 'All' }, ...statusOptions.map((status) => ({ label: status, value: status }))],
               },
             ]}
+            onClear={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            resultCount={{ filtered: filteredLeads.length, total: activeLeads.length, label: 'leads' }}
             actions={
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 whitespace-nowrap">
-                  <UserPlus className="h-3.5 w-3.5 text-blue-600" />
-                  {filteredLeads.length} Lead{filteredLeads.length === 1 ? '' : 's'}
-                </div>
-                <button
-                  onClick={() => setExportOpen(true)}
-                  disabled={filteredLeads.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-                >
-                  <Download className="h-3.5 w-3.5" /> Export CSV
-                </button>
-              </div>
+              <button
+                onClick={() => setExportOpen(true)}
+                disabled={filteredLeads.length === 0}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+              >
+                <Download className="h-3.5 w-3.5" /> Export CSV
+              </button>
             }
           />
         </Widget>
