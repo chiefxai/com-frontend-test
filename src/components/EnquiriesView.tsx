@@ -100,7 +100,7 @@ export default function EnquiriesView() {
       {loading ? (
         <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
       ) : (
-      <Widget className="flex-1" showHeader={false} padding="none">
+      <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0" showHeader={false} padding="none">
         <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)]">
           <FilterBar
             search={{
@@ -172,6 +172,7 @@ export default function EnquiriesView() {
                 <DataTable
                   bare
                   resizable
+                  className="flex-1 min-h-0"
                   columns={columns}
                   rows={filteredEnquiries}
                   rowKey={(e) => e.id}
