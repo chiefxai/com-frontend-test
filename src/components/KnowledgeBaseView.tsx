@@ -93,22 +93,22 @@ export default function KnowledgeBaseView() {
         <div className="col-span-12 flex min-h-[360px] items-center justify-center text-[var(--text-muted)]"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading knowledge base…</div>
       ) : (
         <div className="col-span-12 space-y-5">
-          {/* Overview */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {[
-              { icon: FileText, label: 'Documents', value: documents.length, hint: 'Knowledge sources', cls: 'text-blue-600 bg-blue-50 dark:bg-blue-500/10' },
-              { icon: Database, label: 'Indexed chunks', value: totalChunks, hint: 'Searchable pieces', cls: 'text-violet-600 bg-violet-50 dark:bg-violet-500/10' },
-              { icon: Sparkles, label: 'Retrieval', value: 'Ready', hint: 'Test agent knowledge below', cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' },
-            ].map(({ icon: Icon, label, value, hint, cls }) => (
-              <div key={label} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-                <div className="flex items-center justify-between">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${cls}`}><Icon className="h-4 w-4" /></div>
-                  <span className="text-xl font-bold text-[var(--text)]">{value}</span>
+          {
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]">
+            <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><BookOpen className="h-5 w-5" /></div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold text-[var(--text)]">Agent knowledge</h2><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">Ready</span></div>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">Your agents can retrieve information from these approved sources during conversations.</p>
                 </div>
-                <p className="mt-3 text-xs font-semibold text-[var(--text)]">{label}</p>
-                <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{hint}</p>
               </div>
-            ))}
+              <div className="grid grid-cols-3 gap-2 sm:min-w-[300px]">
+                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-lg font-bold text-[var(--text)]">{documents.length}</p><p className="text-[10px] text-[var(--text-muted)]">Sources</p></div>
+                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-lg font-bold text-[var(--text)]">{totalChunks}</p><p className="text-[10px] text-[var(--text-muted)]">Chunks</p></div>
+                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">Live</p><p className="text-[10px] text-[var(--text-muted)]">Retrieval</p></div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-12 gap-4 xl:gap-5">
