@@ -92,7 +92,7 @@ export default function KnowledgeBaseView() {
       {loading ? (
         <div className="col-span-12 flex min-h-[360px] items-center justify-center text-[var(--text-muted)]"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading knowledge base…</div>
       ) : (
-        <div className="col-span-12 space-y-4">
+        <div className="col-span-12 space-y-5">
           {/* Overview */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
