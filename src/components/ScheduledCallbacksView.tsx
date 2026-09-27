@@ -345,7 +345,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                         const campaignLabel = row.campaignName || row.workflowName;
                         if (!row || !questions?.length) return null;
                         return (
-                          <div className="border-t border-slate-100 p-4 bg-slate-50/60">
+                          <div className="border-t border-[var(--border)] p-4 bg-[var(--bg-base)]/60">
                             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5">
                               <MessageCircleQuestion className="h-3.5 w-3.5" /> {campaignLabel} — Questions
                             </div>
