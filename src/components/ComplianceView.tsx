@@ -62,7 +62,7 @@ export default function ComplianceView() {
       {loading || !window_ ? (
         <div className="col-span-12 flex min-h-[320px] items-center justify-center text-[var(--text-muted)]"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading compliance settings…</div>
       ) : (
-        <div className="col-span-12 space-y-4">
+        <div className="col-span-12 space-y-5">
           {/* Protection overview */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
