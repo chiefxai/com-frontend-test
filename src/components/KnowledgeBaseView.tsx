@@ -128,7 +128,7 @@ export default function KnowledgeBaseView() {
             <KpiCard className="!col-span-12 md:!col-span-4 min-h-[122px]" label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
           </div>
 
-          <section className="min-h-[560px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
+          <section className="min-h-[560px] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
             <div className="border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -142,7 +142,7 @@ export default function KnowledgeBaseView() {
             </div>
 
             <div className="min-h-[500px] p-3 sm:p-4 xl:p-5">
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-2.5 lg:hidden">
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] p-2.5 lg:hidden">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500"><BookOpen className="h-4 w-4" /></div>
                   <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--text-primary)]">Knowledge sources</p><p className="text-[10px] text-[var(--text-muted)]">{documents.length} source{documents.length === 1 ? "" : "s"}</p></div>
@@ -155,7 +155,7 @@ export default function KnowledgeBaseView() {
               <div className="grid min-h-[460px] grid-cols-12 gap-4 xl:gap-5">
               <div className={`${isSourcesCollapsed ? 'hidden lg:block lg:col-span-1' : 'lg:col-span-4'} col-span-12 min-w-0 transition-all duration-200`}>
                 {isSourcesCollapsed ? (
-                  <div className="flex h-full min-h-[480px] flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3">
+                  <div className="flex h-full min-h-[480px] flex-col items-center rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3">
                     <button
                       type="button"
                       onClick={() => setIsSourcesCollapsed(false)}
@@ -172,7 +172,7 @@ export default function KnowledgeBaseView() {
                           <button
                             type="button"
                             onClick={() => { setIsSourcesCollapsed(false); setDocumentSearch(document.title); }}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] transition hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
+                            className="flex h-10 w-10 items-center justify-center rounded-[9px] border border-[var(--border)] bg-[var(--bg-surface)] transition hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
                             aria-label={document.title}
                           >
                             <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -215,16 +215,16 @@ export default function KnowledgeBaseView() {
                       </div>
                       <div className="space-y-2 overflow-auto px-3 pb-3">
                         {filteredDocuments.length === 0 ? (
-                          <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] px-4 text-center">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                          <div className="flex min-h-52 flex-col items-center justify-center rounded-[9px] border border-dashed border-[var(--border)] px-4 text-center">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-[9px] bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                               <FileCheck2 className="h-5 w-5" />
                             </div>
                             <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{documents.length ? 'No documents found' : 'No sources yet'}</p>
                             <p className="mt-1 max-w-xs text-[11px] leading-4 text-[var(--text-muted)]">{documents.length ? 'Try another search term.' : 'Add a policy, FAQ, guide, or other trusted source.'}</p>
                           </div>
                         ) : filteredDocuments.map(d => (
-                          <div key={d.id} className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-3 transition hover:border-blue-200 dark:hover:border-blue-900/60">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                          <div key={d.id} className="group flex items-center gap-3 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-3 transition hover:border-blue-200 dark:hover:border-blue-900/60">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                               <FileText className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -259,9 +259,9 @@ export default function KnowledgeBaseView() {
                   className="h-full min-h-[480px] !col-span-12"
                 >
                   <div className="p-4 sm:p-5">
-                    <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 p-4 dark:border-violet-900/40 dark:bg-violet-950/10">
+                    <div className="rounded-[14px] border border-violet-200/70 bg-violet-50/40 p-4 dark:border-violet-900/40 dark:bg-violet-950/10">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-violet-100 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400">
                           <Search className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
@@ -275,7 +275,7 @@ export default function KnowledgeBaseView() {
                           onChange={e => setTestQuery(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && handleTestSearch()}
                           placeholder="Ask something like “What is our refund policy?”"
-                          className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-[var(--bg-surface)] px-3.5 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-violet-400 dark:border-violet-900/50"
+                          className="min-w-0 flex-1 rounded-[9px] border border-violet-200 bg-[var(--bg-surface)] px-3.5 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-violet-400 dark:border-violet-900/50"
                         />
                         <Button variant="primary" size="sm" icon={Search} loading={searching} disabled={!testQuery.trim()} onClick={handleTestSearch} className="sm:min-w-[92px]">
                           Test
@@ -285,15 +285,15 @@ export default function KnowledgeBaseView() {
 
                     <div className="mt-4">
                       {results === null ? (
-                        <div className="flex min-h-[330px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)]/40 px-4 text-center">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--bg-subtle)]">
+                        <div className="flex min-h-[330px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[var(--border)] bg-[var(--bg-subtle)]/40 px-4 text-center">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--bg-subtle)]">
                             <Sparkles className="h-5 w-5 text-[var(--text-muted)]" />
                           </div>
                           <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">Ready to test retrieval</p>
                           <p className="mt-1 max-w-sm text-[11px] leading-4 text-[var(--text-muted)]">Enter a question above to inspect the source context returned to your agent.</p>
                         </div>
                       ) : results.length === 0 ? (
-                        <div className="flex min-h-[330px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)]/40 px-4 text-center">
+                        <div className="flex min-h-[330px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[var(--border)] bg-[var(--bg-subtle)]/40 px-4 text-center">
                           <Search className="h-5 w-5 text-[var(--text-muted)]" />
                           <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">No matches found</p>
                           <p className="mt-1 max-w-sm text-[11px] leading-4 text-[var(--text-muted)]">Try a more specific question or add more source material.</p>
@@ -301,7 +301,7 @@ export default function KnowledgeBaseView() {
                       ) : (
                         <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
                           {results.map((r, i) => (
-                            <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5">
+                            <div key={i} className="rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5">
                               <div className="mb-1.5 flex items-center gap-2">
                                 <FileText className="h-3.5 w-3.5 text-violet-500" />
                                 <span className="truncate text-xs font-semibold text-[var(--text-primary)]">{r.documentTitle}</span>
@@ -323,17 +323,17 @@ export default function KnowledgeBaseView() {
 
       <Modal open={showAdd} onClose={closeAdd} title="Add to knowledge base">
         <div className="space-y-4">
-          <div className="rounded-xl border border-blue-200/70 bg-blue-50/50 p-3 dark:border-blue-900/40 dark:bg-blue-950/10">
+          <div className="rounded-[9px] border border-blue-200/70 bg-blue-50/50 p-3 dark:border-blue-900/40 dark:bg-blue-950/10">
             <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">Add a trusted source</p>
             <p className="mt-0.5 text-[11px] text-blue-700/70 dark:text-blue-300/70">Upload a supported file or paste the source text directly.</p>
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Title <span className="normal-case font-normal">(optional for file upload)</span></label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-400" placeholder="e.g. Refund Policy" />
+            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-400" placeholder="e.g. Refund Policy" />
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Upload file</label>
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-blue-300 bg-blue-50/40 px-5 py-7 text-center transition hover:bg-blue-50 dark:border-blue-900/60 dark:bg-blue-950/10 dark:hover:bg-blue-950/20">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-[14px] border border-dashed border-blue-300 bg-blue-50/40 px-5 py-7 text-center transition hover:bg-blue-50 dark:border-blue-900/60 dark:bg-blue-950/10 dark:hover:bg-blue-950/20">
               <input ref={fileInputRef} type="file" accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md" onChange={e => { const file = e.target.files?.[0]; if (file) handleFileUpload(file); }} disabled={uploading} className="sr-only" />
               <Upload className="h-5 w-5 text-blue-500" />
               <span className="mt-2 text-xs font-semibold text-[var(--text-primary)]">{uploading ? 'Extracting and indexing…' : 'Choose a file to upload'}</span>
@@ -341,7 +341,7 @@ export default function KnowledgeBaseView() {
             </label>
           </div>
           <div className="flex items-center gap-2"><div className="h-px flex-1 bg-[var(--border)]" /><span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">or paste text</span><div className="h-px flex-1 bg-[var(--border)]" /></div>
-          <textarea value={text} onChange={e => setText(e.target.value)} rows={7} className="w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-400" placeholder="Paste policy, FAQ, product or process information here." />
+          <textarea value={text} onChange={e => setText(e.target.value)} rows={7} className="w-full resize-y rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-400" placeholder="Paste policy, FAQ, product or process information here." />
           <div className="flex justify-end gap-2">
             <Button variant="secondary" size="sm" icon={X} onClick={closeAdd} disabled={saving || uploading}>Cancel</Button>
             <Button variant="primary" size="sm" loading={saving} disabled={!title.trim() || !text.trim() || uploading} onClick={handleAdd}>Add text source</Button>
