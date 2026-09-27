@@ -101,12 +101,12 @@ export default function KnowledgeBaseView() {
             <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
           </div>
 
-          <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
-            <div className={`grid gap-4 p-3 sm:p-4 xl:gap-5 ${isSourcesCollapsed ? 'lg:grid-cols-[52px_minmax(0,1fr)]' : 'grid-cols-12'}`}>
+          <section className="h-[calc(100vh-280px)] min-h-[520px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
+            <div className={`grid h-full min-h-0 gap-4 p-3 sm:p-4 xl:gap-5 ${isSourcesCollapsed ? 'lg:grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-12'}`}>
               {/* Knowledge sources */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'}`}
+                className={`col-span-12 min-h-0 h-full transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'}`}
                 title={isSourcesCollapsed ? undefined : "Knowledge sources"}
                 subtitle={isSourcesCollapsed ? undefined : "Documents available to your AI agents."}
                 icon={BookOpen}
@@ -126,7 +126,7 @@ export default function KnowledgeBaseView() {
                 }
               >
                 {isSourcesCollapsed ? (
-                  <div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
+                  <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]">
                     <BookOpen className="h-5 w-5 text-blue-500" />
                     <button
                       type="button"
@@ -174,7 +174,7 @@ export default function KnowledgeBaseView() {
               {/* Retrieval playground */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-8'}`}
+                className={`col-span-12 min-h-0 h-full transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-8'}`}
                 title="Retrieval playground"
                 subtitle="Preview the information your agent can retrieve for a question."
                 icon={Sparkles}
