@@ -80,7 +80,7 @@ export default function KpiCard({
 
   const iconBubble = Icon ? (
     <div
-      className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+      className="h-10 w-10 rounded-[9px] flex items-center justify-center shrink-0"
       style={{ background: iconBg }}
     >
       <Icon className="h-5 w-5" style={{ color: iconColor }} />
@@ -180,7 +180,7 @@ export default function KpiCard({
 
   return (
     <div
-      className={`${colClass} rounded-2xl border p-5 shadow-sm ${layoutClass} ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow duration-150' : ''} ${className}`}
+      className={`${colClass} rounded-[14px] border p-5 shadow-[var(--shadow-card)] ${layoutClass} ${onClick ? 'cursor-pointer hover:shadow-[var(--shadow-card)] transition-shadow duration-150' : ''} ${className}`}
       style={cardStyle}
       onClick={onClick}
     >
