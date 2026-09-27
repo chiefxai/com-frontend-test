@@ -203,8 +203,8 @@ export default function ComplianceView() {
           </div>
         )}
 
-        <div className="grid grid-cols-12 items-stretch gap-4 xl:gap-5">
-          <div className="col-span-12 lg:col-span-7 min-w-0">
+        <div className="grid grid-cols-12 items-stretch gap-4 xl:gap-5 lg:min-h-[calc(100vh-470px)]">
+          <div className="col-span-12 lg:col-span-6 min-w-0 h-full">
             <Widget
               colSpan={12}
               responsive={false}
@@ -213,7 +213,7 @@ export default function ComplianceView() {
               icon={Clock3}
               accent="#2563eb"
               padding="none"
-              className="h-full !col-span-12"
+              className="h-full !col-span-12 flex flex-col"
               action={
                 <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
                   isRestricted
@@ -307,7 +307,7 @@ export default function ComplianceView() {
             </Widget>
           </div>
 
-          <div className="col-span-12 lg:col-span-5 min-w-0">
+          <div className="col-span-12 lg:col-span-6 min-w-0 h-full">
             <Widget
               colSpan={12}
               responsive={false}
