@@ -66,30 +66,30 @@ export default function ContactDetailsSlideOver({ lead, onClose, stages, actions
         <div className="space-y-5">
           <div className="flex items-center gap-2">
             <Badge color={STAGE_COLOR[lead.pipelineStage || 'contact']}>{stageLabel(stages, lead.pipelineStage)}</Badge>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">{lead.status}</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-subtle)] text-slate-500 font-medium">{lead.status}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+            <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Phone</p>
               <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-700"><Phone className="h-3.5 w-3.5 text-slate-400" /> {formatPhone(lead.phone) || lead.phone}</p>
             </div>
-            <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+            <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Email</p>
               <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 truncate"><Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" /> {lead.email || '—'}</p>
             </div>
-            <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+            <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Source</p>
               <p className="text-sm font-semibold text-slate-700">{lead.source || '—'}</p>
             </div>
-            <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+            <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>AI Score</p>
               <p className="text-sm font-semibold text-slate-700">{lead.score ?? '—'}</p>
             </div>
           </div>
 
           {lead.amountRequested > 0 && (
-            <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+            <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Amount Requested</p>
               <p className="text-sm font-semibold text-slate-700">${lead.amountRequested.toLocaleString()}</p>
             </div>
@@ -97,11 +97,11 @@ export default function ContactDetailsSlideOver({ lead, onClose, stages, actions
 
           {lead.financialInfo && (lead.financialInfo.employer || lead.financialInfo.monthlyIncome > 0) && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+              <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                 <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Employer</p>
                 <p className="text-sm font-semibold text-slate-700">{lead.financialInfo.employer || '—'}</p>
               </div>
-              <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+              <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                 <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Monthly Income</p>
                 <p className="text-sm font-semibold text-slate-700">${(lead.financialInfo.monthlyIncome || 0).toLocaleString()}</p>
               </div>
@@ -115,7 +115,7 @@ export default function ContactDetailsSlideOver({ lead, onClose, stages, actions
               </p>
               <div className="space-y-2">
                 {answerRows.map((row, i) => (
-                  <div key={i} className="p-2.5 rounded-xl border space-y-1.5" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+                  <div key={i} className="p-2.5 rounded-[9px] border space-y-1.5" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{row.label}</span>
                       {row.dataType && (
@@ -154,7 +154,7 @@ export default function ContactDetailsSlideOver({ lead, onClose, stages, actions
               <p className="text-[10px] font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
                 <FileText className="h-3 w-3" /> Notes
               </p>
-              <p className="text-sm text-slate-600 whitespace-pre-wrap rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>{lead.notes}</p>
+              <p className="text-sm text-slate-600 whitespace-pre-wrap rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>{lead.notes}</p>
             </div>
           )}
 
