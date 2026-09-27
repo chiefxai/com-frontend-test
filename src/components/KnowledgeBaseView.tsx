@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Plus, Trash2, Search, Loader2, Upload, FileText, Database, Sparkles, FileCheck2, X, ChevronDown } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Search, Loader2, Upload, FileText, Database, Sparkles, FileCheck2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
@@ -22,9 +22,7 @@ export default function KnowledgeBaseView() {
   const [searching, setSearching] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
-  const [isKnowledgeSectionOpen, setIsKnowledgeSectionOpen] = useState(true);
-  const [isSourcesOpen, setIsSourcesOpen] = useState(true);
-  const [isRetrievalOpen, setIsRetrievalOpen] = useState(true);
+  const [isSourcesCollapsed, setIsSourcesCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocuments = (showSpinner = false) => {
@@ -104,99 +102,106 @@ export default function KnowledgeBaseView() {
           </div>
 
           <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                  <BookOpen className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-semibold text-[var(--text)]">Knowledge Base</h3>
-                  <p className="mt-0.5 hidden text-xs text-[var(--text-muted)] sm:block">Manage sources and test agent retrieval.</p>
-                </div>
-              </div>
-              <button type="button" onClick={() => setIsKnowledgeSectionOpen(open => !open)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label={isKnowledgeSectionOpen ? 'Collapse knowledge base' : 'Expand knowledge base'} title={isKnowledgeSectionOpen ? 'Collapse knowledge base' : 'Expand knowledge base'}>
-                <ChevronDown className={`h-4 w-4 transition-transform ${isKnowledgeSectionOpen ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-            {isKnowledgeSectionOpen && (
-              <div className="grid grid-cols-12 gap-4 p-3 sm:p-4 xl:gap-5">
-            {/* Knowledge sources */}
-            <Widget colSpan={12} className="col-span-12 lg:col-span-7 min-h-0" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md" action={
-  <button type="button" onClick={() => setIsSourcesOpen(open => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label={isSourcesOpen ? 'Collapse knowledge sources' : 'Expand knowledge sources'} title={isSourcesOpen ? 'Collapse knowledge sources' : 'Expand knowledge sources'}>
-    <ChevronDown className={`h-4 w-4 transition-transform ${isSourcesOpen ? 'rotate-180' : ''}`} />
-  </button>
-}>
-              {isSourcesOpen && <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input value={documentSearch} onChange={e => setDocumentSearch(e.target.value)} placeholder="Search documents…" className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] py-2.5 pl-9 pr-3 text-sm text-[var(--text)] outline-none focus:border-blue-400" />
-                </div>
-                <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{filteredDocuments.length} of {documents.length}</span>
-              </div>}
-
-              {isSourcesOpen && <div className="max-h-[min(55vh,560px)] space-y-2 overflow-auto pr-1">
-                {filteredDocuments.length === 0 ? (
-                  <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-5 text-center">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileCheck2 className="h-5 w-5" /></div>
-                    <p className="mt-3 text-sm font-semibold text-[var(--text)]">{documents.length ? 'No documents found' : 'Your knowledge base is empty'}</p>
-                    <p className="mt-1 max-w-sm text-xs text-[var(--text-muted)]">{documents.length ? 'Try another search term.' : 'Add a policy, FAQ, product guide, or other source your agent should know.'}</p>
-                    {!documents.length && <Button className="mt-4" variant="primary" size="sm" icon={Plus} onClick={() => setShowAdd(true)}>Add your first document</Button>}
-                  </div>
-                ) : filteredDocuments.map(d => (
-                  <div key={d.id} className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-3 transition hover:border-blue-200 hover:bg-blue-50/30 dark:hover:border-blue-900/60 dark:hover:bg-blue-500/5">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileText className="h-4 w-4" /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[var(--text)]">{d.title}</p>
-                      <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{d.chunkCount} indexed chunk{d.chunkCount === 1 ? '' : 's'}{d.createdAt ? ` · Added ${new Date(d.createdAt).toLocaleDateString()}` : ''}</p>
-                    </div>
-                    <button type="button" aria-label={`Delete ${d.title}`} onClick={() => handleDelete(d.id)} className="rounded-lg p-2 text-[var(--text-muted)] opacity-70 transition hover:bg-rose-50 hover:text-rose-500 hover:opacity-100 dark:hover:bg-rose-950/20"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                ))}
-              </div>}
-            </Widget>
-
-            {/* Retrieval playground */}
-            <Widget colSpan={12} className="col-span-12 lg:col-span-5 min-h-0" title="Retrieval playground" subtitle="Preview the information your agent can retrieve for a question." icon={Sparkles} accent="#7c3aed" padding="md" action={
-  <button type="button" onClick={() => setIsRetrievalOpen(open => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label={isRetrievalOpen ? 'Collapse retrieval playground' : 'Expand retrieval playground'} title={isRetrievalOpen ? 'Collapse retrieval playground' : 'Expand retrieval playground'}>
-    <ChevronDown className={`h-4 w-4 transition-transform ${isRetrievalOpen ? 'rotate-180' : ''}`} />
-  </button>
-}>
-              {isRetrievalOpen && <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/10 sm:p-4">
-                <div className="mb-3 flex items-start gap-2.5">
-                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"><Search className="h-3.5 w-3.5" /></div>
-                  <div><p className="text-xs font-semibold text-violet-800 dark:text-violet-300">Ask before you ship</p><p className="mt-0.5 text-[11px] text-violet-700/70 dark:text-violet-300/70">No call is required. This checks retrieval against your indexed documents.</p></div>
-                </div>
-                <div className="flex gap-2">
-                  <input value={testQuery} onChange={e => setTestQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTestSearch()} placeholder="e.g. What is our refund policy?" className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-violet-400 dark:border-violet-900/50" />
-                  <Button variant="primary" size="sm" icon={searching ? Loader2 : Search} loading={searching} onClick={handleTestSearch} className="shrink-0">Test</Button>
-                </div>
-              </div>}
-
-              {isRetrievalOpen && <div className="mt-4">
-                {results === null ? (
-                  <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-4 text-center">
-                    <Sparkles className="h-5 w-5 text-[var(--text-muted)]" />
-                    <p className="mt-2 text-xs font-medium text-[var(--text)]">No test run yet</p>
-                    <p className="mt-1 text-[11px] text-[var(--text-muted)]">Enter a question above to inspect retrieved context.</p>
-                  </div>
-                ) : results.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[var(--border)] p-5 text-center"><Search className="mx-auto h-5 w-5 text-[var(--text-muted)]" /><p className="mt-2 text-xs font-semibold text-[var(--text)]">No matches found</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">Try a more specific question or add more source material.</p></div>
-                ) : (
-                  <div className="max-h-[min(45vh,440px)] space-y-2 overflow-auto pr-1">
-                    {results.map((r, i) => (
-                      <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
-                        <div className="mb-1.5 flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-violet-500" /><span className="truncate text-xs font-semibold text-[var(--text)]">{r.documentTitle}</span></div>
-                        <p className="text-xs leading-5 text-[var(--text-secondary)]">{r.content}</p>
+            <div className="grid grid-cols-12 gap-4 p-3 sm:p-4 xl:gap-5">
+              {/* Knowledge sources */}
+              <Widget
+                colSpan={12}
+                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-1' : 'col-span-7'}`}
+                title={isSourcesCollapsed ? undefined : "Knowledge sources"}
+                subtitle={isSourcesCollapsed ? undefined : "Documents available to your AI agents."}
+                icon={BookOpen}
+                accent="#2563eb"
+                padding="md"
+                showHeader
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setIsSourcesCollapsed(open => !open)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]"
+                    aria-label={isSourcesCollapsed ? 'Expand knowledge sources' : 'Collapse knowledge sources'}
+                    title={isSourcesCollapsed ? 'Expand knowledge sources' : 'Collapse knowledge sources'}
+                  >
+                    {isSourcesCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  </button>
+                }
+              >
+                {!isSourcesCollapsed && (
+                  <>
+                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="relative min-w-0 flex-1">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+                        <input value={documentSearch} onChange={e => setDocumentSearch(e.target.value)} placeholder="Search documents…" className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] py-2.5 pl-9 pr-3 text-sm text-[var(--text)] outline-none focus:border-blue-400" />
                       </div>
-                    ))}
-                  </div>
+                      <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{filteredDocuments.length} of {documents.length}</span>
+                    </div>
+
+                    <div className="max-h-[min(55vh,560px)] space-y-2 overflow-auto pr-1">
+                      {filteredDocuments.length === 0 ? (
+                        <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-5 text-center">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileCheck2 className="h-5 w-5" /></div>
+                          <p className="mt-3 text-sm font-semibold text-[var(--text)]">{documents.length ? 'No documents found' : 'Your knowledge base is empty'}</p>
+                          <p className="mt-1 max-w-sm text-xs text-[var(--text-muted)]">{documents.length ? 'Try another search term.' : 'Add a policy, FAQ, product guide, or other source your agent should know.'}</p>
+                          {!documents.length && <Button className="mt-4" variant="primary" size="sm" icon={Plus} onClick={() => setShowAdd(true)}>Add your first document</Button>}
+                        </div>
+                      ) : filteredDocuments.map(d => (
+                        <div key={d.id} className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-3 transition hover:border-blue-200 hover:bg-blue-50/30 dark:hover:border-blue-900/60 dark:hover:bg-blue-500/5">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileText className="h-4 w-4" /></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-[var(--text)]">{d.title}</p>
+                            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{d.chunkCount} indexed chunk{d.chunkCount === 1 ? '' : 's'}{d.createdAt ? ` · Added ${new Date(d.createdAt).toLocaleDateString()}` : ''}</p>
+                          </div>
+                          <button type="button" aria-label={`Delete ${d.title}`} onClick={() => handleDelete(d.id)} className="rounded-lg p-2 text-[var(--text-muted)] opacity-70 transition hover:bg-rose-50 hover:text-rose-500 hover:opacity-100 dark:hover:bg-rose-950/20"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
-              </div>}
-            </Widget>
-              </div>
-            )}
-          </section>
-        </div>
+              </Widget>
+
+              {/* Retrieval playground */}
+              <Widget
+                colSpan={12}
+                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-11' : 'col-span-5'}`}
+                title="Retrieval playground"
+                subtitle="Preview the information your agent can retrieve for a question."
+                icon={Sparkles}
+                accent="#7c3aed"
+                padding="md"
+              >
+                <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/10 sm:p-4">
+                  <div className="mb-3 flex items-start gap-2.5">
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"><Search className="h-3.5 w-3.5" /></div>
+                    <div><p className="text-xs font-semibold text-violet-800 dark:text-violet-300">Ask before you ship</p><p className="mt-0.5 text-[11px] text-violet-700/70 dark:text-violet-300/70">No call is required. This checks retrieval against your indexed documents.</p></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <input value={testQuery} onChange={e => setTestQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTestSearch()} placeholder="e.g. What is our refund policy?" className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-violet-400 dark:border-violet-900/50" />
+                    <Button variant="primary" size="sm" icon={searching ? Loader2 : Search} loading={searching} onClick={handleTestSearch} className="shrink-0">Test</Button>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  {results === null ? (
+                    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-4 text-center">
+                      <Sparkles className="h-5 w-5 text-[var(--text-muted)]" />
+                      <p className="mt-2 text-xs font-medium text-[var(--text)]">No test run yet</p>
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">Enter a question above to inspect retrieved context.</p>
+                    </div>
+                  ) : results.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[var(--border)] p-5 text-center"><Search className="mx-auto h-5 w-5 text-[var(--text-muted)]" /><p className="mt-2 text-xs font-semibold text-[var(--text)]">No matches found</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">Try a more specific question or add more source material.</p></div>
+                  ) : (
+                    <div className="max-h-[min(45vh,440px)] space-y-2 overflow-auto pr-1">
+                      {results.map((r, i) => (
+                        <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                          <div className="mb-1.5 flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-violet-500" /><span className="truncate text-xs font-semibold text-[var(--text)]">{r.documentTitle}</span></div>
+                          <p className="text-xs leading-5 text-[var(--text-secondary)]">{r.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Widget>
+            </div>
+          </section>        </div>
       )}
 
       <Modal open={showAdd} onClose={closeAdd} title="Add to knowledge base">
