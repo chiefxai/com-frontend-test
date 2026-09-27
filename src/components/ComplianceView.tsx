@@ -64,10 +64,10 @@ export default function ComplianceView() {
         <div className="col-span-12 flex min-h-[320px] items-center justify-center text-[var(--text-muted)]"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading compliance settings…</div>
       ) : (
         <div className="col-span-12 space-y-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <KpiCard label="Calling protection" value={window_.enabled ? 'Active' : 'Open'} sub={protectionLabel} badge={window_.enabled ? 'PROTECTED' : 'REVIEW'} badgeColor={window_.enabled ? 'green' : 'amber'} icon={ShieldCheck} iconBg="var(--bg-subtle)" iconColor={window_.enabled ? '#059669' : '#d97706'} iconPosition="left" />
-            <KpiCard label="Protected numbers" value={dnc.length} sub="Do-not-call entries" icon={UsersRound} iconBg="var(--bg-subtle)" iconColor="#e11d48" iconPosition="left" />
-            <KpiCard label="Calling schedule" value={hoursLabel} sub={timezoneLabel} icon={Globe2} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
+          <div className="grid grid-cols-12 gap-3 xl:gap-4">
+            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Calling protection" value={window_.enabled ? 'Active' : 'Open'} sub={protectionLabel} badge={window_.enabled ? 'PROTECTED' : 'REVIEW'} badgeColor={window_.enabled ? 'green' : 'amber'} icon={ShieldCheck} iconBg="var(--bg-subtle)" iconColor={window_.enabled ? '#059669' : '#d97706'} iconPosition="left" />
+            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Protected numbers" value={dnc.length} sub="Do-not-call entries" icon={UsersRound} iconBg="var(--bg-subtle)" iconColor="#e11d48" iconPosition="left" />
+            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Calling schedule" value={hoursLabel} sub={timezoneLabel} icon={Globe2} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
           </div>
 
           <div className="grid grid-cols-12 gap-4 xl:gap-5">
