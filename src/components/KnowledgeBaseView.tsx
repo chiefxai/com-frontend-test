@@ -23,6 +23,8 @@ export default function KnowledgeBaseView() {
   const [uploading, setUploading] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
   const [isKnowledgeSectionOpen, setIsKnowledgeSectionOpen] = useState(true);
+  const [isSourcesOpen, setIsSourcesOpen] = useState(true);
+  const [isRetrievalOpen, setIsRetrievalOpen] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocuments = (showSpinner = false) => {
@@ -119,16 +121,20 @@ export default function KnowledgeBaseView() {
             {isKnowledgeSectionOpen && (
               <div className="grid grid-cols-12 gap-4 p-3 sm:p-4 xl:gap-5">
             {/* Knowledge sources */}
-            <Widget colSpan={12} className="col-span-12 lg:col-span-7 min-h-0" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md">
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Widget colSpan={12} className="col-span-12 lg:col-span-7 min-h-0" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md" action={
+  <button type="button" onClick={() => setIsSourcesOpen(open => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label={isSourcesOpen ? 'Collapse knowledge sources' : 'Expand knowledge sources'} title={isSourcesOpen ? 'Collapse knowledge sources' : 'Expand knowledge sources'}>
+    <ChevronDown className={`h-4 w-4 transition-transform ${isSourcesOpen ? 'rotate-180' : ''}`} />
+  </button>
+}>
+              {isSourcesOpen && <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="relative min-w-0 flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
                   <input value={documentSearch} onChange={e => setDocumentSearch(e.target.value)} placeholder="Search documents…" className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] py-2.5 pl-9 pr-3 text-sm text-[var(--text)] outline-none focus:border-blue-400" />
                 </div>
                 <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{filteredDocuments.length} of {documents.length}</span>
-              </div>
+              </div>}
 
-              <div className="max-h-[min(55vh,560px)] space-y-2 overflow-auto pr-1">
+              {isSourcesOpen && <div className="max-h-[min(55vh,560px)] space-y-2 overflow-auto pr-1">
                 {filteredDocuments.length === 0 ? (
                   <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-5 text-center">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileCheck2 className="h-5 w-5" /></div>
@@ -146,12 +152,16 @@ export default function KnowledgeBaseView() {
                     <button type="button" aria-label={`Delete ${d.title}`} onClick={() => handleDelete(d.id)} className="rounded-lg p-2 text-[var(--text-muted)] opacity-70 transition hover:bg-rose-50 hover:text-rose-500 hover:opacity-100 dark:hover:bg-rose-950/20"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
-              </div>
+              </div>}
             </Widget>
 
             {/* Retrieval playground */}
-            <Widget colSpan={12} className="col-span-12 lg:col-span-5 min-h-0" title="Retrieval playground" subtitle="Preview the information your agent can retrieve for a question." icon={Sparkles} accent="#7c3aed" padding="md">
-              <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/10 sm:p-4">
+            <Widget colSpan={12} className="col-span-12 lg:col-span-5 min-h-0" title="Retrieval playground" subtitle="Preview the information your agent can retrieve for a question." icon={Sparkles} accent="#7c3aed" padding="md" action={
+  <button type="button" onClick={() => setIsRetrievalOpen(open => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label={isRetrievalOpen ? 'Collapse retrieval playground' : 'Expand retrieval playground'} title={isRetrievalOpen ? 'Collapse retrieval playground' : 'Expand retrieval playground'}>
+    <ChevronDown className={`h-4 w-4 transition-transform ${isRetrievalOpen ? 'rotate-180' : ''}`} />
+  </button>
+}>
+              {isRetrievalOpen && <div className="rounded-2xl border border-violet-200/70 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/10 sm:p-4">
                 <div className="mb-3 flex items-start gap-2.5">
                   <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"><Search className="h-3.5 w-3.5" /></div>
                   <div><p className="text-xs font-semibold text-violet-800 dark:text-violet-300">Ask before you ship</p><p className="mt-0.5 text-[11px] text-violet-700/70 dark:text-violet-300/70">No call is required. This checks retrieval against your indexed documents.</p></div>
@@ -160,9 +170,9 @@ export default function KnowledgeBaseView() {
                   <input value={testQuery} onChange={e => setTestQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTestSearch()} placeholder="e.g. What is our refund policy?" className="min-w-0 flex-1 rounded-xl border border-violet-200 bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-violet-400 dark:border-violet-900/50" />
                   <Button variant="primary" size="sm" icon={searching ? Loader2 : Search} loading={searching} onClick={handleTestSearch} className="shrink-0">Test</Button>
                 </div>
-              </div>
+              </div>}
 
-              <div className="mt-4">
+              {isRetrievalOpen && <div className="mt-4">
                 {results === null ? (
                   <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-4 text-center">
                     <Sparkles className="h-5 w-5 text-[var(--text-muted)]" />
@@ -181,7 +191,7 @@ export default function KnowledgeBaseView() {
                     ))}
                   </div>
                 )}
-              </div>
+              </div>}
             </Widget>
               </div>
             )}
