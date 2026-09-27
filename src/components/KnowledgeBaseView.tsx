@@ -106,7 +106,7 @@ export default function KnowledgeBaseView() {
               {/* Knowledge sources */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-1' : 'col-span-7'}`}
+                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-0.5' : 'col-span-7'}`}
                 title={isSourcesCollapsed ? undefined : "Knowledge sources"}
                 subtitle={isSourcesCollapsed ? undefined : "Documents available to your AI agents."}
                 icon={BookOpen}
@@ -161,7 +161,7 @@ export default function KnowledgeBaseView() {
               {/* Retrieval playground */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-11' : 'col-span-5'}`}
+                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-11.5' : 'col-span-5'}`}
                 title="Retrieval playground"
                 subtitle="Preview the information your agent can retrieve for a question."
                 icon={Sparkles}
