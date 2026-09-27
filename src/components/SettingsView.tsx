@@ -468,7 +468,7 @@ export default function SettingsView({
               >
                 {virtualNumbers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center mb-3">
+                    <div className="h-12 w-12 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-3">
                       <Phone className="h-5 w-5 text-indigo-400" />
                     </div>
                     <p className="text-sm font-medium text-slate-600">No virtual numbers yet</p>
@@ -504,7 +504,7 @@ export default function SettingsView({
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-[var(--bg-subtle)] text-slate-500 dark:text-[var(--text-muted)] border border-slate-200 dark:border-[var(--border)]">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--bg-subtle)] dark:bg-[var(--bg-subtle)] text-slate-500 dark:text-[var(--text-muted)] border border-[var(--border)] dark:border-[var(--border)]">
                               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive
                             </span>
                           )}
@@ -549,7 +549,7 @@ export default function SettingsView({
                             connected: !!vobizChannel,
                             selectedBg: 'bg-purple-50 border-purple-400',
                             logo: (
-                              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-sm">V</div>
+                              <div className="h-8 w-8 rounded-[9px] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-sm">V</div>
                             ),
                           },
                         ] as const).map(({ id, label, connected, selectedBg, logo }) => (
@@ -557,10 +557,10 @@ export default function SettingsView({
                             key={id}
                             type="button"
                             onClick={() => setConnectProvider(id)}
-                            className={`relative flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                            className={`relative flex flex-col items-center gap-2 py-4 px-3 rounded-[14px] border-2 transition-all cursor-pointer ${
                               connectProvider === id
                                 ? selectedBg
-                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                                : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 hover:bg-[var(--bg-base)]'
                             }`}
                           >
                             {logo}
@@ -574,14 +574,14 @@ export default function SettingsView({
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-slate-100" />
+                    <div className="border-t border-[var(--border)]" />
 
                     {/* Per-provider form */}
 
                     {connectProvider === 'vobiz' && (
                       <form onSubmit={(e) => { handleConnectVobiz(e); setShowProviderForm(false); }} className="space-y-4">
                         {vobizChannel && (
-                          <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                          <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[9px] px-4 py-2.5">
                             <div className="flex items-center gap-2">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                               <span>Active: <span className="font-semibold">{vobizChannel.externalId}</span></span>
@@ -596,28 +596,28 @@ export default function SettingsView({
                             <>
                               <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth ID</label>
-                                <input type="text" value={vobizAuthId} onChange={(e) => setVobizAuthId(e.target.value)} placeholder="Your Vobiz.ai Auth ID" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                                <input type="text" value={vobizAuthId} onChange={(e) => setVobizAuthId(e.target.value)} placeholder="Your Vobiz.ai Auth ID" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
                               </div>
                               <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth Token</label>
-                                <input type="password" value={vobizToken} onChange={(e) => setVobizToken(e.target.value)} placeholder="••••••••••••••••••••••••••••••••" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                                <input type="password" value={vobizToken} onChange={(e) => setVobizToken(e.target.value)} placeholder="••••••••••••••••••••••••••••••••" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
                               </div>
                             </>
                           )}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone Number</label>
-                              <input type="text" value={vobizPhone} onChange={(e) => setVobizPhone(e.target.value)} placeholder="+91XXXXXXXXXX" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                              <input type="text" value={vobizPhone} onChange={(e) => setVobizPhone(e.target.value)} placeholder="+91XXXXXXXXXX" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
                             </div>
                             <div>
                               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Label <span className="text-slate-400 font-normal">(optional)</span></label>
-                              <input type="text" value={vobizLabel} onChange={(e) => setVobizLabel(e.target.value)} placeholder="e.g. Support Line" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                              <input type="text" value={vobizLabel} onChange={(e) => setVobizLabel(e.target.value)} placeholder="e.g. Support Line" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center justify-between pt-1">
                           <p className="text-[11px] text-slate-400">{vobizChannel ? 'Open "Add Provider" again any time to add more Vobiz.ai numbers.' : 'You can add more numbers for this account later.'}</p>
-                          <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-6 py-2.5 transition-all cursor-pointer shadow-sm">
+                          <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-[9px] px-6 py-2.5 transition-all cursor-pointer shadow-sm">
                             {savingVobiz ? 'Connecting…' : vobizChannel ? 'Add Number' : 'Connect Vobiz.ai'}
                           </button>
                         </div>
@@ -706,7 +706,7 @@ export default function SettingsView({
                           className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
                             member.status === 'Active'
                               ? 'bg-emerald-50 dark:bg-emerald-500/10 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-emerald-700 dark:text-emerald-400 hover:text-rose-700 dark:hover:text-rose-400 border border-emerald-200 dark:border-emerald-500/30 hover:border-rose-200 dark:hover:border-rose-500/30'
-                              : 'bg-slate-100 dark:bg-[var(--bg-subtle)] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-600 dark:text-[var(--text-secondary)] hover:text-emerald-700 dark:hover:text-emerald-400 border border-slate-200 dark:border-[var(--border)]'
+                              : 'bg-[var(--bg-subtle)] dark:bg-[var(--bg-subtle)] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-600 dark:text-[var(--text-secondary)] hover:text-emerald-700 dark:hover:text-emerald-400 border border-[var(--border)] dark:border-[var(--border)]'
                           }`}
                         >
                           {member.status === 'Active' ? 'Deactivate' : 'Reactivate'}
@@ -726,7 +726,7 @@ export default function SettingsView({
                             title={isSelfAdmin ? 'Hand over Org Admin role first, then ask the new admin to remove your account' : undefined}
                             className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all border ${
                               isSelfAdmin
-                                ? 'bg-slate-50 dark:bg-[var(--bg-subtle)] text-slate-300 dark:text-[var(--text-muted)] border-slate-200 dark:border-[var(--border)] cursor-not-allowed'
+                                ? 'bg-[var(--bg-base)] dark:bg-[var(--bg-subtle)] text-slate-300 dark:text-[var(--text-muted)] border-[var(--border)] dark:border-[var(--border)] cursor-not-allowed'
                                 : 'bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 border-rose-200 dark:border-rose-500/30'
                             }`}
                           >
@@ -747,7 +747,7 @@ export default function SettingsView({
                       isRowExpanded={(member) => editFlagsFor === member.id}
                       renderExpandedRow={(member) => (
                         <div className="px-6 pb-4 pt-0 bg-indigo-50/40 dark:bg-indigo-500/5">
-                          <div className="border border-indigo-100 dark:border-indigo-500/20 rounded-xl p-4 bg-white dark:bg-[var(--bg-surface)] space-y-3">
+                          <div className="border border-indigo-100 dark:border-indigo-500/20 rounded-[9px] p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] space-y-3">
                             <p className="text-[10px] font-bold text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-wider">
                               Feature Access — {member.name}
                             </p>
@@ -772,7 +772,7 @@ export default function SettingsView({
                                     className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
                                       active
                                         ? 'bg-indigo-600 text-white border-indigo-600'
-                                        : 'bg-white dark:bg-[var(--bg-subtle)] text-slate-500 dark:text-[var(--text-secondary)] border-slate-200 dark:border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                                        : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-subtle)] text-slate-500 dark:text-[var(--text-secondary)] border-[var(--border)] dark:border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                                     }`}
                                   >
                                     {flag.label}
@@ -819,19 +819,19 @@ export default function SettingsView({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name</label>
-                            <input type="text" required value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Jane Smith" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
+                            <input type="text" required value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Jane Smith" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
                           </div>
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Email</label>
-                            <input type="email" required value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="jane@company.com" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
+                            <input type="email" required value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="jane@company.com" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
                           </div>
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Phone</label>
-                            <input type="tel" value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
+                            <input type="tel" value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
                           </div>
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
-                            <select value={newStaffRole} onChange={(e: any) => setNewStaffRole(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
+                            <select value={newStaffRole} onChange={(e: any) => setNewStaffRole(e.target.value)} className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
                               <option value="Sales Manager">Sales Manager</option>
                               <option value="Loan Agent">Loan Agent</option>
                               <option value="Collection Agent">Collection Agent</option>
@@ -840,7 +840,7 @@ export default function SettingsView({
                           </div>
                         </div>
 
-                        <div className="border border-slate-100 rounded-xl p-4 bg-slate-50">
+                        <div className="border border-[var(--border)] rounded-[9px] p-4 bg-[var(--bg-base)]">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Grant Feature Access</p>
                           {orgAllowedFlags.length === 0 && (
                             <p className="text-[10px] text-slate-400 mb-2">No features available — super admin has not granted any features to this org.</p>
@@ -855,7 +855,7 @@ export default function SettingsView({
                               const active = newStaffFeatures.includes(flag.key);
                               return (
                                 <button key={flag.key} type="button" onClick={() => toggleFeature(flag.key)}
-                                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}>
+                                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-[var(--bg-surface)] text-slate-500 border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600'}`}>
                                   {flag.label}
                                 </button>
                               );
@@ -886,7 +886,7 @@ export default function SettingsView({
                     const reserved = Number(orgSettings.rechargeReservedInr ?? 0);
                     const available = Math.max(0, balance - reserved);
                     return (
-                      <div className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-5 py-4">
+                      <div className="flex items-center justify-between gap-4 rounded-[9px] border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-5 py-4">
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Available balance</p>
                           <p className="text-xs text-slate-500 dark:text-[var(--text-secondary)] mt-1">
@@ -904,15 +904,15 @@ export default function SettingsView({
 
               <Widget title="AI Voice Usage This Period" icon={CreditCard} accent="#10b981" padding="md">
                 <div className="grid grid-cols-3 gap-4 pt-2">
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Minutes Consumed</span>
                     <strong className="text-md text-slate-800 font-mono">{orgSettings.aiMinutesUsed.toFixed(2)}</strong>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">AI Voice Cost (₹{costPerMinuteInr}/min)</span>
                     <strong className="text-md text-slate-800 font-mono">{formatInr(orgSettings.aiMinutesUsed * costPerMinuteInr)}</strong>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
                       {callProviderRate
                         ? `${callProviderRate.label} ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${callProviderRate.rateAmount}/${callProviderRate.rateUnit}${callProviderRate.taxPercent ? ` +${callProviderRate.taxPercent}% tax` : ''})`
@@ -932,17 +932,17 @@ export default function SettingsView({
               {aiTokenCost && (
                 <Widget title="AI Token Cost This Period" icon={CreditCard} accent="#6366f1" padding="md">
                   <div className="grid grid-cols-3 gap-4 pt-2">
-                    <div className="bg-slate-50 p-4 rounded-xl text-center">
+                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Tokens Used</span>
                       <strong className="text-md text-slate-800 font-mono">{(aiTokenUsage?.totalTokens ?? 0).toLocaleString()}</strong>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl text-center">
+                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
                         {aiTokenCurrentRate ? `${aiTokenCurrentRate.label} Rate (₹${aiTokenCurrentRate.ratePer1kTokens}/${aiTokenCurrentRate.tokenUnit.toLocaleString()} tokens)` : 'Rate before tax'}
                       </span>
                       <strong className="text-md text-slate-800 font-mono">{formatInr(aiTokenCost.baseCost)}</strong>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl text-center">
+                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
                         Total {aiTokenCurrentRate?.taxPercent ? `(incl. tax)` : ''}
                       </span>
@@ -979,21 +979,21 @@ export default function SettingsView({
                 }
               >
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Sessions</span>
                     <strong className="text-md text-slate-800 font-mono">{aiUsageSummary?.sessionCount ?? 0}</strong>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Total Tokens</span>
                     <strong className="text-md text-slate-800 font-mono">{(aiUsageSummary?.totalTokens ?? 0).toLocaleString()}</strong>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Est. Cost ({currencySymbol()})</span>
                     <strong className="text-md text-slate-800 font-mono">
                       {formatCurrency(convertToDisplayCurrency(aiUsageSummary?.totalCost ?? 0, aiUsageSummary?.currency || 'USD'), { decimals: 4 })}
                     </strong>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl text-center">
+                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Failed Sessions</span>
                     <strong className={`text-md font-mono ${(aiUsageSummary?.failedCount ?? 0) > 0 ? 'text-rose-600' : 'text-slate-800'}`}>{aiUsageSummary?.failedCount ?? 0}</strong>
                   </div>
@@ -1004,7 +1004,7 @@ export default function SettingsView({
                     <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Cost by Admin</p>
                     <div className="space-y-1.5">
                       {aiUsageByAdmin.map((row) => (
-                        <div key={row.adminId} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-2">
+                        <div key={row.adminId} className="flex items-center justify-between text-xs bg-[var(--bg-base)] rounded-lg px-3 py-2">
                           {/* adminId is the authenticated user's id, not an
                               email — no reliable id-to-email lookup is
                               available here, so shown as-is rather than
@@ -1023,7 +1023,7 @@ export default function SettingsView({
                 <div className="mt-5">
                   <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Recent Sessions</p>
                   {aiUsageSessions.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl">
+                    <div className="p-6 text-center text-slate-400 text-xs bg-[var(--bg-base)] rounded-[9px]">
                       {loadingAiUsage ? 'Loading…' : 'No Gemini Live sessions tracked yet.'}
                     </div>
                   ) : (
@@ -1062,7 +1062,7 @@ export default function SettingsView({
               <Widget title="Third-Party Gateway API Credentials" subtitle="Configure active server tokens utilized by automated calling triggers and OCR engines." icon={Key} accent="#6366f1" padding="md">
                 <div className="space-y-3.5">
                   {orgSettings.apiKeys.map((k, idx) => (
-                    <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                    <div key={idx} className="p-4 bg-[var(--bg-base)] rounded-[9px] border border-[var(--border)] flex items-center justify-between text-xs">
                       <div>
                         <p className="font-bold text-slate-700">{k.service}</p>
                         <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Last accessed {new Date(k.lastUsed).toLocaleString()}</p>
