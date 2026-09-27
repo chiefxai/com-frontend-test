@@ -761,9 +761,9 @@ export default function AgentStudioView() {
 
       {/* ── Agent create page / edit modal ── */}
       {(creating || !!editingAgent) && (
-      <AgentFormFrame creating={creating} agentWizardStep={agentWizardStep} form={form} onBack={closeForm}>
-        <div className="space-y-6">
-          {(creating || editingAgent) && (
+      <AgentFormFrame creating={creating} agentWizardStep={1} form={form} onBack={closeForm}>
+        <div className="mx-auto w-full max-w-5xl space-y-5">
+          {false && (
             <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/80  px-4 py-3">
               <div className={`flex items-center gap-2 ${agentWizardStep === 1 ? 'text-indigo-600' : 'text-slate-400'}`}>
                 <span className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${agentWizardStep === 1 ? 'bg-indigo-600 text-white' : 'bg-[var(--bg-surface)] border border-[var(--border)]'}`}>1</span>
@@ -777,7 +777,7 @@ export default function AgentStudioView() {
             </div>
           )}
 
-          {agentWizardStep === 1 && (
+          {true && (
             <>
           {/* Agent Name */}
           <div className="rounded-2xl border border-[var(--border)] bg-slate-50/80 dark:bg-[var(--bg-surface)] p-4">
@@ -791,7 +791,7 @@ export default function AgentStudioView() {
             />
           </div>
 
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* Voice */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
@@ -817,7 +817,7 @@ export default function AgentStudioView() {
             </div>
           </div>
 
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* Voice-agent prompt configuration: industry, language, dialect,
               call type, business context — assembled into the two master
@@ -913,7 +913,7 @@ export default function AgentStudioView() {
             </p>
           </div>
 
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* Delivery sliders */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
@@ -928,7 +928,7 @@ export default function AgentStudioView() {
             </div>
           </div>
 
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* System Prompt */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
@@ -950,7 +950,7 @@ export default function AgentStudioView() {
 
           {form.callType !== 'OUTBOUND' && (
           <>
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* Inbound Number — exclusive (one number → one agent). Hidden
               when Call Type is Outbound: the generated prompt assumes one
@@ -1026,7 +1026,7 @@ export default function AgentStudioView() {
 
           {form.callType !== 'INBOUND' && (
           <>
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* Outbound Number — shared (many agents can use the same number).
               Hidden when Call Type is Inbound, for the same reason as above. */}
@@ -1096,7 +1096,7 @@ export default function AgentStudioView() {
           </>
           )}
 
-          <div className="border-t border-[var(--border)]" />
+          
 
           {/* Knowledge Base — connect to the whole org KB, specific documents, or none */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
@@ -1218,7 +1218,7 @@ export default function AgentStudioView() {
             </>
           )}
 
-          {(creating || editingAgent) && agentWizardStep === 2 && (
+          {false && (
             <div className="space-y-5">
               <div>
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">{creating ? 'Review & Create' : 'Review & Save'}</h3>
@@ -1266,7 +1266,7 @@ export default function AgentStudioView() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-slate-50/80 dark:bg-[var(--bg-surface)] p-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Business Context</p>
                 <p className="text-xs text-[var(--text-primary)]  whitespace-pre-wrap">
                   {form.businessContext?.trim() || 'No business context provided.'}
@@ -1275,42 +1275,25 @@ export default function AgentStudioView() {
             </div>
           )}
 
-          {/* Footer actions */}
-          {(creating || editingAgent) && (
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => agentWizardStep === 1 ? closeForm() : setAgentWizardStep(1)}
-                className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:hover:text-[var(--text-primary)] font-medium px-4 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[var(--bg-subtle)] transition-colors"
-              >
-                {agentWizardStep === 1 ? 'Cancel' : 'Back'}
-              </button>
-              {agentWizardStep === 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setAgentWizardStep(2)}
-                  disabled={!form.name.trim()}
-                  className="px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-all"
-                >
-                  {creating ? 'Next: Review & Create' : 'Next: Review & Save'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={!form.name.trim() || saveStatus === 'saving'}
-                  className={`flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-60 ${saveStatus === 'saved' ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                >
-                  {saveStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {saveStatus === 'saved' && <Check className="h-4 w-4" />}
-                  {creating ? (saveStatus === 'saved' ? 'Created!' : saveStatus === 'saving' ? 'Creating…' : 'Create Agent') : (saveStatus === 'saved' ? 'Saved!' : saveStatus === 'saving' ? 'Saving…' : 'Save Changes')}
-                </button>
-              )}
+          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex flex-col-reverse gap-3 border-t border-[var(--border)] bg-[var(--bg-surface)]/95 px-2 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-[var(--text-primary)]">{creating ? 'Ready to create?' : 'Ready to save changes?'}</p>
+              <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">You can update these settings later from Agent Studio.</p>
             </div>
-          )}
+            <div className="flex w-full gap-2 sm:w-auto">
+              <button type="button" onClick={closeForm} className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] sm:flex-none">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={!form.name.trim() || saveStatus === 'saving'} className={`h-10 flex-1 rounded-xl px-5 text-xs font-semibold text-white shadow-sm transition sm:flex-none disabled:cursor-not-allowed disabled:opacity-50 ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  {saveStatus === 'saving' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {saveStatus === 'saved' && <Check className="h-3.5 w-3.5" />}
+                  {creating ? (saveStatus === 'saved' ? 'Created!' : saveStatus === 'saving' ? 'Creating…' : 'Create Agent') : (saveStatus === 'saved' ? 'Saved!' : saveStatus === 'saving' ? 'Saving…' : 'Save Changes')}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
       </AgentFormFrame>
-      )}
+      )}}
     </PageShell>
   );
 }
