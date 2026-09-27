@@ -1,19 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ShieldBan,
-  Plus,
-  Trash2,
-  Clock3,
-  Loader2,
-  CheckCircle2,
-  PhoneOff,
-  Globe2,
-  ShieldCheck,
-  UsersRound,
   AlertTriangle,
-  Search,
-  Save,
+  CheckCircle2,
+  Clock3,
+  Globe2,
+  Loader2,
   LockKeyhole,
+  PhoneOff,
+  Plus,
+  Save,
+  Search,
+  ShieldBan,
+  ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
@@ -89,10 +88,7 @@ export default function ComplianceView() {
     try {
       const res = await apiFetch('/api/compliance/dnc', {
         method: 'POST',
-        body: JSON.stringify({
-          phone: newPhone.trim(),
-          reason: newReason.trim() || undefined,
-        }),
+        body: JSON.stringify({ phone: newPhone.trim(), reason: newReason.trim() || undefined }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to add number');
       const entry = await res.json();
@@ -139,57 +135,56 @@ export default function ComplianceView() {
     }
   };
 
-  const protectionLabel = window_?.enabled ? 'Outbound calling is restricted' : 'No calling-hour restriction';
-  const hoursLabel = window_?.enabled
-    ? `${formatHour(window_.startHour)} – ${formatHour(window_.endHour)}`
-    : 'Any hour';
-  const timezoneLabel = window_?.timezone || 'Not configured';
-
   if (loading || !window_) {
     return (
-      <PageShell title="Compliance" subtitle="Protect outbound calling with clear, enforceable safeguards." onRefresh={() => loadAll()}>
-        <div className="col-span-12 flex min-h-[360px] items-center justify-center text-[var(--text-muted)]">
+      <PageShell title="Compliance" onRefresh={() => loadAll()}>
+        <div className="col-span-12 flex min-h-[420px] items-center justify-center text-sm text-[var(--text-muted)]">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading compliance settings…
         </div>
       </PageShell>
     );
   }
 
+  const isRestricted = window_.enabled;
+  const hoursLabel = isRestricted
+    ? `${formatHour(window_.startHour)} – ${formatHour(window_.endHour)}`
+    : 'Any time';
+
   return (
     <PageShell
       title="Compliance"
-      subtitle="Protect outbound calling with clear, enforceable safeguards."
+      subtitle="Control outbound calling rules and keep protected numbers out of campaigns."
       onRefresh={() => loadAll()}
     >
       <div className="col-span-12 space-y-5">
-        <div className="grid grid-cols-12 gap-3 xl:gap-4">
+        <div className="grid grid-cols-12 gap-4">
           <KpiCard
-            className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[112px]"
+            className="!col-span-12 md:!col-span-4 min-h-[122px]"
             label="Calling protection"
-            value={window_.enabled ? 'Protected' : 'Open'}
-            sub={protectionLabel}
-            badge={window_.enabled ? 'ACTIVE' : 'REVIEW'}
-            badgeColor={window_.enabled ? 'green' : 'amber'}
-            icon={window_.enabled ? ShieldCheck : AlertTriangle}
+            value={isRestricted ? 'Protected' : 'Open'}
+            sub={isRestricted ? 'Calls are limited to the configured window' : 'No calling-hour restriction is active'}
+            badge={isRestricted ? 'ACTIVE' : 'REVIEW'}
+            badgeColor={isRestricted ? 'green' : 'amber'}
+            icon={isRestricted ? ShieldCheck : AlertTriangle}
             iconBg="var(--bg-subtle)"
-            iconColor={window_.enabled ? '#059669' : '#d97706'}
+            iconColor={isRestricted ? '#059669' : '#d97706'}
             iconPosition="left"
           />
           <KpiCard
-            className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[112px]"
+            className="!col-span-12 md:!col-span-4 min-h-[122px]"
             label="Protected numbers"
             value={dnc.length}
-            sub={dnc.length === 1 ? '1 number will be excluded' : 'Numbers excluded from outbound dialing'}
+            sub={dnc.length === 1 ? '1 number excluded from outbound calls' : 'Numbers excluded from outbound calls'}
             icon={ShieldBan}
             iconBg="var(--bg-subtle)"
             iconColor="#e11d48"
             iconPosition="left"
           />
           <KpiCard
-            className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[112px]"
-            label="Allowed calling hours"
+            className="!col-span-12 md:!col-span-4 min-h-[122px]"
+            label="Calling schedule"
             value={hoursLabel}
-            sub={timezoneLabel}
+            sub={window_.timezone || 'Timezone not configured'}
             icon={Clock3}
             iconBg="var(--bg-subtle)"
             iconColor="#2563eb"
@@ -198,194 +193,209 @@ export default function ComplianceView() {
         </div>
 
         {message && (
-          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs ${
+          <div className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs ${
             message.type === 'success'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400'
               : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400'
           }`}>
-            {message.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
+            {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
             <span>{message.text}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-12 items-start gap-4 xl:gap-5">
-          <Widget
-            colSpan={7}
-            title="Calling window"
-            subtitle="Define when outbound AI calls are allowed to run."
-            icon={Clock3}
-            accent="#2563eb"
-            padding="md"
-            className="col-span-12 lg:col-span-7 min-h-0"
-            action={
-              <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-                window_.enabled
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400'
-                  : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)]'
-              }`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${window_.enabled ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                {window_.enabled ? 'Restricted' : 'Open'}
-              </div>
-            }
-          >
-            <div className="space-y-4">
-              <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
-                window_.enabled
-                  ? 'border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/10'
-                  : 'border-[var(--border)] bg-[var(--bg-subtle)]'
-              }`}>
-                <input
-                  type="checkbox"
-                  checked={window_.enabled}
-                  onChange={e => setWindow({ ...window_, enabled: e.target.checked })}
-                  className="mt-1 h-4 w-4 rounded border-[var(--border)]"
-                />
-                <span className="min-w-0">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
-                    Restrict outbound calling hours
-                    {window_.enabled && <LockKeyhole className="h-3.5 w-3.5 text-blue-500" />}
-                  </span>
-                  <span className="mt-0.5 block text-xs leading-5 text-[var(--text-muted)]">
-                    Calls outside this window will be blocked by outbound campaigns.
-                  </span>
+        <div className="grid grid-cols-12 items-stretch gap-4 xl:gap-5">
+          <div className="col-span-12 lg:col-span-7 min-w-0">
+            <Widget
+              colSpan={12}
+              responsive={false}
+              title="Calling window"
+              subtitle="Choose when outbound AI calls are allowed to run."
+              icon={Clock3}
+              accent="#2563eb"
+              padding="none"
+              className="h-full !col-span-12"
+              action={
+                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                  isRestricted
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400'
+                    : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-muted)]'
+                }`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${isRestricted ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  {isRestricted ? 'Restricted' : 'Open'}
                 </span>
-              </label>
-
-              {window_.enabled ? (
-                <>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Start time</label>
-                      <select
-                        value={window_.startHour}
-                        onChange={e => setWindow({ ...window_, startHour: Number(e.target.value) })}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-blue-500"
-                      >
-                        {hourOptions.map(hour => <option key={hour} value={hour}>{formatHour(hour)}</option>)}
-                      </select>
-                    </div>
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
-                      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">End time</label>
-                      <select
-                        value={window_.endHour}
-                        onChange={e => setWindow({ ...window_, endHour: Number(e.target.value) })}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-blue-500"
-                      >
-                        {hourOptions.map(hour => <option key={hour} value={hour}>{formatHour(hour)}</option>)}
-                      </select>
-                    </div>
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
-                      <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                        <Globe2 className="h-3.5 w-3.5" /> Timezone
-                      </label>
-                      <input
-                        value={window_.timezone}
-                        onChange={e => setWindow({ ...window_, timezone: e.target.value })}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-blue-500"
-                        placeholder="Asia/Kolkata"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-xl border border-blue-200/70 bg-blue-50/50 px-3 py-2.5 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/10 dark:text-blue-300">
-                    <Clock3 className="h-4 w-4 shrink-0" />
-                    <span>Calls are permitted from <strong>{hoursLabel}</strong> in <strong>{timezoneLabel}</strong>.</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-400">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span><strong>Calling-hour protection is disabled.</strong> Outbound campaigns are not restricted by this setting.</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
-                <span className="text-[11px] text-[var(--text-muted)]">Changes are applied to outbound campaigns after saving.</span>
-                <Button variant="primary" size="sm" icon={Save} loading={savingWindow} onClick={handleSaveWindow}>Save changes</Button>
-              </div>
-            </div>
-          </Widget>
-
-          <Widget
-            colSpan={5}
-            title="Do-not-call list"
-            subtitle="Numbers that outbound campaigns must never contact."
-            icon={ShieldBan}
-            accent="#e11d48"
-            padding="md"
-            className="col-span-12 lg:col-span-5 min-h-0"
-            action={
-              <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400">
-                {dnc.length} protected
-              </span>
-            }
-          >
-            <div className="space-y-3">
-              <div className="rounded-xl border border-rose-200/70 bg-rose-50/40 p-3 dark:border-rose-900/40 dark:bg-rose-950/10">
-                <div className="mb-2.5 flex items-start gap-2">
-                  <PhoneOff className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                  <div>
-                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">Protected numbers are always skipped</p>
-                    <p className="mt-0.5 text-[11px] leading-4 text-rose-600/80 dark:text-rose-400/70">Add a number once to keep it excluded from outbound dialing.</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
+              }
+            >
+              <div className="p-5 sm:p-6">
+                <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
+                  isRestricted
+                    ? 'border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/10'
+                    : 'border-[var(--border)] bg-[var(--bg-subtle)]'
+                }`}>
                   <input
-                    value={newPhone}
-                    onChange={e => setNewPhone(e.target.value)}
-                    placeholder="Phone number"
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-rose-400"
+                    type="checkbox"
+                    checked={isRestricted}
+                    onChange={e => setWindow({ ...window_, enabled: e.target.checked })}
+                    className="mt-1 h-4 w-4 rounded border-[var(--border)]"
                   />
-                  <div className="flex gap-2">
-                    <input
-                      value={newReason}
-                      onChange={e => setNewReason(e.target.value)}
-                      placeholder="Reason (optional)"
-                      className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-rose-400"
-                    />
-                    <Button variant="primary" size="sm" icon={Plus} loading={adding} disabled={!newPhone.trim()} onClick={handleAddDnc}>Add</Button>
-                  </div>
-                </div>
-              </div>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                      Restrict outbound calling hours
+                      {isRestricted && <LockKeyhole className="h-3.5 w-3.5 text-blue-500" />}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[var(--text-muted)]">
+                      Calls outside this window will be blocked by outbound campaigns.
+                    </span>
+                  </span>
+                </label>
 
-              <SearchInput value={dncSearch} onChange={setDncSearch} placeholder="Search protected numbers..." />
+                {isRestricted ? (
+                  <div className="mt-5 space-y-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5">
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Start time</label>
+                        <select
+                          value={window_.startHour}
+                          onChange={e => setWindow({ ...window_, startHour: Number(e.target.value) })}
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-500"
+                        >
+                          {hourOptions.map(hour => <option key={hour} value={hour}>{formatHour(hour)}</option>)}
+                        </select>
+                      </div>
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5">
+                        <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">End time</label>
+                        <select
+                          value={window_.endHour}
+                          onChange={e => setWindow({ ...window_, endHour: Number(e.target.value) })}
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-500"
+                        >
+                          {hourOptions.map(hour => <option key={hour} value={hour}>{formatHour(hour)}</option>)}
+                        </select>
+                      </div>
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3.5">
+                        <label className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                          <Globe2 className="h-3.5 w-3.5" /> Timezone
+                        </label>
+                        <input
+                          value={window_.timezone}
+                          onChange={e => setWindow({ ...window_, timezone: e.target.value })}
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-blue-500"
+                          placeholder="Asia/Kolkata"
+                        />
+                      </div>
+                    </div>
 
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Protected numbers</span>
-                <span className="text-[10px] text-[var(--text-muted)]">{filteredDnc.length} shown</span>
-              </div>
-
-              <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-                {filteredDnc.length === 0 ? (
-                  <div className="flex min-h-36 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] px-4 text-center">
-                    <ShieldBan className="h-6 w-6 text-[var(--text-muted)]" />
-                    <p className="mt-2 text-sm font-semibold text-[var(--text)]">{dnc.length ? 'No matching numbers' : 'No protected numbers'}</p>
-                    <p className="mt-1 text-[11px] text-[var(--text-muted)]">{dnc.length ? 'Try a different phone number or reason.' : 'Numbers added above will be skipped by outbound campaigns.'}</p>
+                    <div className="flex items-center gap-2 rounded-xl border border-blue-200/70 bg-blue-50/50 px-3.5 py-3 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/10 dark:text-blue-300">
+                      <Clock3 className="h-4 w-4 shrink-0" />
+                      <span>Outbound calls are allowed from <strong>{hoursLabel}</strong> in <strong>{window_.timezone}</strong>.</span>
+                    </div>
                   </div>
                 ) : (
-                  filteredDnc.map(entry => (
-                    <div key={entry.id} className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 transition-colors hover:border-rose-200 hover:bg-rose-50/30 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/10">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
-                        <PhoneOff className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-[var(--text)]">{entry.phone}</p>
-                        {entry.reason && <p className="truncate text-[11px] text-[var(--text-muted)]">{entry.reason}</p>}
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={`Remove ${entry.phone} from do-not-call list`}
-                        onClick={() => handleRemoveDnc(entry.id)}
-                        className="shrink-0 rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                  <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Calling-hour protection is disabled</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-amber-700/80 dark:text-amber-300/70">Outbound campaigns are not restricted by this setting.</p>
                     </div>
-                  ))
+                  </div>
                 )}
+
+                <div className="mt-6 flex flex-col gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-[11px] text-[var(--text-muted)]">Save changes to apply this rule to outbound campaigns.</p>
+                  <Button variant="primary" size="sm" icon={Save} loading={savingWindow} onClick={handleSaveWindow}>Save changes</Button>
+                </div>
               </div>
-            </div>
-          </Widget>
+            </Widget>
+          </div>
+
+          <div className="col-span-12 lg:col-span-5 min-w-0">
+            <Widget
+              colSpan={12}
+              responsive={false}
+              title="Do-not-call list"
+              subtitle="Numbers that outbound campaigns must never contact."
+              icon={ShieldBan}
+              accent="#e11d48"
+              padding="none"
+              className="h-full !col-span-12"
+              action={
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400">
+                  {dnc.length} protected
+                </span>
+              }
+            >
+              <div className="flex h-full min-h-[520px] flex-col p-5 sm:p-6">
+                <div className="rounded-xl border border-rose-200/70 bg-rose-50/40 p-3.5 dark:border-rose-900/40 dark:bg-rose-950/10">
+                  <div className="flex items-start gap-2.5">
+                    <PhoneOff className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">Protected numbers are skipped</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-rose-600/80 dark:text-rose-400/70">Add a number once and it stays excluded from outbound dialing.</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <input
+                      value={newPhone}
+                      onChange={e => setNewPhone(e.target.value)}
+                      placeholder="Phone number"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-rose-400"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        value={newReason}
+                        onChange={e => setNewReason(e.target.value)}
+                        placeholder="Reason (optional)"
+                        className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-rose-400"
+                      />
+                      <Button variant="primary" size="sm" icon={Plus} loading={adding} disabled={!newPhone.trim()} onClick={handleAddDnc}>Add</Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <SearchInput value={dncSearch} onChange={setDncSearch} placeholder="Search protected numbers..." />
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">Protected numbers</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{filteredDnc.length} shown</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1">
+                  {filteredDnc.length === 0 ? (
+                    <div className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] px-4 text-center">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--bg-subtle)]">
+                        <ShieldBan className="h-5 w-5 text-[var(--text-muted)]" />
+                      </div>
+                      <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{dnc.length ? 'No matching numbers' : 'No protected numbers'}</p>
+                      <p className="mt-1 max-w-xs text-[11px] leading-4 text-[var(--text-muted)]">{dnc.length ? 'Try another phone number or reason.' : 'Numbers added above will be skipped by outbound campaigns.'}</p>
+                    </div>
+                  ) : (
+                    filteredDnc.map(entry => (
+                      <div key={entry.id} className="group flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 transition hover:border-rose-200 dark:hover:border-rose-900/50">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
+                          <PhoneOff className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{entry.phone}</p>
+                          <p className="truncate text-[11px] text-[var(--text-muted)]">{entry.reason || 'Protected number'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${entry.phone} from do-not-call list`}
+                          onClick={() => handleRemoveDnc(entry.id)}
+                          className="rounded-lg p-2 text-[var(--text-muted)] transition hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </Widget>
+          </div>
         </div>
       </div>
     </PageShell>
