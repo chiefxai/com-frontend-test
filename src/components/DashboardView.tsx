@@ -699,17 +699,17 @@ export default function DashboardView({
           ];
           return (
             <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] overflow-hidden">
                 <DataTable bare resizable columns={columns} rows={rows} rowKey={(r) => r.key} />
               </div>
               {selectedCall.summary && (
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                <div className="bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] p-4">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Summary</p>
                   <p className="text-xs text-slate-600 italic">"{selectedCall.summary}"</p>
                 </div>
               )}
               {selectedCall.transcript && selectedCall.transcript.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] p-4 space-y-3">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Transcript</p>
                   {selectedCall.transcript.map((line, i) => (
                     <div key={i} className="text-xs">
