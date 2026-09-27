@@ -30,7 +30,7 @@ export default function IconButton({
   // as the header's own refresh icon (transparent, colored icon, a subtle
   // hover background), and 'primary' vs 'secondary' is just icon tint.
   const variantCls = variant === 'primary'
-    ? 'text-blue-600 dark:text-blue-400 hover:bg-[var(--bg-subtle)]'
+    ? 'text-[var(--accent)] hover:bg-[var(--bg-subtle)]'
     : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]';
 
   return (
@@ -40,7 +40,7 @@ export default function IconButton({
         onClick={onClick}
         disabled={disabled}
         aria-label={label}
-        className={`flex items-center justify-center h-9 w-9 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${variantCls} ${className}`}
+        className={`flex items-center justify-center h-9 w-9 rounded-[9px] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${variantCls} ${className}`}
       >
         <Icon className={`h-4 w-4 ${iconClassName}`} />
       </button>
