@@ -63,19 +63,20 @@ export default function ComplianceView() {
         <div className="col-span-12 flex min-h-[320px] items-center justify-center text-[var(--text-muted)]"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading compliance settings…</div>
       ) : (
         <div className="col-span-12 space-y-5">
-          {/* Protection overview */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-              <div className="flex items-center justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><ShieldCheck className="h-4 w-4" /></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">{window_.enabled ? 'ACTIVE' : 'OPEN'}</span></div>
-              <p className="mt-3 text-xs font-semibold text-[var(--text)]">Calling protection</p><p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{protectionLabel}</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-              <div className="flex items-center justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><UsersRound className="h-4 w-4" /></div><span className="text-xl font-bold text-[var(--text)]">{dnc.length}</span></div>
-              <p className="mt-3 text-xs font-semibold text-[var(--text)]">Protected numbers</p><p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Do-not-call entries</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-              <div className="flex items-center justify-between"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><Globe2 className="h-4 w-4" /></div><span className="max-w-[160px] truncate text-xs font-semibold text-[var(--text)]">{timezoneLabel}</span></div>
-              <p className="mt-3 text-xs font-semibold text-[var(--text)]">Active calling schedule</p><p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{hoursLabel}</p>
+          {
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]">
+            <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${window_.enabled ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}><ShieldCheck className="h-5 w-5" /></div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold text-[var(--text)]">Outbound protection</h2><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${window_.enabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'}`}>{window_.enabled ? 'Protected' : 'Review settings'}</span></div>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">Control when AI can place calls and which numbers must always be excluded.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-sm font-bold text-[var(--text)]">{hoursLabel}</p><p className="text-[10px] text-[var(--text-muted)]">{timezoneLabel}</p></div>
+                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-sm font-bold text-[var(--text)]">{dnc.length}</p><p className="text-[10px] text-[var(--text-muted)]">Protected numbers</p></div>
+              </div>
             </div>
           </div>
 
