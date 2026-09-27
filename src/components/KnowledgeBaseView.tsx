@@ -102,17 +102,17 @@ export default function KnowledgeBaseView() {
           </div>
 
           <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
-            <div className="grid grid-cols-12 gap-4 p-3 sm:p-4 xl:gap-5">
+            <div className={`grid gap-4 p-3 sm:p-4 xl:gap-5 ${isSourcesCollapsed ? 'lg:grid-cols-[52px_minmax(0,1fr)]' : 'grid-cols-12'}`}>
               {/* Knowledge sources */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-0.5' : 'col-span-7'}`}
+                className={`col-span-12 min-h-0 transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'}`}
                 title={isSourcesCollapsed ? undefined : "Knowledge sources"}
                 subtitle={isSourcesCollapsed ? undefined : "Documents available to your AI agents."}
                 icon={BookOpen}
                 accent="#2563eb"
                 padding="md"
-                showHeader
+                showHeader={!isSourcesCollapsed}
                 action={
                   <button
                     type="button"
@@ -125,7 +125,20 @@ export default function KnowledgeBaseView() {
                   </button>
                 }
               >
-                {!isSourcesCollapsed && (
+                {isSourcesCollapsed ? (
+                  <div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
+                    <BookOpen className="h-5 w-5 text-blue-500" />
+                    <button
+                      type="button"
+                      onClick={() => setIsSourcesCollapsed(false)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]"
+                      aria-label="Expand knowledge sources"
+                      title="Expand knowledge sources"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
                   <>
                     <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <div className="relative min-w-0 flex-1">
@@ -161,7 +174,7 @@ export default function KnowledgeBaseView() {
               {/* Retrieval playground */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 transition-all duration-200 lg:${isSourcesCollapsed ? 'col-span-11.5' : 'col-span-5'}`}
+                className={`col-span-12 min-h-0 transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-8'}`}
                 title="Retrieval playground"
                 subtitle="Preview the information your agent can retrieve for a question."
                 icon={Sparkles}
