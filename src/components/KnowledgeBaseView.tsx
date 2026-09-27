@@ -94,7 +94,6 @@ export default function KnowledgeBaseView() {
         <div className="col-span-12 flex min-h-[360px] items-center justify-center text-[var(--text-muted)]"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading knowledge base…</div>
       ) : (
         <div className="col-span-12 space-y-5">
-          {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <KpiCard label="Knowledge sources" value={documents.length} sub="Documents available to agents" icon={FileText} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
             <KpiCard label="Indexed chunks" value={totalChunks} sub="Searchable knowledge pieces" icon={Database} iconBg="var(--bg-subtle)" iconColor="#7c3aed" iconPosition="left" />
