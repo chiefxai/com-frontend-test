@@ -6,6 +6,7 @@ import Widget from './ui/Widget';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
 import KpiCard from './ui/KpiCard';
+import Tooltip from './ui/Tooltip';
 
 interface KnowledgeDocument { id: string; title: string; chunkCount: number; createdAt: string; }
 interface SearchResult { content: string; documentTitle: string; }
@@ -102,14 +103,45 @@ export default function KnowledgeBaseView() {
           </div>
 
           <section className="h-[calc(100vh-245px)] min-h-[460px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
-            <div className={`grid h-full min-h-0 gap-4 p-3 sm:p-4 xl:gap-5 ${isSourcesCollapsed ? 'lg:grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-12'}`}>
+            <div className="grid h-full min-h-0 grid-cols-12 gap-4 p-3 sm:p-4 xl:gap-5">
               {/* Knowledge sources */}
               {isSourcesCollapsed ? (
-                <div className="hidden lg:flex min-w-0 h-full items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]">
-                  <button type="button" onClick={() => setIsSourcesCollapsed(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-400" aria-label="Expand knowledge sources" title="Expand knowledge sources">
+                <aside className="hidden lg:flex lg:col-span-1 min-w-0 h-full flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsSourcesCollapsed(false)}
+                    className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-blue-400 transition-colors shrink-0"
+                    aria-label="Expand knowledge sources"
+                    title="Expand knowledge sources"
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                </div>
+
+                  <div className="w-8 border-t border-[var(--border)] my-1 shrink-0" />
+
+                  <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2 min-h-0">
+                    {documents.map((document) => (
+                      <Tooltip
+                        key={document.id}
+                        side="right"
+                        className="w-full flex justify-center"
+                        label={`${document.title} · ${document.chunkCount} indexed chunks`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setDocumentSearch(document.title)}
+                          aria-label={document.title}
+                          className="relative h-10 w-10 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 flex items-center justify-center transition-all shrink-0"
+                        >
+                          <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </button>
+                      </Tooltip>
+                    ))}
+                    {documents.length === 0 && (
+                      <span className="text-[10px] text-[var(--text-muted)] text-center px-1">No sources</span>
+                    )}
+                  </div>
+                </aside>
               ) : (
                 <Widget colSpan={4} className="col-span-12 lg:col-span-4 min-w-0 min-h-0 h-full" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md"
                   action={
@@ -152,7 +184,7 @@ export default function KnowledgeBaseView() {
               {/* Retrieval playground */}
               <Widget
                 colSpan={12}
-                className={`col-span-12 min-h-0 h-full transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-8'}`}
+                className={`col-span-12 min-h-0 h-full transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-11' : 'lg:col-span-8'}`}
                 title="Retrieval playground"
                 subtitle="Preview the information your agent can retrieve for a question."
                 icon={Sparkles}
