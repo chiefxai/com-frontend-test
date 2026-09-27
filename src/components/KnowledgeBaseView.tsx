@@ -315,6 +315,7 @@ export default function KnowledgeBaseView() {
                   </div>
                 </Widget>
               </div>
+              </div>
             </div>
           </section>
         </div>
