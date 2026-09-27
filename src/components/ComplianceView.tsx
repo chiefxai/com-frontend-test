@@ -203,7 +203,7 @@ export default function ComplianceView() {
           </div>
         )}
 
-        <div className="grid grid-cols-12 items-stretch gap-4 xl:gap-5 lg:min-h-[calc(100vh-470px)]">
+        <div className="grid grid-cols-12 items-stretch gap-4 xl:gap-5 lg:h-[calc(100vh-430px)] lg:min-h-[560px]">
           <div className="col-span-12 lg:col-span-6 min-w-0 h-full">
             <Widget
               colSpan={12}
@@ -213,7 +213,7 @@ export default function ComplianceView() {
               icon={Clock3}
               accent="#2563eb"
               padding="none"
-              className="h-full !col-span-12 flex flex-col"
+              className="h-full !col-span-12 flex flex-col overflow-hidden"
               action={
                 <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
                   isRestricted
@@ -225,7 +225,7 @@ export default function ComplianceView() {
                 </span>
               }
             >
-              <div className="p-5 sm:p-6">
+              <div className="flex h-full min-h-0 flex-col p-5 sm:p-6">
                 <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
                   isRestricted
                     ? 'border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/10'
@@ -323,7 +323,7 @@ export default function ComplianceView() {
                 </span>
               }
             >
-              <div className="flex h-full min-h-[520px] flex-col p-5 sm:p-6">
+              <div className="flex h-full min-h-0 flex-col p-5 sm:p-6">
                 <div className="rounded-xl border border-rose-200/70 bg-rose-50/40 p-3.5 dark:border-rose-900/40 dark:bg-rose-950/10">
                   <div className="flex items-start gap-2.5">
                     <PhoneOff className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
