@@ -19,7 +19,7 @@ export default function StatCard({ label, value, change, trend, icon: Icon, acce
   const trendColor = trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-rose-500' : 'text-slate-400';
 
   return (
-    <div className={`bg-white dark:bg-[var(--bg-surface)] rounded-2xl border border-slate-200 dark:border-[var(--border)] shadow-sm p-5 flex flex-col gap-3 ${className}`}>
+    <div className={`bg-white dark:bg-[var(--bg-surface)] rounded-[14px] border border-slate-200 dark:border-[var(--border)] shadow-[var(--shadow-card)] p-5 flex flex-col gap-3 ${className}`}>
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-bold text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-widest">{label}</span>
         {Icon && (
