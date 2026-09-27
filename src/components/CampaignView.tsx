@@ -44,7 +44,7 @@ const statusStyles: Record<CampaignStatus, string> = {
   Completed:
     'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20',
   Draft:
-    'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20',
+    'bg-[var(--bg-subtle)] text-slate-600 border-[var(--border)] dark:bg-[var(--bg-base)]0/10 dark:text-slate-300 dark:border-slate-500/20',
 };
 
 const statusDotStyles: Record<CampaignStatus, string> = {
@@ -279,7 +279,7 @@ export default function CampaignView({
               return (
                 <div
                   key={metric.label}
-                  className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-sm"
+                  className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -290,7 +290,7 @@ export default function CampaignView({
                         {metric.value}
                       </p>
                     </div>
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${metric.iconBg}`}>
+                    <div className={`h-10 w-10 rounded-[9px] flex items-center justify-center ${metric.iconBg}`}>
                       <MetricIcon className={`h-4.5 w-4.5 ${metric.iconClass}`} />
                     </div>
                   </div>
@@ -339,7 +339,7 @@ export default function CampaignView({
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search campaigns by name or ID..."
-                    className="w-full h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    className="w-full h-10 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
               </div>
@@ -372,7 +372,7 @@ export default function CampaignView({
                       >
                         <div className="flex items-start gap-4">
                           <div
-                            className={`mt-0.5 h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                            className={`mt-0.5 h-10 w-10 rounded-[9px] flex items-center justify-center shrink-0 border ${
                               isActive
                                 ? 'bg-blue-100 border-blue-200 text-blue-600 dark:bg-blue-500/15 dark:border-blue-500/20 dark:text-blue-300'
                                 : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)]'
@@ -412,7 +412,7 @@ export default function CampaignView({
                             <div className="mt-4 flex items-center gap-3">
                               <div className="h-1.5 flex-1 max-w-[280px] overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                                 <div
-                                  className="h-full rounded-full bg-blue-600 transition-all"
+                                  className="h-full rounded-full bg-[image:var(--brand-gradient)] transition-all"
                                   style={{ width: `${progress}%` }}
                                 />
                               </div>
@@ -475,7 +475,7 @@ export default function CampaignView({
                 </div>
               ) : (
                 <div className="py-16 px-6 text-center">
-                  <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--bg-subtle)] flex items-center justify-center">
+                  <div className="mx-auto h-12 w-12 rounded-[14px] bg-[var(--bg-subtle)] flex items-center justify-center">
                     <Search className="h-5 w-5 text-[var(--text-muted)]" />
                   </div>
                   <h3 className="mt-4 text-sm font-semibold text-[var(--text-primary)]">
@@ -490,7 +490,7 @@ export default function CampaignView({
 
             {/* Campaign inspector */}
             <div className="xl:sticky xl:top-4">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm overflow-hidden">
+              <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm overflow-hidden">
                 {selectedCampaign ? (
                   <>
                     <div className="p-5 border-b border-[var(--border)]">
@@ -531,7 +531,7 @@ export default function CampaignView({
                           <button
                             type="button"
                             onClick={handleSimulateDialAction}
-                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold shadow-sm transition-colors"
+                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[image:var(--brand-gradient)] hover:brightness-[1.03] text-white text-[11px] font-semibold shadow-sm transition-colors"
                           >
                             <Zap className="h-3.5 w-3.5" />
                             Simulate dial
@@ -555,7 +555,7 @@ export default function CampaignView({
                           return (
                             <div
                               key={stat.label}
-                              className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-3"
+                              className="rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-3"
                             >
                               <StatIcon className="h-3.5 w-3.5 text-[var(--text-muted)]" />
                               <p className="mt-2 text-lg font-semibold text-[var(--text-primary)] tabular-nums">
@@ -567,7 +567,7 @@ export default function CampaignView({
                         })}
                       </div>
 
-                      <div className="rounded-xl border border-[var(--border)] p-4">
+                      <div className="rounded-[9px] border border-[var(--border)] p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Gauge className="h-4 w-4 text-blue-500" />
@@ -588,7 +588,7 @@ export default function CampaignView({
                         </div>
                         <div className="mt-3 h-2 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-blue-600"
+                            className="h-full rounded-full bg-[image:var(--brand-gradient)]"
                             style={{
                               width: `${
                                 selectedCampaign.totalLeads > 0
@@ -629,7 +629,7 @@ export default function CampaignView({
                           <Activity className="h-4 w-4 text-emerald-500" />
                         </div>
 
-                        <div className="max-h-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-3 space-y-2">
+                        <div className="max-h-52 overflow-y-auto rounded-[9px] border border-[var(--border)] bg-[var(--bg-base)] p-3 space-y-2">
                           {logs.length > 0 ? (
                             logs.map((log, index) => (
                               <div
@@ -661,7 +661,7 @@ export default function CampaignView({
                   </>
                 ) : (
                   <div className="py-20 px-6 text-center">
-                    <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--bg-subtle)] flex items-center justify-center">
+                    <div className="mx-auto h-12 w-12 rounded-[14px] bg-[var(--bg-subtle)] flex items-center justify-center">
                       <Target className="h-5 w-5 text-[var(--text-muted)]" />
                     </div>
                     <p className="mt-4 text-sm font-semibold text-[var(--text-primary)]">
@@ -687,9 +687,9 @@ export default function CampaignView({
           >
             <form onSubmit={handleLaunchCampaign} className="flex max-h-[78vh] flex-col">
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="rounded-2xl border border-blue-200/70 bg-blue-50/60 p-4 dark:border-blue-500/20 dark:bg-blue-500/[0.06]">
+                <div className="rounded-[14px] border border-blue-200/70 bg-blue-50/60 p-4 dark:border-blue-500/20 dark:bg-blue-500/[0.06]">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[9px] bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
                       <Zap className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
@@ -702,7 +702,7 @@ export default function CampaignView({
                 </div>
 
                 <div className="mt-5 space-y-4">
-                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                  <section className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
                     <div className="mb-4">
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">1. Campaign details</p>
                       <p className="mt-1 text-[11px] text-[var(--text-muted)]">Use a name your team can recognize later.</p>
@@ -717,14 +717,14 @@ export default function CampaignView({
                         autoFocus
                         value={campaignName}
                         onChange={(event) => setCampaignName(event.target.value)}
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                        className="h-11 w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         placeholder="e.g. Q3 Commercial Real-Estate Callbacks"
                       />
                       <span className="mt-1.5 block text-[10px] text-[var(--text-muted)]">Keep it specific enough to identify the audience or purpose.</span>
                     </label>
                   </section>
 
-                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                  <section className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
                     <div className="mb-4">
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">2. Calling setup</p>
                       <p className="mt-1 text-[11px] text-[var(--text-muted)]">Choose the workflow and how many leads should be included.</p>
@@ -735,7 +735,7 @@ export default function CampaignView({
                         <select
                           value={selectedWorkflow}
                           onChange={(event) => setSelectedWorkflow(event.target.value)}
-                          className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                          className="h-11 w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         >
                           {workflows.length === 0 && <option value="">No workflows available</option>}
                           {workflows.map((workflow) => (
@@ -754,7 +754,7 @@ export default function CampaignView({
                             max={totalLeadsCount || undefined}
                             value={targetLeadsCount}
                             onChange={(event) => setTargetLeadsCount(event.target.value)}
-                            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 pr-24 text-sm text-[var(--text-primary)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                            className="h-11 w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 pr-24 text-sm text-[var(--text-primary)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                           />
                           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[var(--text-muted)]">
                             / {totalLeadsCount.toLocaleString()} available
@@ -765,7 +765,7 @@ export default function CampaignView({
                     </div>
                   </section>
 
-                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 sm:p-5">
+                  <section className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 sm:p-5">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                       <div>
@@ -787,13 +787,13 @@ export default function CampaignView({
                   <button
                     type="button"
                     onClick={() => setIsLaunchModalOpen(false)}
-                    className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] sm:flex-none"
+                    className="h-10 flex-1 rounded-[9px] border border-[var(--border)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] sm:flex-none"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="h-10 flex-1 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    className="h-10 flex-1 rounded-[9px] bg-[image:var(--brand-gradient)] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                     disabled={!campaignName.trim()}
                   >
                     <span className="inline-flex items-center justify-center gap-1.5">
