@@ -141,7 +141,18 @@ export default function KnowledgeBaseView() {
               </div>
             </div>
 
-            <div className="min-h-[500px] p-3 sm:p-4 xl:p-5">\n              <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-2.5 lg:hidden">\n                <div className="flex min-w-0 items-center gap-2">\n                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500"><BookOpen className="h-4 w-4" /></div>\n                  <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--text-primary)]">Knowledge sources</p><p className="text-[10px] text-[var(--text-muted)]">{documents.length} source{documents.length === 1 ? "" : "s"}</p></div>\n                </div>\n                <button type="button" onClick={() => setIsSourcesCollapsed(prev => !prev)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-blue-400 hover:text-[var(--text-primary)]" aria-expanded={!isSourcesCollapsed}>\n                  {isSourcesCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}\n                  {isSourcesCollapsed ? "Show sources" : "Hide sources"}\n                </button>\n              </div>\n              <div className="grid min-h-[460px] grid-cols-12 gap-4 xl:gap-5">
+            <div className="min-h-[500px] p-3 sm:p-4 xl:p-5">
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-2.5 lg:hidden">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500"><BookOpen className="h-4 w-4" /></div>
+                  <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--text-primary)]">Knowledge sources</p><p className="text-[10px] text-[var(--text-muted)]">{documents.length} source{documents.length === 1 ? "" : "s"}</p></div>
+                </div>
+                <button type="button" onClick={() => setIsSourcesCollapsed(prev => !prev)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-blue-400 hover:text-[var(--text-primary)]" aria-expanded={!isSourcesCollapsed}>
+                  {isSourcesCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                  {isSourcesCollapsed ? "Show sources" : "Hide sources"}
+                </button>
+              </div>
+              <div className="grid min-h-[460px] grid-cols-12 gap-4 xl:gap-5">
               <div className={`${isSourcesCollapsed ? 'hidden lg:block lg:col-span-1' : 'lg:col-span-4'} col-span-12 min-w-0 transition-all duration-200`}>
                 {isSourcesCollapsed ? (
                   <div className="flex h-full min-h-[480px] flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3">
