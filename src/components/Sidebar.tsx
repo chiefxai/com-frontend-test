@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
 import {
   LayoutDashboard,
   Users,
@@ -311,7 +312,7 @@ export default function Sidebar({
     `h-4 w-4 shrink-0 ${collapsed ? '' : 'mr-3'}`;
 
   const iconStyle = (isActive: boolean): React.CSSProperties =>
-    isActive ? { color: '#ffffff' } : { color: 'var(--text-muted)' };
+    isActive ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' };
 
   const subBtnCls = (isActive: boolean) =>
     `w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 group ${
@@ -404,15 +405,17 @@ export default function Sidebar({
     >
       {/* Brand Header */}
       <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'p-6'}`} style={{ borderBottom: '1px solid var(--border)' }}>
-        <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-blue-600 shadow-blue-600/20 text-white shrink-0">
-          <Layers className="h-5 w-5" />
-        </div>
+        <img
+          src={chiefVoiceLogo}
+          alt="ChiefVoice"
+          className={`shrink-0 object-contain transition-all ${collapsed ? 'h-10 w-10' : 'h-10 w-10'}`}
+        />
         {!collapsed && (
           <div className="ml-3 min-w-0">
-            <h1 className="text-lg font-bold font-display tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>
-              {organizationName || 'ChiefVoice'}
+            <h1 className="text-lg font-semibold font-sans tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>
+              ChiefVoice
             </h1>
-            <p className="text-[10px] text-slate-400 font-mono mt-1 uppercase tracking-widest">{tagline}</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-sans mt-1 uppercase tracking-widest">{tagline}</p>
           </div>
         )}
       </div>
@@ -497,7 +500,7 @@ export default function Sidebar({
                         key={sub.id}
                         onClick={() => { setActiveTab(sub.id); setFlyoutGroup(null); setFlyoutRect(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                          isActive ? 'bg-blue-600 text-white' : 'hover:bg-[var(--bg-subtle)]'
+                          isActive ? 'bg-[var(--accent-subtle)] text-[var(--accent)]' : 'hover:bg-[var(--bg-subtle)]'
                         }`}
                         style={isActive ? {} : { color: 'var(--text-secondary)' }}
                       >
