@@ -10,57 +10,79 @@
 
 /* ── Light tokens (default) ─────────────────────────────────────── */
 :root {
-  --bg-base:        #f8fafc;   /* slate-50 */
-  --bg-surface:     #ffffff;
-  --bg-subtle:      #f1f5f9;   /* slate-100 */
-  --border:         #e2e8f0;   /* slate-200 */
-  --border-subtle:  #f1f5f9;
-  --text-primary:   #0f172a;   /* slate-900 */
-  --text-secondary: #475569;   /* slate-600 */
-  --text-muted:     #94a3b8;   /* slate-400 */
-  --accent:         #2563eb;   /* blue-600 */
-  --accent-subtle:  #eff6ff;   /* blue-50 */
+  --bg-base:        #F7F9FC;
+  --bg-surface:     #FFFFFF;
+  --bg-subtle:      #F1F4F9;
+  --border:         #E2E7F0;
+  --border-subtle:  #F1F4F9;
+  --text-primary:   #101A3A;
+  --text-secondary: #475569;
+  --text-muted:     #64748B;
+  --accent:         #1677FF;
+  --accent-subtle:  #EEF5FF;
+  --brand-navy:     #101A3A;
+  --brand-blue:     #1677FF;
+  --brand-cyan:     #18C8F2;
+  --brand-indigo:   #4038FF;
+  --brand-violet:   #7B2CFF;
+  --brand-gradient: linear-gradient(135deg, #18C8F2 0%, #1677FF 45%, #7B2CFF 100%);
+  --success:        #16A34A;
+  --warning:        #F59E0B;
+  --error:          #DC2626;
+  --info:           #2563EB;
+  --neutral:        #64748B;
   --sidebar-bg:     #ffffff;
   --sidebar-border: #e2e8f0;
   --header-bg:      #ffffff;
 
   /* Panel tokens — adapts per theme */
-  --panel-bg:       #ffffff;
-  --panel-surface:  #f1f5f9;   /* slate-100 */
-  --panel-border:   #e2e8f0;   /* slate-200 */
-  --panel-text:     #0f172a;   /* slate-900 */
-  --panel-muted:    #475569;   /* slate-600 */
+  --panel-bg:       #FFFFFF;
+  --panel-surface:  #F1F4F9;
+  --panel-border:   #E2E7F0;
+  --panel-text:     #101A3A;
+  --panel-muted:    #475569;
 
   /* Tooltip */
-  --tooltip-bg:     #1e293b;
-  --tooltip-text:   #f8fafc;
+  --tooltip-bg:     #101A3A;
+  --tooltip-text:   #F7F9FC;
 }
 
 /* ── Dark tokens ────────────────────────────────────────────────── */
 .dark {
-  --bg-base:        #0f172a;   /* slate-900 */
-  --bg-surface:     #1e293b;   /* slate-800 */
-  --bg-subtle:      #334155;   /* slate-700 */
-  --border:         #334155;
-  --border-subtle:  #1e293b;
-  --text-primary:   #f1f5f9;   /* slate-100 */
-  --text-secondary: #94a3b8;   /* slate-400 */
-  --text-muted:     #64748b;   /* slate-500 */
-  --accent:         #3b82f6;   /* blue-500 */
-  --accent-subtle:  #1e3a5f;
+  --bg-base:        #080D1C;
+  --bg-surface:     #10172A;
+  --bg-subtle:      #151E32;
+  --border:         #263149;
+  --border-subtle:  #151E32;
+  --text-primary:   #F7F9FC;
+  --text-secondary: #A7B0C2;
+  --text-muted:     #71809B;
+  --accent:         #1677FF;
+  --accent-subtle:  rgba(22,119,255,.14);
+  --brand-navy:     #101A3A;
+  --brand-blue:     #1677FF;
+  --brand-cyan:     #18C8F2;
+  --brand-indigo:   #4038FF;
+  --brand-violet:   #7B2CFF;
+  --brand-gradient: linear-gradient(135deg, #18C8F2 0%, #1677FF 45%, #7B2CFF 100%);
+  --success:        #16A34A;
+  --warning:        #F59E0B;
+  --error:          #DC2626;
+  --info:           #2563EB;
+  --neutral:        #64748B;
   --sidebar-bg:     #1e293b;
   --sidebar-border: #334155;
   --header-bg:      #1e293b;
 
   /* Panel tokens in dark mode — go full dark */
-  --panel-bg:       #0f172a;   /* slate-900 */
-  --panel-surface:  #1e293b;   /* slate-800 */
-  --panel-border:   #334155;   /* slate-700 */
-  --panel-text:     #f1f5f9;
-  --panel-muted:    #64748b;
+  --panel-bg:       #080D1C;
+  --panel-surface:  #10172A;
+  --panel-border:   #263149;
+  --panel-text:     #F7F9FC;
+  --panel-muted:    #71809B;
 
-  --tooltip-bg:     #334155;
-  --tooltip-text:   #f8fafc;
+  --tooltip-bg:     #151E32;
+  --tooltip-text:   #F7F9FC;
 }
 
 /* ── Custom scrollbar ───────────────────────────────────────────── */
@@ -298,3 +320,85 @@ table tfoot tr {
 .dark .admin-shell .bg-white\/50 { background-color: rgba(30, 41, 59, .50) !important; }
 .dark .admin-shell .bg-slate-50\/50 { background-color: rgba(51, 65, 85, .50) !important; }
 .dark .admin-shell .bg-slate-50\/75 { background-color: rgba(51, 65, 85, .75) !important; }
+
+
+/* ── ChiefVoice design language ─────────────────────────────────── */
+:root {
+  --radius-card: 14px;
+  --radius-control: 9px;
+  --shadow-card: 0 2px 8px rgba(16, 26, 58, 0.05);
+}
+
+.dark {
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.20);
+}
+
+.brand-gradient {
+  background-image: var(--brand-gradient);
+}
+
+.brand-gradient-text {
+  background-image: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.cv-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.cv-control {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+}
+
+.cv-primary-button {
+  background-image: var(--brand-gradient);
+  color: #fff;
+  border-radius: var(--radius-control);
+  min-height: 42px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(22, 119, 255, 0.18);
+}
+
+.cv-primary-button:hover {
+  filter: brightness(1.03);
+}
+
+.cv-secondary-button {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  min-height: 42px;
+  font-weight: 600;
+}
+
+.cv-focus-ring:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+
+.cv-waveform {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+
+.cv-waveform span {
+  width: 3px;
+  border-radius: 999px;
+  background: var(--brand-gradient);
+}
+
+.cv-waveform span:nth-child(1) { height: 7px; }
+.cv-waveform span:nth-child(2) { height: 12px; }
+.cv-waveform span:nth-child(3) { height: 18px; }
+.cv-waveform span:nth-child(4) { height: 11px; }
+.cv-waveform span:nth-child(5) { height: 16px; }
+.cv-waveform span:nth-child(6) { height: 9px; }
