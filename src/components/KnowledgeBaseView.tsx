@@ -5,6 +5,7 @@ import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
+import KpiCard from './ui/KpiCard';
 
 interface KnowledgeDocument { id: string; title: string; chunkCount: number; createdAt: string; }
 interface SearchResult { content: string; documentTitle: string; }
@@ -94,21 +95,10 @@ export default function KnowledgeBaseView() {
       ) : (
         <div className="col-span-12 space-y-5">
           {
-          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]">
-            <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><BookOpen className="h-5 w-5" /></div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold text-[var(--text)]">Agent knowledge</h2><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">Ready</span></div>
-                  <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">Your agents can retrieve information from these approved sources during conversations.</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 sm:min-w-[300px]">
-                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-lg font-bold text-[var(--text)]">{documents.length}</p><p className="text-[10px] text-[var(--text-muted)]">Sources</p></div>
-                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-lg font-bold text-[var(--text)]">{totalChunks}</p><p className="text-[10px] text-[var(--text-muted)]">Chunks</p></div>
-                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">Live</p><p className="text-[10px] text-[var(--text-muted)]">Retrieval</p></div>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiCard label="Knowledge sources" value={documents.length} sub="Documents available to agents" icon={FileText} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
+            <KpiCard label="Indexed chunks" value={totalChunks} sub="Searchable knowledge pieces" icon={Database} iconBg="var(--bg-subtle)" iconColor="#7c3aed" iconPosition="left" />
+            <KpiCard label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
           </div>
 
           <div className="grid grid-cols-12 gap-4 xl:gap-5">
