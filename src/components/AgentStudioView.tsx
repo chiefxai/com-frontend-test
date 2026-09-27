@@ -145,7 +145,7 @@ function AgentFormFrame({ children, creating, agentWizardStep, form, onBack }: A
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-500 bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-[9px] border border-slate-500 bg-slate-700 text-white hover:bg-slate-600 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to Agent Studio
@@ -448,7 +448,7 @@ export default function AgentStudioView() {
           <button
             type="button"
             onClick={closeForm}
-            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-500 bg-slate-700 text-white hover:bg-slate-600 transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-[9px] border border-slate-500 bg-slate-700 text-white hover:bg-slate-600 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Agent Studio
@@ -456,7 +456,7 @@ export default function AgentStudioView() {
         ) : (
           <div className="flex items-center gap-2">
             {isDevEnv && (
-              <div className="flex items-center bg-slate-100  border border-[var(--border)] rounded-xl p-1">
+              <div className="flex items-center bg-[var(--bg-subtle)]  border border-[var(--border)] rounded-[9px] p-1">
                 <button
                   type="button"
                   onClick={() => setAgentView('user')}
@@ -486,7 +486,7 @@ export default function AgentStudioView() {
             </div>
           ) : agents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-16 w-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4">
+              <div className="h-16 w-16 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-4">
                 <Bot className="h-8 w-8 text-indigo-400" />
               </div>
               <p className="text-sm font-semibold text-[var(--text-primary)]">No agents yet</p>
@@ -495,7 +495,7 @@ export default function AgentStudioView() {
               </p>
               <button
                 onClick={openCreate}
-                className="mt-5 px-5 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+                className="mt-5 px-5 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-[9px] hover:bg-indigo-700 transition-colors"
               >
                 Create your first agent
               </button>
@@ -505,7 +505,7 @@ export default function AgentStudioView() {
               {agents.map(agent => (
                 <div
                   key={agent.id}
-                  className="relative flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] hover:border-indigo-300 hover:shadow-md transition-all group overflow-hidden"
+                  className="relative flex flex-col rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] hover:border-indigo-300 hover:shadow-md transition-all group overflow-hidden"
                 >
                   {/* Top accent bar */}
                   <div className="h-1 w-full bg-gradient-to-r from-indigo-500 to-purple-500" />
@@ -514,14 +514,14 @@ export default function AgentStudioView() {
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="h-11 w-11 rounded-[9px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
                           <Bot className="h-5 w-5 text-white" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="text-sm font-bold text-slate-800 truncate leading-tight">{agent.name}</p>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                              (agent.active ?? true) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                              (agent.active ?? true) ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--bg-subtle)] text-slate-400'
                             }`}>
                               {(agent.active ?? true) ? 'ACTIVE' : 'PAUSED'}
                             </span>
@@ -558,7 +558,7 @@ export default function AgentStudioView() {
                         { label: 'Speed', value: agent.speed, color: 'bg-blue-500' },
                         { label: 'Friendly', value: agent.friendliness, color: 'bg-violet-500' },
                       ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-slate-50 rounded-xl p-2.5 text-center">
+                        <div key={label} className="bg-[var(--bg-base)] rounded-[9px] p-2.5 text-center">
                           <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{label}</p>
                           <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
@@ -582,7 +582,7 @@ export default function AgentStudioView() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border border-dashed border-slate-300 rounded-lg min-w-0">
+                          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-[var(--bg-base)] border border-dashed border-slate-300 rounded-lg min-w-0">
                             <Zap className="h-3 w-3 text-slate-400 shrink-0" />
                             <p className="text-[10px] text-slate-400 truncate">Outbound · org default</p>
                           </div>
@@ -597,7 +597,7 @@ export default function AgentStudioView() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 border border-dashed border-slate-300 rounded-lg min-w-0">
+                          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-[var(--bg-base)] border border-dashed border-slate-300 rounded-lg min-w-0">
                             <PhoneOff className="h-3 w-3 text-slate-400 shrink-0" />
                             <p className="text-[10px] text-slate-400 truncate">Inbound · no number</p>
                           </div>
@@ -626,12 +626,12 @@ export default function AgentStudioView() {
                   key={sa.id}
                   type="button"
                   onClick={() => { setViewingSystemAgent(sa); setEditedSystemPrompt(sa.systemPrompt); }}
-                  className="relative flex flex-col text-left rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/80 hover:border-slate-300 hover:bg-slate-100 dark:hover:bg-[var(--bg-subtle)] transition-all overflow-hidden cursor-pointer"
+                  className="relative flex flex-col text-left rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)]/80 hover:border-slate-300 hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)] transition-all overflow-hidden cursor-pointer"
                 >
                   <div className="h-1 w-full bg-gradient-to-r from-slate-400 to-slate-500" />
                   <div className="p-5 flex flex-col gap-3 flex-1">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-11 w-11 rounded-xl bg-slate-600 flex items-center justify-center shrink-0 shadow-sm">
+                      <div className="h-11 w-11 rounded-[9px] bg-slate-600 flex items-center justify-center shrink-0 shadow-sm">
                         <Cpu className="h-5 w-5 text-white" />
                       </div>
                       <div className="min-w-0">
@@ -647,11 +647,11 @@ export default function AgentStudioView() {
                     </div>
                     <p className="text-[11px] text-slate-500 leading-snug">{sa.description}</p>
                     <div className="mt-auto flex items-center gap-1.5 flex-wrap">
-                      <div className="flex items-center gap-1 px-2 py-1 bg-slate-100  border border-[var(--border)] rounded-lg">
+                      <div className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-subtle)]  border border-[var(--border)] rounded-lg">
                         <PhoneOff className="h-3 w-3 text-slate-400" />
                         <span className="text-[9px] text-slate-500 font-semibold">No phone number</span>
                       </div>
-                      <div className="flex items-center gap-1 px-2 py-1 bg-slate-100  border border-[var(--border)] rounded-lg">
+                      <div className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-subtle)]  border border-[var(--border)] rounded-lg">
                         <Wrench className="h-3 w-3 text-slate-400" />
                         <span className="text-[9px] text-slate-500 font-semibold">{sa.tools.length > 0 ? `${sa.tools.length} tool${sa.tools.length === 1 ? '' : 's'}` : 'No tools'}</span>
                       </div>
@@ -668,12 +668,12 @@ export default function AgentStudioView() {
       {viewingSystemAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setViewingSystemAgent(null)}>
           <div
-            className="w-full max-w-xl max-h-[85vh] flex flex-col bg-[var(--bg-surface)] rounded-2xl shadow-xl overflow-hidden"
+            className="w-full max-w-xl max-h-[85vh] flex flex-col bg-[var(--bg-surface)] rounded-[14px] shadow-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100">
+            <div className="flex items-start justify-between gap-3 p-5 border-b border-[var(--border)]">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-10 w-10 rounded-xl bg-slate-600 flex items-center justify-center shrink-0">
+                <div className="h-10 w-10 rounded-[9px] bg-slate-600 flex items-center justify-center shrink-0">
                   <Cpu className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
@@ -687,7 +687,7 @@ export default function AgentStudioView() {
                   <p className="text-[11px] text-slate-400 mt-0.5">{viewingSystemAgent.model} · no phone number, no voice — text-only</p>
                 </div>
               </div>
-              <button onClick={() => setViewingSystemAgent(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-[var(--text-primary)] shrink-0 cursor-pointer">
+              <button onClick={() => setViewingSystemAgent(null)} className="p-1.5 rounded-lg hover:bg-[var(--bg-subtle)] text-slate-400 hover:text-[var(--text-primary)] shrink-0 cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -702,7 +702,7 @@ export default function AgentStudioView() {
                 {viewingSystemAgent.tools.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {viewingSystemAgent.tools.map(t => (
-                      <span key={t} className="text-[10px] font-mono px-2 py-1 bg-slate-100  border border-[var(--border)] rounded-lg text-[var(--text-primary)]">{t}</span>
+                      <span key={t} className="text-[10px] font-mono px-2 py-1 bg-[var(--bg-subtle)]  border border-[var(--border)] rounded-lg text-[var(--text-primary)]">{t}</span>
                     ))}
                   </div>
                 ) : (
@@ -727,21 +727,21 @@ export default function AgentStudioView() {
                   value={editedSystemPrompt}
                   onChange={(e) => setEditedSystemPrompt(e.target.value)}
                   rows={10}
-                  className="w-full bg-slate-50  border border-[var(--border)] rounded-xl px-4 py-3 text-[11px] font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
+                  className="w-full bg-[var(--bg-base)]  border border-[var(--border)] rounded-[9px] px-4 py-3 text-[11px] font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
                 />
                 <p className="text-[10px] text-slate-400 mt-1.5">
-                  Must keep <code className="font-mono bg-slate-100 px-1 rounded">{'{transcript}'}</code>
+                  Must keep <code className="font-mono bg-[var(--bg-subtle)] px-1 rounded">{'{transcript}'}</code>
                   {viewingSystemAgent.id === 'workflow-answer-extractor' && (
-                    <> and <code className="font-mono bg-slate-100 px-1 rounded">{'{questions}'}</code></>
+                    <> and <code className="font-mono bg-[var(--bg-subtle)] px-1 rounded">{'{questions}'}</code></>
                   )} — that's where the real call data gets substituted in.
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-[var(--border)]">
               <button
                 type="button"
                 onClick={() => setViewingSystemAgent(null)}
-                className="text-sm text-slate-500 hover:text-[var(--text-primary)] font-medium px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                className="text-sm text-slate-500 hover:text-[var(--text-primary)] font-medium px-4 py-2.5 rounded-[9px] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -749,7 +749,7 @@ export default function AgentStudioView() {
                 type="button"
                 onClick={handleSaveSystemPrompt}
                 disabled={savingSystemPrompt || editedSystemPrompt.trim() === viewingSystemAgent.systemPrompt.trim()}
-                className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl shadow-sm transition-all disabled:opacity-60 bg-slate-700 text-white hover:bg-[var(--bg-surface)] cursor-pointer"
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-[9px] shadow-sm transition-all disabled:opacity-60 bg-slate-700 text-white hover:bg-[var(--bg-surface)] cursor-pointer"
               >
                 {savingSystemPrompt && <Loader2 className="h-4 w-4 animate-spin" />}
                 {savingSystemPrompt ? 'Saving…' : 'Save Changes'}
@@ -764,7 +764,7 @@ export default function AgentStudioView() {
       <AgentFormFrame creating={creating} agentWizardStep={1} form={form} onBack={closeForm}>
         <div className="mx-auto w-full max-w-5xl space-y-5 pb-2">
           {false && (
-            <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/80  px-4 py-3">
+            <div className="flex items-center gap-3 rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)]/80  px-4 py-3">
               <div className={`flex items-center gap-2 ${agentWizardStep === 1 ? 'text-indigo-600' : 'text-slate-400'}`}>
                 <span className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${agentWizardStep === 1 ? 'bg-indigo-600 text-white' : 'bg-[var(--bg-surface)] border border-[var(--border)]'}`}>1</span>
                 <span className="text-xs font-semibold">Configure</span>
@@ -780,21 +780,21 @@ export default function AgentStudioView() {
           {true && (
             <>
           {/* Agent Name */}
-          <div className="rounded-2xl border border-[var(--border)] bg-slate-50/80 dark:bg-[var(--bg-surface)] p-4">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-base)]/80 dark:bg-[var(--bg-surface)] p-4">
             <label className="block text-xs font-semibold text-[var(--text-primary)]  mb-1.5">Agent Name</label>
             <input
               autoFocus
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="e.g. Sales Agent, Support Bot, Loan Advisor"
-              className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
             />
           </div>
 
           
 
           {/* Voice */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4">
             <div className="flex items-center gap-2 mb-3">
               <Mic className="h-4 w-4 text-violet-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Voice</p>
@@ -805,10 +805,10 @@ export default function AgentStudioView() {
                   key={v}
                   type="button"
                   onClick={() => setForm(f => ({ ...f, activeVoice: v }))}
-                  className={`py-2.5 text-sm font-semibold rounded-xl border-2 transition-all cursor-pointer ${
+                  className={`py-2.5 text-sm font-semibold rounded-[9px] border-2 transition-all cursor-pointer ${
                     form.activeVoice === v
                       ? 'bg-slate-700 text-white border-slate-700 shadow-sm'
-                      : 'bg-[var(--bg-surface)] text-[var(--text-primary)]  border-[var(--border)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-slate-100 dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
+                      : 'bg-[var(--bg-surface)] text-[var(--text-primary)]  border-[var(--border)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
                   }`}
                 >
                   {v}
@@ -822,7 +822,7 @@ export default function AgentStudioView() {
           {/* Voice-agent prompt configuration: industry, language, dialect,
               call type, business context — assembled into the two master
               prompts (INBOUND/OUTBOUND) via /api/agents/generate-prompt. */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4">
             <div className="flex items-center gap-2 mb-3">
               <Bot className="h-4 w-4 text-indigo-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Agent Configuration</p>
@@ -833,7 +833,7 @@ export default function AgentStudioView() {
                 {/* Not user-editable here — every agent in this org shares the
                     org's own industry (set at signup / in Company Profile),
                     same as the industry used elsewhere in the app. */}
-                <div className="w-full bg-slate-100 dark:bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text-muted)]">
+                <div className="w-full bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-3 py-2 text-sm text-[var(--text-muted)]">
                   {industries.find(i => i.key === orgIndustry)?.label || orgIndustry || 'Not set — see Company Profile'}
                 </div>
               </div>
@@ -854,7 +854,7 @@ export default function AgentStudioView() {
                       outboundNumber: nextCallType === 'INBOUND' ? null : f.outboundNumber,
                     }));
                   }}
-                  className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                  className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
                 >
                   {CALL_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -868,7 +868,7 @@ export default function AgentStudioView() {
                     const validDialects = (dialectsByLanguage[nextLanguage] || []).map(d => d.dialect);
                     setForm(f => ({ ...f, language: nextLanguage, dialect: validDialects[0] || '' }));
                   }}
-                  className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                  className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
                 >
                   {Object.keys(dialectsByLanguage).length === 0
                     ? <option value={form.language}>{form.language}</option>
@@ -880,7 +880,7 @@ export default function AgentStudioView() {
                 <select
                   value={form.dialect ?? ''}
                   onChange={e => setForm(f => ({ ...f, dialect: e.target.value }))}
-                  className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+                  className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
                 >
                   <option value="">Standard / none</option>
                   {(dialectsByLanguage[form.language] || []).map(d => (
@@ -896,7 +896,7 @@ export default function AgentStudioView() {
                 onChange={e => setForm(f => ({ ...f, businessContext: e.target.value }))}
                 rows={4}
                 placeholder="Services, products, business hours, policies, eligibility rules, escalation process, callback rules, compliance rules — only what's written here is available to the agent on a call."
-                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-4 py-3 text-xs text-[var(--text-primary)]  placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
+                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-4 py-3 text-xs text-[var(--text-primary)]  placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
               />
             </div>
             <button
@@ -916,7 +916,7 @@ export default function AgentStudioView() {
           
 
           {/* Delivery sliders */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-4 w-4 text-blue-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Delivery</p>
@@ -931,7 +931,7 @@ export default function AgentStudioView() {
           
 
           {/* System Prompt */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-amber-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">System Prompt</p>
@@ -940,7 +940,7 @@ export default function AgentStudioView() {
               value={form.systemPrompt}
               onChange={e => setForm(f => ({ ...f, systemPrompt: e.target.value }))}
               rows={5}
-              className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)]  placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-4 py-3 text-xs font-mono text-[var(--text-primary)]  placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
               placeholder="Write the agent's system prompt here, or use Generate Prompt above…"
             />
             <p className="text-[10px] text-[var(--text-muted)] mt-1.5">
@@ -955,7 +955,7 @@ export default function AgentStudioView() {
           {/* Inbound Number — exclusive (one number → one agent). Hidden
               when Call Type is Outbound: the generated prompt assumes one
               direction per agent, so it shouldn't also answer inbound calls. */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <Phone className="h-4 w-4 text-emerald-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Inbound Number</p>
@@ -964,7 +964,7 @@ export default function AgentStudioView() {
               Incoming calls to this number are routed exclusively to this agent. A number can only have one inbound agent.
             </p>
             {numbers.length === 0 ? (
-              <div className="flex items-center gap-3 px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)]">
+              <div className="flex items-center gap-3 px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] text-xs text-[var(--text-secondary)]">
                 <PhoneOff className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
                 No virtual numbers yet. Add one in <span className="font-semibold">Settings → Virtual Numbers</span>.
               </div>
@@ -973,11 +973,11 @@ export default function AgentStudioView() {
                 <button
                   type="button"
                   onClick={() => setForm(f => ({ ...f, assignedNumber: null }))}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                    !form.assignedNumber ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-slate-100 dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                    !form.assignedNumber ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
                   }`}
                 >
-                  <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[var(--bg-surface)] flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)] flex items-center justify-center shrink-0">
                     <PhoneOff className="h-4 w-4 text-[var(--text-muted)]" />
                   </div>
                   <div>
@@ -985,7 +985,7 @@ export default function AgentStudioView() {
                     <p className="text-[10px] text-[var(--text-muted)]">No inbound line for this agent</p>
                   </div>
                   {!form.assignedNumber && (
-                    <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center">
+                    <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center">
                       <Check className="h-2.5 w-2.5 text-white" />
                     </div>
                   )}
@@ -995,11 +995,11 @@ export default function AgentStudioView() {
                     key={n.id}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, assignedNumber: n }))}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                      form.assignedNumber?.id === n.id ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 '
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                      form.assignedNumber?.id === n.id ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-[var(--bg-subtle)] '
                     }`}
                   >
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.assignedNumber?.id === n.id ? 'bg-[var(--bg-surface)]' : 'bg-slate-100 dark:bg-[var(--bg-surface)]'}`}>
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.assignedNumber?.id === n.id ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)]'}`}>
                       <Phone className={`h-4 w-4 ${form.assignedNumber?.id === n.id ? 'text-emerald-600 dark:text-emerald-300' : 'text-[var(--text-muted)]'}`} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -1009,7 +1009,7 @@ export default function AgentStudioView() {
                       </p>
                     </div>
                     {form.assignedNumber?.id === n.id && (
-                      <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center shrink-0">
+                      <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center shrink-0">
                         <Check className="h-2.5 w-2.5 text-white" />
                       </div>
                     )}
@@ -1030,7 +1030,7 @@ export default function AgentStudioView() {
 
           {/* Outbound Number — shared (many agents can use the same number).
               Hidden when Call Type is Inbound, for the same reason as above. */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="h-4 w-4 text-violet-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Outbound Number</p>
@@ -1039,7 +1039,7 @@ export default function AgentStudioView() {
               Caller ID used when this agent makes outbound calls. Multiple agents can share the same number.
             </p>
             {numbers.length === 0 ? (
-              <div className="flex items-center gap-3 px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-secondary)]">
+              <div className="flex items-center gap-3 px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] text-xs text-[var(--text-secondary)]">
                 <PhoneOff className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
                 No virtual numbers yet. Add one in <span className="font-semibold">Settings → Virtual Numbers</span>.
               </div>
@@ -1048,11 +1048,11 @@ export default function AgentStudioView() {
                 <button
                   type="button"
                   onClick={() => setForm(f => ({ ...f, outboundNumber: null }))}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                    !form.outboundNumber ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-slate-100 dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                    !form.outboundNumber ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
                   }`}
                 >
-                  <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[var(--bg-surface)] flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)] flex items-center justify-center shrink-0">
                     <PhoneOff className="h-4 w-4 text-[var(--text-muted)]" />
                   </div>
                   <div>
@@ -1060,7 +1060,7 @@ export default function AgentStudioView() {
                     <p className="text-[10px] text-[var(--text-muted)]">Falls back to the org's channel number</p>
                   </div>
                   {!form.outboundNumber && (
-                    <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center">
+                    <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center">
                       <Check className="h-2.5 w-2.5 text-white" />
                     </div>
                   )}
@@ -1070,11 +1070,11 @@ export default function AgentStudioView() {
                     key={n.id}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, outboundNumber: n }))}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                      form.outboundNumber?.id === n.id ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 '
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                      form.outboundNumber?.id === n.id ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-[var(--bg-subtle)] '
                     }`}
                   >
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.outboundNumber?.id === n.id ? 'bg-[var(--bg-surface)]' : 'bg-slate-100 dark:bg-[var(--bg-surface)]'}`}>
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.outboundNumber?.id === n.id ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)]'}`}>
                       <Phone className={`h-4 w-4 ${form.outboundNumber?.id === n.id ? 'text-slate-600 dark:text-slate-300' : 'text-[var(--text-muted)]'}`} />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -1084,7 +1084,7 @@ export default function AgentStudioView() {
                       </p>
                     </div>
                     {form.outboundNumber?.id === n.id && (
-                      <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center shrink-0">
+                      <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center shrink-0">
                         <Check className="h-2.5 w-2.5 text-white" />
                       </div>
                     )}
@@ -1099,7 +1099,7 @@ export default function AgentStudioView() {
           
 
           {/* Knowledge Base — connect to the whole org KB, specific documents, or none */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <BookOpen className="h-4 w-4 text-emerald-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Knowledge Base</p>
@@ -1111,11 +1111,11 @@ export default function AgentStudioView() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, knowledgeBaseMode: 'all' }))}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                  form.knowledgeBaseMode === 'all' ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 '
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                  form.knowledgeBaseMode === 'all' ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-[var(--bg-subtle)] '
                 }`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.knowledgeBaseMode === 'all' ? 'bg-[var(--bg-surface)]' : 'bg-slate-100 dark:bg-[var(--bg-surface)]'}`}>
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.knowledgeBaseMode === 'all' ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)]'}`}>
                   <BookOpen className={`h-4 w-4 ${form.knowledgeBaseMode === 'all' ? 'text-emerald-600 dark:text-emerald-300' : 'text-[var(--text-muted)]'}`} />
                 </div>
                 <div>
@@ -1123,7 +1123,7 @@ export default function AgentStudioView() {
                   <p className="text-[10px] text-[var(--text-muted)]">Every document in the org's knowledge base</p>
                 </div>
                 {form.knowledgeBaseMode === 'all' && (
-                  <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center shrink-0">
+                  <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center shrink-0">
                     <Check className="h-2.5 w-2.5 text-white" />
                   </div>
                 )}
@@ -1132,11 +1132,11 @@ export default function AgentStudioView() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, knowledgeBaseMode: 'specific' }))}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                  form.knowledgeBaseMode === 'specific' ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-100 '
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                  form.knowledgeBaseMode === 'specific' ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400 dark:hover:border-slate-500 hover:bg-[var(--bg-subtle)] '
                 }`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.knowledgeBaseMode === 'specific' ? 'bg-[var(--bg-surface)]' : 'bg-slate-100 dark:bg-[var(--bg-surface)]'}`}>
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${form.knowledgeBaseMode === 'specific' ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)]'}`}>
                   <FileText className={`h-4 w-4 ${form.knowledgeBaseMode === 'specific' ? 'text-emerald-600 dark:text-emerald-300' : 'text-[var(--text-muted)]'}`} />
                 </div>
                 <div>
@@ -1148,14 +1148,14 @@ export default function AgentStudioView() {
                   </p>
                 </div>
                 {form.knowledgeBaseMode === 'specific' && (
-                  <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center shrink-0">
+                  <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center shrink-0">
                     <Check className="h-2.5 w-2.5 text-white" />
                   </div>
                 )}
               </button>
 
               {form.knowledgeBaseMode === 'specific' && (
-                <div className="ml-4 pl-4 border-l-2 border-slate-200 space-y-1.5">
+                <div className="ml-4 pl-4 border-l-2 border-[var(--border)] space-y-1.5">
                   {knowledgeDocs.length === 0 ? (
                     <p className="text-[11px] text-[var(--text-muted)] italic py-2">
                       No documents uploaded yet. Add some in <span className="font-semibold">Knowledge Base</span>.
@@ -1177,10 +1177,10 @@ export default function AgentStudioView() {
                             };
                           })}
                           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left transition-all cursor-pointer ${
-                            selected ? 'border-slate-400 dark:border-slate-500 bg-slate-100' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400'
+                            selected ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-subtle)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-400'
                           }`}
                         >
-                          <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-slate-500 border-slate-500' : 'border-[var(--border)]'}`}>
+                          <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-[var(--bg-base)]0 border-slate-500' : 'border-[var(--border)]'}`}>
                             {selected && <Check className="h-2.5 w-2.5 text-white" />}
                           </div>
                           <span className="text-xs font-medium text-[var(--text-primary)]  truncate flex-1">{doc.title}</span>
@@ -1195,11 +1195,11 @@ export default function AgentStudioView() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, knowledgeBaseMode: 'none' }))}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                  form.knowledgeBaseMode === 'none' ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-slate-100 dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[9px] border-2 text-left transition-all cursor-pointer ${
+                  form.knowledgeBaseMode === 'none' ? 'border-slate-400 dark:border-slate-500 bg-[var(--bg-surface)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 dark:hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--bg-subtle)]'
                 }`}
               >
-                <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[var(--bg-surface)] flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)] flex items-center justify-center shrink-0">
                   <BookOpen className="h-4 w-4 text-[var(--text-muted)]" />
                 </div>
                 <div>
@@ -1207,7 +1207,7 @@ export default function AgentStudioView() {
                   <p className="text-[10px] text-[var(--text-muted)]">This agent won't reference the knowledge base at all</p>
                 </div>
                 {form.knowledgeBaseMode === 'none' && (
-                  <div className="ml-auto h-4 w-4 rounded-full bg-slate-500 flex items-center justify-center">
+                  <div className="ml-auto h-4 w-4 rounded-full bg-[var(--bg-base)]0 flex items-center justify-center">
                     <Check className="h-2.5 w-2.5 text-white" />
                   </div>
                 )}
@@ -1227,7 +1227,7 @@ export default function AgentStudioView() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[var(--border)] overflow-hidden">
+              <div className="rounded-[14px] border border-[var(--border)] overflow-hidden">
                 <div className="grid grid-cols-1 sm:grid-cols-2">
                   <div className="p-4 border-b sm:border-r border-[var(--border)]">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Agent</p>
@@ -1266,7 +1266,7 @@ export default function AgentStudioView() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4">
+              <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Business Context</p>
                 <p className="text-xs text-[var(--text-primary)]  whitespace-pre-wrap">
                   {form.businessContext?.trim() || 'No business context provided.'}
@@ -1281,8 +1281,8 @@ export default function AgentStudioView() {
               <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">You can update these settings later from Agent Studio.</p>
             </div>
             <div className="flex w-full gap-2 sm:w-auto">
-              <button type="button" onClick={closeForm} className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] sm:flex-none">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={!form.name.trim() || saveStatus === 'saving'} className={`h-10 flex-1 rounded-xl px-5 text-xs font-semibold text-white shadow-sm transition sm:flex-none disabled:cursor-not-allowed disabled:opacity-50 ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
+              <button type="button" onClick={closeForm} className="h-10 flex-1 rounded-[9px] border border-[var(--border)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] sm:flex-none">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={!form.name.trim() || saveStatus === 'saving'} className={`h-10 flex-1 rounded-[9px] px-5 text-xs font-semibold text-white shadow-sm transition sm:flex-none disabled:cursor-not-allowed disabled:opacity-50 ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
                 <span className="inline-flex items-center justify-center gap-1.5">
                   {saveStatus === 'saving' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   {saveStatus === 'saved' && <Check className="h-3.5 w-3.5" />}
