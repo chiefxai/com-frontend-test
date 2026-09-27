@@ -104,7 +104,7 @@ export default function DataTable<T>({
   // bare=true: no card chrome, no overflow wrapper (caller's scroll container handles it)
   const wrapper = bare
     ? className
-    : `bg-white dark:bg-[var(--bg-surface)] rounded-2xl border border-slate-200 dark:border-[var(--border)] shadow-sm overflow-hidden ${className}`;
+    : `bg-[var(--bg-surface)] rounded-[14px] border border-[var(--border)] shadow-[var(--shadow-card)] overflow-hidden ${className}`;
 
   // Column widths (px), keyed by column key — only populated once a column
   // has actually been resized or (for resizable tables) on first render, so
@@ -203,14 +203,14 @@ export default function DataTable<T>({
           style={resizable ? { tableLayout: 'fixed', width: minTableWidth, minWidth: '100%' } : undefined}
         >
           <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface)' }}>
-            <tr className="border-b border-slate-100 dark:border-[var(--border)]">
+            <tr className="border-b border-[var(--border)]">
               {columns.map(col => {
                 const width = resizable ? columnCssWidth(col) : col.width;
                 return (
                   <th
                     key={col.key}
                     title={typeof col.header === 'string' ? col.header : undefined}
-                    className={`relative px-5 py-3 text-[10px] font-bold text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap ${resizable ? 'overflow-hidden text-ellipsis' : ''} ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
+                    className={`relative px-5 py-3 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap ${resizable ? 'overflow-hidden text-ellipsis' : ''} ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
                     style={width ? { width } : undefined}
                   >
                     {col.header}
@@ -231,7 +231,7 @@ export default function DataTable<T>({
           <tbody>
             {visibleRows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-5 py-12 text-center text-sm text-slate-400 dark:text-[var(--text-muted)]">
+                <td colSpan={columns.length} className="px-5 py-12 text-center text-sm text-[var(--text-muted)]">
                   {emptyMessage}
                 </td>
               </tr>
@@ -242,19 +242,19 @@ export default function DataTable<T>({
                   <React.Fragment key={rowKey(row)}>
                     <tr
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
-                      className={`border-b border-slate-50 dark:border-[var(--border-subtle)] last:border-0 transition-colors duration-100 ${onRowClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-[var(--bg-subtle)]' : ''} ${expanded ? 'border-b-0' : ''} ${rowClassName ? rowClassName(row, i) : ''}`}
+                      className={`border-b border-[var(--border-subtle)] last:border-0 transition-colors duration-100 ${onRowClick ? 'cursor-pointer hover:bg-[var(--bg-subtle)]' : ''} ${expanded ? 'border-b-0' : ''} ${rowClassName ? rowClassName(row, i) : ''}`}
                     >
                       {columns.map(col => (
                         <td
                           key={col.key}
-                          className={`px-5 py-3 text-slate-700 dark:text-[var(--text-secondary)] ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''} ${resizable ? 'overflow-hidden truncate' : ''}`}
+                          className={`px-5 py-3 text-[var(--text-secondary)] ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : ''} ${resizable ? 'overflow-hidden truncate' : ''}`}
                         >
                           {col.cell(row, i)}
                         </td>
                       ))}
                     </tr>
                     {expanded && renderExpandedRow && (
-                      <tr className="border-b border-slate-50 dark:border-[var(--border-subtle)] last:border-0">
+                      <tr className="border-b border-[var(--border-subtle)] last:border-0">
                         <td colSpan={columns.length} className="px-0 py-0">
                           {renderExpandedRow(row, i)}
                         </td>
@@ -270,13 +270,13 @@ export default function DataTable<T>({
       )}
 
       {isPaginated && !loading && totalRowCount > 0 && (
-        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-slate-100 dark:border-[var(--border)] bg-white dark:bg-[var(--bg-surface)]">
+        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-[var(--border)] bg-[var(--bg-surface)]">
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[var(--text-muted)]">
             <span>Rows per page</span>
             <select
               value={pageSize}
               onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              className="rounded-lg px-2 py-1 text-xs bg-white dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] text-slate-700 dark:text-[var(--text-primary)] focus:outline-none"
+              className="rounded-[9px] px-2 py-1 text-xs bg-white dark:bg-[var(--bg-subtle)] border border-[var(--border)] text-slate-700 dark:text-[var(--text-primary)] focus:outline-none"
             >
               {pageSizeOptions.map((n) => (
                 <option key={n} value={n}>{n}</option>
@@ -291,7 +291,7 @@ export default function DataTable<T>({
                 type="button"
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page <= 1}
-                className="p-1.5 rounded-lg border border-slate-200 dark:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-[var(--bg-subtle)] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-subtle)] cursor-pointer"
                 title="Previous page"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -301,7 +301,7 @@ export default function DataTable<T>({
                 type="button"
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
-                className="p-1.5 rounded-lg border border-slate-200 dark:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-[var(--bg-subtle)] cursor-pointer"
+                className="p-1.5 rounded-lg border border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-subtle)] cursor-pointer"
                 title="Next page"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
