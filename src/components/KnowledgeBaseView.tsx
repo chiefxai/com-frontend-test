@@ -107,8 +107,8 @@ export default function KnowledgeBaseView() {
               <Widget
                 colSpan={12}
                 className={`col-span-12 min-h-0 h-full transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'}`}
-                title={isSourcesCollapsed ? undefined : "Knowledge sources"}
-                subtitle={isSourcesCollapsed ? undefined : "Documents available to your AI agents."}
+                title="Knowledge sources"
+                subtitle="Documents available to your AI agents."
                 icon={BookOpen}
                 accent="#2563eb"
                 padding="md"
@@ -126,16 +126,8 @@ export default function KnowledgeBaseView() {
                 }
               >
                 {isSourcesCollapsed ? (
-                  <div className="flex h-full min-h-0 flex-col items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setIsSourcesCollapsed(false)}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-400"
-                      aria-label="Expand knowledge sources"
-                      title="Expand knowledge sources"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+                  <div className="flex h-full min-h-0 items-center justify-center">
+                    <span className="sr-only">Knowledge sources collapsed</span>
                   </div>
                 ) : (
                   <>
