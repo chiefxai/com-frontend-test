@@ -1885,7 +1885,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
           <VoiceSimulatorWorkspace>
         {/* Unified simulator workspace: campaign navigator + active campaign */}
-        <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
+        <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'block lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
           {isSimulatorNavigatorCollapsed ? (
             <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
               <button
@@ -1965,7 +1965,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                     <button
                       type="button"
                       onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
-                      className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                      className="hidden lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
                       aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
                     >
                       <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
