@@ -762,7 +762,7 @@ export default function AgentStudioView() {
       {/* ── Agent create page / edit modal ── */}
       {(creating || !!editingAgent) && (
       <AgentFormFrame creating={creating} agentWizardStep={1} form={form} onBack={closeForm}>
-        <div className="mx-auto w-full max-w-5xl space-y-5">
+        <div className="mx-auto w-full max-w-5xl space-y-5 pb-2">
           {false && (
             <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/80  px-4 py-3">
               <div className={`flex items-center gap-2 ${agentWizardStep === 1 ? 'text-indigo-600' : 'text-slate-400'}`}>
@@ -799,7 +799,7 @@ export default function AgentStudioView() {
               <Mic className="h-4 w-4 text-violet-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Voice</p>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {VOICES.map(v => (
                 <button
                   key={v}
@@ -827,7 +827,7 @@ export default function AgentStudioView() {
               <Bot className="h-4 w-4 text-indigo-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Agent Configuration</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-[10px] font-semibold text-[var(--text-muted)] mb-1.5">Industry</label>
                 {/* Not user-editable here — every agent in this org shares the
@@ -921,7 +921,7 @@ export default function AgentStudioView() {
               <Zap className="h-4 w-4 text-blue-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Delivery</p>
             </div>
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
               <Slider label="Emotion" value={form.emotion} onChange={v => setForm(f => ({ ...f, emotion: v }))} />
               <Slider label="Speed" value={form.speed} onChange={v => setForm(f => ({ ...f, speed: v }))} />
               <Slider label="Friendliness" value={form.friendliness} onChange={v => setForm(f => ({ ...f, friendliness: v }))} />
