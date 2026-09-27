@@ -113,7 +113,7 @@ export default function KnowledgeBaseView() {
               ) : (
                 <Widget colSpan={4} className="col-span-12 lg:col-span-4 min-w-0 min-h-0 h-full" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md"
                   action={
-                    <button type="button" onClick={() => setIsSourcesCollapsed(true)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]"} aria-label="Collapse knowledge sources" title="Collapse knowledge sources">
+                    <button type="button" onClick={() => setIsSourcesCollapsed(true)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label="Collapse knowledge sources" title="Collapse knowledge sources">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                   }
