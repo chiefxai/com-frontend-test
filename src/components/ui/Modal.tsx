@@ -47,7 +47,7 @@ export default function Modal({
     >
       <div
         ref={panelRef}
-        className={`relative w-full ${maxWidth} max-h-[90vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden ${className}`}
+        className={`relative w-full ${maxWidth} max-h-[90vh] flex flex-col rounded-[18px] shadow-2xl overflow-hidden ${className}`}
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
         onClick={(e) => e.stopPropagation()}
       >
