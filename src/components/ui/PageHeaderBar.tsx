@@ -28,9 +28,9 @@ export default function PageHeaderBar() {
 
   return (
     <>
-      <div className="shrink-0 h-16 px-8 flex items-center justify-between gap-4 border-b border-slate-100 dark:border-[var(--border)] bg-white dark:bg-[var(--bg-surface)]">
+      <div className="shrink-0 h-16 px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
         <div className="min-w-0 flex items-center gap-1.5 shrink-0">
-          <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-[var(--text-primary)] leading-snug truncate">
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] leading-snug truncate">
             {header.title}
           </h1>
           {header.titleSuffix}
@@ -62,7 +62,7 @@ export default function PageHeaderBar() {
       </div>
 
       {header.toolbar && (
-        <div className="shrink-0 px-8 py-2.5 border-b border-slate-100 dark:border-[var(--border)] bg-slate-50/60 dark:bg-[var(--bg-subtle)] flex items-center gap-3 flex-wrap">
+        <div className="shrink-0 px-8 py-2.5 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center gap-3 flex-wrap">
           {header.toolbar}
         </div>
       )}
