@@ -256,7 +256,7 @@ export default function WorkflowBuilderView({
                   setActiveWorkflow(w);
                   setSelectedNode(w.nodes[0]);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${activeWorkflow.id === w.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${activeWorkflow.id === w.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-[var(--bg-surface)] text-slate-600 border-[var(--border)] hover:bg-[var(--bg-base)]'}`}
               >
                 {w.name}
               </button>
@@ -276,7 +276,7 @@ export default function WorkflowBuilderView({
           <select
             value={runLeadId}
             onChange={(e) => setRunLeadId(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs min-w-[180px]"
+            className="bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs min-w-[180px]"
           >
             <option value="">Select a lead…</option>
             {leads.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.status})</option>)}
@@ -291,7 +291,7 @@ export default function WorkflowBuilderView({
           <span className="text-[11px] text-slate-400">Action/branch steps execute for real. Call/question steps are logged as needing a human, never auto-dialed.</span>
         </div>
         {lastRun && (
-          <div className="mt-4 border-t border-slate-100 pt-4 space-y-2">
+          <div className="mt-4 border-t border-[var(--border)] pt-4 space-y-2">
             <div className="flex items-center gap-2">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 lastRun.status === 'completed' ? 'bg-emerald-100 text-emerald-700'
@@ -319,7 +319,7 @@ export default function WorkflowBuilderView({
             <p className="text-xs text-slate-400 mb-3">Instantly reload proven loan communication algorithms to your workspace.</p>
             <div className="space-y-3">
               {templates.map((temp, idx) => (
-                <div key={idx} className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+                <div key={idx} className="p-4 bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] space-y-2">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-bold text-slate-700">{temp.name}</h5>
                     <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">Preset</span>
@@ -341,13 +341,13 @@ export default function WorkflowBuilderView({
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleAddNewNode('call')}
-                className="flex items-center justify-center p-3 border border-slate-100 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+                className="flex items-center justify-center p-3 border border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-subtle)] rounded-[9px] text-xs font-semibold text-slate-700 cursor-pointer"
               >
                 <MessageSquare className="h-4 w-4 mr-2 text-indigo-500" /> Outbound Call
               </button>
               <button
                 onClick={() => handleAddNewNode('question')}
-                className="flex items-center justify-center p-3 border border-slate-100 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+                className="flex items-center justify-center p-3 border border-[var(--border)] bg-[var(--bg-base)] hover:bg-[var(--bg-subtle)] rounded-[9px] text-xs font-semibold text-slate-700 cursor-pointer"
               >
                 <HelpCircle className="h-4 w-4 mr-2 text-indigo-500" /> Add Question
               </button>
@@ -390,7 +390,7 @@ export default function WorkflowBuilderView({
                     <button
                       id={`workflow-node-${node.id}`}
                       onClick={() => handleSelectNode(node)}
-                      className={`w-full max-w-sm rounded-xl p-4 text-left border transition-all ${
+                      className={`w-full max-w-sm rounded-[9px] p-4 text-left border transition-all ${
                         isSelected
                           ? 'bg-slate-900 border-indigo-500 ring-2 ring-indigo-500/30'
                           : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
@@ -456,7 +456,7 @@ export default function WorkflowBuilderView({
                       type="text"
                       value={editingLabel}
                       onChange={(e) => setEditingLabel(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
 
@@ -467,7 +467,7 @@ export default function WorkflowBuilderView({
                         rows={6}
                         value={editingPrompt}
                         onChange={(e) => setEditingPrompt(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-500 font-mono"
+                        className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-500 font-mono"
                         placeholder="Write behavioral rules for the AI voice agent..."
                       />
                     </div>
@@ -480,13 +480,13 @@ export default function WorkflowBuilderView({
                         type="text"
                         value={editingQuestion}
                         onChange={(e) => setEditingQuestion(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
                       />
                       <div className="mt-4 space-y-2">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Conditional Branches</label>
                         <div className="space-y-1.5">
                           {selectedNode.config.branches?.map((branch: any, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between bg-slate-50 px-2 py-1.5 rounded border border-slate-100 text-[10px] text-slate-600">
+                            <div key={idx} className="flex items-center justify-between bg-[var(--bg-base)] px-2 py-1.5 rounded border border-[var(--border)] text-[10px] text-slate-600">
                               <span className="font-bold text-indigo-600">{branch.condition}</span>
                               <span>Target Node: {branch.targetId}</span>
                             </div>
@@ -497,14 +497,14 @@ export default function WorkflowBuilderView({
                   )}
 
                   {selectedNode.type === 'trigger' && (
-                    <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 space-y-1">
+                    <div className="p-4 bg-[var(--bg-base)] rounded-[9px] text-xs text-slate-500 space-y-1">
                       <p><strong>Trigger Settings:</strong></p>
                       <p>Launches automatically whenever a new inbound lead is registered into CRM portfolio database.</p>
                     </div>
                   )}
 
                   {selectedNode.type === 'action' && (
-                    <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 space-y-1">
+                    <div className="p-4 bg-[var(--bg-base)] rounded-[9px] text-xs text-slate-500 space-y-1">
                       <p><strong>Action Settings:</strong></p>
                       <p>Executes automated downstream workflows such as sending payment text links or pushing file details to physical human underwriters.</p>
                     </div>
