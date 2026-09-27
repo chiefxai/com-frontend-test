@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Plus, Trash2, Search, Loader2, Upload, FileText, Database, Sparkles, FileCheck2, X } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Search, Loader2, Upload, FileText, Database, Sparkles, FileCheck2, X, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
@@ -22,6 +22,7 @@ export default function KnowledgeBaseView() {
   const [searching, setSearching] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [documentSearch, setDocumentSearch] = useState('');
+  const [isKnowledgeSectionOpen, setIsKnowledgeSectionOpen] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocuments = (showSpinner = false) => {
@@ -100,7 +101,23 @@ export default function KnowledgeBaseView() {
             <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
           </div>
 
-          <div className="grid grid-cols-12 gap-4 xl:gap-5">
+          <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-semibold text-[var(--text)]">Knowledge Base</h3>
+                  <p className="mt-0.5 hidden text-xs text-[var(--text-muted)] sm:block">Manage sources and test agent retrieval.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsKnowledgeSectionOpen(open => !open)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label={isKnowledgeSectionOpen ? 'Collapse knowledge base' : 'Expand knowledge base'} title={isKnowledgeSectionOpen ? 'Collapse knowledge base' : 'Expand knowledge base'}>
+                <ChevronDown className={`h-4 w-4 transition-transform ${isKnowledgeSectionOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+            {isKnowledgeSectionOpen && (
+              <div className="grid grid-cols-12 gap-4 p-3 sm:p-4 xl:gap-5">
             {/* Knowledge sources */}
             <Widget colSpan={12} className="col-span-12 lg:col-span-7 min-h-0" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md">
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -166,7 +183,9 @@ export default function KnowledgeBaseView() {
                 )}
               </div>
             </Widget>
-          </div>
+              </div>
+            )}
+          </section>
         </div>
       )}
 
