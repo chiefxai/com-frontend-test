@@ -126,8 +126,16 @@ export default function KnowledgeBaseView() {
                 }
               >
                 {isSourcesCollapsed ? (
-                  <div className="flex h-full min-h-0 items-center justify-center">
-                    <span className="sr-only">Knowledge sources collapsed</span>
+                  <div className="relative flex h-full min-h-0 w-full items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsSourcesCollapsed(false)}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-400"
+                      aria-label="Expand knowledge sources"
+                      title="Expand knowledge sources"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
                 ) : (
                   <>
