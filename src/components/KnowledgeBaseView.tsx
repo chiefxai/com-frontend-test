@@ -104,41 +104,21 @@ export default function KnowledgeBaseView() {
           <section className="h-[calc(100vh-245px)] min-h-[460px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
             <div className={`grid h-full min-h-0 gap-4 p-3 sm:p-4 xl:gap-5 ${isSourcesCollapsed ? 'lg:grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-12'}`}>
               {/* Knowledge sources */}
-              <Widget
-                colSpan={12}
-                className={`col-span-12 min-h-0 h-full transition-all duration-200 ${isSourcesCollapsed ? 'lg:col-span-1' : 'lg:col-span-4'}`}
-                title="Knowledge sources"
-                subtitle="Documents available to your AI agents."
-                icon={BookOpen}
-                accent="#2563eb"
-                padding="md"
-                showHeader={!isSourcesCollapsed}
-                action={
-                  <button
-                    type="button"
-                    onClick={() => setIsSourcesCollapsed(open => !open)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]"
-                    aria-label={isSourcesCollapsed ? 'Expand knowledge sources' : 'Collapse knowledge sources'}
-                    title={isSourcesCollapsed ? 'Expand knowledge sources' : 'Collapse knowledge sources'}
-                  >
-                    {isSourcesCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {isSourcesCollapsed ? (
+                <div className="hidden lg:flex min-w-0 h-full items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]">
+                  <button type="button" onClick={() => setIsSourcesCollapsed(false)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-400" aria-label="Expand knowledge sources" title="Expand knowledge sources">
+                    <ChevronRight className="h-4 w-4" />
                   </button>
-                }
-              >
-                {isSourcesCollapsed ? (
-                  <div className="relative flex h-full min-h-0 w-full items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setIsSourcesCollapsed(false)}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-400"
-                      aria-label="Expand knowledge sources"
-                      title="Expand knowledge sources"
-                    >
-                      <ChevronRight className="h-4 w-4" />
+                </div>
+              ) : (
+                <Widget colSpan={4} className="col-span-12 lg:col-span-4 min-w-0 min-h-0 h-full" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md"
+                  action={
+                    <button type="button" onClick={() => setIsSourcesCollapsed(true)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]"} aria-label="Collapse knowledge sources" title="Collapse knowledge sources">
+                      <ChevronLeft className="h-4 w-4" />
                     </button>
-                  </div>
-                ) : (
-                  <>
+                  }
+                >
+                  <div className="flex h-full min-h-0 flex-col">
                     <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <div className="relative min-w-0 flex-1">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -146,8 +126,7 @@ export default function KnowledgeBaseView() {
                       </div>
                       <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{filteredDocuments.length} of {documents.length}</span>
                     </div>
-
-                    <div className="max-h-[min(55vh,560px)] space-y-2 overflow-auto pr-1">
+                    <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
                       {filteredDocuments.length === 0 ? (
                         <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] px-5 text-center">
                           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileCheck2 className="h-5 w-5" /></div>
@@ -160,15 +139,15 @@ export default function KnowledgeBaseView() {
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileText className="h-4 w-4" /></div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-[var(--text)]">{d.title}</p>
-                            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{d.chunkCount} indexed chunk{d.chunkCount === 1 ? '' : 's'}{d.createdAt ? ` · Added ${new Date(d.createdAt).toLocaleDateString()}` : ''}</p>
+                            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{d.chunkCount} indexed chunk{d.chunkCount === 1 ? '' : 's'}{d.createdAt ? \` · Added \${new Date(d.createdAt).toLocaleDateString()}\` : ''}</p>
                           </div>
-                          <button type="button" aria-label={`Delete ${d.title}`} onClick={() => handleDelete(d.id)} className="rounded-lg p-2 text-[var(--text-muted)] opacity-70 transition hover:bg-rose-50 hover:text-rose-500 hover:opacity-100 dark:hover:bg-rose-950/20"><Trash2 className="h-4 w-4" /></button>
+                          <button type="button" aria-label={\`Delete \${d.title}\`} onClick={() => handleDelete(d.id)} className="rounded-lg p-2 text-[var(--text-muted)] opacity-70 transition hover:bg-rose-50 hover:text-rose-500 hover:opacity-100 dark:hover:bg-rose-950/20"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       ))}
                     </div>
-                  </>
-                )}
-              </Widget>
+                  </div>
+                </Widget>
+              )}
 
               {/* Retrieval playground */}
               <Widget
