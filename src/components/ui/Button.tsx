@@ -21,10 +21,10 @@ const VARIANT: Record<Variant, string> = {
 };
 
 const SIZE: Record<Size, string> = {
-  xs: 'text-[11px] px-2.5 py-1 rounded-lg gap-1',
-  sm: 'text-xs px-3 py-1.5 rounded-xl gap-1.5',
-  md: 'text-sm px-4 py-2 rounded-xl gap-2',
-  lg: 'text-sm px-5 py-2.5 rounded-xl gap-2',
+  xs: 'text-[11px] px-2.5 py-1 rounded-[9px] gap-1',
+  sm: 'text-xs px-3 py-1.5 rounded-[9px] gap-1.5',
+  md: 'text-sm px-4 py-2 rounded-[9px] gap-2',
+  lg: 'text-sm px-5 py-2.5 rounded-[9px] gap-2',
 };
 
 const ICON_SIZE: Record<Size, string> = {
