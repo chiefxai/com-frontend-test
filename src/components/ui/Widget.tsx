@@ -107,7 +107,7 @@ export default function Widget({
 
   return (
     <div
-      className={`${spanClass} bg-white dark:bg-[var(--bg-surface)] rounded-2xl border border-slate-200 dark:border-[var(--border)] shadow-sm flex flex-col overflow-hidden ${hover ? 'hover:shadow-md transition-shadow duration-150' : ''} ${className}`}
+      className={`${spanClass} bg-white dark:bg-[var(--bg-surface)] rounded-[14px] border border-slate-200 dark:border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col overflow-hidden ${hover ? 'hover:shadow-md transition-shadow duration-150' : ''} ${className}`}
     >
       {/* ── Header ───────────────────────────────────────────────── */}
       {showHeader && (
