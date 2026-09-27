@@ -15,7 +15,7 @@ export function Card({ children, className = '', padding = 'md', hover = false, 
   if (panel) {
     return (
       <div
-        className={`theme-panel rounded-2xl border shadow-sm ${PADDING[padding]} ${className}`}
+        className={`theme-panel rounded-[14px] border shadow-[var(--shadow-card)] ${PADDING[padding]} ${className}`}
       >
         {children}
       </div>
@@ -23,7 +23,7 @@ export function Card({ children, className = '', padding = 'md', hover = false, 
   }
   return (
     <div
-      className={`bg-white dark:bg-[var(--bg-surface)] rounded-2xl border border-slate-200 dark:border-[var(--border)] shadow-sm ${hover ? 'hover:shadow-md transition-shadow duration-150' : ''} ${PADDING[padding]} ${className}`}
+      className={`bg-[var(--bg-surface)] rounded-[14px] border border-[var(--border)] shadow-[var(--shadow-card)] ${hover ? 'hover:shadow-md transition-shadow duration-150' : ''} ${PADDING[padding]} ${className}`}
     >
       {children}
     </div>
@@ -41,16 +41,16 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, subtitle, action, icon: Icon, accent = '#2563eb', border = true }: CardHeaderProps) {
   return (
-    <div className={`flex items-start justify-between gap-4 ${border ? 'pb-4 mb-4 border-b border-slate-100 dark:border-[var(--border)]' : ''}`}>
+    <div className={`flex items-start justify-between gap-4 ${border ? 'pb-4 mb-4 border-b border-[var(--border)]' : ''}`}>
       <div className="flex items-center gap-3 min-w-0">
         {Icon && (
-          <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${accent}18` }}>
+          <div className="h-9 w-9 rounded-[9px] flex items-center justify-center shrink-0" style={{ background: `${accent}18` }}>
             <Icon className="h-4.5 w-4.5" style={{ color: accent }} />
           </div>
         )}
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-[var(--text-primary)] truncate">{title}</h3>
-          {subtitle && <p className="text-xs text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">{title}</h3>
+          {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {action && <div className="shrink-0">{action}</div>}
