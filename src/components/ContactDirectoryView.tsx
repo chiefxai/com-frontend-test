@@ -556,7 +556,7 @@ export default function ContactDirectoryView({
               key: 'source',
               header: 'Source',
               cell: (lead) => (
-                <span className="px-2 py-0.5 text-[9px] bg-slate-100 border border-slate-200 rounded text-slate-500 font-medium">
+                <span className="px-2 py-0.5 text-[9px] bg-[var(--bg-subtle)] border border-[var(--border)] rounded text-slate-500 font-medium">
                   {lead.source}
                 </span>
               ),
@@ -595,14 +595,14 @@ export default function ContactDirectoryView({
                   <button
                     onClick={() => openEditModal(lead)}
                     title="Edit Contact"
-                    className="p-1.5 hover:bg-slate-100 hover:text-blue-600 rounded-lg text-slate-400 transition-all cursor-pointer"
+                    className="p-1.5 hover:bg-[var(--bg-subtle)] hover:text-blue-600 rounded-lg text-slate-400 transition-all cursor-pointer"
                   >
                     <Edit className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteContact(lead.id, lead.name)}
                     title="Delete Contact"
-                    className="p-1.5 hover:bg-slate-100 hover:text-rose-600 rounded-lg text-slate-400 transition-all cursor-pointer"
+                    className="p-1.5 hover:bg-[var(--bg-subtle)] hover:text-rose-600 rounded-lg text-slate-400 transition-all cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -640,13 +640,13 @@ export default function ContactDirectoryView({
                 .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
               if (contactCalls.length === 0) return null;
               return (
-                <div className="px-6 pt-4 pb-2 border-b border-slate-100 bg-slate-50/50">
+                <div className="px-6 pt-4 pb-2 border-b border-[var(--border)] bg-[var(--bg-base)]/50">
                   <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">
                     Call History ({contactCalls.length})
                   </div>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto">
                     {contactCalls.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between text-xs bg-white border border-slate-200 rounded-lg px-3 py-2">
+                      <div key={log.id} className="flex items-center justify-between text-xs bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2 text-slate-600">
                           <span className="text-[10px] font-mono text-slate-400 uppercase">{log.direction || '—'}</span>
                           <span>{new Date(log.createdAt).toLocaleString()}</span>
@@ -680,7 +680,7 @@ export default function ContactDirectoryView({
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
                     placeholder="e.g. Gavin Belson"
                   />
                 </div>
@@ -691,7 +691,7 @@ export default function ContactDirectoryView({
                     required
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
                     placeholder="+1 (555) 012-3456"
                   />
                 </div>
@@ -704,7 +704,7 @@ export default function ContactDirectoryView({
                   required
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
                   placeholder="gavin@hooli.com"
                 />
               </div>
@@ -714,7 +714,7 @@ export default function ContactDirectoryView({
                 <select
                   value={formGender}
                   onChange={(e) => setFormGender(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
                 >
                   <option value="">Prefer not to say</option>
                   <option value="Male">Male</option>
@@ -723,7 +723,7 @@ export default function ContactDirectoryView({
                 </select>
               </div>
 
-              <div className="border-t border-slate-100 pt-3">
+              <div className="border-t border-[var(--border)] pt-3">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
                   Group{formGroupIds.length > 0 ? ` (${formGroupIds.length} selected)` : ' — leave unchecked for no group'}
                 </label>
@@ -741,7 +741,7 @@ export default function ContactDirectoryView({
                           type="button"
                           onClick={() => toggleFormGroup(g.id)}
                           className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                            active ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
+                            active ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-[var(--bg-surface)] border-[var(--border)] text-slate-600 hover:border-indigo-300'
                           }`}
                         >
                           {g.name}
@@ -752,17 +752,17 @@ export default function ContactDirectoryView({
                 )}
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end space-x-2 pt-4 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
+                  className="px-4 py-2 border border-[var(--border)] text-slate-500 text-xs font-semibold rounded-[9px] hover:bg-[var(--bg-base)] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl cursor-pointer"
+                  className="px-5 py-2 bg-[image:var(--brand-gradient)] hover:brightness-[1.03] text-white text-xs font-semibold rounded-[9px] cursor-pointer"
                 >
                   {editingLead ? 'Update Details' : 'Register Contact'}
                 </button>
@@ -782,7 +782,7 @@ export default function ContactDirectoryView({
             <div className="space-y-6">
               <div className="space-y-4">
                 <div
-                  className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-8 text-center transition-all cursor-pointer bg-slate-50/50"
+                  className="border-2 border-dashed border-[var(--border)] hover:border-blue-400 rounded-[14px] p-8 text-center transition-all cursor-pointer bg-[var(--bg-base)]/50"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <FileSpreadsheet className="h-10 w-10 text-blue-500 mx-auto mb-3" />
@@ -797,7 +797,7 @@ export default function ContactDirectoryView({
                   />
                 </div>
                 {pastedData && (
-                  <div className="text-[10px] font-mono text-slate-500 bg-slate-50 p-2 border border-slate-200 rounded-xl truncate">
+                  <div className="text-[10px] font-mono text-slate-500 bg-[var(--bg-base)] p-2 border border-[var(--border)] rounded-[9px] truncate">
                     Loaded: {pastedData.split('\n').length} lines
                   </div>
                 )}
@@ -809,7 +809,7 @@ export default function ContactDirectoryView({
                 <select
                   value={bulkGroupId}
                   onChange={(e) => setBulkGroupId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
                 >
                   <option value="">No group</option>
                   {contactGroups.map((g) => (
@@ -823,7 +823,7 @@ export default function ContactDirectoryView({
 
               {/* Parsing Feedback Error / Live Preview */}
               {parsingError && (
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start space-x-3 text-rose-700">
+                <div className="bg-rose-50 border border-rose-200 rounded-[9px] p-4 flex items-start space-x-3 text-rose-700">
                   <AlertCircle className="h-5 w-5 shrink-0 text-rose-500" />
                   <div className="text-xs">
                     <p className="font-bold">Parsing Error Detected</p>
@@ -834,13 +834,13 @@ export default function ContactDirectoryView({
 
               {parsedPreview.length > 0 && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center">
                       <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-500" /> Live Parsing Preview ({parsedPreview.length} contacts parsed successfully)
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">Row structure verified</span>
                   </div>
-                  <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-slate-50/30">
+                  <div className="max-h-48 overflow-y-auto border border-[var(--border)] rounded-[9px] divide-y divide-slate-100 bg-[var(--bg-base)]/30">
                     {parsedPreview.map((item, index) => (
                       <div key={index} className="p-3 text-xs flex justify-between items-center">
                         <div className="space-y-0.5">
@@ -859,7 +859,7 @@ export default function ContactDirectoryView({
             </div>
 
             {/* Footer buttons */}
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border)]">
               <span className="text-xs text-slate-500 italic">
                 * Uploaded contacts will be appended to your Outbound CRM Dialer targets list.
               </span>
@@ -867,7 +867,7 @@ export default function ContactDirectoryView({
                 <button
                   type="button"
                   onClick={() => { setIsBulkModalOpen(false); setBulkGroupId(''); }}
-                  className="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-semibold rounded-xl hover:bg-slate-100 cursor-pointer"
+                  className="px-4 py-2 border border-[var(--border)] text-slate-500 text-xs font-semibold rounded-[9px] hover:bg-[var(--bg-subtle)] cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -875,7 +875,7 @@ export default function ContactDirectoryView({
                   type="button"
                   onClick={handleConfirmBulkUpload}
                   disabled={parsedPreview.length === 0}
-                  className={`px-5 py-2 font-semibold text-xs rounded-xl cursor-pointer text-white flex items-center ${
+                  className={`px-5 py-2 font-semibold text-xs rounded-[9px] cursor-pointer text-white flex items-center ${
                     parsedPreview.length > 0 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-300 cursor-not-allowed'
                   }`}
                 >
@@ -903,7 +903,7 @@ export default function ContactDirectoryView({
                 onChange={(e) => setNewGroupName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleCreateGroup(); }}
                 placeholder="New group name, e.g. VIP Customers"
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                className="flex-1 bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
               />
               <button
                 type="button"
@@ -922,7 +922,7 @@ export default function ContactDirectoryView({
                 {contactGroups.map((g) => {
                   const memberCount = leads.filter(l => (l.groupIds || []).includes(g.id)).length;
                   return (
-                    <div key={g.id} className="flex items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div key={g.id} className="flex items-center justify-between gap-2 p-3 bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px]">
                       {renamingGroupId === g.id ? (
                         <input
                           autoFocus
@@ -930,7 +930,7 @@ export default function ContactDirectoryView({
                           value={renameGroupValue}
                           onChange={(e) => setRenameGroupValue(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') handleRenameGroup(g.id); if (e.key === 'Escape') setRenamingGroupId(null); }}
-                          className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
+                          className="flex-1 bg-[var(--bg-surface)] border border-slate-300 rounded-lg px-2 py-1 text-xs focus:outline-none"
                         />
                       ) : (
                         <div className="min-w-0">
