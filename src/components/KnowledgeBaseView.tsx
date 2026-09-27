@@ -7,6 +7,7 @@ import Button from './ui/Button';
 import Modal from './ui/Modal';
 import KpiCard from './ui/KpiCard';
 import Tooltip from './ui/Tooltip';
+import SearchInput from './ui/SearchInput';
 
 interface KnowledgeDocument { id: string; title: string; chunkCount: number; createdAt: string; }
 interface SearchResult { content: string; documentTitle: string; }
@@ -143,7 +144,7 @@ export default function KnowledgeBaseView() {
                   </div>
                 </aside>
               ) : (
-                <Widget colSpan={4} className="col-span-12 lg:col-span-4 min-w-0 min-h-0 h-full" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md"
+                <Widget colSpan={4} className="col-span-12 lg:col-span-3 min-w-0 min-h-0 h-full" title="Knowledge sources" subtitle="Documents available to your AI agents." icon={BookOpen} accent="#2563eb" padding="md"
                   action={
                     <button type="button" onClick={() => setIsSourcesCollapsed(true)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]" aria-label="Collapse knowledge sources" title="Collapse knowledge sources">
                       <ChevronLeft className="h-4 w-4" />
@@ -151,12 +152,17 @@ export default function KnowledgeBaseView() {
                   }
                 >
                   <div className="flex h-full min-h-0 flex-col">
-                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <div className="relative min-w-0 flex-1">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-                        <input value={documentSearch} onChange={e => setDocumentSearch(e.target.value)} placeholder="Search documents…" className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] py-2.5 pl-9 pr-3 text-sm text-[var(--text)] outline-none focus:border-blue-400" />
-                      </div>
-                      <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{filteredDocuments.length} of {documents.length}</span>
+                    <div className="px-3 pb-3 border-b border-[var(--border)]">
+                      <SearchInput
+                        value={documentSearch}
+                        onChange={setDocumentSearch}
+                        placeholder="Search sources..."
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">All sources</span>
+                      <span className="text-[10px] text-[var(--text-muted)]">{filteredDocuments.length}</span>
                     </div>
                     <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
                       {filteredDocuments.length === 0 ? (
