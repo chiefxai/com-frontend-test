@@ -218,7 +218,7 @@ export default function CampaignView({
 
   return (
     <PageShell
-      title="Campaigns"
+      title="Outbound campaigns"
       subtitle="Launch, monitor, and optimize AI-powered outbound campaigns."
       layout="fill"
       action={
@@ -669,96 +669,129 @@ export default function CampaignView({
           </div>
         </div>
 
-        {/* Launch campaign modal */}
+        {/* New outbound campaign */}
         {isLaunchModalOpen && (
           <Modal
             open
             onClose={() => setIsLaunchModalOpen(false)}
-            title="Launch outbound campaign"
-            maxWidth="max-w-lg"
+            title="New outbound campaign"
+            maxWidth="max-w-2xl"
           >
-            <form onSubmit={handleLaunchCampaign} className="space-y-5">
-              <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-500/20 dark:bg-blue-500/[0.06]">
-                <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
-                    <Zap className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+            <form onSubmit={handleLaunchCampaign} className="flex max-h-[78vh] flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="rounded-2xl border border-blue-200/70 bg-blue-50/60 p-4 dark:border-blue-500/20 dark:bg-blue-500/[0.06]">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+                      <Zap className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Set up your outbound campaign</p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+                        Give the campaign a clear name, choose the workflow that should handle calls, and define the initial lead pool.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--text-primary)]">
-                      Configure the dialer
-                    </p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                      Choose a workflow and target pool. The campaign will start in Running
-                      status after creation.
-                    </p>
-                  </div>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                    <div className="mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">1. Campaign details</p>
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">Use a name your team can recognize later.</p>
+                    </div>
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--text-primary)]">
+                        Campaign name <span className="text-rose-500">*</span>
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        value={campaignName}
+                        onChange={(event) => setCampaignName(event.target.value)}
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                        placeholder="e.g. Q3 Commercial Real-Estate Callbacks"
+                      />
+                      <span className="mt-1.5 block text-[10px] text-[var(--text-muted)]">Keep it specific enough to identify the audience or purpose.</span>
+                    </label>
+                  </section>
+
+                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                    <div className="mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">2. Calling setup</p>
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">Choose the workflow and how many leads should be included.</p>
+                    </div>
+                    <div className="space-y-4">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-semibold text-[var(--text-primary)]">Workflow</span>
+                        <select
+                          value={selectedWorkflow}
+                          onChange={(event) => setSelectedWorkflow(event.target.value)}
+                          className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                        >
+                          {workflows.length === 0 && <option value="">No workflows available</option>}
+                          {workflows.map((workflow) => (
+                            <option key={workflow.id} value={workflow.id}>{workflow.name}</option>
+                          ))}
+                        </select>
+                        <span className="mt-1.5 block text-[10px] text-[var(--text-muted)]">This determines the rules and conversation flow used by the AI.</span>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-semibold text-[var(--text-primary)]">Target leads</span>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            max={totalLeadsCount || undefined}
+                            value={targetLeadsCount}
+                            onChange={(event) => setTargetLeadsCount(event.target.value)}
+                            className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 pr-24 text-sm text-[var(--text-primary)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                          />
+                          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[var(--text-muted)]">
+                            / {totalLeadsCount.toLocaleString()} available
+                          </span>
+                        </div>
+                        <span className="mt-1.5 block text-[10px] text-[var(--text-muted)]">Set the initial number of CRM leads for this campaign.</span>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 sm:p-5">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                      <div>
+                        <p className="text-xs font-semibold text-[var(--text-primary)]">Ready to launch</p>
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">
+                          The campaign will be created with the selected workflow and lead pool. Review your details before launching.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1.5">
-                  Campaign name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={campaignName}
-                  onChange={(event) => setCampaignName(event.target.value)}
-                  className="w-full h-10 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-xl px-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                  placeholder="e.g. Q3 Commercial Real-Estate Callbacks"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1.5">
-                    Workflow
-                  </label>
-                  <select
-                    value={selectedWorkflow}
-                    onChange={(event) => setSelectedWorkflow(event.target.value)}
-                    className="w-full h-10 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-xl px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500"
-                  >
-                    {workflows.map((workflow) => (
-                      <option key={workflow.id} value={workflow.id}>
-                        {workflow.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1.5">
-                    Target leads
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={targetLeadsCount}
-                    onChange={(event) => setTargetLeadsCount(event.target.value)}
-                    className="w-full h-10 bg-[var(--bg-subtle)] border border-[var(--border)] rounded-xl px-3 text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--border)]">
-                <p className="text-[10px] text-[var(--text-muted)]">
+              <div className="mt-4 flex shrink-0 flex-col-reverse gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[10px] leading-4 text-[var(--text-muted)]">
                   Available CRM leads: {totalLeadsCount.toLocaleString()}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full gap-2 sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setIsLaunchModalOpen(false)}
-                    className="h-9 px-3 rounded-lg border border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] sm:flex-none"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm inline-flex items-center gap-1.5"
+                    className="h-10 flex-1 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    disabled={!campaignName.trim()}
                   >
-                    <Play className="h-3.5 w-3.5" />
-                    Launch campaign
+                    <span className="inline-flex items-center justify-center gap-1.5">
+                      <Play className="h-3.5 w-3.5" />
+                      Launch campaign
+                    </span>
                   </button>
                 </div>
               </div>
