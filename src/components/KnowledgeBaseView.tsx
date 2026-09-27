@@ -139,7 +139,7 @@ export default function KnowledgeBaseView() {
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><FileText className="h-4 w-4" /></div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-[var(--text)]">{d.title}</p>
-                            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{d.chunkCount} indexed chunk{d.chunkCount === 1 ? '' : 's'}{d.createdAt ? \` · Added \${new Date(d.createdAt).toLocaleDateString()}\` : ''}</p>
+                            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{d.chunkCount} indexed chunk{d.chunkCount === 1 ? '' : 's'}{d.createdAt ? ` · Added ${new Date(d.createdAt).toLocaleDateString()}` : ''}</p>
                           </div>
                           <button type="button" aria-label={\`Delete \${d.title}\`} onClick={() => handleDelete(d.id)} className="rounded-lg p-2 text-[var(--text-muted)] opacity-70 transition hover:bg-rose-50 hover:text-rose-500 hover:opacity-100 dark:hover:bg-rose-950/20"><Trash2 className="h-4 w-4" /></button>
                         </div>
