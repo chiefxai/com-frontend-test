@@ -4,6 +4,7 @@ import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Button from './ui/Button';
+import KpiCard from './ui/KpiCard';
 
 interface DncEntry { id: string; phone: string; reason: string | null; createdAt: string; }
 interface CallingWindow { enabled: boolean; startHour: number; endHour: number; timezone: string; }
@@ -64,20 +65,10 @@ export default function ComplianceView() {
       ) : (
         <div className="col-span-12 space-y-5">
           {
-          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]">
-            <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-start gap-4">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${window_.enabled ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}><ShieldCheck className="h-5 w-5" /></div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold text-[var(--text)]">Outbound protection</h2><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${window_.enabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'}`}>{window_.enabled ? 'Protected' : 'Review settings'}</span></div>
-                  <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">Control when AI can place calls and which numbers must always be excluded.</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-sm font-bold text-[var(--text)]">{hoursLabel}</p><p className="text-[10px] text-[var(--text-muted)]">{timezoneLabel}</p></div>
-                <div className="rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5"><p className="text-sm font-bold text-[var(--text)]">{dnc.length}</p><p className="text-[10px] text-[var(--text-muted)]">Protected numbers</p></div>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <KpiCard label="Calling protection" value={window_.enabled ? 'Active' : 'Open'} sub={protectionLabel} badge={window_.enabled ? 'PROTECTED' : 'REVIEW'} badgeColor={window_.enabled ? 'green' : 'amber'} icon={ShieldCheck} iconBg="var(--bg-subtle)" iconColor={window_.enabled ? '#059669' : '#d97706'} iconPosition="left" />
+            <KpiCard label="Protected numbers" value={dnc.length} sub="Do-not-call entries" icon={UsersRound} iconBg="var(--bg-subtle)" iconColor="#e11d48" iconPosition="left" />
+            <KpiCard label="Calling schedule" value={hoursLabel} sub={timezoneLabel} icon={Globe2} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
           </div>
 
           <div className="grid grid-cols-12 gap-4 xl:gap-5">
