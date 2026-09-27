@@ -96,12 +96,12 @@ export default function KnowledgeBaseView() {
       ) : (
         <div className="col-span-12 space-y-5">
           <div className="grid grid-cols-12 gap-3 xl:gap-4">
-            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Knowledge sources" value={documents.length} sub="Documents available to agents" icon={FileText} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
-            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Indexed chunks" value={totalChunks} sub="Searchable knowledge pieces" icon={Database} iconBg="var(--bg-subtle)" iconColor="#7c3aed" iconPosition="left" />
-            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[124px] lg:min-h-[136px] xl:min-h-[148px]" label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
+            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[96px] lg:min-h-[104px] xl:min-h-[112px]" label="Knowledge sources" value={documents.length} sub="Documents available to agents" icon={FileText} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
+            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[96px] lg:min-h-[104px] xl:min-h-[112px]" label="Indexed chunks" value={totalChunks} sub="Searchable knowledge pieces" icon={Database} iconBg="var(--bg-subtle)" iconColor="#7c3aed" iconPosition="left" />
+            <KpiCard className="!col-span-12 sm:!col-span-6 xl:!col-span-4 min-h-[96px] lg:min-h-[104px] xl:min-h-[112px]" label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
           </div>
 
-          <section className="h-[calc(100vh-280px)] min-h-[520px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
+          <section className="h-[calc(100vh-245px)] min-h-[460px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
             <div className={`grid h-full min-h-0 gap-4 p-3 sm:p-4 xl:gap-5 ${isSourcesCollapsed ? 'lg:grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-12'}`}>
               {/* Knowledge sources */}
               <Widget
@@ -126,12 +126,11 @@ export default function KnowledgeBaseView() {
                 }
               >
                 {isSourcesCollapsed ? (
-                  <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]">
-                    <BookOpen className="h-5 w-5 text-blue-500" />
+                  <div className="flex h-full min-h-0 flex-col items-center justify-center">
                     <button
                       type="button"
                       onClick={() => setIsSourcesCollapsed(false)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition hover:text-[var(--text)]"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-sm transition hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-800 dark:hover:text-blue-400"
                       aria-label="Expand knowledge sources"
                       title="Expand knowledge sources"
                     >
