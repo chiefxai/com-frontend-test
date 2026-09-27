@@ -172,13 +172,13 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
             Export CSV <ChevronDown className="h-3 w-3 ml-1" />
           </Button>
           {showExport && (
-            <div className="absolute right-0 mt-2 w-64 rounded-xl shadow-xl border z-50 p-3 space-y-1"
+            <div className="absolute right-0 mt-2 w-64 rounded-[9px] shadow-xl border z-50 p-3 space-y-1"
               style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Select fields to export</p>
               {EXPORT_FIELDS.map(f => (
                 <label key={f.key} className="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[var(--bg-subtle)]">
                   <div
-                    className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-colors ${exportFields.includes(f.key) ? 'bg-blue-600 border-blue-600' : 'border-[var(--border)]'}`}
+                    className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-colors ${exportFields.includes(f.key) ? 'bg-[image:var(--brand-gradient)] border-transparent' : 'border-[var(--border)]'}`}
                     onClick={() => toggleField(f.key)}
                   >
                     {exportFields.includes(f.key) && <Check className="h-2.5 w-2.5 text-white" />}
@@ -266,7 +266,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
 
             {/* Recording */}
             {selected.recordingUrl && (
-              <div className="rounded-xl p-3 flex items-center gap-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+              <div className="rounded-[9px] p-3 flex items-center gap-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                 <PlayCircle className="h-5 w-5 text-blue-600 shrink-0" />
                 <audio controls src={getPlayableRecordingUrl(selected.id, selected.recordingUrl)} className="w-full h-8" />
               </div>
@@ -284,7 +284,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
                 { label: 'Sentiment', value: selected.sentiment },
                 { label: 'Intent',    value: selected.intent },
               ].map(item => (
-                <div key={item.label} className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+                <div key={item.label} className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                   <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>{item.label}</p>
                   <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{item.value}</p>
                 </div>
@@ -295,13 +295,13 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
             <div>
               <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Enquiry</h4>
               {loadingSelectedEnquiries ? (
-                <div className="rounded-xl p-3 border text-[11px] flex items-center gap-2" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <div className="rounded-[9px] p-3 border text-[11px] flex items-center gap-2" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Checking for enquiries…
                 </div>
               ) : selectedEnquiries.length > 0 ? (
-                <div className="rounded-xl p-3 border bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 space-y-2">
+                <div className="rounded-[9px] p-3 border bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 space-y-2">
                   {selectedEnquiries.map((eq) => (
-                    <div key={eq.id} className="flex items-start justify-between gap-3 bg-white/70 dark:bg-black/20 border border-amber-100 dark:border-amber-500/20 rounded-lg px-3 py-2">
+                    <div key={eq.id} className="flex items-start justify-between gap-3 bg-[var(--bg-surface)]/70 dark:bg-black/20 border border-amber-100 dark:border-amber-500/20 rounded-lg px-3 py-2">
                       <p className="text-xs flex-1 leading-relaxed" style={{ color: 'var(--text-primary)' }}>"{eq.queryText}"</p>
                       <span
                         className={`shrink-0 text-[9px] font-mono uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
@@ -318,7 +318,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl p-3 border text-[11px] flex items-center gap-2" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                <div className="rounded-[9px] p-3 border text-[11px] flex items-center gap-2" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
                   <MessageCircleQuestion className="h-3.5 w-3.5" /> No enquiry raised on this call.
                 </div>
               )}
@@ -328,7 +328,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
             {selected.summary && (
               <div>
                 <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>AI Summary</h4>
-                <div className="rounded-xl p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+                <div className="rounded-[9px] p-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
                   <Markdown>{selected.summary}</Markdown>
                 </div>
               </div>
@@ -338,7 +338,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
             {selectedAnswers && Object.keys(selectedAnswers).length > 0 && (
               <div>
                 <h4 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Workflow Answers</h4>
-                <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+                <div className="rounded-[9px] border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
@@ -379,7 +379,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
                     <div key={i} className={`flex flex-col ${line.speaker === 'AI' ? 'items-start' : 'items-end'}`}>
                       <span className="text-[9px] font-mono mb-0.5" style={{ color: 'var(--text-muted)' }}>{line.speaker} · {line.timestamp}</span>
                       <div
-                        className="rounded-xl px-3 py-2 text-xs max-w-[85%]"
+                        className="rounded-[9px] px-3 py-2 text-xs max-w-[85%]"
                         style={line.speaker === 'AI'
                           ? { background: '#eff6ff', color: '#1e3a5f' }
                           : { background: 'var(--bg-subtle)', color: 'var(--text-primary)' }
