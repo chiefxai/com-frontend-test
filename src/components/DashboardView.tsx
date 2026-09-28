@@ -414,8 +414,15 @@ export default function DashboardView({
               if (!dashboardPrintRef.current || isPrintingDashboard) return;
               setIsPrintingDashboard(true);
               try {
-                await new Promise(requestAnimationFrame);
-                const canvas = await html2canvas(dashboardPrintRef.current, { scale: 1, useCORS: true, backgroundColor: '#ffffff', logging: false });
+                // Keep dashboard export lightweight: charts are rasterized once
+                // at a compact print scale instead of using the browser's DPR.
+                const canvas = await html2canvas(dashboardPrintRef.current, {
+                  scale: 0.7,
+                  useCORS: true,
+                  backgroundColor: '#ffffff',
+                  logging: false,
+                  removeContainer: true,
+                });
                 const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
                 const margin = 8, width = 210 - margin * 2, pagePxHeight = canvas.width * ((297 - margin * 2) / width);
                 let sourceY = 0;
