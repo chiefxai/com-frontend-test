@@ -70,11 +70,11 @@
   --error:          #DC2626;
   --info:           #2563EB;
   --neutral:        #64748B;
-  /* Dark chrome uses the ChiefVoice navy instead of slate-800 so the
-     header/sidebar feel like one intentional branded shell. */
-  --sidebar-bg:     #101A3A;
-  --sidebar-border: #263149;
-  --header-bg:      #101A3A;
+  /* Dark chrome: keep the sidebar slightly lighter than the main header
+     so the app shell has clear visual separation without looking washed out. */
+  --sidebar-bg:     #182338;
+  --sidebar-border: #2A3650;
+  --header-bg:      #10172A;
 
   /* Panel tokens in dark mode — go full dark */
   --panel-bg:       #080D1C;
