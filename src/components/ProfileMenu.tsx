@@ -1,11 +1,10 @@
 import React from 'react';
 import { Sun, Moon, Monitor, LogOut, ChevronDown } from 'lucide-react';
 import { useTheme } from '../shared/theme/ThemeContext';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
 
 // ── Profile dropdown (YouTube-style) ─────────────────────────────────────────
 export interface ProfileMenuProps {
-  kcUser: { name?: string; email?: string; role?: string } | null;
+  kcUser: { name?: string; email?: string; role?: string; picture?: string; avatarUrl?: string } | null;
   dbRole: string | null;
   logout: () => void;
 }
@@ -30,6 +29,8 @@ export default function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps
   const displayName = kcUser?.name || kcUser?.email || '?';
   const initials = displayName.split(' ').map((p: string) => p[0]).slice(0, 2).join('').toUpperCase();
   const role = dbRole || kcUser?.role || '';
+  const avatarUrl = kcUser?.picture || kcUser?.avatarUrl || '';
+  const avatarLabel = displayName === '?' ? 'Profile' : displayName;
 
   return (
     <div ref={ref} className="relative">
@@ -42,12 +43,12 @@ export default function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         title="Account"
       >
-        <span className="h-9 w-9 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-center shrink-0 p-1">
-          <img
-            src={chiefVoiceLogo}
-            alt="ChiefVoice profile"
-            className="block h-full w-full object-contain"
-          />
+        <span className="h-9 w-9 rounded-full bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0 overflow-hidden text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={avatarLabel} className="block h-full w-full object-cover" />
+          ) : (
+            <span aria-hidden="true">{initials || '?'}</span>
+          )}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -61,12 +62,12 @@ export default function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps
           {/* Identity section */}
           <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-center shrink-0 p-1">
-                <img
-                  src={chiefVoiceLogo}
-                  alt="ChiefVoice profile"
-                  className="block h-full w-full object-contain"
-                />
+              <span className="h-12 w-12 rounded-full bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0 overflow-hidden text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={avatarLabel} className="block h-full w-full object-cover" />
+                ) : (
+                  <span aria-hidden="true">{initials || '?'}</span>
+                )}
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate leading-snug" style={{ color: 'var(--text-primary)' }}>
