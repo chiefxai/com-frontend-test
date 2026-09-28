@@ -614,7 +614,8 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
   );
 
   return (
-<style>{`
+    <>
+      <style>{`
   @media print {
     body.chiefvoice-printing * { visibility: hidden !important; }
     body.chiefvoice-printing .chiefvoice-print-content,
@@ -1123,6 +1124,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
         </Widget>
 
     </PageShell>
+    </>
   );
 }
 
