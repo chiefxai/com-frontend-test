@@ -122,12 +122,6 @@ export default function KnowledgeBaseView() {
         </div>
       ) : (
         <div className="col-span-12 space-y-5">
-          <div className="grid grid-cols-12 gap-4">
-            <KpiCard className="!col-span-12 md:!col-span-4 min-h-[122px]" label="Knowledge sources" value={documents.length} sub="Documents available to agents" icon={FileText} iconBg="var(--bg-subtle)" iconColor="#2563eb" iconPosition="left" />
-            <KpiCard className="!col-span-12 md:!col-span-4 min-h-[122px]" label="Indexed chunks" value={totalChunks} sub="Searchable knowledge pieces" icon={Database} iconBg="var(--bg-subtle)" iconColor="#7c3aed" iconPosition="left" />
-            <KpiCard className="!col-span-12 md:!col-span-4 min-h-[122px]" label="Retrieval" value="Ready" sub="Agent retrieval is available" badge="LIVE" badgeColor="green" icon={Sparkles} iconBg="var(--bg-subtle)" iconColor="#059669" iconPosition="left" />
-          </div>
-
           <section className="min-h-[560px] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
             <div className="border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
               <div className="flex items-center justify-between gap-3">
@@ -135,9 +129,19 @@ export default function KnowledgeBaseView() {
                   <p className="text-xs font-semibold text-[var(--text-primary)]">Knowledge workspace</p>
                   <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Manage sources and test retrieval without leaving this page.</p>
                 </div>
-                <span className="hidden rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[10px] font-semibold text-[var(--text-muted)] sm:inline-flex">
-                  {documents.length} source{documents.length === 1 ? '' : 's'}
-                </span>
+                <div className="hidden items-center gap-2 md:flex">
+                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                    <span className="font-semibold text-[var(--text-primary)]">{documents.length}</span>
+                    <span className="ml-1 text-[var(--text-muted)]">sources</span>
+                  </span>
+                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                    <span className="font-semibold text-[var(--text-primary)]">{totalChunks}</span>
+                    <span className="ml-1 text-[var(--text-muted)]">chunks</span>
+                  </span>
+                  <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400">
+                    Retrieval Ready
+                  </span>
+                </div>
               </div>
             </div>
 
