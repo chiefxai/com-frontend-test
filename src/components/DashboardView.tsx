@@ -13,6 +13,7 @@ import {
   Smile,
   CalendarClock,
   Phone,
+  Printer,
 } from 'lucide-react';
 import {
   XAxis,
@@ -39,6 +40,7 @@ import PieChart from './ui/PieChart';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import SlideOver from './ui/SlideOver';
+import Tooltip from './ui/Tooltip';
 
 // Loosely typed like ReportsView's DialTask — this page only needs
 // the task's own name + each lead's call outcome, not the full shape.
@@ -401,7 +403,37 @@ export default function DashboardView({
       title={<BreadcrumbTitle group="Dashboard" page="Executive Desk" />}
       subtitle="Call activity, engagement, and business outcomes — for the selected date range."
       onRefresh={loadExtras}
+      titleActions={
+        <Tooltip label="Print dashboard" side="bottom">
+          <button type="button" onClick={() => window.print()} aria-label="Print dashboard"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
+            <Printer className="h-4 w-4" />
+          </button>
+        </Tooltip>
+      }
     >
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #dashboard-print-area {
+            visibility: visible !important;
+            display: grid !important;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 16px;
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            padding: 24px !important;
+            background: white !important;
+          }
+          #dashboard-print-area * { visibility: visible !important; }
+          #dashboard-print-area [class*="bg-[var(--bg"] {
+            background: white !important;
+          }
+          @page { margin: 0; }
+        }
+      `}</style>
+      <div id="dashboard-print-area" className="contents">
       {/* ── Global date-range filter ── */}
       <Widget colSpan={12} showHeader={false} padding="md">
         <FilterBar
@@ -723,6 +755,7 @@ export default function DashboardView({
           );
         })()}
       </SlideOver>
+      </div>
     </PageShell>
   );
 }
