@@ -339,7 +339,7 @@ export default function CampaignView({
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search campaigns by name or ID..."
-                    className="w-full h-10 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    className="w-full h-10 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15"
                   />
                 </div>
               </div>
@@ -683,13 +683,13 @@ export default function CampaignView({
             open
             onClose={() => setIsLaunchModalOpen(false)}
             title="New outbound campaign"
-            maxWidth="max-w-2xl"
+            maxWidth="max-w-3xl"
           >
-            <form onSubmit={handleLaunchCampaign} className="flex max-h-[78vh] flex-col">
+            <form onSubmit={handleLaunchCampaign} className="flex max-h-[80vh] flex-col">
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="rounded-[14px] border border-blue-200/70 bg-blue-50/60 p-4 dark:border-blue-500/20 dark:bg-blue-500/[0.06]">
+                <div className="overflow-hidden rounded-2xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 via-blue-50/70 to-violet-50/70 p-5 shadow-sm dark:border-cyan-400/20 dark:from-cyan-500/[0.08] dark:via-blue-500/[0.06] dark:to-violet-500/[0.08]">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[9px] bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/80 text-blue-600 shadow-sm ring-1 ring-white/70 dark:bg-white/10 dark:text-cyan-300 dark:ring-white/10">
                       <Zap className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
@@ -701,8 +701,8 @@ export default function CampaignView({
                   </div>
                 </div>
 
-                <div className="mt-5 space-y-4">
-                  <section className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                <div className="mt-5 space-y-5">
+                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm transition-shadow hover:shadow-md">
                     <div className="mb-4">
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">1. Campaign details</p>
                       <p className="mt-1 text-[11px] text-[var(--text-muted)]">Use a name your team can recognize later.</p>
@@ -717,7 +717,7 @@ export default function CampaignView({
                         autoFocus
                         value={campaignName}
                         onChange={(event) => setCampaignName(event.target.value)}
-                        className="h-11 w-full rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         placeholder="e.g. Q3 Commercial Real-Estate Callbacks"
                       />
                       <span className="mt-1.5 block text-[10px] text-[var(--text-muted)]">Keep it specific enough to identify the audience or purpose.</span>
@@ -765,7 +765,7 @@ export default function CampaignView({
                     </div>
                   </section>
 
-                  <section className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 sm:p-5">
+                  <section className="rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-5 shadow-sm dark:border-emerald-500/15 dark:bg-emerald-500/[0.05]">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                       <div>
@@ -793,7 +793,7 @@ export default function CampaignView({
                   </button>
                   <button
                     type="submit"
-                    className="h-10 flex-1 rounded-[9px] bg-[image:var(--brand-gradient)] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    className="h-10 flex-1 rounded-[9px] bg-[image:var(--brand-gradient)] px-5 text-xs font-semibold text-white shadow-md transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                     disabled={!campaignName.trim()}
                   >
                     <span className="inline-flex items-center justify-center gap-1.5">
