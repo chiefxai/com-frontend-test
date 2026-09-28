@@ -138,8 +138,12 @@ function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps) {
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         title="Account"
       >
-        <span className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold select-none shrink-0">
-          {initials}
+        <span className="h-8 w-8 rounded-full overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0">
+          <img
+            src={chiefVoiceLogo}
+            alt="ChiefVoice profile"
+            className="h-full w-full object-contain"
+          />
         </span>
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -153,8 +157,12 @@ function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps) {
           {/* Identity section */}
           <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-base font-bold select-none shrink-0">
-                {initials}
+              <span className="h-12 w-12 rounded-full overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0">
+                <img
+                  src={chiefVoiceLogo}
+                  alt="ChiefVoice profile"
+                  className="h-full w-full object-contain"
+                />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate leading-snug" style={{ color: 'var(--text-primary)' }}>
@@ -992,10 +1000,7 @@ export default function App() {
         )}
         {/* Global Floating Header */}
         <header className="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between px-5 md:px-8 shrink-0 relative z-50">
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-8 w-8 shrink-0 object-contain" />
-            <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
               <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Workspace</span>
               <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-[9px] text-[var(--accent)] bg-[var(--accent-subtle)] truncate">
                 {orgSettings.workspaceName}.chief.ai
