@@ -2,6 +2,7 @@ import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { usePageHeaderContext } from '../../lib/PageHeaderContext';
 import Tooltip from './Tooltip';
+import chiefVoiceLogo from '../../assets/chiefvoice-logo.svg';
 
 // Permanently-mounted counterpart to PageShell's header markup — rendered
 // once in App.tsx so switching tabs (which unmounts/remounts the whole view,
@@ -28,8 +29,8 @@ export default function PageHeaderBar() {
 
   return (
     <>
-      <div className="shrink-0 h-16 px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
-        <div className="min-w-0 flex items-center gap-1.5 shrink-0">
+      <div className="shrink-0 h-16 px-5 md:px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
+        <div className="min-w-0 flex items-center gap-2.5 shrink-0">\n          <img src={chiefVoiceLogo} alt="" aria-hidden="true" className="h-7 w-7 shrink-0 object-contain" />
           <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] leading-snug truncate">
             {header.title}
           </h1>
