@@ -3,6 +3,7 @@ import React from 'react';
 interface VoiceSimulatorWorkspaceProps {
   children: React.ReactNode;
   className?: string;
+  header?: React.ReactNode;
 }
 
 /**
@@ -17,11 +18,13 @@ interface VoiceSimulatorWorkspaceProps {
 export default function VoiceSimulatorWorkspace({
   children,
   className = '',
+  header,
 }: VoiceSimulatorWorkspaceProps) {
   return (
     <div
       className={`grid grid-cols-12 gap-3 xl:gap-4 items-stretch rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 lg:p-3 shadow-sm h-full min-h-0 min-h-[calc(100dvh-11rem)] lg:min-h-[calc(100dvh-10rem)] ${className}`}
     >
+      {header ? <div className="col-span-12 border-b border-[var(--border)] px-2 pb-3 pt-1 lg:px-1">{header}</div> : null}
       {children}
     </div>
   );
