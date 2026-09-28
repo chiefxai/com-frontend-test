@@ -11,7 +11,7 @@ import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'overview',       label: 'Overview',           icon: LayoutDashboard },
@@ -35,7 +35,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
       <aside className={`admin-sidebar flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-[72px]' : 'w-60'}`}>
         <div className={`h-16 flex items-center border-b border-[var(--border)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
           <div className="h-8 w-8 shrink-0 flex items-center justify-center overflow-hidden">
-            <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-8 w-8 object-contain" />
+            <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-9 w-9 object-contain" />
           </div>
           {!collapsed && <div className="min-w-0 overflow-hidden">
             <div className="text-sm font-bold text-[var(--text-primary)] leading-none truncate">ChiefVoice</div>
