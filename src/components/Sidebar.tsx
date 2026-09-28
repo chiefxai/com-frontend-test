@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.png';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
 import {
   LayoutDashboard,
   Users,
@@ -167,7 +167,7 @@ function GroupFlyout({
       }}
     >
       {/* Group title */}
-      <div className="px-4 py-2 mb-1" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="px-4 py-2 mb-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{group.label}</span>
       </div>
       {group.subItems.map((sub) => {
@@ -182,7 +182,7 @@ function GroupFlyout({
                 ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
                 : 'hover:bg-[var(--bg-subtle)]'
             }`}
-            style={isActive ? {} : { color: 'var(--text-secondary)' }}
+            style={isActive ? {} : { color: 'rgba(248,250,255,0.72)' }}
           >
             <SubIcon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[var(--accent)]' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} />
             {sub.label}
@@ -301,18 +301,18 @@ export default function Sidebar({
   const navBtnCls = (isActive: boolean) =>
     `w-full flex items-center rounded-[9px] text-sm font-medium transition-all duration-150 group ${
       collapsed ? 'justify-center px-0 py-3' : 'px-4 py-3'
-    } ${isActive ? 'shadow-none ring-1 ring-inset ring-[var(--accent)]/10' : 'hover:bg-[var(--bg-subtle)]'}`;
+    } ${isActive ? 'shadow-none ring-1 ring-inset ring-cyan-300/10' : 'hover:bg-white/5'}`;
 
   const navBtnStyle = (isActive: boolean): React.CSSProperties =>
     isActive
-      ? { background: 'var(--accent-subtle)', color: 'var(--text-primary)', boxShadow: 'inset 3px 0 0 var(--accent)' }
+      ? { background: 'rgba(22,119,255,0.18)', color: '#FFFFFF', boxShadow: 'inset 3px 0 0 #18C8F2' }
       : { color: 'var(--text-secondary)' };
 
   const iconCls = (isActive: boolean) =>
     `h-4 w-4 shrink-0 ${collapsed ? '' : 'mr-3'}`;
 
   const iconStyle = (isActive: boolean): React.CSSProperties =>
-    isActive ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' };
+    isActive ? { color: '#18C8F2' } : { color: 'rgba(248,250,255,0.58)' };
 
   const subBtnCls = (isActive: boolean) =>
     `w-full flex items-center px-4 py-3 rounded-[9px] text-sm font-medium transition-all duration-150 group ${
@@ -321,7 +321,7 @@ export default function Sidebar({
 
   const subBtnStyle = (isActive: boolean): React.CSSProperties =>
     isActive
-      ? { background: '#2563eb', color: '#ffffff' }
+      ? { background: 'linear-gradient(90deg, rgba(24,200,242,0.20), rgba(123,44,255,0.22))', color: '#FFFFFF', boxShadow: 'inset 2px 0 0 #7B2CFF' }
       : { color: 'var(--text-secondary)' };
 
   const renderGroup = (group: SidebarGroup) => {
@@ -401,7 +401,7 @@ export default function Sidebar({
       className={`relative flex flex-col h-screen shrink-0 font-sans transition-all duration-200 ease-in-out ${
         collapsed ? 'w-16' : 'w-64'
       }`}
-      style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border)', color: 'var(--text-primary)' }}
+      style={{ background: '#101A3A', borderRight: '1px solid rgba(255,255,255,0.08)', color: '#F8FAFF' }}
     >
       {/* Brand Header */}
       <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'px-5 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
