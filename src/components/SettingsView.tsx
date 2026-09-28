@@ -21,7 +21,7 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { apiFetch } from '../lib/api';
+import { apiFetch, getApiBase } from '../lib/api';
 import { useRefresh } from '../lib/RefreshContext';
 import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../types';
 import { COST_PER_MINUTE_INR_FALLBACK, formatInr, formatCurrency, currencySymbol, convertToDisplayCurrency } from '../lib/pricing';
@@ -209,7 +209,7 @@ export default function SettingsView({
         // the number the user just added. Crypto-random suffix instead.
         id: `VN-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
         number, provider, status: 'Active', friendlyName,
-        routingUrl: 'https://api.chiefxai.com/voice/webhook-dynamic',
+        routingUrl: getApiBase() ? `${getApiBase()}/api/vobiz/incoming` : '',
         incomingCallCount: 0, outgoingCallCount: 0
       }]);
     }
@@ -830,7 +830,7 @@ export default function SettingsView({
                             <input type="tel" value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Role</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Job title</label>
                             <select value={newStaffRole} onChange={(e: any) => setNewStaffRole(e.target.value)} className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
                               <option value="Sales Manager">Sales Manager</option>
                               <option value="Loan Agent">Loan Agent</option>
