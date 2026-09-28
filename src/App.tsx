@@ -39,6 +39,7 @@ const EMPTY_ORG_SETTINGS: OrganizationSettings = {
 import { useTheme } from './shared/theme/ThemeContext';
 import { Sun, Moon, Monitor, LogOut, ChevronDown } from 'lucide-react';
 import Sidebar from './components/Sidebar';
+import chiefVoiceLogo from './assets/chiefvoice-logo.svg';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import DashboardView from './features/dashboard';
 import WorkflowsView from './features/workflows/WorkflowsView';
@@ -990,12 +991,16 @@ export default function App() {
           </div>
         )}
         {/* Global Floating Header */}
-        <header className="h-16 bg-white dark:bg-[var(--bg-surface)] border-b border-slate-100 dark:border-[var(--border)] flex items-center justify-between px-8 shrink-0 relative z-50">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono text-slate-400 dark:text-[var(--text-muted)]">workspace:</span>
-            <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10">
-              {orgSettings.workspaceName}.chief.ai
-            </span>
+        <header className="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between px-5 md:px-8 shrink-0 relative z-50">
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-8 w-8 shrink-0 object-contain" />
+            <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Workspace</span>
+              <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-[9px] text-[var(--accent)] bg-[var(--accent-subtle)] truncate">
+                {orgSettings.workspaceName}.chief.ai
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center space-x-3">
