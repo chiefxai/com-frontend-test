@@ -2,13 +2,23 @@
   <title id="title">ChiefVoice</title>
   <desc id="desc">ChiefVoice gradient waveform mark</desc>
   <defs>
-    <linearGradient id="chiefvoice-gradient" x1="24" y1="32" x2="232" y2="224" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#18C8F2"/>
-      <stop offset=".45" stop-color="#1677FF"/>
+    <linearGradient id="top" x1="38" y1="50" x2="214" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1554FF"/>
+      <stop offset=".55" stop-color="#1677FF"/>
+      <stop offset="1" stop-color="#18C8F2"/>
+    </linearGradient>
+    <linearGradient id="bottom" x1="42" y1="154" x2="214" y2="216" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D62BFF"/>
+      <stop offset=".48" stop-color="#3A38FF"/>
+      <stop offset="1" stop-color="#7B2CFF"/>
+    </linearGradient>
+    <linearGradient id="bars" x1="98" y1="92" x2="180" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18C8F2"/>
+      <stop offset=".52" stop-color="#1677FF"/>
       <stop offset="1" stop-color="#7B2CFF"/>
     </linearGradient>
   </defs>
-  <rect x="16" y="16" width="224" height="224" rx="52" fill="#101A3A"/>
-  <path d="M62 128c0-17 9-27 18-27s18 10 18 27-9 27-18 27-18-10-18-27Zm43 0c0-31 9-50 19-50s19 19 19 50-9 50-19 50-19-19-19-50Zm44 0c0-45 10-72 20-72s20 27 20 72-10 72-20 72-20-27-20-72Z" fill="url(#chiefvoice-gradient)"/>
-  <path d="M58 128h140" stroke="url(#chiefvoice-gradient)" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+  <path fill="url(#top)" d="M42 72c0-13 6-23 17-30L116 12c22-13 50-12 71 1l37 23c18 11 18 35 0 46l-25 15c-10 6-23 6-33 0l-34-20-50 30c-20 12-40 0-40-23V72Z"/>
+  <path fill="url(#bottom)" d="M42 105c0 13 6 23 17 30l57 34c22 13 50 12 71-1l37-23c18-11 18-35 0-46l-25-15c-10-6-23-6-33 0l-34 20-50-30c-20-12-40 0-40 23v8Z" opacity=".98"/>
+  <path fill="url(#bars)" d="M104 118c0-7 5-12 12-12s12 5 12 12v20c0 7-5 12-12 12s-12-5-12-12v-20Zm28-25c0-7 5-12 12-12s12 5 12 12v70c0 7-5 12-12 12s-12-5-12-12V93Zm28-17c0-7 5-12 12-12s12 5 12 12v104c0 7-5 12-12 12s-12-5-12-12V76Zm28 17c0-7 5-12 12-12s12 5 12 12v70c0 7-5 12-12 12s-12-5-12-12V93Z"/>
 </svg>
