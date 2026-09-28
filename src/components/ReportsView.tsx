@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../lib/api';
-import { PhoneOutgoing, PhoneIncoming, Clock, DollarSign, Activity, UserCheck, MessageCircleQuestion, BarChart3, Users, PieChart as PieChartIcon, FileText } from 'lucide-react';
+import { PhoneOutgoing, PhoneIncoming, Clock, DollarSign, Activity, UserCheck, MessageCircleQuestion, BarChart3, Users, PieChart as PieChartIcon, Printer } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
 import PageShell from './ui/PageShell';
 import BreadcrumbTitle from './ui/BreadcrumbTitle';
@@ -607,10 +607,10 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
       title={<BreadcrumbTitle group="Dashboard" page="Reports" />}
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
       titleActions={
-        <Tooltip label="Preview report" side="bottom">
-          <button type="button" onClick={() => setShowPreview(true)} aria-label="Preview report"
+        <Tooltip label="Print report" side="bottom">
+          <button type="button" onClick={() => setShowPreview(true)} aria-label="Print report"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
-            <FileText className="h-4 w-4" />
+            <Printer className="h-4 w-4" />
           </button>
         </Tooltip>
       }
