@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { PhoneOutgoing, PhoneIncoming, Clock, DollarSign, Activity, UserCheck, MessageCircleQuestion, BarChart3, Users, PieChart as PieChartIcon, Printer } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
@@ -11,10 +11,11 @@ import KpiCard from './ui/KpiCard';
 import EmptyState from './ui/EmptyState';
 import { CallLog } from '../types';
 import { callCostInr, formatInr, COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
-import PrintableReport from './PrintableReport';
 import FilterBar from './ui/FilterBar';
 import DataTable, { Column } from './ui/DataTable';
 import Tooltip from './ui/Tooltip';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -227,7 +228,41 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
     groups.sort((a, b) => new Date(b.tasks[0].createdAt).getTime() - new Date(a.tasks[0].createdAt).getTime());
     return groups;
   }, [dialerTasks]);
-  const [showPreview, setShowPreview] = useState(false);
+  const reportPrintRef = useRef<HTMLDivElement>(null);
+  const [isPrintingReport, setIsPrintingReport] = useState(false);
+
+  const handlePrintReport = async () => {
+    if (!reportPrintRef.current || isPrintingReport) return;
+    setIsPrintingReport(true);
+    try {
+      await new Promise(requestAnimationFrame);
+      const canvas = await html2canvas(reportPrintRef.current, {
+        scale: 1,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 0,
+      });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const margin = 7;
+      const width = 210 - margin * 2;
+      const pagePxHeight = canvas.width * ((297 - margin * 2) / width);
+      let sourceY = 0;
+      while (sourceY < canvas.height) {
+        const sliceHeight = Math.min(pagePxHeight, canvas.height - sourceY);
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = sliceHeight;
+        slice.getContext('2d')?.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+        if (sourceY > 0) pdf.addPage();
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, width, sliceHeight * width / canvas.width, undefined, 'FAST');
+        sourceY += sliceHeight;
+      }
+      pdf.save(orgName.replace(/[^a-z0-9]+/gi, '_') + '_reports_' + fromDate + '_' + toDate + '.pdf');
+    } finally {
+      setIsPrintingReport(false);
+    }
+  };
 
   // ── Campaign Details table (bottom, full width) ─────────────────────────
   // Every dialer task is one campaign run — sorted newest first so the
@@ -608,13 +643,14 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
       titleActions={
         <Tooltip label="Print report" side="bottom">
-          <button type="button" onClick={() => setShowPreview(true)} aria-label="Print report"
+          <button type="button" onClick={handlePrintReport} aria-label="Print report"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
         </Tooltip>
       }
     >
+      <div ref={reportPrintRef} id="reports-print-area">
         {/* ── Global date-range filter — everything below (KPIs and all 10
             widgets) is scoped to this one control. ── */}
         <Widget colSpan={12} showHeader={false} padding="md">
@@ -1094,20 +1130,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
           })()}
         </Widget>
 
-      {showPreview && (
-        <PrintableReport
-          onClose={() => setShowPreview(false)}
-          orgName={orgName}
-          fromDate={fromDate}
-          toDate={toDate}
-          direction={direction}
-          granularity={granularity}
-          filteredCalls={filteredCalls}
-          dialerTasks={dialerTasks}
-          leads={leads}
-          costPerMinuteInr={costPerMinuteInr}
-        />
-      )}
+      </div>
     </PageShell>
   );
 }
