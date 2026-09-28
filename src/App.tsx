@@ -133,12 +133,12 @@ export default function App() {
 
   // Slug ↔ tab-ID mappings — URL uses human-readable slugs, internal code uses short IDs.
   const TAB_TO_SLUG: Record<string, string> = {
-    dashboard:     'executive-dashboard',
+    dashboard:     'dashboard',
     leads:         'leads',
     pipeline:      'pipeline',
     contacts:      'contact-directory',
     workflows:     'workflow-builder',
-    dialer:        'voice-simulator',
+    dialer:        'campaign',
     'call-logs':   'call-logs',
     reports:       'reports',
     inbox:         'unified-inbox',
@@ -155,11 +155,11 @@ export default function App() {
     Object.entries(TAB_TO_SLUG).map(([tab, slug]) => [slug, tab])
   );
 
-  // Derive active tab from URL slug — /lead-crm → "leads", / → "dashboard"
+  // Derive active tab from URL slug — /leads → "leads", /dashboard (or /) → "dashboard"
   // Sub-tabs for company-profile and administration are encoded as the second segment:
   // /company-profile/legal → tab=company, subTab=legal
   const segments = location.pathname.split('/').filter(Boolean);
-  const slug = segments[0] || 'executive-dashboard';
+  const slug = segments[0] || 'dashboard';
   const subSlug = segments[1] || '';
   const activeTab = SLUG_TO_TAB[slug] || 'dashboard';
 
@@ -193,7 +193,7 @@ export default function App() {
 
   const setActiveTab = (tab: string) => {
     const s = TAB_TO_SLUG[tab] || tab;
-    navigate(s === 'executive-dashboard' ? '/' : `/${s}`, { replace: false });
+    navigate(`/${s}`, { replace: false });
   };
 
   const setActiveSubTab = (subTab: string, parentTab?: string) => {
@@ -656,7 +656,7 @@ export default function App() {
 
     if (firstAccessible) {
       const s = TAB_TO_SLUG[firstAccessible] || firstAccessible;
-      navigate(s === 'executive-dashboard' ? '/' : `/${s}`, { replace: true });
+      navigate(`/${s}`, { replace: true });
     }
     // If nothing is accessible, stay on current route — renderTabContent shows no-access UI.
   }, [flagsReady, activeTab, isEnabled]);
