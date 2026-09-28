@@ -10,7 +10,7 @@ import SettingsPage from './SettingsPage';
 import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
 import PromptsPage from './PromptsPage';
-import ThemeToggle from '../shared/theme/ThemeToggle';
+import ProfileMenu from '../components/ProfileMenu';
 import { useTheme } from '../shared/theme/ThemeContext';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
@@ -25,8 +25,6 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }) {
-  const { resolved } = useTheme();
-  const [profileOpen, setProfileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(() => localStorage.getItem('admin-sidebar-collapsed') === 'true');
 
   React.useEffect(() => {
@@ -77,30 +75,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             Platform control center
           </div>
-          <div className="relative">
-            <button type="button" onClick={() => setProfileOpen(v => !v)} className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-surface)] p-1.5 pr-3 hover:bg-[var(--bg-subtle)]" aria-label="Open user menu">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">{(email || 'U').slice(0, 1).toUpperCase()}</span>
-              <span className="hidden md:block max-w-[180px] truncate text-xs font-medium text-[var(--text-primary)]">{email}</span>
-            </button>
-            {profileOpen && (
-              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-xl z-50">
-                <div className="px-3 py-2 border-b border-[var(--border)]">
-                  <div className="text-xs font-semibold text-[var(--text-primary)]">Account</div>
-                  <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{email}</div>
-                </div>
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                    {resolved === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                    {resolved === 'dark' ? 'Dark mode' : 'Light mode'}
-                  </div>
-                  <ThemeToggle />
-                </div>
-                <button type="button" onClick={onLogout} className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20">
-                  <LogOut className="h-4 w-4" /> Sign out
-                </button>
-              </div>
-            )}
-          </div>
+          <ProfileMenu kcUser={{ name: email, email }} dbRole="Platform Admin" logout={onLogout} />
         </div>
         <Routes>
           <Route index element={<Navigate to="overview" replace />} />
