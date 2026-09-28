@@ -1875,7 +1875,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
       {dialerMode === 'outbound' ? (
         <>
-          <VoiceSimulatorWorkspace
+          <VoiceSimulatorWorkspace className="flex-1 w-full h-full min-h-0"
             header={
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1919,13 +1919,14 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                   const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
                   const total = task.leadIds.length;
                   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                       const effectiveStatus = percent === 100 && total > 0 ? 'Completed' : task.status;
                   const runAt = task.workflowRunMetadata?.runAt || task.createdAt;
                   const runDateTime = new Date(runAt).toLocaleString(undefined, {
                     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
                   });
-                  const statusBorder = task.status === 'Completed'
+                  const statusBorder = effectiveStatus === 'Completed'
                     ? 'border-emerald-500'
-                    : task.status === 'In Progress'
+                    : effectiveStatus === 'In Progress'
                     ? 'border-blue-500'
                     : 'border-slate-400';
 
