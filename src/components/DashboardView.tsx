@@ -19,7 +19,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
   BarChart,
@@ -404,7 +404,7 @@ export default function DashboardView({
       subtitle="Call activity, engagement, and business outcomes — for the selected date range."
       onRefresh={loadExtras}
       titleActions={
-        <Tooltip label="Print dashboard" side="bottom">
+        <RechartsTooltip label="Print dashboard" side="bottom">
           <button type="button" onClick={() => window.print()} aria-label="Print dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
@@ -519,7 +519,7 @@ export default function DashboardView({
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="period" stroke="#94a3b8" fontSize={11} tickLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip {...CHART_TOOLTIP} />
+                <RechartsTooltip {...CHART_TOOLTIP} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="inbound" name="Inbound" stroke="#2563eb" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="outbound" name="Outbound" stroke="#f97316" strokeWidth={2} dot={false} />
@@ -584,7 +584,7 @@ export default function DashboardView({
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="period" stroke="#94a3b8" fontSize={11} tickLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip {...CHART_TOOLTIP} />
+                <RechartsTooltip {...CHART_TOOLTIP} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="totalCalls" name="Total Calls" stroke="#2563eb" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="successfulOutcomes" name="Successful Outcomes" stroke="#059669" strokeWidth={2} dot={false} />
@@ -621,7 +621,7 @@ export default function DashboardView({
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} unit={campaignMetric === 'successRate' ? '%' : undefined} />
                 <YAxis type="category" dataKey="campaign" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={120} />
-                <Tooltip {...CHART_TOOLTIP} />
+                <RechartsTooltip {...CHART_TOOLTIP} />
                 <Bar dataKey={campaignMetric} name={METRIC_LABEL[campaignMetric]} fill="#7c3aed" radius={[0, 3, 3, 0]} barSize={16} />
               </BarChart>
             </ResponsiveContainer>
@@ -657,7 +657,7 @@ export default function DashboardView({
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} unit={agentMetric === 'successRate' ? '%' : undefined} />
                 <YAxis type="category" dataKey="agent" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={120} />
-                <Tooltip {...CHART_TOOLTIP} />
+                <RechartsTooltip {...CHART_TOOLTIP} />
                 <Bar dataKey={agentMetric} name={METRIC_LABEL[agentMetric]} fill="#2563eb" radius={[0, 3, 3, 0]} barSize={16} />
               </BarChart>
             </ResponsiveContainer>
