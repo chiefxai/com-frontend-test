@@ -235,12 +235,15 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
     if (!reportPrintRef.current || isPrintingReport) return;
     setIsPrintingReport(true);
     try {
-      await new Promise(requestAnimationFrame);
+      // Capture at print resolution rather than devicePixelRatio. A lower
+      // raster scale keeps chart-heavy reports responsive while remaining
+      // crisp enough for normal A4 viewing/printing.
       const canvas = await html2canvas(reportPrintRef.current, {
-        scale: 1,
+        scale: 0.7,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
+        removeContainer: true,
         imageTimeout: 0,
       });
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
