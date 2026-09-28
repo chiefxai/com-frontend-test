@@ -39,7 +39,7 @@ const EMPTY_ORG_SETTINGS: OrganizationSettings = {
 import { useTheme } from './shared/theme/ThemeContext';
 import { Sun, Moon, Monitor, LogOut, ChevronDown } from 'lucide-react';
 import Sidebar from './components/Sidebar';
-import chiefVoiceLogo from './assets/chiefvoice-logo.png';
+import chiefVoiceLogo from './assets/chiefvoice-logo.svg';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import DashboardView from './features/dashboard';
 import WorkflowsView from './features/workflows/WorkflowsView';
