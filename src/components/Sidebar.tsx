@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
 import {
   LayoutDashboard,
   Users,
@@ -416,7 +416,7 @@ export default function Sidebar({
         <img
           src={chiefVoiceLogo}
           alt="ChiefVoice"
-          className="h-8 w-8 shrink-0 object-contain"
+          className="h-9 w-9 shrink-0 object-contain"
         />
         {!collapsed && (
           <div className="ml-3 min-w-0 flex-1 overflow-hidden">
