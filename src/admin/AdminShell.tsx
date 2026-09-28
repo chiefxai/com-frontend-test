@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe2, LayoutDashboard, Building2, Users, ScrollText, LogOut, Settings, Database, IndianRupee, MessageSquareText, Sun, Moon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Globe2, LayoutDashboard, Building2, Users, ScrollText, Settings, Database, IndianRupee, MessageSquareText, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
 import OrganizationsPage from './OrganizationsPage';
@@ -11,7 +11,6 @@ import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
-import { useTheme } from '../shared/theme/ThemeContext';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'overview',       label: 'Overview',           icon: LayoutDashboard },
