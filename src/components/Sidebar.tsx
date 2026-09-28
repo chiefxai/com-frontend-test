@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.png';
 import {
   LayoutDashboard,
   Users,
