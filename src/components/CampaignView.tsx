@@ -239,67 +239,6 @@ export default function CampaignView({
     >
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 lg:px-8 py-6 space-y-6">
-          {/* Overview */}
-          <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-            {[
-              {
-                label: 'Active campaigns',
-                value: metrics.running,
-                helper: `${campaigns.length} total campaigns`,
-                icon: Activity,
-                iconClass: 'text-emerald-600 dark:text-emerald-300',
-                iconBg: 'bg-emerald-50 dark:bg-emerald-500/10',
-              },
-              {
-                label: 'Lead pool',
-                value: metrics.totalLeads.toLocaleString(),
-                helper: `${totalLeadsCount.toLocaleString()} CRM leads available`,
-                icon: Users,
-                iconClass: 'text-blue-600 dark:text-blue-300',
-                iconBg: 'bg-blue-50 dark:bg-blue-500/10',
-              },
-              {
-                label: 'Calls completed',
-                value: metrics.calledLeads.toLocaleString(),
-                helper: `${overallProgress}% of campaign pool`,
-                icon: PhoneCall,
-                iconClass: 'text-violet-600 dark:text-violet-300',
-                iconBg: 'bg-violet-50 dark:bg-violet-500/10',
-              },
-              {
-                label: 'Connect rate',
-                value: `${metrics.connectRate}%`,
-                helper: `${metrics.successfulCalls} connected calls`,
-                icon: TrendingUp,
-                iconClass: 'text-amber-600 dark:text-amber-300',
-                iconBg: 'bg-amber-50 dark:bg-amber-500/10',
-              },
-            ].map((metric) => {
-              const MetricIcon = metric.icon;
-              return (
-                <div
-                  key={metric.label}
-                  className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium text-[var(--text-secondary)]">
-                        {metric.label}
-                      </p>
-                      <p className="mt-1.5 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-                        {metric.value}
-                      </p>
-                    </div>
-                    <div className={`h-10 w-10 rounded-[9px] flex items-center justify-center ${metric.iconBg}`}>
-                      <MetricIcon className={`h-4.5 w-4.5 ${metric.iconClass}`} />
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[11px] text-[var(--text-muted)]">{metric.helper}</p>
-                </div>
-              );
-            })}
-          </section>
-
           {/* Main workspace */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 items-start">
             <Widget
@@ -309,11 +248,29 @@ export default function CampaignView({
               accent="#2563eb"
               padding="none"
               action={
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline text-[11px] text-[var(--text-muted)]">
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  <div className="hidden xl:flex items-center gap-1.5 shrink-0">
+                    <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                      <span className="font-semibold text-[var(--text-primary)]">{metrics.running}</span>
+                      <span className="ml-1 text-[var(--text-muted)]">active</span>
+                    </span>
+                    <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                      <span className="font-semibold text-[var(--text-primary)]">{metrics.totalLeads.toLocaleString()}</span>
+                      <span className="ml-1 text-[var(--text-muted)]">leads</span>
+                    </span>
+                    <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                      <span className="font-semibold text-[var(--text-primary)]">{metrics.calledLeads.toLocaleString()}</span>
+                      <span className="ml-1 text-[var(--text-muted)]">completed</span>
+                    </span>
+                    <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                      <span className="font-semibold text-[var(--text-primary)]">{metrics.connectRate}%</span>
+                      <span className="ml-1 text-[var(--text-muted)]">connect</span>
+                    </span>
+                  </div>
+                  <span className="hidden sm:inline text-[11px] text-[var(--text-muted)] shrink-0">
                     {filteredCampaigns.length} of {campaigns.length}
                   </span>
-                  <div className="h-8 px-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center gap-1.5">
+                  <div className="h-8 px-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center gap-1.5 shrink-0">
                     <Filter className="h-3.5 w-3.5 text-[var(--text-muted)]" />
                     <select
                       value={campaignFilter}
