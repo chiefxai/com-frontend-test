@@ -14,6 +14,7 @@ import { callCostInr, formatInr, COST_PER_MINUTE_INR_FALLBACK } from '../lib/pri
 import PrintableReport from './PrintableReport';
 import FilterBar from './ui/FilterBar';
 import DataTable, { Column } from './ui/DataTable';
+import Tooltip from './ui/Tooltip';
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -605,10 +606,13 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Reports" />}
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
-      action={
-        <Button icon={FileText} onClick={() => setShowPreview(true)}>
-          Preview Report
-        </Button>
+      titleActions={
+        <Tooltip label="Preview report" side="bottom">
+          <button type="button" onClick={() => setShowPreview(true)} aria-label="Preview report"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
+            <FileText className="h-4 w-4" />
+          </button>
+        </Tooltip>
       }
     >
         {/* ── Global date-range filter — everything below (KPIs and all 10
