@@ -70,9 +70,11 @@
   --error:          #DC2626;
   --info:           #2563EB;
   --neutral:        #64748B;
-  --sidebar-bg:     #1e293b;
-  --sidebar-border: #334155;
-  --header-bg:      #1e293b;
+  /* Dark chrome uses the ChiefVoice navy instead of slate-800 so the
+     header/sidebar feel like one intentional branded shell. */
+  --sidebar-bg:     #101A3A;
+  --sidebar-border: #263149;
+  --header-bg:      #101A3A;
 
   /* Panel tokens in dark mode — go full dark */
   --panel-bg:       #080D1C;
