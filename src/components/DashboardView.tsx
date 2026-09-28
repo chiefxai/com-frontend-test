@@ -425,7 +425,9 @@ export default function DashboardView({
       onRefresh={loadExtras}
       titleActions={
         <Tooltip label="Print dashboard" side="bottom">
-          <button type="button" onClick={() => {
+          <button
+            type="button"
+            onClick={() => {
               if (!dashboardPrintRef.current || isPrintingDashboard) return;
               setIsPrintingDashboard(true);
               document.body.classList.add('chiefvoice-printing');
@@ -434,7 +436,8 @@ export default function DashboardView({
                 document.body.classList.remove('chiefvoice-printing');
                 setIsPrintingDashboard(false);
               }, 0);
-            } aria-label="Print dashboard"
+            }}
+            aria-label="Print dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
