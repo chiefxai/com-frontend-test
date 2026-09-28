@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe2, LayoutDashboard, Building2, Users, ScrollText, Settings, Database, IndianRupee, MessageSquareText, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, ScrollText, Settings, Database, IndianRupee, MessageSquareText, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
 import OrganizationsPage from './OrganizationsPage';
@@ -11,6 +11,7 @@ import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.svg';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'overview',       label: 'Overview',           icon: LayoutDashboard },
@@ -33,11 +34,11 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
     <div className="admin-shell flex h-screen w-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)] font-sans">
       <aside className={`admin-sidebar flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-[72px]' : 'w-60'}`}>
         <div className={`h-16 flex items-center border-b border-[var(--border)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
-          <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center">
-            <Globe2 className="h-4 w-4 text-white" />
+          <div className="h-8 w-8 shrink-0 flex items-center justify-center overflow-hidden">
+            <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-8 w-8 object-contain" />
           </div>
-          {!collapsed && <div>
-            <div className="text-sm font-bold text-[var(--text-primary)] leading-none">ChiefVoice</div>
+          {!collapsed && <div className="min-w-0 overflow-hidden">
+            <div className="text-sm font-bold text-[var(--text-primary)] leading-none truncate">ChiefVoice</div>
             <div className="text-[9px] text-amber-500 uppercase tracking-widest mt-0.5">Platform Admin</div>
           </div>}
         </div>
