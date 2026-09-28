@@ -1,5 +1,8 @@
 import React from 'react';
+import { useRef, useState } from 'react';
 import { X, Download, FileText, Phone, PhoneOutgoing } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { CallLog } from '../types';
 import { callCostInr, formatInr } from '../lib/pricing';
 import { downloadCSV } from '../shared/lib/exporters';
@@ -117,10 +120,40 @@ export default function PrintableReport({
     return d >= new Date(fromDate + 'T00:00:00') && d <= new Date(toDate + 'T23:59:59');
   });
 
-  const handlePDF = () => {
-    // Use browser print — renders exactly what the user sees, including
-    // gradients, fonts, badges. Print CSS below hides the overlay chrome.
-    window.print();
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handlePDF = async () => {
+    if (!reportRef.current || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      await new Promise(requestAnimationFrame);
+      const canvas = await html2canvas(reportRef.current, {
+        scale: Math.min(2, window.devicePixelRatio || 1.5),
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const pageWidth = 210, pageHeight = 297, margin = 8;
+      const usableWidth = pageWidth - margin * 2;
+      const pagePxHeight = canvas.width * ((pageHeight - margin * 2) / usableWidth);
+      let sourceY = 0;
+      while (sourceY < canvas.height) {
+        const sliceHeight = Math.min(pagePxHeight, canvas.height - sourceY);
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = sliceHeight;
+        slice.getContext('2d')?.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+        const renderedHeight = sliceHeight * usableWidth / canvas.width;
+        if (sourceY > 0) pdf.addPage();
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.9), 'JPEG', margin, margin, usableWidth, renderedHeight, undefined, 'FAST');
+        sourceY += sliceHeight;
+      }
+      pdf.save(`${orgName.replace(/[^a-z0-9]+/gi, "_")}_call_report_${fromDate}_${toDate}.pdf`);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const handleCSV = () => {
