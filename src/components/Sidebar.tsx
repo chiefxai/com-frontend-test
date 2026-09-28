@@ -179,12 +179,12 @@ function GroupFlyout({
             onClick={() => { onSelect(sub.id); onClose(); }}
             className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
               isActive
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
                 : 'hover:bg-[var(--bg-subtle)]'
             }`}
             style={isActive ? {} : { color: 'var(--text-secondary)' }}
           >
-            <SubIcon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} />
+            <SubIcon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[var(--accent)]' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} />
             {sub.label}
           </button>
         );
@@ -299,13 +299,13 @@ export default function Sidebar({
   });
 
   const navBtnCls = (isActive: boolean) =>
-    `w-full flex items-center rounded-xl text-sm font-medium transition-all duration-150 group ${
+    `w-full flex items-center rounded-[9px] text-sm font-medium transition-all duration-150 group ${
       collapsed ? 'justify-center px-0 py-3' : 'px-4 py-3'
-    } ${isActive ? 'shadow-sm' : 'hover:bg-[var(--bg-subtle)]'}`;
+    } ${isActive ? 'shadow-none ring-1 ring-inset ring-[var(--accent)]/10' : 'hover:bg-[var(--bg-subtle)]'}`;
 
   const navBtnStyle = (isActive: boolean): React.CSSProperties =>
     isActive
-      ? { background: '#2563eb', color: '#ffffff' }
+      ? { background: 'var(--accent-subtle)', color: 'var(--text-primary)', boxShadow: 'inset 3px 0 0 var(--accent)' }
       : { color: 'var(--text-secondary)' };
 
   const iconCls = (isActive: boolean) =>
@@ -315,8 +315,8 @@ export default function Sidebar({
     isActive ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' };
 
   const subBtnCls = (isActive: boolean) =>
-    `w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 group ${
-      isActive ? 'shadow-sm' : 'hover:bg-[var(--bg-subtle)]'
+    `w-full flex items-center px-4 py-3 rounded-[9px] text-sm font-medium transition-all duration-150 group ${
+      isActive ? 'shadow-none ring-1 ring-inset ring-[var(--accent)]/10' : 'hover:bg-[var(--bg-subtle)]'
     }`;
 
   const subBtnStyle = (isActive: boolean): React.CSSProperties =>
@@ -404,26 +404,26 @@ export default function Sidebar({
       style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border)', color: 'var(--text-primary)' }}
     >
       {/* Brand Header */}
-      <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'p-6'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'px-5 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
         <img
           src={chiefVoiceLogo}
           alt="ChiefVoice"
-          className={`shrink-0 object-contain transition-all ${collapsed ? 'h-10 w-10' : 'h-10 w-10'}`}
+          className="h-9 w-9 shrink-0 object-contain"
         />
         {!collapsed && (
           <div className="ml-3 min-w-0">
-            <h1 className="text-lg font-semibold font-sans tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="text-[17px] font-semibold font-sans tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>
               ChiefVoice
             </h1>
-            <p className="text-[10px] text-[var(--text-muted)] font-sans mt-1 uppercase tracking-widest">{tagline}</p>
+            <p className="text-[9px] text-[var(--text-muted)] font-sans mt-1 uppercase tracking-[0.14em]">{tagline}</p>
           </div>
         )}
       </div>
 
       {/* Org Badge */}
       {!collapsed && (
-        <div className="px-6 py-3 flex items-center justify-between" style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 truncate max-w-[150px]">
+        <div className="px-5 py-2.5 flex items-center justify-between" style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[150px]">
             <Building2 className="h-3.5 w-3.5 shrink-0" /> {organizationName}
           </span>
           <div className="flex items-center space-x-1">
