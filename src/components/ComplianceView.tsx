@@ -383,6 +383,7 @@ export default function ComplianceView() {
             </Widget>
           </div>
           </div>
+          </div>
         </section>
       </div>
     </PageShell>
