@@ -46,7 +46,6 @@ import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
-import KpiCard from './ui/KpiCard';
 import SearchInput from './ui/SearchInput';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
@@ -1876,14 +1875,22 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
       {dialerMode === 'outbound' ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <KpiCard colSpan={1} label="Targets Loaded" value={totalLeadsInTask} icon={FileSpreadsheet} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
-            <KpiCard colSpan={1} label="Recorded Dialed" value={completedLeadsInTask} icon={CheckCircle2} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
-            <KpiCard colSpan={1} label="Skipped/No Answer" value={skippedLeadsInTask} icon={XCircle} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
-            <KpiCard colSpan={1} label="Conversion Rate" value={`${conversionPercent}%`} icon={Activity} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="#059669" className="!rounded-xl !min-h-0 !p-3.5" />
-          </div>
-
-          <VoiceSimulatorWorkspace>
+          <VoiceSimulatorWorkspace
+            header={
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">Outbound campaign workspace</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Live campaign performance at a glance.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{totalLeadsInTask.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">targets</span></span>
+                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{completedLeadsInTask.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">dialed</span></span>
+                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{skippedLeadsInTask.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">skipped</span></span>
+                  <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] dark:border-emerald-900/40 dark:bg-emerald-950/20"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{conversionPercent}%</span><span className="ml-1 text-emerald-700/70 dark:text-emerald-400/70">conversion</span></span>
+                </div>
+              </div>
+            }
+          >
         {/* Unified simulator workspace: campaign navigator + active campaign */}
         <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
           {isSimulatorNavigatorCollapsed ? (
@@ -2386,35 +2393,21 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
       ) : (
         /* REAL INBOUND CALL HISTORY */
         <>
-        <div className="grid grid-cols-3 gap-4">
-          <KpiCard colSpan={1} label="Calls Received" value={realInboundCallLogs.length} icon={PhoneIncoming} iconPosition="right" iconBg="var(--bg-subtle)" iconColor="var(--text-muted)" className="!rounded-xl !min-h-0 !p-3.5" />
-          <KpiCard
-            colSpan={1}
-            label="Avg. Duration"
-            value={`${realInboundCallLogs.length > 0
-              ? Math.round(realInboundCallLogs.reduce((acc, l) => acc + l.duration, 0) / realInboundCallLogs.length)
-              : 0}s`}
-            icon={Clock}
-            iconPosition="right"
-            iconBg="var(--bg-subtle)"
-            iconColor="var(--text-muted)"
-            className="!rounded-xl !min-h-0 !p-3.5"
-          />
-          <KpiCard
-            colSpan={1}
-            label="Positive Rate"
-            value={`${realInboundCallLogs.length > 0
-              ? Math.round((realInboundCallLogs.filter(l => l.sentiment === 'Positive').length / realInboundCallLogs.length) * 100)
-              : 0}%`}
-            icon={Smile}
-            iconPosition="right"
-            iconBg="var(--bg-subtle)"
-            iconColor="#059669"
-            className="!rounded-xl !min-h-0 !p-3.5"
-          />
-        </div>
-
-        <VoiceSimulatorWorkspace>
+        <VoiceSimulatorWorkspace
+          header={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-primary)]">Inbound call workspace</p>
+                <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Call activity across your receiving numbers.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{realInboundCallLogs.length.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">calls</span></span>
+                <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{realInboundCallLogs.length > 0 ? Math.round(realInboundCallLogs.reduce((acc, l) => acc + l.duration, 0) / realInboundCallLogs.length) : 0}s</span><span className="ml-1 text-[var(--text-muted)]">avg duration</span></span>
+                <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] dark:border-emerald-900/40 dark:bg-emerald-950/20"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{realInboundCallLogs.length > 0 ? Math.round((realInboundCallLogs.filter(l => l.sentiment === 'Positive').length / realInboundCallLogs.length) * 100) : 0}%</span><span className="ml-1 text-emerald-700/70 dark:text-emerald-400/70">positive</span></span>
+              </div>
+            </div>
+          }
+        >
           {/* Unified inbound workspace: receiving numbers + call history */}
           <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
             {isSimulatorNavigatorCollapsed ? (
