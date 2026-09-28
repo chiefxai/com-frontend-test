@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   PhoneIncoming,
   PhoneOutgoing,
@@ -41,6 +41,8 @@ import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import SlideOver from './ui/SlideOver';
 import Tooltip from './ui/Tooltip';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 // Loosely typed like ReportsView's DialTask — this page only needs
 // the task's own name + each lead's call outcome, not the full shape.
@@ -147,6 +149,8 @@ export default function DashboardView({
   orgSettings,
   costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK,
 }: DashboardViewProps) {
+  const dashboardPrintRef = useRef<HTMLDivElement>(null);
+  const [isPrintingDashboard, setIsPrintingDashboard] = useState(false);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [allEnquiries, setAllEnquiries] = useState<{ id: string; callId: string | null; createdAt: string }[]>([]);
   interface ScheduledCallback {
@@ -405,7 +409,29 @@ export default function DashboardView({
       onRefresh={loadExtras}
       titleActions={
         <Tooltip label="Print dashboard" side="bottom">
-          <button type="button" onClick={() => window.print()} aria-label="Print dashboard"
+          <button type="button" onClick={async () => {
+              if (!dashboardPrintRef.current || isPrintingDashboard) return;
+              setIsPrintingDashboard(true);
+              try {
+                await new Promise(requestAnimationFrame);
+                const canvas = await html2canvas(dashboardPrintRef.current, { scale: Math.min(2, window.devicePixelRatio || 1.5), useCORS: true, backgroundColor: '#ffffff', logging: false });
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+                const margin = 8, width = 210 - margin * 2, pagePxHeight = canvas.width * ((297 - margin * 2) / width);
+                let sourceY = 0;
+                while (sourceY < canvas.height) {
+                  const sliceHeight = Math.min(pagePxHeight, canvas.height - sourceY);
+                  const slice = document.createElement('canvas');
+                  slice.width = canvas.width; slice.height = sliceHeight;
+                  slice.getContext('2d')?.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+                  if (sourceY > 0) pdf.addPage();
+                  pdf.addImage(slice.toDataURL('image/jpeg', 0.9), 'JPEG', margin, margin, width, sliceHeight * width / canvas.width, undefined, 'FAST');
+                  sourceY += sliceHeight;
+                }
+                pdf.save('chiefvoice_dashboard.pdf');
+              } finally {
+                setIsPrintingDashboard(false);
+              }
+            }} aria-label="Print dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
@@ -433,7 +459,7 @@ export default function DashboardView({
           @page { margin: 0; }
         }
       `}</style>
-      <div id="dashboard-print-area" className="contents">
+      <div ref={dashboardPrintRef} id="dashboard-print-area" className="contents">
       {/* ── Global date-range filter ── */}
       <Widget colSpan={12} showHeader={false} padding="md">
         <FilterBar
