@@ -221,7 +221,7 @@ export default function CampaignView({
       title={
         isLaunchModalOpen ? (
           <span className="flex min-w-0 items-center gap-2">
-            <span className="text-[var(--text-muted)]">Outbound campaigns</span>
+            <span className="text-[var(--text-muted)]">Campaign</span>
             <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
             <span className="truncate text-[var(--text-primary)]">New outbound campaign</span>
           </span>
@@ -366,7 +366,7 @@ export default function CampaignView({
                         onClick={() => handleSelectCampaign(campaign)}
                         className={`w-full text-left p-4 sm:p-5 transition-colors group ${
                           isActive
-                            ? 'bg-blue-50/70 dark:bg-blue-500/[0.06]'
+                            ? 'bg-blue-50 border-l-2 border-blue-500 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.10)] dark:bg-blue-500/[0.08] dark:border-blue-400'
                             : 'hover:bg-[var(--bg-subtle)]/60'
                         }`}
                       >
@@ -374,7 +374,7 @@ export default function CampaignView({
                           <div
                             className={`mt-0.5 h-10 w-10 rounded-[9px] flex items-center justify-center shrink-0 border ${
                               isActive
-                                ? 'bg-blue-100 border-blue-200 text-blue-600 dark:bg-blue-500/15 dark:border-blue-500/20 dark:text-blue-300'
+                                ? 'bg-blue-100 border-blue-300 text-blue-700 shadow-sm dark:bg-blue-500/15 dark:border-blue-400/30 dark:text-blue-300'
                                 : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)]'
                             }`}
                           >
