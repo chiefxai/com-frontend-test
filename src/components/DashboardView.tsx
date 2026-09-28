@@ -41,8 +41,6 @@ import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import SlideOver from './ui/SlideOver';
 import Tooltip from './ui/Tooltip';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 // Loosely typed like ReportsView's DialTask — this page only needs
 // the task's own name + each lead's call outcome, not the full shape.
@@ -403,43 +401,39 @@ export default function DashboardView({
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
 
   return (
+<style>{`
+  @media print {
+    body.chiefvoice-printing * { visibility: hidden !important; }
+    body.chiefvoice-printing .chiefvoice-print-content,
+    body.chiefvoice-printing .chiefvoice-print-content * { visibility: visible !important; }
+    body.chiefvoice-printing .chiefvoice-print-content {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      padding: 12px !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+  }
+`}</style>
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Executive Desk" />}
       subtitle="Call activity, engagement, and business outcomes — for the selected date range."
-      contentRef={dashboardPrintRef}
+      contentRef={dashboardPrintRef} className="chiefvoice-print-content"
       onRefresh={loadExtras}
       titleActions={
         <Tooltip label="Print dashboard" side="bottom">
-          <button type="button" onClick={async () => {
+          <button type="button" onClick={() => {
               if (!dashboardPrintRef.current || isPrintingDashboard) return;
               setIsPrintingDashboard(true);
-              try {
-                // Keep dashboard export lightweight: charts are rasterized once
-                // at a compact print scale instead of using the browser's DPR.
-                const canvas = await html2canvas(dashboardPrintRef.current, {
-                  scale: 0.7,
-                  useCORS: true,
-                  backgroundColor: '#ffffff',
-                  logging: false,
-                  removeContainer: true,
-                });
-                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-                const margin = 8, width = 210 - margin * 2, pagePxHeight = canvas.width * ((297 - margin * 2) / width);
-                let sourceY = 0;
-                while (sourceY < canvas.height) {
-                  const sliceHeight = Math.min(pagePxHeight, canvas.height - sourceY);
-                  const slice = document.createElement('canvas');
-                  slice.width = canvas.width; slice.height = sliceHeight;
-                  slice.getContext('2d')?.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-                  if (sourceY > 0) pdf.addPage();
-                  pdf.addImage(slice.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, width, sliceHeight * width / canvas.width, undefined, 'FAST');
-                  sourceY += sliceHeight;
-                }
-                pdf.save('chiefvoice_dashboard.pdf');
-              } finally {
+              document.body.classList.add('chiefvoice-printing');
+              window.setTimeout(() => {
+                window.print();
+                document.body.classList.remove('chiefvoice-printing');
                 setIsPrintingDashboard(false);
-              }
-            }} aria-label="Print dashboard"
+              }, 0);
+            } aria-label="Print dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
