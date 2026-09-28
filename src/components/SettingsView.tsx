@@ -840,27 +840,12 @@ export default function SettingsView({
                           </div>
                         </div>
 
-                        <div className="border border-[var(--border)] rounded-[9px] p-4 bg-[var(--bg-base)]">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Grant Feature Access</p>
-                          {orgAllowedFlags.length === 0 && (
-                            <p className="text-[10px] text-slate-400 mb-2">No features available — super admin has not granted any features to this org.</p>
-                          )}
+                        <div className="rounded-[9px]">
                           <FlagGroupPicker
                             availableKeys={orgAllowedFlags}
-                            onApply={(keys) => setNewStaffFeatures(keys)}
-                            className="mb-3"
+                            value={newStaffFeatures}
+                            onApply={setNewStaffFeatures}
                           />
-                          <div className="flex flex-wrap gap-2">
-                            {FEATURE_REGISTRY.filter(f => orgAllowedFlags.includes(f.key)).map((flag) => {
-                              const active = newStaffFeatures.includes(flag.key);
-                              return (
-                                <button key={flag.key} type="button" onClick={() => toggleFeature(flag.key)}
-                                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-[var(--bg-surface)] text-slate-500 border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600'}`}>
-                                  {flag.label}
-                                </button>
-                              );
-                            })}
-                          </div>
                         </div>
 
                         <div className="flex items-center justify-end gap-3 pt-1">
