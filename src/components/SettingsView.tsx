@@ -845,6 +845,7 @@ export default function SettingsView({
                             availableKeys={orgAllowedFlags}
                             value={newStaffFeatures}
                             onApply={setNewStaffFeatures}
+                            compact
                           />
                         </div>
 
