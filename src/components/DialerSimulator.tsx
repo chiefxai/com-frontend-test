@@ -1910,9 +1910,6 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2">
                 {tasks.map((task) => {
                   const active = task.id === selectedTaskId;
-                  const statusClass = task.status === 'Completed'
-                    ? 'bg-emerald-500'
-                    : task.status === 'In Progress'
                     ? 'bg-blue-500'
                     : 'bg-slate-400';
 
@@ -1935,7 +1932,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                       key={task.id}
                       side="right"
                       className="w-full flex justify-center"
-                      label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${task.status}`} 
+                      label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${effectiveStatus}`} 
                     >
                       <button
                         type="button"
@@ -2019,6 +2016,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                       const total = task.leadIds.length;
                       const pending = Math.max(0, total - completed);
                       const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                       const effectiveStatus = percent === 100 && total > 0 ? 'Completed' : task.status;
                       const scriptName = task.workflowName || task.workflowRunMetadata?.workflowName || 'No script';
                       const runAt = task.workflowRunMetadata?.runAt || task.createdAt;
                       const runDateTime = new Date(runAt).toLocaleString(undefined, {
@@ -2028,9 +2026,9 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         hour: '2-digit',
                         minute: '2-digit',
                       });
-                      const statusDot = task.status === 'Completed'
+                      const statusDot = effectiveStatus === 'Completed'
                         ? 'bg-emerald-500'
-                        : task.status === 'In Progress'
+                        : effectiveStatus === 'In Progress'
                         ? 'bg-blue-500 animate-pulse'
                         : 'bg-slate-400';
 
@@ -2039,7 +2037,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                           key={task.id}
                           side="right"
                           className="w-full flex"
-                          label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${task.status}`}
+                          label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${effectiveStatus}`}
                         >
                         <button
                           type="button"
@@ -2076,11 +2074,11 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                                   {new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </span>
                                 <span className={`text-[9px] font-semibold ${
-                                  task.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-400'
-                                  : task.status === 'In Progress' ? 'text-blue-600 dark:text-blue-400'
+                                  effectiveStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400'
+                                  : effectiveStatus === 'In Progress' ? 'text-blue-600 dark:text-blue-400'
                                   : 'text-[var(--text-muted)]'
                                 }`}>
-                                  {task.status}
+                                  {effectiveStatus}
                                 </span>
                               </div>
                             </div>
