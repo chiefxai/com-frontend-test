@@ -138,11 +138,11 @@ function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps) {
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         title="Account"
       >
-        <span className="h-8 w-8 rounded-full overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0">
+        <span className="h-9 w-9 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-center shrink-0 p-1">
           <img
             src={chiefVoiceLogo}
             alt="ChiefVoice profile"
-            className="h-full w-full object-contain"
+            className="block h-full w-full object-contain"
           />
         </span>
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -157,11 +157,11 @@ function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps) {
           {/* Identity section */}
           <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-full overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border)] flex items-center justify-center shrink-0">
+              <span className="h-12 w-12 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] flex items-center justify-center shrink-0 p-1">
                 <img
                   src={chiefVoiceLogo}
                   alt="ChiefVoice profile"
-                  className="h-full w-full object-contain"
+                  className="block h-full w-full object-contain"
                 />
               </span>
               <div className="min-w-0">
