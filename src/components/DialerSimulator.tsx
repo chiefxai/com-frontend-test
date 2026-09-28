@@ -1892,7 +1892,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
             }
           >
         {/* Unified simulator workspace: campaign navigator + active campaign */}
-        <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
+        <aside className={`h-full min-h-0 transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
           {isSimulatorNavigatorCollapsed ? (
             <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
               <button
@@ -2105,9 +2105,9 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         {isCampaignNavigatorOpen && <button type="button" aria-label="Close campaigns sidebar" onClick={() => setIsCampaignNavigatorOpen(false)} className="lg:hidden fixed inset-0 z-40 bg-black/35" />}
 
         {/* Main Column: Selected Task Queue Workspace */}
-        <div className={`col-span-12 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
+        <div className={`col-span-12 h-full min-h-0 transition-all duration-200 ${isSimulatorNavigatorCollapsed ? 'lg:col-span-11 xl:col-span-11' : 'lg:col-span-9 xl:col-span-9'}`}>
         <div className="lg:hidden mb-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2"><span className="text-xs font-semibold text-[var(--text-primary)]">Campaign workspace</span><button type="button" onClick={() => setIsCampaignNavigatorOpen(true)} className="h-8 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--text-secondary)]">Campaigns</button></div>
-        <Widget colSpan={12} showHeader={false} className="!col-span-12 h-full min-h-0 border-0 shadow-none overflow-hidden">
+        <Widget colSpan={12} showHeader={false} className="!col-span-12 h-full min-h-0 border-0 shadow-none overflow-hidden" bodyClassName="h-full">
           {!selectedTask ? (
             <EmptyState
               icon={FileSpreadsheet}
