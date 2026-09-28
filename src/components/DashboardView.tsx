@@ -406,6 +406,7 @@ export default function DashboardView({
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Executive Desk" />}
       subtitle="Call activity, engagement, and business outcomes — for the selected date range."
+      contentRef={dashboardPrintRef}
       onRefresh={loadExtras}
       titleActions={
         <Tooltip label="Print dashboard" side="bottom">
@@ -414,7 +415,7 @@ export default function DashboardView({
               setIsPrintingDashboard(true);
               try {
                 await new Promise(requestAnimationFrame);
-                const canvas = await html2canvas(dashboardPrintRef.current, { scale: Math.min(2, window.devicePixelRatio || 1.5), useCORS: true, backgroundColor: '#ffffff', logging: false });
+                const canvas = await html2canvas(dashboardPrintRef.current, { scale: 1, useCORS: true, backgroundColor: '#ffffff', logging: false });
                 const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
                 const margin = 8, width = 210 - margin * 2, pagePxHeight = canvas.width * ((297 - margin * 2) / width);
                 let sourceY = 0;
@@ -424,7 +425,7 @@ export default function DashboardView({
                   slice.width = canvas.width; slice.height = sliceHeight;
                   slice.getContext('2d')?.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
                   if (sourceY > 0) pdf.addPage();
-                  pdf.addImage(slice.toDataURL('image/jpeg', 0.9), 'JPEG', margin, margin, width, sliceHeight * width / canvas.width, undefined, 'FAST');
+                  pdf.addImage(slice.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, width, sliceHeight * width / canvas.width, undefined, 'FAST');
                   sourceY += sliceHeight;
                 }
                 pdf.save('chiefvoice_dashboard.pdf');
@@ -459,7 +460,7 @@ export default function DashboardView({
           @page { margin: 0; }
         }
       `}</style>
-      <div ref={dashboardPrintRef} id="dashboard-print-area" className="contents">
+
       {/* ── Global date-range filter ── */}
       <Widget colSpan={12} showHeader={false} padding="md">
         <FilterBar
@@ -781,7 +782,6 @@ export default function DashboardView({
           );
         })()}
       </SlideOver>
-      </div>
     </PageShell>
   );
 }
