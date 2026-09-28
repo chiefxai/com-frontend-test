@@ -401,7 +401,8 @@ export default function DashboardView({
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
 
   return (
-<style>{`
+    <>
+      <style>{`
   @media print {
     body.chiefvoice-printing * { visibility: hidden !important; }
     body.chiefvoice-printing .chiefvoice-print-content,
@@ -440,27 +441,6 @@ export default function DashboardView({
         </Tooltip>
       }
     >
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #dashboard-print-area {
-            visibility: visible !important;
-            display: grid !important;
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-            gap: 16px;
-            position: absolute !important;
-            inset: 0 !important;
-            width: 100% !important;
-            padding: 24px !important;
-            background: white !important;
-          }
-          #dashboard-print-area * { visibility: visible !important; }
-          #dashboard-print-area [class*="bg-[var(--bg"] {
-            background: white !important;
-          }
-          @page { margin: 0; }
-        }
-      `}</style>
 
       {/* ── Global date-range filter ── */}
       <Widget colSpan={12} showHeader={false} padding="md">
@@ -784,5 +764,6 @@ export default function DashboardView({
         })()}
       </SlideOver>
     </PageShell>
+    </>
   );
 }
