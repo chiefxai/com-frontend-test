@@ -29,7 +29,8 @@ export default function PageHeaderBar() {
   return (
     <>
       <div className="shrink-0 h-16 px-5 md:px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
-        <div className="min-w-0 flex items-center gap-2.5 shrink-0">\n          <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] leading-snug truncate">
+        <div className="min-w-0 flex items-center gap-2.5 shrink-0">
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] leading-snug truncate">
             {header.title}
           </h1>
           {header.titleSuffix}
