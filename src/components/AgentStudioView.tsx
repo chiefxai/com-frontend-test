@@ -1293,7 +1293,7 @@ export default function AgentStudioView() {
           </div>
         </div>
       </AgentFormFrame>
-      )}}
+      )}
     </PageShell>
   );
 }
