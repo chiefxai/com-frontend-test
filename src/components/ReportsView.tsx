@@ -616,18 +616,45 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
   return (
     <>
       <style>{`
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
   @media print {
-    body.chiefvoice-printing * { visibility: hidden !important; }
-    body.chiefvoice-printing .chiefvoice-print-content,
-    body.chiefvoice-printing .chiefvoice-print-content * { visibility: visible !important; }
-    body.chiefvoice-printing .chiefvoice-print-content {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 100% !important;
-      padding: 12px !important;
+    html, body {
+      height: auto !important;
       overflow: visible !important;
+    }
+    body.chiefvoice-printing * {
+      visibility: hidden !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content,
+    body.chiefvoice-printing .chiefvoice-print-content * {
+      visibility: visible !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content {
+      position: static !important;
+      display: block !important;
+      width: 100% !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      padding: 0 !important;
+      margin: 0 !important;
       background: #fff !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content > div {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      flex: none !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content .grid {
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
     }
   }
 `}</style>
