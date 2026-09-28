@@ -70,9 +70,11 @@ interface PageShellProps {
   layout?: 'grid' | 'fill';
   /** Called when the user clicks the refresh button — reload this page's data */
   onRefresh?: () => void;
+  /** Optional ref to the scrollable content grid for export/print capture. */
+  contentRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export default function PageShell({ title, subtitle, titleSuffix, titleActions, action, toolbar, children, className = '', layout = 'grid', onRefresh }: PageShellProps) {
+export default function PageShell({ title, subtitle, titleSuffix, titleActions, action, toolbar, children, className = '', layout = 'grid', onRefresh, contentRef }: PageShellProps) {
   const contextRefresh = useRefresh();
   const refresh = onRefresh ?? contextRefresh;
   const [spinning, setSpinning] = React.useState(false);
@@ -169,7 +171,7 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-6 xl:px-8 py-4 md:py-6">
-          <div className="grid grid-cols-12 gap-4 md:gap-5 xl:gap-6 content-start">
+          <div ref={contentRef} className="grid grid-cols-12 gap-4 md:gap-5 xl:gap-6 content-start">
             {children}
           </div>
         </div>
