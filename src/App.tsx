@@ -1006,7 +1006,6 @@ export default function App() {
                 {orgSettings.workspaceName}.chief.ai
               </span>
             </div>
-          </div>
 
           <div className="flex items-center space-x-3">
             <NotificationBell
