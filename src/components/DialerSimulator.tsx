@@ -1964,7 +1964,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               colSpan={3}
               title="Campaigns"
               icon={Megaphone}
-              className="!col-span-12 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+              className="!col-span-12 lg:!col-span-3 xl:!col-span-3 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
               action={
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
@@ -2445,7 +2445,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                 colSpan={3}
                 title="Inbound numbers"
                 icon={PhoneForwarded}
-                className="!col-span-12 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+                className="!col-span-12 lg:!col-span-3 xl:!col-span-3 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
                 action={
                   <div className="flex items-center gap-1.5">
                     <Badge color="blue" className="font-mono">{activeVirtualNumbers.length} Online</Badge>
