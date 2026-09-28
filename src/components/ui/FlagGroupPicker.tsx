@@ -11,6 +11,7 @@ interface FlagGroupPickerProps {
   className?: string;
   label?: string;
   description?: string;
+  compact?: boolean;
 }
 
 export default function FlagGroupPicker({
@@ -20,6 +21,7 @@ export default function FlagGroupPicker({
   className = '',
   label = 'Feature Access',
   description = 'Choose a complete group or individual features independently.',
+  compact = false,
 }: FlagGroupPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -131,83 +133,76 @@ export default function FlagGroupPicker({
 
   return (
     <div ref={rootRef} className={`relative w-full min-w-0 ${className}`}>
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-bold text-slate-700">{label}</p>
-          <p className="text-[10px] text-slate-400">{description}</p>
-        </div>
-        {(selectedGroups.length > 0 || selectedFeatures.length > 0) && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-[10px] font-semibold text-slate-400 hover:text-rose-500"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-
-      {(selectedGroups.length > 0 || selectedFeatures.length > 0) && (
-        <div className="mb-2 flex max-w-full flex-wrap gap-1.5">
-          {selectedGroups.map(groupKey => {
-            const group = groups.find(item => item.key === groupKey);
-            if (!group) return null;
-
-            return (
-              <button
-                key={`group-${groupKey}`}
-                type="button"
-                onClick={() => toggleGroup(groupKey)}
-                title={group.description}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-200"
-              >
-                <Users2 className="h-3 w-3 shrink-0" />
-                <span className="truncate">{group.label}</span>
-                <X className="h-3 w-3 shrink-0" />
+      {!compact && (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-700">{label}</p>
+              <p className="text-[10px] text-slate-400">{description}</p>
+            </div>
+            {(selectedGroups.length > 0 || selectedFeatures.length > 0) && (
+              <button type="button" onClick={clearAll} className="text-[10px] font-semibold text-slate-400 hover:text-rose-500">
+                Clear all
               </button>
-            );
-          })}
-
-          {selectedFeatures.map(key => {
-            const feature = FEATURE_REGISTRY.find(item => item.key === key);
-            if (!feature) return null;
-
-            return (
-              <button
-                key={`feature-${key}`}
-                type="button"
-                onClick={() => toggleFeature(key)}
-                title={feature.description}
-                className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-700 hover:border-amber-200 hover:bg-amber-50"
-              >
-                <span className="truncate">{feature.label}</span>
-                <X className="h-3 w-3 shrink-0" />
-              </button>
-            );
-          })}
-        </div>
+            )}
+          </div>
+          {(selectedGroups.length > 0 || selectedFeatures.length > 0) && (
+            <div className="mb-2 flex max-w-full flex-wrap gap-1.5">
+              {selectedGroups.map(groupKey => {
+                const group = groups.find(item => item.key === groupKey);
+                if (!group) return null;
+                return (
+                  <button key={`group-${groupKey}`} type="button" onClick={() => toggleGroup(groupKey)} title={group.description}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-200">
+                    <Users2 className="h-3 w-3 shrink-0" /><span className="truncate">{group.label}</span><X className="h-3 w-3 shrink-0" />
+                  </button>
+                );
+              })}
+              {selectedFeatures.map(key => {
+                const feature = FEATURE_REGISTRY.find(item => item.key === key);
+                if (!feature) return null;
+                return (
+                  <button key={`feature-${key}`} type="button" onClick={() => toggleFeature(key)} title={feature.description}
+                    className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-700 hover:border-amber-200 hover:bg-amber-50">
+                    <span className="truncate">{feature.label}</span><X className="h-3 w-3 shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       <div ref={triggerRef} className="relative">
-        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-        <input
-          value={search}
-          onChange={event => {
-            setSearch(event.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="Search individual features or choose a group…"
-          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-10 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
-        />
-        <button
-          type="button"
-          onClick={() => setOpen(prev => !prev)}
-          className="absolute right-2 top-1.5 p-1.5 text-slate-400 hover:text-slate-700"
-          aria-label="Open feature access picker"
-        >
-          <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
+        {compact ? (
+          <button
+            type="button"
+            onClick={() => setOpen(prev => !prev)}
+            className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-primary)] hover:border-indigo-400"
+          >
+            <span>{label}</span>
+            <span className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
+              {selectedFlagKeys.length > 0 ? `${selectedFlagKeys.length} selected` : 'Select permissions'}
+              <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+        ) : (
+          <>
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              value={search}
+              onChange={event => { setSearch(event.target.value); setOpen(true); }}
+              onFocus={() => setOpen(true)}
+              placeholder="Search individual features or choose a group…"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-10 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+            />
+            <button type="button" onClick={() => setOpen(prev => !prev)}
+              className="absolute right-2 top-1.5 p-1.5 text-slate-400 hover:text-slate-700"
+              aria-label="Open feature access picker">
+              <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+          </>
+        )}
 
         {open && (
           <div
