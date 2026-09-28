@@ -404,14 +404,14 @@ export default function Sidebar({
       style={{ background: '#101A3A', borderRight: '1px solid rgba(255,255,255,0.08)', color: '#F8FAFF' }}
     >
       {/* Brand Header */}
-      <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'px-5 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'px-5 py-3.5'}`} style={{ borderBottom: '1px solid var(--border)' }}>
         <img
           src={chiefVoiceLogo}
           alt="ChiefVoice"
-          className="h-9 w-9 shrink-0 object-contain"
+          className="h-8 w-8 shrink-0 object-contain"
         />
         {!collapsed && (
-          <div className="ml-3 min-w-0">
+          <div className="ml-3 min-w-0 flex-1 overflow-hidden">
             <h1 className="text-[17px] font-semibold font-sans tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>
               ChiefVoice
             </h1>
