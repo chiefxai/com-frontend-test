@@ -404,7 +404,7 @@ export default function DashboardView({
       subtitle="Call activity, engagement, and business outcomes — for the selected date range."
       onRefresh={loadExtras}
       titleActions={
-        <RechartsTooltip label="Print dashboard" side="bottom">
+        <Tooltip label="Print dashboard" side="bottom">
           <button type="button" onClick={() => window.print()} aria-label="Print dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
