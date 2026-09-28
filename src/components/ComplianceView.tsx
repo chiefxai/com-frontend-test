@@ -157,42 +157,28 @@ export default function ComplianceView() {
       onRefresh={() => loadAll()}
     >
       <div className="col-span-12 space-y-5">
-        <div className="grid grid-cols-12 gap-4">
-          <KpiCard
-            className="!col-span-12 md:!col-span-4 min-h-[122px]"
-            label="Calling protection"
-            value={isRestricted ? 'Protected' : 'Open'}
-            sub={isRestricted ? 'Calls are limited to the configured window' : 'No calling-hour restriction is active'}
-            badge={isRestricted ? 'ACTIVE' : 'REVIEW'}
-            badgeColor={isRestricted ? 'green' : 'amber'}
-            icon={isRestricted ? ShieldCheck : AlertTriangle}
-            iconBg="var(--bg-subtle)"
-            iconColor={isRestricted ? '#059669' : '#d97706'}
-            iconPosition="left"
-          />
-          <KpiCard
-            className="!col-span-12 md:!col-span-4 min-h-[122px]"
-            label="Protected numbers"
-            value={dnc.length}
-            sub={dnc.length === 1 ? '1 number excluded from outbound calls' : 'Numbers excluded from outbound calls'}
-            icon={ShieldBan}
-            iconBg="var(--bg-subtle)"
-            iconColor="#e11d48"
-            iconPosition="left"
-          />
-          <KpiCard
-            className="!col-span-12 md:!col-span-4 min-h-[122px]"
-            label="Calling schedule"
-            value={hoursLabel}
-            sub={window_.timezone || 'Timezone not configured'}
-            icon={Clock3}
-            iconBg="var(--bg-subtle)"
-            iconColor="#2563eb"
-            iconPosition="left"
-          />
-        </div>
-
-        {message && (
+        <section className="overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
+            <div>
+              <p className="text-xs font-semibold text-[var(--text-primary)]">Compliance controls</p>
+              <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Outbound calling protection and do-not-call rules.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                <span className="font-semibold text-[var(--text-primary)]">{isRestricted ? 'Protected' : 'Open'}</span>
+                <span className="ml-1 text-[var(--text-muted)]">calling</span>
+              </span>
+              <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
+                <span className="font-semibold text-[var(--text-primary)]">{dnc.length}</span>
+                <span className="ml-1 text-[var(--text-muted)]">protected</span>
+              </span>
+              <span className="rounded-lg border border-blue-200/70 bg-blue-50/70 px-2.5 py-1.5 text-[10px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-400">
+                {hoursLabel}
+              </span>
+            </div>
+          </div>
+          <div className="p-3 sm:p-4">
+            {message && (
           <div className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs ${
             message.type === 'success'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400'
@@ -396,7 +382,8 @@ export default function ComplianceView() {
               </div>
             </Widget>
           </div>
-        </div>
+          </div>
+        </section>
       </div>
     </PageShell>
   );
