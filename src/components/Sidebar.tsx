@@ -305,14 +305,18 @@ export default function Sidebar({
 
   const navBtnStyle = (isActive: boolean): React.CSSProperties =>
     isActive
-      ? { background: 'rgba(22,119,255,0.18)', color: '#FFFFFF', boxShadow: 'inset 3px 0 0 #18C8F2' }
+      ? {
+          background: 'linear-gradient(90deg, rgba(24,200,242,0.16), rgba(22,119,255,0.14), rgba(123,44,255,0.12))',
+          color: 'var(--text-primary)',
+          boxShadow: 'inset 3px 0 0 #18C8F2, inset 0 0 0 1px rgba(22,119,255,0.14)',
+        }
       : { color: 'var(--text-secondary)' };
 
   const iconCls = (isActive: boolean) =>
     `h-4 w-4 shrink-0 ${collapsed ? '' : 'mr-3'}`;
 
   const iconStyle = (isActive: boolean): React.CSSProperties =>
-    isActive ? { color: '#18C8F2' } : { color: 'rgba(248,250,255,0.58)' };
+    isActive ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' };
 
   const subBtnCls = (isActive: boolean) =>
     `w-full flex items-center px-4 py-3 rounded-[9px] text-sm font-medium transition-all duration-150 group ${
@@ -321,7 +325,11 @@ export default function Sidebar({
 
   const subBtnStyle = (isActive: boolean): React.CSSProperties =>
     isActive
-      ? { background: 'linear-gradient(90deg, rgba(24,200,242,0.20), rgba(123,44,255,0.22))', color: '#FFFFFF', boxShadow: 'inset 2px 0 0 #7B2CFF' }
+      ? {
+          background: 'linear-gradient(90deg, rgba(24,200,242,0.16), rgba(123,44,255,0.12))',
+          color: 'var(--text-primary)',
+          boxShadow: 'inset 2px 0 0 #7B2CFF, inset 0 0 0 1px rgba(123,44,255,0.14)',
+        }
       : { color: 'var(--text-secondary)' };
 
   const renderGroup = (group: SidebarGroup) => {
