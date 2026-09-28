@@ -1910,8 +1910,6 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2">
                 {tasks.map((task) => {
                   const active = task.id === selectedTaskId;
-                    ? 'bg-blue-500'
-                    : 'bg-slate-400';
 
                   const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
                   const total = task.leadIds.length;
