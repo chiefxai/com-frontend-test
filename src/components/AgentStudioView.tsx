@@ -141,16 +141,7 @@ function AgentFormFrame({ children, creating, agentWizardStep, form, onBack }: A
       description=""
       steps={[]}
       activeStep={agentWizardStep}
-      action={(
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-[9px] border border-slate-500 bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Agent Studio
-        </button>
-      )}
+      action={undefined}
     >
       {children}
     </AwsCreateLayout>
@@ -727,7 +718,7 @@ export default function AgentStudioView() {
                   value={editedSystemPrompt}
                   onChange={(e) => setEditedSystemPrompt(e.target.value)}
                   rows={10}
-                  className="w-full bg-[var(--bg-base)]  border border-[var(--border)] rounded-[9px] px-4 py-3 text-[11px] font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all resize-none"
+                  className="w-full bg-[var(--bg-base)]  border border-[var(--border)] rounded-[9px] px-4 py-3 text-[11px] font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-cyan-500/15 focus:border-cyan-500 transition-all resize-none"
                 />
                 <p className="text-[10px] text-slate-400 mt-1.5">
                   Must keep <code className="font-mono bg-[var(--bg-subtle)] px-1 rounded">{'{transcript}'}</code>
@@ -762,7 +753,31 @@ export default function AgentStudioView() {
       {/* ── Agent create page / edit modal ── */}
       {(creating || !!editingAgent) && (
       <AgentFormFrame creating={creating} agentWizardStep={1} form={form} onBack={closeForm}>
-        <div className="mx-auto w-full max-w-5xl space-y-5 pb-2">
+        <div className="mx-auto w-full max-w-5xl space-y-6 pb-4">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={closeForm}
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-cyan-400/50 hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Agent Studio
+            </button>
+            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-300">
+              {creating ? 'New agent' : 'Edit agent'}
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-cyan-200/60 bg-gradient-to-br from-cyan-50 via-blue-50/70 to-violet-50/70 p-5 shadow-sm dark:border-cyan-400/20 dark:from-cyan-500/[0.08] dark:via-blue-500/[0.06] dark:to-violet-500/[0.08]">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/80 text-blue-600 shadow-sm ring-1 ring-white/70 dark:bg-white/10 dark:text-cyan-300 dark:ring-white/10">
+                <Bot className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[var(--text-primary)]">{creating ? 'Create a new voice agent' : 'Edit voice agent'}</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Configure the agent identity, voice, behavior, calling setup, and knowledge access in one place.</p>
+              </div>
+            </div>
+          </div>
           {false && (
             <div className="flex items-center gap-3 rounded-[14px] border border-[var(--border)] bg-[var(--bg-subtle)]/80  px-4 py-3">
               <div className={`flex items-center gap-2 ${agentWizardStep === 1 ? 'text-indigo-600' : 'text-slate-400'}`}>
@@ -780,21 +795,21 @@ export default function AgentStudioView() {
           {true && (
             <>
           {/* Agent Name */}
-          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-base)]/80 dark:bg-[var(--bg-surface)] p-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm transition-shadow hover:shadow-md">
             <label className="block text-xs font-semibold text-[var(--text-primary)]  mb-1.5">Agent Name</label>
             <input
               autoFocus
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="e.g. Sales Agent, Support Bot, Loan Advisor"
-              className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm placeholder:text-slate-400 dark:placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all"
             />
           </div>
 
           
 
           {/* Voice */}
-          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm transition-shadow hover:shadow-md">
             <div className="flex items-center gap-2 mb-3">
               <Mic className="h-4 w-4 text-violet-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Voice</p>
@@ -822,7 +837,7 @@ export default function AgentStudioView() {
           {/* Voice-agent prompt configuration: industry, language, dialect,
               call type, business context — assembled into the two master
               prompts (INBOUND/OUTBOUND) via /api/agents/generate-prompt. */}
-          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
             <div className="flex items-center gap-2 mb-3">
               <Bot className="h-4 w-4 text-indigo-500" />
               <p className="text-xs font-semibold text-[var(--text-primary)]  uppercase tracking-widest">Agent Configuration</p>
