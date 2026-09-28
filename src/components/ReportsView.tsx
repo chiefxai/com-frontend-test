@@ -641,6 +641,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Reports" />}
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
+      contentRef={reportPrintRef}
       titleActions={
         <Tooltip label="Print report" side="bottom">
           <button type="button" onClick={handlePrintReport} aria-label="Print report"
@@ -650,7 +651,6 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
         </Tooltip>
       }
     >
-      <div ref={reportPrintRef} id="reports-print-area">
         {/* ── Global date-range filter — everything below (KPIs and all 10
             widgets) is scoped to this one control. ── */}
         <Widget colSpan={12} showHeader={false} padding="md">
@@ -1130,7 +1130,6 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
           })()}
         </Widget>
 
-      </div>
     </PageShell>
   );
 }
