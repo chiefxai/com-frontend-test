@@ -1964,7 +1964,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               colSpan={3}
               title="Campaigns"
               icon={Megaphone}
-              className="!col-span-12 lg:!col-span-3 xl:!col-span-3 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+              className="!col-span-12 lg:!col-span-3 xl:!col-span-3 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden" bodyClassName="h-full"
               action={
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
@@ -1990,7 +1990,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                 </div>
               }
             >
-              <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
+              <div className={`h-full flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
                 <div className="px-3 pb-3 border-b border-[var(--border)]">
                   <SearchInput
                     value={campaignSearch}
