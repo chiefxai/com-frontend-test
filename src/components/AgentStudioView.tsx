@@ -754,19 +754,6 @@ export default function AgentStudioView() {
       {(creating || !!editingAgent) && (
       <AgentFormFrame creating={creating} agentWizardStep={1} form={form} onBack={closeForm}>
         <div className="mx-auto w-full max-w-5xl space-y-6 pb-4">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={closeForm}
-              className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-cyan-400/50 hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Agent Studio
-            </button>
-            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-300">
-              {creating ? 'New agent' : 'Edit agent'}
-            </span>
-          </div>
           <div className="overflow-hidden rounded-2xl border border-cyan-200/60 bg-gradient-to-br from-cyan-50 via-blue-50/70 to-violet-50/70 p-5 shadow-sm dark:border-cyan-400/20 dark:from-cyan-500/[0.08] dark:via-blue-500/[0.06] dark:to-violet-500/[0.08]">
             <div className="flex items-start gap-3.5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/80 text-blue-600 shadow-sm ring-1 ring-white/70 dark:bg-white/10 dark:text-cyan-300 dark:ring-white/10">
@@ -1290,7 +1277,7 @@ export default function AgentStudioView() {
             </div>
           )}
 
-          <div className="sticky bottom-0 z-10 -mx-2 mt-2 flex flex-col-reverse gap-3 border-t border-[var(--border)] bg-[var(--bg-surface)]/95 px-2 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-[var(--border)] px-2 pt-6 pb-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold text-[var(--text-primary)]">{creating ? 'Ready to create?' : 'Ready to save changes?'}</p>
               <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">You can update these settings later from Agent Studio.</p>
