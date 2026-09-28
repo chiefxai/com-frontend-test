@@ -166,42 +166,6 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
     <PageShell
       title="Call Logs"
       subtitle="Every real inbound and outbound call — transcript, recording, and sentiment."
-      action={
-        <div className="relative">
-          <Button icon={Download} variant="secondary" size="sm" onClick={() => setShowExport(v => !v)}>
-            Export CSV <ChevronDown className="h-3 w-3 ml-1" />
-          </Button>
-          {showExport && (
-            <div className="absolute right-0 mt-2 w-64 rounded-[9px] shadow-xl border z-50 p-3 space-y-1"
-              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Select fields to export</p>
-              {EXPORT_FIELDS.map(f => (
-                <label key={f.key} className="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[var(--bg-subtle)]">
-                  <div
-                    className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-colors ${exportFields.includes(f.key) ? 'bg-[image:var(--brand-gradient)] border-transparent' : 'border-[var(--border)]'}`}
-                    onClick={() => toggleField(f.key)}
-                  >
-                    {exportFields.includes(f.key) && <Check className="h-2.5 w-2.5 text-white" />}
-                  </div>
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{f.label}</span>
-                </label>
-              ))}
-              <div className="flex gap-2 mt-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                <button className="text-xs underline" style={{ color: 'var(--text-muted)' }}
-                  onClick={() => setExportFields(EXPORT_FIELDS.map(f => f.key))}>All</button>
-                <button className="text-xs underline" style={{ color: 'var(--text-muted)' }}
-                  onClick={() => setExportFields([])}>None</button>
-                <Button size="sm" className="ml-auto" onClick={() => {
-                  exportCSV('call_logs.csv', exportFields, sorted, resolveCallerName, costPerMinuteInr ?? 0);
-                  setShowExport(false);
-                }}>
-                  Download
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      }
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
@@ -218,6 +182,34 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
               resultCount={{ filtered: filtered.length, total: callLogs.length, label: 'calls' }}
               actions={
                 <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <div className="relative">
+                    <Button icon={Download} variant="secondary" size="sm" onClick={() => setShowExport(v => !v)}>
+                      Export CSV <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                    {showExport && (
+                      <div className="absolute right-0 top-full mt-2 w-64 rounded-[9px] shadow-xl border z-50 p-3 space-y-1"
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Select fields to export</p>
+                        {EXPORT_FIELDS.map(f => (
+                          <label key={f.key} className="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[var(--bg-subtle)]">
+                            <div className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-colors ${exportFields.includes(f.key) ? 'bg-[image:var(--brand-gradient)] border-transparent' : 'border-[var(--border)]'}`} onClick={() => toggleField(f.key)}>
+                              {exportFields.includes(f.key) && <Check className="h-2.5 w-2.5 text-white" />}
+                            </div>
+                            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{f.label}</span>
+                          </label>
+                        ))}
+                        <div className="flex gap-2 mt-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+                          <button className="text-xs underline" style={{ color: 'var(--text-muted)' }} onClick={() => setExportFields(EXPORT_FIELDS.map(f => f.key))}>All</button>
+                          <button className="text-xs underline" style={{ color: 'var(--text-muted)' }} onClick={() => setExportFields([])}>None</button>
+                          <Button size="sm" className="ml-auto" onClick={() => {
+                            exportCSV('call_logs.csv', exportFields, sorted, resolveCallerName, costPerMinuteInr ?? 0);
+                            setShowExport(false);
+                          }}>Download</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <span className="h-4 w-px bg-[var(--border)]" />
                   <span><strong className="text-[var(--text-primary)]">{formatDuration(totalDuration)}</strong> duration</span>
                   <span className="h-4 w-px bg-[var(--border)]" />
                   <span><strong className="text-[var(--text-primary)]">{formatInr(totalCost)}</strong> cost</span>
