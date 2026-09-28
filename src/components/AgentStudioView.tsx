@@ -425,26 +425,8 @@ export default function AgentStudioView() {
           ? 'Create AI calling agents — each with its own voice, persona, and phone number.'
           : 'Built-in AI agents that run automatically after every call — no phone number, no voice, just a system prompt.'}
       onRefresh={() => loadData()}
-      titleActions={
-        creating || editingAgent ? (
-          <IconButton
-            icon={ArrowLeft}
-            label="Back to Agent Studio"
-            onClick={closeForm}
-          />
-        ) : undefined
-      }
-      action={
-        creating || editingAgent ? (
-          <button
-            type="button"
-            onClick={closeForm}
-            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-[9px] border border-slate-500 bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Agent Studio
-          </button>
-        ) : (
+      titleActions={undefined}
+      action={(
           <div className="flex items-center gap-2">
             {isDevEnv && (
               <div className="flex items-center bg-[var(--bg-subtle)]  border border-[var(--border)] rounded-[9px] p-1">
