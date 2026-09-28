@@ -14,8 +14,6 @@ import { callCostInr, formatInr, COST_PER_MINUTE_INR_FALLBACK } from '../lib/pri
 import FilterBar from './ui/FilterBar';
 import DataTable, { Column } from './ui/DataTable';
 import Tooltip from './ui/Tooltip';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -231,40 +229,15 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
   const reportPrintRef = useRef<HTMLDivElement>(null);
   const [isPrintingReport, setIsPrintingReport] = useState(false);
 
-  const handlePrintReport = async () => {
+  const handlePrintReport = () => {
     if (!reportPrintRef.current || isPrintingReport) return;
     setIsPrintingReport(true);
-    try {
-      // Capture at print resolution rather than devicePixelRatio. A lower
-      // raster scale keeps chart-heavy reports responsive while remaining
-      // crisp enough for normal A4 viewing/printing.
-      const canvas = await html2canvas(reportPrintRef.current, {
-        scale: 0.7,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        removeContainer: true,
-        imageTimeout: 0,
-      });
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-      const margin = 7;
-      const width = 210 - margin * 2;
-      const pagePxHeight = canvas.width * ((297 - margin * 2) / width);
-      let sourceY = 0;
-      while (sourceY < canvas.height) {
-        const sliceHeight = Math.min(pagePxHeight, canvas.height - sourceY);
-        const slice = document.createElement('canvas');
-        slice.width = canvas.width;
-        slice.height = sliceHeight;
-        slice.getContext('2d')?.drawImage(canvas, 0, sourceY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-        if (sourceY > 0) pdf.addPage();
-        pdf.addImage(slice.toDataURL('image/jpeg', 0.82), 'JPEG', margin, margin, width, sliceHeight * width / canvas.width, undefined, 'FAST');
-        sourceY += sliceHeight;
-      }
-      pdf.save(orgName.replace(/[^a-z0-9]+/gi, '_') + '_reports_' + fromDate + '_' + toDate + '.pdf');
-    } finally {
+    document.body.classList.add('chiefvoice-printing');
+    window.setTimeout(() => {
+      window.print();
+      document.body.classList.remove('chiefvoice-printing');
       setIsPrintingReport(false);
-    }
+    }, 0);
   };
 
   // ── Campaign Details table (bottom, full width) ─────────────────────────
@@ -641,10 +614,26 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
   );
 
   return (
+<style>{`
+  @media print {
+    body.chiefvoice-printing * { visibility: hidden !important; }
+    body.chiefvoice-printing .chiefvoice-print-content,
+    body.chiefvoice-printing .chiefvoice-print-content * { visibility: visible !important; }
+    body.chiefvoice-printing .chiefvoice-print-content {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      padding: 12px !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+  }
+`}</style>
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Reports" />}
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
-      contentRef={reportPrintRef}
+      contentRef={reportPrintRef} className="chiefvoice-print-content"
       titleActions={
         <Tooltip label="Print report" side="bottom">
           <button type="button" onClick={handlePrintReport} aria-label="Print report"
