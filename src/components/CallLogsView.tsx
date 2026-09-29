@@ -183,9 +183,13 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
               actions={
                 <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                   <div className="relative">
-                    <Button icon={Download} variant="secondary" size="sm" onClick={() => setShowExport(v => !v)}>
-                      Export CSV <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setShowExport(v => !v)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export CSV <ChevronDown className="h-3 w-3 ml-1" />
+                    </button>
                     {showExport && (
                       <div className="absolute right-0 top-full mt-2 w-64 rounded-[9px] shadow-xl border z-50 p-3 space-y-1"
                         style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>

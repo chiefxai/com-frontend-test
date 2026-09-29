@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   ArrowRight,
@@ -67,6 +68,7 @@ export default function CampaignView({
   const [logs, setLogs] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [campaignFilter, setCampaignFilter] = useState<CampaignFilter>('All');
+  const navigate = useNavigate();
 
   const [campaignName, setCampaignName] = useState('');
   const [selectedWorkflow, setSelectedWorkflow] = useState(workflows[0]?.id || '');
@@ -221,7 +223,7 @@ export default function CampaignView({
       title={
         isLaunchModalOpen ? (
           <span className="flex min-w-0 items-center gap-2">
-            <span className="text-[var(--text-muted)]">Campaign</span>
+            <button type="button" onClick={() => navigate('/campaign')} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">Campaign</button>
             <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
             <span className="truncate text-[var(--text-primary)]">New outbound campaign</span>
           </span>
