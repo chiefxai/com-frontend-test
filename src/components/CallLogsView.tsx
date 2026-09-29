@@ -54,6 +54,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
   const [selected, setSelected]       = useState<CallLog | null>(null);
   const [fromDate, setFromDate]       = useState('');
   const [toDate, setToDate]           = useState('');
+  const [showExport, setShowExport]   = useState(false);
 
   function resolveCallerName(c: CallLog): string {
     if (c.leadName && c.leadName !== 'Unknown') return c.leadName;
