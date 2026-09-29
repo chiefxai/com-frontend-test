@@ -14,7 +14,7 @@ import EmptyState from './ui/EmptyState';
 import Markdown from './ui/Markdown';
 import DataTable, { Column } from './ui/DataTable';
 import ExportCsvModal from './ui/ExportCsvModal';
-import { CsvField } from '../lib/csvExport';
+import { CsvField, exportToCsv } from '../lib/csvExport';
 
 interface CallLogsViewProps {
   callLogs: CallLog[];
@@ -119,9 +119,6 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
   const hasActiveFilters = Boolean(searchTerm.trim() || fromDate || toDate);
   const clearFilters = () => { setSearchTerm(''); setFromDate(''); setToDate(''); };
 
-  function toggleField(key: string) {
-    setExportFields(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
-  }
 
   return (
     <PageShell
@@ -157,6 +154,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
                   <span><strong className="text-[var(--text-primary)]">{formatInr(totalCost)}</strong> cost</span>
                 </div>
               }
+            />
           </div>
 
           {(() => {
@@ -329,12 +327,10 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
             {/* Export this call */}
             <div className="pt-2 border-t flex justify-end" style={{ borderColor: 'var(--border)' }}>
               <Button icon={Download} variant="secondary" size="sm" onClick={() => {
-                exportCSV(
+                exportToCsv(
                   `call_${selected.id}.csv`,
-                  EXPORT_FIELDS.map(f => f.key),
                   [selected],
-                  resolveCallerName,
-                  costPerMinuteInr ?? 0,
+                  exportFields,
                 );
               }}>
                 Export this call
