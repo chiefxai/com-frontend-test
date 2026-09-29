@@ -467,7 +467,12 @@ export default function Sidebar({
           const groupBtn = (
             <button
               id="nav-dashboard-group"
-              onClick={(e) => toggleGroup(DASHBOARD_GROUP_KEY, e.currentTarget)}
+              onClick={(e) => {
+                toggleGroup(DASHBOARD_GROUP_KEY, e.currentTarget);
+                setActiveTab('dashboard');
+                setFlyoutGroup(null);
+                setFlyoutRect(null);
+              }}
               className={navBtnCls(isGroupActive)}
               style={navBtnStyle(isGroupActive)}
             >
