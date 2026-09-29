@@ -1816,7 +1816,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                 onClick={() => setShowAssignTask(false)}
                 className="text-xs font-medium text-slate-400 hover:text-slate-700 dark:text-[var(--text-muted)] dark:hover:text-[var(--text-primary)] transition-colors shrink-0"
               >
-                Voice Simulator
+                Campaign
               </button>
               <span className="text-slate-300 dark:text-slate-600">/</span>
               <span className="text-lg font-semibold text-slate-900 dark:text-[var(--text-primary)] truncate">New outbound campaign</span>

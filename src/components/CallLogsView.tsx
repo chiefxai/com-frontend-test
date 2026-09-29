@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, PlayCircle, Download, X, Check, ChevronDown, MessageCircleQuestion, RefreshCw } from 'lucide-react';
+import { Eye, PlayCircle, Download, X, MessageCircleQuestion, RefreshCw } from 'lucide-react';
 import SlideOver from './ui/SlideOver';
 import { CallLog, Lead } from '../types';
 import { callCostInr, formatInr } from '../lib/pricing';
@@ -13,6 +13,8 @@ import FilterBar from './ui/FilterBar';
 import EmptyState from './ui/EmptyState';
 import Markdown from './ui/Markdown';
 import DataTable, { Column } from './ui/DataTable';
+import ExportCsvModal from './ui/ExportCsvModal';
+import { CsvField } from '../lib/csvExport';
 
 interface CallLogsViewProps {
   callLogs: CallLog[];
@@ -45,71 +47,13 @@ function formatDuration(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// All exportable fields
-const EXPORT_FIELDS = [
-  { key: 'name',      label: 'Caller Name' },
-  { key: 'phone',     label: 'Phone Number' },
-  { key: 'direction', label: 'Direction' },
-  { key: 'duration',  label: 'Duration (s)' },
-  { key: 'cost',      label: 'Cost (INR)' },
-  { key: 'status',    label: 'Status' },
-  { key: 'sentiment', label: 'Sentiment' },
-  { key: 'intent',    label: 'Intent' },
-  { key: 'summary',   label: 'Summary' },
-  { key: 'answers',   label: 'Q&A Answers' },
-  { key: 'date',      label: 'Date & Time' },
-];
-
-function exportCSV(
-  filename: string,
-  fields: string[],
-  rows: CallLog[],
-  resolveName: (c: CallLog) => string,
-  costPerMinute: number,
-) {
-  const headers = EXPORT_FIELDS.filter(f => fields.includes(f.key)).map(f => f.label);
-  const data = rows.map(c => {
-    const answers = (c as any).answers as Record<string, string> | undefined;
-    const answersStr = answers
-      ? Object.entries(answers).map(([q, a]) => `${q}: ${a}`).join(' | ')
-      : '';
-    return EXPORT_FIELDS
-      .filter(f => fields.includes(f.key))
-      .map(f => {
-        switch (f.key) {
-          case 'name':      return resolveName(c);
-          case 'phone':     return c.callerNumber || '';
-          case 'direction': return c.direction ?? 'unknown';
-          case 'duration':  return String(c.duration ?? 0);
-          case 'cost':      return callCostInr(c.duration, costPerMinute).toFixed(2);
-          case 'status':    return c.status;
-          case 'sentiment': return c.sentiment;
-          case 'intent':    return c.intent;
-          case 'summary':   return c.summary;
-          case 'answers':   return answersStr;
-          case 'date':      return new Date(c.createdAt).toLocaleString();
-          default:          return '';
-        }
-      });
-  });
-
-  const csv = [headers, ...data]
-    .map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
+// Export fields are shared with the Leads CSV field-picker modal.
 
 export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }: CallLogsViewProps) {
   const [searchTerm, setSearchTerm]   = useState('');
   const [selected, setSelected]       = useState<CallLog | null>(null);
   const [fromDate, setFromDate]       = useState('');
   const [toDate, setToDate]           = useState('');
-  const [showExport, setShowExport]   = useState(false);
-  const [exportFields, setExportFields] = useState<string[]>(EXPORT_FIELDS.map(f => f.key));
 
   function resolveCallerName(c: CallLog): string {
     if (c.leadName && c.leadName !== 'Unknown') return c.leadName;
@@ -117,6 +61,23 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
     if (match) return match.name;
     return formatPhone(c.callerNumber) || c.callerNumber || 'Unknown';
   }
+
+  const exportFields: CsvField<CallLog>[] = [
+    { key: 'name', label: 'Caller Name', getValue: (c) => c.leadName && c.leadName !== 'Unknown' ? c.leadName : resolveCallerName(c) },
+    { key: 'phone', label: 'Phone Number', getValue: (c) => c.callerNumber || '' },
+    { key: 'direction', label: 'Direction', getValue: (c) => c.direction ?? 'unknown' },
+    { key: 'duration', label: 'Duration (s)', getValue: (c) => c.duration ?? 0 },
+    { key: 'cost', label: 'Cost (INR)', getValue: (c) => callCostInr(c.duration, costPerMinuteInr).toFixed(2) },
+    { key: 'status', label: 'Status', getValue: (c) => c.status },
+    { key: 'sentiment', label: 'Sentiment', getValue: (c) => c.sentiment },
+    { key: 'intent', label: 'Intent', getValue: (c) => c.intent },
+    { key: 'summary', label: 'Summary', getValue: (c) => c.summary },
+    { key: 'answers', label: 'Q&A Answers', getValue: (c) => {
+      const answers = (c as any).answers as Record<string, string> | undefined;
+      return answers ? Object.entries(answers).map(([question, answer]) => question + ': ' + answer).join(' | ') : '';
+    } },
+    { key: 'date', label: 'Date & Time', getValue: (c) => new Date(c.createdAt).toLocaleString() },
+  ];
 
   const filtered = callLogs.filter(c => {
     const displayName = resolveCallerName(c);
@@ -182,44 +143,20 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
               resultCount={{ filtered: filtered.length, total: callLogs.length, label: 'calls' }}
               actions={
                 <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowExport(v => !v)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-                    >
-                      <Download className="h-3.5 w-3.5" /> Export CSV <ChevronDown className="h-3 w-3 ml-1" />
-                    </button>
-                    {showExport && (
-                      <div className="absolute right-0 top-full mt-2 w-64 rounded-[9px] shadow-xl border z-50 p-3 space-y-1"
-                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Select fields to export</p>
-                        {EXPORT_FIELDS.map(f => (
-                          <label key={f.key} className="flex items-center gap-2 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[var(--bg-subtle)]">
-                            <div className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-colors ${exportFields.includes(f.key) ? 'bg-[image:var(--brand-gradient)] border-transparent' : 'border-[var(--border)]'}`} onClick={() => toggleField(f.key)}>
-                              {exportFields.includes(f.key) && <Check className="h-2.5 w-2.5 text-white" />}
-                            </div>
-                            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{f.label}</span>
-                          </label>
-                        ))}
-                        <div className="flex gap-2 mt-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                          <button className="text-xs underline" style={{ color: 'var(--text-muted)' }} onClick={() => setExportFields(EXPORT_FIELDS.map(f => f.key))}>All</button>
-                          <button className="text-xs underline" style={{ color: 'var(--text-muted)' }} onClick={() => setExportFields([])}>None</button>
-                          <Button size="sm" className="ml-auto" onClick={() => {
-                            exportCSV('call_logs.csv', exportFields, sorted, resolveCallerName, costPerMinuteInr ?? 0);
-                            setShowExport(false);
-                          }}>Download</Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowExport(true)}
+                    disabled={filtered.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Export CSV
+                  </button>
                   <span className="h-4 w-px bg-[var(--border)]" />
                   <span><strong className="text-[var(--text-primary)]">{formatDuration(totalDuration)}</strong> duration</span>
                   <span className="h-4 w-px bg-[var(--border)]" />
                   <span><strong className="text-[var(--text-primary)]">{formatInr(totalCost)}</strong> cost</span>
                 </div>
               }
-            />
           </div>
 
           {(() => {
@@ -407,6 +344,15 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
           </div>
         </SlideOver>
       )}
+      <ExportCsvModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        filename="call_logs"
+        rows={sorted}
+        fields={exportFields}
+        defaultSelected={exportFields.map(f => f.key)}
+      />
+
     </PageShell>
   );
 }

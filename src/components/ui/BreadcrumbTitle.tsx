@@ -16,7 +16,7 @@ interface BreadcrumbTitleProps {
 // with the group name as its (de-emphasized) context.
 const GROUP_ROUTES: Record<string, string> = {
   Dashboard: '/',
-  Campaign: '/voice-simulator',
+  Campaign: '/campaign',
   'Company Profile': '/company-profile',
   Administration: '/administration',
 };
