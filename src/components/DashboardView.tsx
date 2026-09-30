@@ -155,12 +155,22 @@ export default function DashboardView({
   const [exportSettings, setExportSettings] = useState<ExportSettings>({
     format: 'pdf', paperSize: 'A4', orientation: 'landscape',
   });
+  const [pendingPdfExport, setPendingPdfExport] = useState(false);
   const printDashboard = useReactToPrint({
     contentRef: dashboardPrintRef,
     documentTitle: 'ChiefVoice_Executive_Desk',
     pageStyle: buildExportPageStyle(exportSettings),
-    onAfterPrint: () => setExportOpen(false),
+    onAfterPrint: () => {
+      setExportOpen(false);
+      setPendingPdfExport(false);
+    },
   });
+
+  useEffect(() => {
+    if (!pendingPdfExport) return;
+    const id = window.setTimeout(() => printDashboard(), 0);
+    return () => window.clearTimeout(id);
+  }, [pendingPdfExport, printDashboard]);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [allEnquiries, setAllEnquiries] = useState<{ id: string; callId: string | null; createdAt: string }[]>([]);
   interface ScheduledCallback {
@@ -767,7 +777,7 @@ export default function DashboardView({
         contentRef={dashboardPrintRef}
         onExportPdf={(settings) => {
           setExportSettings(settings);
-          window.setTimeout(() => printDashboard(), 0);
+          setPendingPdfExport(true);
         }}
       />
     </>
