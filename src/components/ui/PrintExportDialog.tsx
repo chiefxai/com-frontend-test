@@ -50,8 +50,9 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     }
     body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .chiefvoice-export-print-root {
-      width: 100% !important; margin: 0 !important; padding: 0 !important;
-      background: #fff !important;
+      position: static !important; left: auto !important; top: auto !important;
+      width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important;
+      overflow: visible !important; background: #fff !important;
     }
     .chiefvoice-export-page {
       width: ${pageWidth}mm !important;
@@ -69,6 +70,11 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       page-break-inside: avoid !important;
     }
     .chiefvoice-export-page:last-child { break-after: auto !important; page-break-after: auto !important; }
+    .chiefvoice-export-cover { display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; }
+    .chiefvoice-export-cover-inner { width:100% !important; height:100% !important; display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; text-align:center !important; }
+    .chiefvoice-export-cover img { width:110px !important; height:110px !important; object-fit:contain !important; margin:0 0 28px 0 !important; }
+    .chiefvoice-export-cover h1 { font-size:30px !important; line-height:1.2 !important; margin:0 0 10px 0 !important; }
+    .chiefvoice-export-cover p { font-size:14px !important; line-height:1.5 !important; margin:0 !important; color:#4b5563 !important; }
     .chiefvoice-export-grid {
       display: grid !important;
       grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
@@ -224,13 +230,24 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     return `<tr style="page-break-inside:avoid">${cells}${filler}</tr>`;
   }).join('');
 
-  const buildWordPages = () => pages.map((page, index) => `
-    <section class="chiefvoice-export-page" style="page-break-after:${index === pages.length - 1 ? 'auto' : 'always'}">
-      <table role="presentation" style="width:100%;table-layout:fixed;border-collapse:collapse">
-        <tbody>${buildWordRows(page.rows)}</tbody>
-      </table>
-    </section>
-  `).join('');
+  const buildWordPages = () => {
+    const cover = `
+      <section class="chiefvoice-export-page chiefvoice-export-cover" style="page-break-after:always">
+        <div class="chiefvoice-export-cover-inner">
+          <img src="${chiefVoiceLogo}" alt="ChiefVoice">
+          <h1>${title}</h1>
+          <p>Filter applied: ${formatRange(fromDate, toDate)}</p>
+        </div>
+      </section>`;
+    const content = pages.map((page, index) => `
+      <section class="chiefvoice-export-page" style="page-break-after:${index === pages.length - 1 ? 'auto' : 'always'}">
+        <table role="presentation" style="width:100%;table-layout:fixed;border-collapse:collapse">
+          <tbody>${buildWordRows(page.rows)}</tbody>
+        </table>
+      </section>
+    `).join('');
+    return cover + content;
+  };
 
   const buildPrintMarkup = () => `
     <div class="chiefvoice-export-print-root">
