@@ -147,9 +147,17 @@ export default function PrintExportDialog({
   const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
   const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
-  const previewScale = Math.min(1, 920 / (pageW * 3.7795));
-  const previewWidth = pageW * 3.7795 * previewScale;
-  const previewHeight = pageH * 3.7795 * previewScale;
+  // Keep the preview's physical proportions tied directly to the selected paper.
+  // This makes A3/A4 (and portrait/landscape) resize both width and height together.
+  const mmToPx = 3.7795275591;
+  const previewScale = Math.min(1, 920 / (pageW * mmToPx));
+  const previewWidth = pageW * mmToPx * previewScale;
+  const previewHeight = pageH * mmToPx * previewScale;
+  const previewPaperStyle = {
+    width: `${previewWidth}px`,
+    height: `${previewHeight}px`,
+    aspectRatio: `${pageW} / ${pageH}`,
+  } as const;
 
   const downloadDoc = () => {
     if (!snapshot) return;
@@ -240,8 +248,8 @@ export default function PrintExportDialog({
           <main className="flex-1 overflow-auto bg-slate-100 p-8">
             <div className="mx-auto" style={{ width: previewWidth }}>
               <div className="text-xs text-slate-500 mb-2">{settings.paperSize} · {settings.orientation} · {Math.round(previewScale * 100)}% preview</div>
-              <section className="bg-white shadow-xl overflow-hidden" style={{ width: previewWidth, height: previewHeight }}>
-                <div style={{ width: pageW * 3.7795, height: pageH * 3.7795, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: '#f8faff', boxSizing: 'border-box', paddingTop: 76 }}>
+              <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
+                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: '#f8faff', boxSizing: 'border-box', paddingTop: 76 }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'#111827' }}>{title}</h1>
                   <p style={{ textAlign:'center', fontSize:14, color:'#4b5563', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
@@ -250,10 +258,10 @@ export default function PrintExportDialog({
 
               <div className="h-8" />
 
-              <section className="bg-white shadow-xl overflow-hidden" style={{ width: previewWidth, minHeight: previewHeight }}>
+              <section className="bg-white shadow-xl overflow-hidden" style={{ ...previewPaperStyle, minHeight: previewHeight, height: previewHeight }}>
                 <div
                   className="origin-top-left"
-                  style={{ width: pageW * 3.7795, minHeight: pageH * 3.7795, transform: `scale(${previewScale})`, transformOrigin:'top left', padding:38, boxSizing:'border-box' }}
+                  style={{ width: pageW * mmToPx, minHeight: pageH * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin:'top left', padding:38, boxSizing:'border-box' }}
                   dangerouslySetInnerHTML={{ __html: snapshot }}
                 />
               </section>
