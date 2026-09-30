@@ -430,7 +430,7 @@ export default function DashboardView({
       <PrintReportHeader title="Executive Desk" fromDate={fromDate} toDate={toDate} />
 
       {/* ── Global date-range filter ── */}
-      <Widget colSpan={12} showHeader={false} padding="md">
+      <Widget colSpan={12} showHeader={false} padding="md" className="chiefvoice-print-filter">
         <FilterBar
           dates={[
             { key: 'from', label: 'From', value: fromDate, onChange: (v) => { setFromDate(v); setActivePreset('custom'); } },
