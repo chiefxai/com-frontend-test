@@ -599,32 +599,32 @@ export function PrintExportDialog({
 
       for (const image of images) {
         const jpeg = decodeBase64(image.data);
-        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\\nstream\\n' + bytesToBinary(jpeg) + '\\nendstream'));
+        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'));
       }
 
       const pageWidthPt = pdfPageW * 72 / 25.4;
       const pageHeightPt = pdfPageH * 72 / 25.4;
       for (let i = 0; i < images.length; i++) {
-        const content = 'q\\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\\n/Im' + (i + 1) + ' Do\\nQ';
-        contentIds.push(addObject('<< /Length ' + content.length + ' >>\\nstream\\n' + content + '\\nendstream'));
+        const content = 'q\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
+        contentIds.push(addObject('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
         pageIds.push(addObject('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageWidthPt + ' ' + pageHeightPt + '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] + ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'));
       }
 
       objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
       objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length + ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
 
-      let pdf = '%PDF-1.4\\n%\\xFF\\xFF\\xFF\\xFF\\n';
+      let pdf = '%PDF-1.4\n%\\xFF\\xFF\\xFF\\xFF\n';
       const offsets = [0];
       objects.forEach((obj, index) => {
         offsets[index + 1] = pdf.length;
-        pdf += (index + 1) + ' 0 obj\\n' + obj + '\\nendobj\\n';
+        pdf += (index + 1) + ' 0 obj\n' + obj + '\nendobj\n';
       });
       const xref = pdf.length;
-      pdf += 'xref\\n0 ' + (objects.length + 1) + '\\n0000000000 65535 f \\n';
+      pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
       for (let i = 1; i <= objects.length; i++) {
-        pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \\n';
+        pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
       }
-      pdf += 'trailer\\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\\nstartxref\\n' + xref + '\\n%%EOF';
+      pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
 
       const pdfBytes = new Uint8Array(pdf.length);
       for (let i = 0; i < pdf.length; i++) pdfBytes[i] = pdf.charCodeAt(i) & 255;
