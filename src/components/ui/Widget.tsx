@@ -1,6 +1,7 @@
 import React, { useId } from 'react';
 
 type ColSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+export interface ResponsiveSpan { xs?: ColSpan; sm?: ColSpan; md?: ColSpan; lg?: ColSpan; xl?: ColSpan; }
 
 const COL: Record<ColSpan, string> = {
   1: 'col-span-1', 2: 'col-span-2', 3: 'col-span-3', 4: 'col-span-4',
@@ -27,7 +28,9 @@ const COL_RESPONSIVE: Record<ColSpan, string> = {
 interface WidgetProps {
   /** Grid column span (1-12) */
   colSpan?: ColSpan;
-  /** Whether to apply responsive col-span breakpoints (default true) */
+  /** Responsive 12-column layout. xs is the base span; larger breakpoints override it. */
+  span?: ResponsiveSpan;
+  /** Whether to apply the legacy responsive col-span behavior (default true). */
   responsive?: boolean;
   /** Widget header title */
   title?: string;
@@ -83,6 +86,7 @@ const BODY_OVERFLOW = { auto: 'overflow-x-auto', hidden: 'overflow-hidden', visi
 
 export default function Widget({
   colSpan = 12,
+  span,
   responsive = true,
   title,
   subtitle,
@@ -102,7 +106,15 @@ export default function Widget({
 }: WidgetProps) {
   // stickyHeader defaults to true whenever the widget is scrollable
   const resolvedStickyHeader = stickyHeader ?? scrollable;
-  const spanClass = responsive ? COL_RESPONSIVE[colSpan] : COL[colSpan];
+  const spanClass = span
+    ? [
+        span.xs && COL[span.xs],
+        span.sm && `sm:${COL[span.sm]}`,
+        span.md && `md:${COL[span.md]}`,
+        span.lg && `lg:${COL[span.lg]}`,
+        span.xl && `xl:${COL[span.xl]}`,
+      ].filter(Boolean).join(' ')
+    : responsive ? COL_RESPONSIVE[colSpan] : COL[colSpan];
   const uid = useId().replace(/:/g, '');
 
   return (
