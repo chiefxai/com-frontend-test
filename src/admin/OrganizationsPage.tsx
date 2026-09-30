@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Loader2, ChevronUp, ChevronDown, Plus } from 'lucide-react';
+import { Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { OrgRow } from './types';
 import OrgDetailPanel from './OrgDetailPanel';
 import { formatInr } from '../lib/pricing';
 import IconButton from '../components/ui/IconButton';
+import DataTable, { Column } from '../components/ui/DataTable';
+import FilterBar from '../components/ui/FilterBar';
 import { useNavigate } from 'react-router-dom';
 
 type SortKey = 'name' | 'industry' | 'subscriptionPlan' | 'memberCount' | 'leadCount' | 'createdAt';
@@ -53,72 +55,68 @@ export default function OrganizationsPage() {
     </th>
   );
 
+  const columns: Column<OrgRow>[] = [
+    {
+      key: 'name',
+      header: <button type="button" onClick={() => handleSort('name')} className="inline-flex items-center gap-1">Organization {sortKey === 'name' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</button>,
+      cell: (o) => <><span className="font-medium text-[var(--text-primary)]">{o.name}</span><div className="text-[10px] text-[var(--text-muted)] font-normal">{o.workspaceName}</div></>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (o) => <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${String(o.status || '').toLowerCase() === 'suspended' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>{String(o.status || '').toLowerCase() === 'suspended' ? 'Suspended' : 'Active'}</span>,
+    },
+    {
+      key: 'industry',
+      header: <button type="button" onClick={() => handleSort('industry')} className="inline-flex items-center gap-1">Industry {sortKey === 'industry' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</button>,
+      cell: (o) => o.industry,
+    },
+    {
+      key: 'plan',
+      header: <button type="button" onClick={() => handleSort('subscriptionPlan')} className="inline-flex items-center gap-1">Plan {sortKey === 'subscriptionPlan' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</button>,
+      cell: (o) => o.subscriptionPlan,
+    },
+    { key: 'aiMinutes', header: 'AI Minutes', cell: (o) => o.aiMinutesUsed },
+    { key: 'aiCost', header: 'AI Cost', cell: (o) => formatInr(o.totalCostInr) },
+    {
+      key: 'members',
+      header: <button type="button" onClick={() => handleSort('memberCount')} className="inline-flex items-center gap-1">Members {sortKey === 'memberCount' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</button>,
+      cell: (o) => o.memberCount,
+    },
+    {
+      key: 'leads',
+      header: <button type="button" onClick={() => handleSort('leadCount')} className="inline-flex items-center gap-1">Leads {sortKey === 'leadCount' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</button>,
+      cell: (o) => o.leadCount,
+    },
+    {
+      key: 'created',
+      header: <button type="button" onClick={() => handleSort('createdAt')} className="inline-flex items-center gap-1">Signed Up {sortKey === 'createdAt' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</button>,
+      cell: (o) => <span className="text-xs whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</span>,
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search organizations…"
-            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-          />
-        </div>
-        <IconButton
-          icon={Plus}
-          label="Create Workspace"
-          onClick={() => navigate('/admin/organizations/create')}
-          className="!bg-amber-500 hover:!bg-amber-400"
-        />
-      </div>
+      <FilterBar
+        search={{ value: query, onChange: setQuery, placeholder: 'Search organizations…' }}
+        resultCount={{ filtered: filtered.length, total: orgs.length, label: 'organizations' }}
+        actions={
+          <IconButton icon={Plus} label="Create Workspace" onClick={() => navigate('/admin/organizations/create')} className="!bg-amber-500 hover:!bg-amber-400" />
+        }
+      />
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                <SortHeader label="Organization" sortKeyName="name" />
-                <th className="px-5 py-3">Status</th>
-                <SortHeader label="Industry" sortKeyName="industry" />
-                <SortHeader label="Plan" sortKeyName="subscriptionPlan" />
-                <th className="px-5 py-3">AI Minutes</th>
-                <th className="px-5 py-3">AI Cost</th>
-                <SortHeader label="Members" sortKeyName="memberCount" />
-                <SortHeader label="Leads" sortKeyName="leadCount" />
-                <SortHeader label="Signed Up" sortKeyName="createdAt" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((o) => (
-                <tr key={o.id} onClick={() => setSelectedOrgId(o.id)} className="border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50">
-                  <td className="px-5 py-3 font-medium text-slate-700">{o.name}<div className="text-[10px] text-slate-400 font-normal">{o.workspaceName}</div></td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${String(o.status || '').toLowerCase() === 'suspended' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                      {String(o.status || '').toLowerCase() === 'suspended' ? 'Suspended' : 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-slate-500">{o.industry}</td>
-                  <td className="px-5 py-3 text-slate-500">{o.subscriptionPlan}</td>
-                  <td className="px-5 py-3 text-slate-500">{o.aiMinutesUsed}</td>
-                  <td className="px-5 py-3 text-slate-500">{formatInr(o.totalCostInr)}</td>
-                  <td className="px-5 py-3 text-slate-500">{o.memberCount}</td>
-                  <td className="px-5 py-3 text-slate-500">{o.leadCount}</td>
-                  <td className="px-5 py-3 text-slate-400 text-xs whitespace-nowrap">{new Date(o.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-5 py-8 text-center text-slate-400 text-xs">
-                  {query ? `No organizations match "${query}"` : 'No workspaces yet. Create one above.'}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
-
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        rowKey={(o) => o.id}
+        loading={loading}
+        emptyMessage={query ? `No organizations match "${query}"` : 'No workspaces yet. Create one above.'}
+        onRowClick={(o) => setSelectedOrgId(o.id)}
+        paginated
+        defaultPageSize={25}
+      />
+    </div>
+  );
       {selectedOrgId && (
         <OrgDetailPanel
           orgId={selectedOrgId}
