@@ -465,6 +465,70 @@ export function PrintExportDialog({
         groups.push({ start: 0, end: cssHeight });
       }
 
+      const exportKey = `chiefvoice-export-${Date.now()}`;
+      source.setAttribute('data-chiefvoice-export-root', exportKey);
+
+      const inlineComputedStyles = (doc: Document) => {
+        const clonedRoot = doc.querySelector(`[data-chiefvoice-export-root="${exportKey}"]`) as HTMLElement | null;
+        if (!clonedRoot) return;
+
+        const sourceRoot = source;
+        const styleProperties = [
+          'box-sizing','display','position','top','right','bottom','left','z-index',
+          'width','min-width','max-width','height','min-height','max-height',
+          'margin','margin-top','margin-right','margin-bottom','margin-left',
+          'padding','padding-top','padding-right','padding-bottom','padding-left',
+          'gap','row-gap','column-gap','grid-template-columns','grid-template-rows',
+          'grid-column','grid-row','grid-auto-flow','grid-auto-rows','grid-auto-columns',
+          'align-items','align-content','align-self','justify-content','justify-items','justify-self',
+          'flex','flex-grow','flex-shrink','flex-basis','flex-direction','flex-wrap',
+          'order','overflow','overflow-x','overflow-y','white-space','text-align',
+          'text-transform','text-decoration','text-overflow','vertical-align',
+          'font-family','font-size','font-weight','font-style','font-stretch','line-height',
+          'letter-spacing','word-spacing','color','background','background-color',
+          'background-image','background-size','background-position','background-repeat',
+          'border','border-top','border-right','border-bottom','border-left',
+          'border-width','border-style','border-color','border-radius',
+          'box-shadow','opacity','visibility','transform','transform-origin',
+          'object-fit','object-position','list-style','cursor'
+        ];
+
+        const copy = (from: Element, to: Element) => {
+          const computed = doc.defaultView?.getComputedStyle(to);
+          if (!computed) return;
+
+          const target = to as HTMLElement;
+          for (const property of styleProperties) {
+            const value = computed.getPropertyValue(property);
+            if (value) target.style.setProperty(property, value);
+          }
+
+          const fromChildren = Array.from(from.children);
+          const toChildren = Array.from(to.children);
+          for (let i = 0; i < Math.min(fromChildren.length, toChildren.length); i++) {
+            copy(fromChildren[i], toChildren[i]);
+          }
+        };
+
+        // The cloned document contains the same DOM but html2canvas may not
+        // reliably reproduce Tailwind v4's generated stylesheet rules and
+        // CSS-variable/theme rules. Resolve those rules in the browser first,
+        // then put the resolved values directly on the clone.
+        copy(sourceRoot, clonedRoot);
+
+        clonedRoot.querySelectorAll('svg').forEach(svg => {
+          const original = sourceRoot.querySelectorAll('svg')[
+            Array.from(clonedRoot.querySelectorAll('svg')).indexOf(svg)
+          ];
+          if (!original) return;
+          const sourceSvgStyle = window.getComputedStyle(original);
+          const targetSvgStyle = svg as SVGElement;
+          targetSvgStyle.setAttribute('fill', sourceSvgStyle.fill);
+          targetSvgStyle.setAttribute('stroke', sourceSvgStyle.stroke);
+          targetSvgStyle.setAttribute('color', sourceSvgStyle.color);
+        });
+      };
+
       const fullCanvas = await html2canvas(source, {
         backgroundColor: '#ffffff',
         scale: 1.5,
@@ -479,6 +543,8 @@ export function PrintExportDialog({
         scrollY: 0,
         imageSmoothing: true,
         imageSmoothingQuality: 'high',
+        foreignObjectRendering: true,
+        onclone: inlineComputedStyles,
       });
 
       const mmToPx = 96 / 25.4;
@@ -644,6 +710,7 @@ export function PrintExportDialog({
       a.remove();
       URL.revokeObjectURL(url);
     } finally {
+      source.removeAttribute('data-chiefvoice-export-root');
       restore();
     }
   };
