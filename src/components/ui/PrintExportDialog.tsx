@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, FileText, Printer, X } from 'lucide-react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
+import html2canvas from 'html2canvas-pro';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 
 export type ExportFormat = 'pdf' | 'doc';
@@ -20,7 +21,6 @@ interface PrintExportDialogProps {
   fromDate: string;
   toDate: string;
   contentRef: React.RefObject<HTMLDivElement | null>;
-  onExportPdf: (settings: ExportSettings, printableMarkup: string) => void;
 }
 
 const PAPER: Record<PaperSize, { width: number; height: number; css: string }> = {
@@ -139,7 +139,6 @@ export function PrintExportDialog({
   fromDate,
   toDate,
   contentRef,
-  onExportPdf,
 }: PrintExportDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const handleOutsideClick = useCallback(() => {
@@ -347,6 +346,81 @@ export function PrintExportDialog({
     </div>
   `;
 
+  const downloadPdf = async () => {
+    if (!pages.length) return;
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;overflow:visible;z-index:-1;pointer-events:none;background:#fff;';
+    host.innerHTML = buildPrintMarkup();
+    document.body.appendChild(host);
+    try {
+      const pdfPages = Array.from(host.querySelectorAll('.chiefvoice-export-page')) as HTMLElement[];
+      const mmToPx = 96 / 25.4;
+      const paper = PAPER[settings.paperSize];
+      const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
+      const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
+      const images: { data: string; width: number; height: number }[] = [];
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      for (const page of pdfPages) {
+        const canvas = await html2canvas(page, {
+          backgroundColor: '#ffffff',
+          scale: 1.5,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          width: Math.round(pageW * mmToPx),
+          height: Math.round(pageH * mmToPx),
+          windowWidth: Math.round(pageW * mmToPx),
+          windowHeight: Math.round(pageH * mmToPx),
+        });
+        images.push({ data: canvas.toDataURL('image/jpeg', 0.92), width: canvas.width, height: canvas.height });
+      }
+      const objects: string[] = [];
+      const addObject = (body: string) => { objects.push(body); return objects.length; };
+      const catalogId = addObject('');
+      const pagesId = addObject('');
+      const pageIds: number[] = [];
+      const contentIds: number[] = [];
+      const imageIds: number[] = [];
+      const decodeBase64 = (dataUrl: string) => {
+        const raw = atob(dataUrl.split(',')[1]);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        return bytes;
+      };
+      for (const image of images) {
+        const jpeg = decodeBase64(image.data);
+        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n' + String.fromCharCode(...jpeg) + '\nendstream'));
+      }
+      for (let i = 0; i < images.length; i++) {
+        const content = 'q\n' + pageW + ' 0 0 ' + pageH + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
+        contentIds.push(addObject('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
+        pageIds.push(addObject('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] + ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'));
+      }
+      objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
+      objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length + ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
+      let pdf = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
+      const offsets = [0];
+      objects.forEach((obj, index) => { offsets[index + 1] = pdf.length; pdf += (index + 1) + ' 0 obj\n' + obj + '\nendobj\n'; });
+      const xref = pdf.length;
+      pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
+      for (let i = 1; i <= objects.length; i++) pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+      pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+      const pdfBytes = new Uint8Array(pdf.length);
+      for (let i = 0; i < pdf.length; i++) pdfBytes[i] = pdf.charCodeAt(i) & 255;
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = title.split(' ').join('_') + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      host.remove();
+    }
+  };
+
   const downloadDoc = () => {
     if (!pages.length) return;
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
@@ -429,7 +503,7 @@ export function PrintExportDialog({
               Each export page is laid out independently. Width always follows the dashboard's 12-column grid; whole rows move to the next page when the available paper height is exhausted.
             </div>
 
-            <button onClick={() => settings.format === 'pdf' ? onExportPdf(settings, buildPrintMarkup()) : downloadDoc()}
+            <button onClick={() => settings.format === 'pdf' ? void downloadPdf() : downloadDoc()}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-3 text-sm font-semibold hover:bg-indigo-700">
               <Download className="h-4 w-4" />
               Export {settings.format === 'pdf' ? 'PDF' : 'Word'}
