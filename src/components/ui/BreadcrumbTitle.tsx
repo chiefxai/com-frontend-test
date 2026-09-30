@@ -19,6 +19,7 @@ const GROUP_ROUTES: Record<string, string> = {
   Campaign: '/campaign',
   'Company Profile': '/company-profile',
   Administration: '/administration',
+  'Workflow Builder': '/',
 };
 
 export default function BreadcrumbTitle({ group, page }: BreadcrumbTitleProps) {
