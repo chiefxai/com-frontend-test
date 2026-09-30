@@ -104,12 +104,16 @@ export const PRINT_PAGE_STYLE = `
 
     .chiefvoice-print-page-break {
       display: block !important;
+      grid-column: 1 / -1 !important;
       width: 1440px !important;
-      height: 0 !important;
+      height: 1px !important;
+      min-height: 1px !important;
       margin: 0 !important;
       padding: 0 !important;
       break-before: page !important;
       page-break-before: always !important;
+      break-after: avoid !important;
+      page-break-after: avoid !important;
     }
 
     .chiefvoice-print-content > [class*="lg\\:col-span-1"] {
@@ -155,7 +159,16 @@ export const PRINT_PAGE_STYLE = `
       box-sizing: border-box !important;
       min-width: 0 !important;
       max-width: 100% !important;
-      break-inside: avoid !important;
+      break-inside: avoid-page !important;
+      page-break-inside: avoid !important;
+      break-before: auto !important;
+    }
+
+    /* Keep every dashboard widget intact. If it cannot fit in the
+       remaining space on the current sheet, the browser must move the
+       whole widget to the next sheet instead of splitting it. */
+    .chiefvoice-print-content > *:not(.chiefvoice-print-header):not(.chiefvoice-print-filter):not(.chiefvoice-print-page-break) {
+      break-inside: avoid-page !important;
       page-break-inside: avoid !important;
     }
 
