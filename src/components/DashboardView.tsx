@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import {
   PhoneIncoming,
   PhoneOutgoing,
@@ -129,6 +130,41 @@ function trendBadge(current: number, previous: number): { label: string; color: 
   return pct > 0 ? { label: `↑ ${pct}%`, color: 'green' } : { label: `↓ ${Math.abs(pct)}%`, color: 'rose' };
 }
 
+const PRINT_PAGE_STYLE = `
+  @page { size: auto; margin: 10mm; }
+  html, body { height: auto !important; overflow: visible !important; }
+  .chiefvoice-print-content {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .chiefvoice-print-content > * {
+    display: flex !important;
+    width: 100% !important;
+    max-width: none !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 0 12px 0 !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  .chiefvoice-print-content [data-widget-scroll] {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+`;
+
 const CHART_TOOLTIP = {
   contentStyle: {
     background: 'var(--tooltip-bg, #1e293b)',
@@ -148,7 +184,11 @@ export default function DashboardView({
   costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK,
 }: DashboardViewProps) {
   const dashboardPrintRef = useRef<HTMLDivElement>(null);
-  const [isPrintingDashboard, setIsPrintingDashboard] = useState(false);
+  const printDashboard = useReactToPrint({
+    contentRef: dashboardPrintRef,
+    documentTitle: 'ChiefVoice_Executive_Desk',
+    pageStyle: PRINT_PAGE_STYLE,
+  });
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [allEnquiries, setAllEnquiries] = useState<{ id: string; callId: string | null; createdAt: string }[]>([]);
   interface ScheduledCallback {
@@ -402,95 +442,7 @@ export default function DashboardView({
 
   return (
     <>
-      <style>{`
-  @page {
-    size: auto;
-    margin: 10mm;
-  }
-  @media print {
-    html, body {
-      height: auto !important;
-      overflow: visible !important;
-    }
-    body.chiefvoice-printing * {
-      visibility: hidden !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content,
-    body.chiefvoice-printing .chiefvoice-print-content * {
-      visibility: visible !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content {
-      position: static !important;
-      display: block !important;
-      width: 100% !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      background: #fff !important;
-    }
-    /* PageShell's actual scroll viewport is the first flex-1 child.
-       Remove that viewport during printing so the browser paginates the
-       entire document instead of printing only the visible viewport. */
-    body.chiefvoice-printing .chiefvoice-print-content > div {
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      flex: none !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content > .flex-1 {
-      display: block !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      position: static !important;
-      flex: none !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content > .flex-1 > .grid {
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    /* CSS grid pagination is inconsistent in browser print engines and can
-       result in only the first grid item being painted. Flatten the dashboard
-       grid into a normal document flow for printing so every widget is part
-       of the printable document and can continue onto subsequent pages. */
-    body.chiefvoice-printing .chiefvoice-print-content .grid {
-      display: block !important;
-      width: 100% !important;
-      height: auto !important;
-      min-height: 0 !important;
-      overflow: visible !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content .grid > * {
-      display: flex !important;
-      width: 100% !important;
-      max-width: none !important;
-      grid-column: auto !important;
-      grid-row: auto !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      margin: 0 0 12px 0 !important;
-      break-inside: auto !important;
-      page-break-inside: auto !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content .grid > * > * {
-      max-height: none !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content [data-widget-scroll] {
-      max-height: none !important;
-      height: auto !important;
-      overflow: visible !important;
-    }
-  }
-`}</style>
+
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Executive Desk" />}
       subtitle="Call activity, engagement, and business outcomes — for the selected date range."
@@ -500,16 +452,7 @@ export default function DashboardView({
         <Tooltip label="Print dashboard" side="bottom">
           <button
             type="button"
-            onClick={() => {
-              if (!dashboardPrintRef.current || isPrintingDashboard) return;
-              setIsPrintingDashboard(true);
-              document.body.classList.add('chiefvoice-printing');
-              window.setTimeout(() => {
-                window.print();
-                document.body.classList.remove('chiefvoice-printing');
-                setIsPrintingDashboard(false);
-              }, 0);
-            }}
+            onClick={printDashboard}
             aria-label="Print dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
