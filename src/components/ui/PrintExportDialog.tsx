@@ -81,20 +81,18 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       display:block !important; grid-column:1 / -1 !important; width:${desktopWidth}px !important; height:1px !important;
       margin:0 !important; padding:0 !important; break-before:page !important; page-break-before:always !important;
     }
-    .chiefvoice-print-content > [class*="lg\\:col-span-1"] { grid-column:span 1 / span 1 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-2"] { grid-column:span 2 / span 2 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-3"] { grid-column:span 3 / span 3 !important; width:100% !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-4"] { grid-column:span 4 / span 4 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-5"] { grid-column:span 5 / span 5 !important; }
-    .chiefvoice-print-content > [class*="md\\:col-span-6"],
-    .chiefvoice-print-content > [class*="lg\\:col-span-6"],
-    .chiefvoice-print-content > .col-span-6 { grid-column:span 6 / span 6 !important; width:100% !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-7"] { grid-column:span 7 / span 7 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-8"] { grid-column:span 8 / span 8 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-9"] { grid-column:span 9 / span 9 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-10"] { grid-column:span 10 / span 10 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-11"] { grid-column:span 11 / span 11 !important; }
-    .chiefvoice-print-content > .col-span-12 { grid-column:span 12 / span 12 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="1"] { grid-column:span 1 / span 1 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="2"] { grid-column:span 2 / span 2 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="3"] { grid-column:span 3 / span 3 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="4"] { grid-column:span 4 / span 4 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="5"] { grid-column:span 5 / span 5 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="6"] { grid-column:span 6 / span 6 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="7"] { grid-column:span 7 / span 7 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="8"] { grid-column:span 8 / span 8 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="9"] { grid-column:span 9 / span 9 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="10"] { grid-column:span 10 / span 10 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="11"] { grid-column:span 11 / span 11 !important; width:100% !important; }
+    .chiefvoice-print-content > [data-grid-span-lg="12"] { grid-column:span 12 / span 12 !important; width:100% !important; }
     .chiefvoice-print-content > :not(.chiefvoice-print-header):not(.chiefvoice-print-filter):not(.chiefvoice-print-page-break) {
       box-sizing:border-box !important; min-width:0 !important; max-width:100% !important;
       break-inside:avoid-page !important; page-break-inside:avoid !important;
@@ -158,6 +156,10 @@ export default function PrintExportDialog({
       element.style.minHeight = '0';
       element.style.maxHeight = 'none';
       element.style.overflow = 'visible';
+      const lgSpan = element.dataset.gridSpanLg;
+      if (lgSpan) {
+        element.style.gridColumn = `span ${lgSpan} / span ${lgSpan}`;
+      }
     });
     setSnapshot(clone.outerHTML);
   }, [open, contentRef]);
