@@ -92,19 +92,35 @@ export const PRINT_PAGE_STYLE = `
 
     .chiefvoice-print-content > :not(.chiefvoice-print-header):not(.chiefvoice-print-filter):not(.chiefvoice-print-page-break) {
       width: auto !important;
-      max-width: none !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
       height: auto !important;
       min-height: 0 !important;
       max-height: none !important;
       overflow: visible !important;
+      box-sizing: border-box !important;
       align-self: start !important;
       break-inside: avoid !important;
       page-break-inside: avoid !important;
     }
 
     .chiefvoice-print-content > :not(.chiefvoice-print-header):not(.chiefvoice-print-filter):not(.chiefvoice-print-page-break) * {
+      min-width: 0 !important;
+      max-width: 100% !important;
       max-height: none !important;
+      box-sizing: border-box !important;
       overflow: visible !important;
+    }
+
+    .chiefvoice-print-content .recharts-responsive-container,
+    .chiefvoice-print-content .recharts-wrapper {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    .chiefvoice-print-content .recharts-surface {
+      max-width: 100% !important;
     }
 
     .chiefvoice-print-content [data-widget-scroll] {
