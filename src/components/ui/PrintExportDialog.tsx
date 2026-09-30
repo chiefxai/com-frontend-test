@@ -494,7 +494,7 @@ export function PrintExportDialog({
         ];
 
         const copy = (from: Element, to: Element) => {
-          const computed = doc.defaultView?.getComputedStyle(to);
+          const computed = window.getComputedStyle(from as Element);
           if (!computed) return;
 
           const target = to as HTMLElement;
