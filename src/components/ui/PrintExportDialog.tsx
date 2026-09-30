@@ -360,89 +360,67 @@ export function PrintExportDialog({
   `;
 
   const downloadPdf = async () => {
-    if (!contentRef.current) return;
+    const source = contentRef.current;
+    if (!source) return;
 
     const paper = PAPER[settings.paperSize];
     const pdfPageW = settings.orientation === 'landscape' ? paper.width : paper.height;
     const pdfPageH = settings.orientation === 'landscape' ? paper.height : paper.width;
-    const desktopWidth = 1440;
-    const desktopPadding = 38;
-    const desktopGap = 22.6771653546;
-    const pageHeightCss = desktopWidth * (pdfPageH / pdfPageW);
-    const usablePageHeightCss = pageHeightCss - (desktopPadding * 2);
 
-    const host = document.createElement('div');
-    host.style.cssText = [
-      'position:absolute',
-      'left:-100000px',
-      'top:0',
-      `width:${desktopWidth}px`,
-      'height:auto',
-      'overflow:visible',
-      'z-index:-1',
-      'pointer-events:none',
-      'background:#fff',
-    ].join(';');
+    // Capture the real, mounted dashboard instead of cloning/rebuilding it.
+    // This is important because Tailwind classes, CSS variables, SVG styles,
+    // chart styles, fonts and theme rules are all already resolved on the
+    // mounted dashboard.
+    const scrollParent = source.parentElement;
+    const savedRootStyle = source.getAttribute('style');
+    const savedParentStyle = scrollParent?.getAttribute('style');
 
-    const clone = contentRef.current.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
-      .forEach(node => node.remove());
-    clone.removeAttribute('id');
-    clone.style.cssText = [
-      'display:grid',
-      'grid-template-columns:repeat(12,minmax(0,1fr))',
-      'grid-auto-flow:row',
-      'grid-auto-rows:max-content',
-      'align-items:start',
-      `gap:${desktopGap}px`,
-      `width:${desktopWidth}px`,
-      `min-width:${desktopWidth}px`,
-      `max-width:${desktopWidth}px`,
-      'height:auto',
-      'min-height:0',
-      'max-height:none',
-      'overflow:visible',
-      'background:#fff',
-      'box-sizing:border-box',
-      `padding:${desktopPadding}px`,
-    ].join(';');
-
-    clone.querySelectorAll(':scope > *').forEach((node) => {
-      const element = node as HTMLElement;
-      const lgSpan = Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12);
-      element.style.width = '100%';
-      element.style.minWidth = '0';
-      element.style.maxWidth = '100%';
-      element.style.height = 'auto';
-      element.style.minHeight = '0';
-      element.style.maxHeight = 'none';
-      element.style.gridColumn = `span ${Math.max(1, Math.min(12, lgSpan))} / span ${Math.max(1, Math.min(12, lgSpan))}`;
-      element.style.breakInside = 'avoid';
-      element.style.pageBreakInside = 'avoid';
-    });
-
-    // Expand dashboard scroll containers for export so tables/lists are not
-    // cropped by the interactive viewport height.
-    clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach((element) => {
-      element.style.maxHeight = 'none';
-      element.style.height = 'auto';
-      element.style.overflow = 'visible';
-    });
-
-    host.appendChild(clone);
-    document.body.appendChild(host);
+    const restore = () => {
+      if (savedRootStyle === null) source.removeAttribute('style');
+      else source.setAttribute('style', savedRootStyle);
+      if (scrollParent) {
+        if (savedParentStyle === null) scrollParent.removeAttribute('style');
+        else scrollParent.setAttribute('style', savedParentStyle);
+      }
+    };
 
     try {
+      await document.fonts.ready;
+
+      if (scrollParent) {
+        scrollParent.style.overflow = 'visible';
+        scrollParent.style.height = 'auto';
+        scrollParent.style.maxHeight = 'none';
+        scrollParent.style.minHeight = '0';
+      }
+
+      source.style.height = 'auto';
+      source.style.minHeight = '0';
+      source.style.maxHeight = 'none';
+      source.style.overflow = 'visible';
+      source.style.alignContent = 'start';
+
+      // Expand widget-local scroll areas without changing their visual
+      // styling. Their normal header/body/card CSS remains untouched.
+      source.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(element => {
+        element.style.maxHeight = 'none';
+        element.style.height = 'auto';
+        element.style.overflow = 'visible';
+      });
+
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
-      // Read the final row geometry from the real dashboard clone. We use the
-      // same 12-column grid for layout and only crop the already-rendered canvas
-      // for pagination; we never rebuild widgets from outerHTML.
-      const children = Array.from(clone.children)
-        .filter((element) => getComputedStyle(element as HTMLElement).display !== 'none') as HTMLElement[];
+      const rect = source.getBoundingClientRect();
+      const cssWidth = Math.max(1, Math.round(rect.width));
+      const cssHeight = Math.max(1, Math.ceil(source.scrollHeight));
+      const pageCssHeight = Math.max(1, Math.floor(cssWidth * (pdfPageH / pdfPageW)));
+
+      const children = Array.from(source.children)
+        .filter(element => getComputedStyle(element as HTMLElement).display !== 'none') as HTMLElement[];
 
       const rowsMap = new Map<number, HTMLElement[]>();
-      children.forEach((element) => {
+      children.forEach(element => {
         const top = Math.round(element.offsetTop);
         const row = rowsMap.get(top) ?? [];
         row.push(element);
@@ -457,64 +435,75 @@ export function PrintExportDialog({
           height: Math.max(...elements.map(element => element.offsetHeight)),
         }));
 
-      const pageGroups: { start: number; end: number }[] = [];
-      let currentRows: typeof rows = [];
+      const groups: { start: number; end: number }[] = [];
+      let current: typeof rows = [];
       let used = 0;
 
       for (const row of rows) {
-        const needed = currentRows.length === 0 ? row.height : desktopGap + row.height;
-        if (currentRows.length > 0 && used + needed > usablePageHeightCss) {
-          pageGroups.push({
-            start: Math.max(0, currentRows[0].top - desktopPadding),
-            end: Math.min(clone.scrollHeight, currentRows[currentRows.length - 1].bottom + desktopPadding),
+        const gap = current.length ? 24 : 0;
+        const needed = gap + row.height;
+        if (current.length && used + needed > pageCssHeight) {
+          groups.push({
+            start: current[0].top,
+            end: current[current.length - 1].bottom,
           });
-          currentRows = [];
+          current = [];
           used = 0;
         }
-        currentRows.push(row);
+        current.push(row);
         used += needed;
       }
 
-      if (currentRows.length > 0) {
-        pageGroups.push({
-          start: Math.max(0, currentRows[0].top - desktopPadding),
-          end: Math.min(clone.scrollHeight, currentRows[currentRows.length - 1].bottom + desktopPadding),
+      if (current.length) {
+        groups.push({
+          start: current[0].top,
+          end: current[current.length - 1].bottom,
         });
       }
 
-      if (!pageGroups.length) return;
+      if (!groups.length) {
+        groups.push({ start: 0, end: cssHeight });
+      }
 
-      const fullCanvas = await html2canvas(clone, {
+      const fullCanvas = await html2canvas(source, {
         backgroundColor: '#ffffff',
         scale: 1.5,
         useCORS: true,
         allowTaint: false,
         logging: false,
-        width: desktopWidth,
-        height: Math.max(clone.scrollHeight, pageHeightCss),
-        windowWidth: desktopWidth,
-        windowHeight: Math.max(clone.scrollHeight, pageHeightCss),
+        width: cssWidth,
+        height: cssHeight,
+        windowWidth: Math.max(window.innerWidth, cssWidth),
+        windowHeight: Math.max(window.innerHeight, cssHeight),
         scrollX: 0,
         scrollY: 0,
         imageSmoothing: true,
         imageSmoothingQuality: 'high',
       });
 
+      const mmToPx = 96 / 25.4;
+      const pageCanvasW = Math.ceil(pdfPageW * mmToPx * 1.5);
+      const pageCanvasH = Math.ceil(pdfPageH * mmToPx * 1.5);
+      const canvasScale = fullCanvas.width / cssWidth;
+
+      const images: { data: string; width: number; height: number }[] = [];
+
+      // Generate the cover as its own page.
       const coverHost = document.createElement('div');
       coverHost.style.cssText = [
         'position:absolute',
         'left:-100000px',
         'top:0',
-        `width:${Math.ceil(pdfPageW * 96 / 25.4)}px`,
-        `height:${Math.ceil(pdfPageH * 96 / 25.4)}px`,
+        `width:${Math.ceil(pdfPageW * mmToPx)}px`,
+        `height:${Math.ceil(pdfPageH * mmToPx)}px`,
         'background:#fff',
       ].join(';');
       coverHost.innerHTML = `
         <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:#fff;display:flex;align-items:center;justify-content:center;text-align:center;">
           <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
             <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:110px;height:110px;object-fit:contain;margin:0 0 28px 0;">
-            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;">${title}</h1>
-            <p style="font-size:14px;line-height:1.5;margin:0;color:#4b5563;">Filter applied: ${formatRange(fromDate, toDate)}</p>
+            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;color:#101A3A;">${title}</h1>
+            <p style="font-size:14px;line-height:1.5;margin:0;color:#475569;">Filter applied: ${formatRange(fromDate, toDate)}</p>
           </div>
         </section>`;
       document.body.appendChild(coverHost);
@@ -525,51 +514,50 @@ export function PrintExportDialog({
         useCORS: true,
         allowTaint: false,
         logging: false,
-        width: Math.ceil(pdfPageW * 96 / 25.4),
-        height: Math.ceil(pdfPageH * 96 / 25.4),
-        windowWidth: Math.ceil(pdfPageW * 96 / 25.4),
-        windowHeight: Math.ceil(pdfPageH * 96 / 25.4),
+        width: Math.ceil(pdfPageW * mmToPx),
+        height: Math.ceil(pdfPageH * mmToPx),
+        windowWidth: Math.ceil(pdfPageW * mmToPx),
+        windowHeight: Math.ceil(pdfPageH * mmToPx),
       });
       coverHost.remove();
 
-      const images: { data: string; width: number; height: number }[] = [
-        { data: coverCanvas.toDataURL('image/jpeg', 0.92), width: coverCanvas.width, height: coverCanvas.height },
-      ];
+      images.push({
+        data: coverCanvas.toDataURL('image/jpeg', 0.94),
+        width: coverCanvas.width,
+        height: coverCanvas.height,
+      });
 
-      // Crop each real dashboard row-group from the single canvas and place
-      // it onto a full-size page canvas. This preserves the exact layout and
-      // prevents the PDF renderer from recomputing grid/flex geometry.
-      const scale = 1.5;
-      const fullCssWidth = desktopWidth;
-      const fullCanvasWidth = fullCanvas.width;
-      const cssToCanvas = fullCanvasWidth / fullCssWidth;
-      const pageCanvasW = Math.round(pdfPageW * 96 / 25.4 * scale);
-      const pageCanvasH = Math.round(pdfPageH * 96 / 25.4 * scale);
-
-      for (const group of pageGroups) {
+      // Crop the exact mounted dashboard canvas. No widget HTML is rebuilt,
+      // so visual styles remain identical to the live dashboard.
+      for (const group of groups) {
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width = pageCanvasW;
         sliceCanvas.height = pageCanvasH;
         const ctx = sliceCanvas.getContext('2d');
         if (!ctx) continue;
-        ctx.fillStyle = '#fff';
+
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, pageCanvasW, pageCanvasH);
 
-        const sourceY = Math.round(group.start * cssToCanvas);
-        const sourceH = Math.max(1, Math.round((group.end - group.start) * cssToCanvas));
-        const destinationX = 0;
-        const destinationY = 0;
-        const destinationW = pageCanvasW;
-        const destinationH = Math.min(pageCanvasH, Math.round(sourceH * (pageCanvasW / fullCanvasWidth)));
+        const sourceY = Math.max(0, Math.round(group.start * canvasScale));
+        const sourceH = Math.max(1, Math.min(
+          fullCanvas.height - sourceY,
+          Math.round((group.end - group.start) * canvasScale),
+        ));
+
+        const destinationH = Math.min(
+          pageCanvasH,
+          Math.round(sourceH * (pageCanvasW / fullCanvas.width)),
+        );
 
         ctx.drawImage(
           fullCanvas,
-          0, sourceY, fullCanvasWidth, Math.min(sourceH, fullCanvas.height - sourceY),
-          destinationX, destinationY, destinationW, destinationH,
+          0, sourceY, fullCanvas.width, sourceH,
+          0, 0, pageCanvasW, destinationH,
         );
 
         images.push({
-          data: sliceCanvas.toDataURL('image/jpeg', 0.92),
+          data: sliceCanvas.toDataURL('image/jpeg', 0.94),
           width: sliceCanvas.width,
           height: sliceCanvas.height,
         });
@@ -585,11 +573,6 @@ export function PrintExportDialog({
         }
         return result;
       };
-      const catalogId = addObject('');
-      const pagesId = addObject('');
-      const pageIds: number[] = [];
-      const contentIds: number[] = [];
-      const imageIds: number[] = [];
       const decodeBase64 = (dataUrl: string) => {
         const raw = atob(dataUrl.split(',')[1]);
         const bytes = new Uint8Array(raw.length);
@@ -597,37 +580,60 @@ export function PrintExportDialog({
         return bytes;
       };
 
+      const catalogId = addObject('');
+      const pagesId = addObject('');
+      const pageIds: number[] = [];
+      const contentIds: number[] = [];
+      const imageIds: number[] = [];
+
       for (const image of images) {
         const jpeg = decodeBase64(image.data);
-        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'));
+        imageIds.push(addObject(
+          '<< /Type /XObject /Subtype /Image /Width ' + image.width +
+          ' /Height ' + image.height +
+          ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' +
+          jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'
+        ));
       }
 
       const pageWidthPt = pdfPageW * 72 / 25.4;
       const pageHeightPt = pdfPageH * 72 / 25.4;
+
       for (let i = 0; i < images.length; i++) {
         const content = 'q\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
-        contentIds.push(addObject('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
-        pageIds.push(addObject('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageWidthPt + ' ' + pageHeightPt + '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] + ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'));
+        contentIds.push(addObject(
+          '<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'
+        ));
+        pageIds.push(addObject(
+          '<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' +
+          pageWidthPt + ' ' + pageHeightPt +
+          '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] +
+          ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'
+        ));
       }
 
       objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
-      objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length + ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
+      objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length +
+        ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
 
-      let pdf = '%PDF-1.4\n%\\xFF\\xFF\\xFF\\xFF\n';
+      let pdf = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
       const offsets = [0];
       objects.forEach((obj, index) => {
         offsets[index + 1] = pdf.length;
         pdf += (index + 1) + ' 0 obj\n' + obj + '\nendobj\n';
       });
+
       const xref = pdf.length;
       pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
       for (let i = 1; i <= objects.length; i++) {
         pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
       }
-      pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+      pdf += 'trailer\n<< /Size ' + (objects.length + 1) +
+        ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
 
       const pdfBytes = new Uint8Array(pdf.length);
       for (let i = 0; i < pdf.length; i++) pdfBytes[i] = pdf.charCodeAt(i) & 255;
+
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -638,7 +644,7 @@ export function PrintExportDialog({
       a.remove();
       URL.revokeObjectURL(url);
     } finally {
-      host.remove();
+      restore();
     }
   };
 
