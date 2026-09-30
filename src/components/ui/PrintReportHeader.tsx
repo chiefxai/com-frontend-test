@@ -19,9 +19,23 @@ export const PRINT_PAGE_STYLE = `
   .chiefvoice-print-header { display: none !important; }
   @media print {
     .chiefvoice-print-header {
-      display: block !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      width: 100% !important;
+      min-height: calc(100vh - 20mm) !important;
+      box-sizing: border-box !important;
       break-after: page !important;
       page-break-after: always !important;
+    }
+    .chiefvoice-print-content > :not(.chiefvoice-print-header):not(.chiefvoice-print-filter) {
+      display: block !important;
+      width: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
     }
   }
   .chiefvoice-print-content > * {
