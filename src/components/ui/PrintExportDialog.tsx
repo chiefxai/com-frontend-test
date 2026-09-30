@@ -204,6 +204,47 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       // page has 10mm padding. Convert the physical paper's usable height into
       // that same desktop coordinate system so pagination is deterministic.
       const paper = PAPER[settings.paperSize];
+      const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
+      const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
+      const usableW = pageW - 20;
+      const usableH = pageH - 20;
+      const desktopGridW = 1440 - 76;
+      const desktopUsableH = (usableH / usableW) * desktopGridW;
+      const rowGap = 24;
+
+      const result: ExportPage[] = [];
+      let current: ExportRowItem[][] = [];
+      let used = 0;
+
+      for (const row of rows) {
+        const rowHeight = row.height;
+        const needed = current.length === 0 ? rowHeight : rowGap + rowHeight;
+
+        // Never split a dashboard row. If the next row cannot fit, start a
+        // completely new physical page.
+        if (current.length > 0 && used + needed > desktopUsableH) {
+          result.push({ rows: current });
+          current = [];
+          used = 0;
+        }
+
+        current.push(row.items);
+        used += current.length === 1 ? rowHeight : rowGap + rowHeight;
+      }
+
+      if (current.length > 0) result.push({ rows: current });
+      setPages(result);
+      measurementHost.remove();
+    };
+
+    const frame = window.requestAnimationFrame(run);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      measurementHost.remove();
+    };
+  }, [open, contentRef, settings.paperSize, settings.orientation]);
+
+  const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
   const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
   const mmToPx = 3.7795275591;
@@ -221,6 +262,7 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     height: `${previewHeight}px`,
     aspectRatio: `${pageW} / ${pageH}`,
   } as const;
+
   const buildWordRows = (rows: ExportRowItem[][]) => rows.map(row => {
     const cells = row.map(item =>
       `<td colspan="${item.span}" style="width:${(item.span / 12) * 100}%;vertical-align:top;padding:0 6px 14px 6px">${item.html}</td>`
