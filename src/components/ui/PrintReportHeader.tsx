@@ -17,10 +17,7 @@ export const PRINT_PAGE_STYLE = `
     background: #fff !important;
   }
 
-  .chiefvoice-print-filter {
-    display: none !important;
-  }
-
+  .chiefvoice-print-filter,
   .chiefvoice-print-header,
   .chiefvoice-print-page-break {
     display: none !important;
@@ -131,6 +128,7 @@ export function formatPrintDateRange(from: string, to: string): string {
       month: 'long',
       year: 'numeric',
     });
+
   return `${format(from)} – ${format(to)}`;
 }
 
@@ -149,34 +147,44 @@ export default function PrintReportHeader({
 }: PrintReportHeaderProps) {
   return (
     <>
-      <div className="chiefvoice-print-header col-span-12" aria-hidden="true" style={{ display: 'none' }}>
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 0 18px 0',
-          marginBottom: 18,
-          borderBottom: '1px solid #d1d5db',
-        }}
+        className="chiefvoice-print-header col-span-12"
+        aria-hidden="true"
+        style={{ display: 'none' }}
       >
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginBottom: 5 }}>
-            {title}
-          </div>
-          <div style={{ fontSize: 12, color: '#4b5563' }}>
-            Filter applied: {formatPrintDateRange(fromDate, toDate)}
-            {filters ? <> · {filters}</> : null}
+          <img
+            src={chiefVoiceLogo}
+            alt="ChiefVoice"
+            style={{
+              width: 110,
+              height: 110,
+              objectFit: 'contain',
+              marginBottom: 28,
+            }}
+          />
+
+          <div>
+            <div
+              style={{
+                fontSize: 30,
+                fontWeight: 700,
+                lineHeight: 1.2,
+                color: '#111827',
+                marginBottom: 10,
+              }}
+            >
+              {title}
+            </div>
+
+            <div style={{ fontSize: 14, lineHeight: 1.5, color: '#4b5563' }}>
+              Filter applied: {formatPrintDateRange(fromDate, toDate)}
+              {filters ? <> · {filters}</> : null}
+            </div>
           </div>
         </div>
-        <img
-          src={chiefVoiceLogo}
-          alt="ChiefVoice"
-          style={{ height: 34, width: 'auto', objectFit: 'contain' }}
-        />
       </div>
-    </div>
-      </div>
+
       <div className="chiefvoice-print-page-break" aria-hidden="true" />
     </>
   );
