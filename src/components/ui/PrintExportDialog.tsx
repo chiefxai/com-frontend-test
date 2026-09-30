@@ -327,6 +327,18 @@ export function PrintExportDialog({
     return cover + content;
   };
 
+  const withGridSpan = (html: string, span: number) => {
+    const safeSpan = Math.max(1, Math.min(12, span));
+    const gridStyle = `grid-column:span ${safeSpan} / span ${safeSpan};width:100%;min-width:0;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;`;
+    return html.replace(/^<([a-zA-Z][^>]*)(style="[^"]*")?/, (_match, tag, styleAttr) => {
+      if (styleAttr) {
+        const existing = styleAttr.slice(7, -1);
+        return `<${tag}${styleAttr.slice(0, 7)}${existing};${gridStyle}"`;
+      }
+      return `<${tag} style="${gridStyle}"`;
+    });
+  };
+
   const buildPrintMarkup = () => `
     <div class="chiefvoice-export-print-root" style="width:100%;margin:0;padding:0;background:#fff;">
       <section class="chiefvoice-export-page chiefvoice-export-cover" style="width:${pageW}mm;height:${pageH}mm;min-height:${pageH}mm;max-height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;background:#fff;break-after:page;page-break-after:always;">
@@ -336,10 +348,10 @@ export function PrintExportDialog({
           <p>Filter applied: ${formatRange(fromDate, toDate)}</p>
         </div>
       </section>
-      ${pages.map((page, index) => `
+      ${pages.map(page => `
         <section class="chiefvoice-export-page" style="width:${pageW}mm;height:${pageH}mm;min-height:${pageH}mm;max-height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;background:#fff;break-after:page;page-break-after:always;">
           <div class="chiefvoice-export-grid" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row;grid-auto-rows:max-content;align-items:start;gap:6mm;width:100%;min-width:0;box-sizing:border-box;overflow:visible;">
-            ${page.rows.flat().map(item => item.html).join('')}
+            ${page.rows.flat().map(item => withGridSpan(item.html, item.span)).join('')}
           </div>
         </section>
       `).join('')}
@@ -349,7 +361,9 @@ export function PrintExportDialog({
   const downloadPdf = async () => {
     if (!pages.length) return;
     const host = document.createElement('div');
-    host.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;overflow:visible;z-index:-1;pointer-events:none;background:#fff;';
+    const paperPxWidth = Math.ceil((pageW * 96) / 25.4);
+    const paperPxHeight = Math.ceil((pageH * 96) / 25.4);
+    host.style.cssText = 'position:absolute;left:-100000px;top:0;width:' + paperPxWidth + 'px;height:auto;overflow:visible;z-index:-1;pointer-events:none;background:#fff;';
     host.innerHTML = buildPrintMarkup();
     document.body.appendChild(host);
     try {
@@ -371,6 +385,8 @@ export function PrintExportDialog({
           height: Math.round(pageH * mmToPx),
           windowWidth: Math.round(pageW * mmToPx),
           windowHeight: Math.round(pageH * mmToPx),
+          scrollX: 0,
+          scrollY: 0,
         });
         images.push({ data: canvas.toDataURL('image/jpeg', 0.92), width: canvas.width, height: canvas.height });
       }
