@@ -63,7 +63,6 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       box-sizing: border-box !important; zoom: ${zoom} !important; background: #fff !important;
     }
     .chiefvoice-print-content > * { width:100% !important; min-width:0 !important; max-width:100% !important; }
-    }
     .chiefvoice-print-filter { display:none !important; }
     .chiefvoice-print-header {
       display:flex !important; flex-direction:column !important; align-items:center !important;
@@ -173,6 +172,9 @@ export default function PrintExportDialog({
   const previewScale = Math.min(1, 920 / (pageW * mmToPx));
   const previewWidth = pageW * mmToPx * previewScale;
   const previewHeight = pageH * mmToPx * previewScale;
+  const desktopWidth = 1440;
+  const desktopToPaperScale = (pageW * mmToPx) / desktopWidth;
+  const contentPreviewScale = desktopToPaperScale * previewScale;
   const previewPaperStyle = {
     width: `${previewWidth}px`,
     height: `${previewHeight}px`,
@@ -281,7 +283,7 @@ export default function PrintExportDialog({
               <section className="bg-white shadow-xl overflow-visible" style={{ ...previewPaperStyle, minHeight: previewHeight, height: 'auto' }}>
                 <div
                   className="origin-top-left"
-                  style={{ width: pageW * mmToPx, minHeight: pageH * mmToPx, height:'auto', transform: `scale(${previewScale})`, transformOrigin:'top left', padding:38, boxSizing:'border-box' }}
+                  style={{ width: desktopWidth, minHeight: pageH * mmToPx, height:'auto', zoom: contentPreviewScale, padding:38, boxSizing:'border-box' }}
                   dangerouslySetInnerHTML={{ __html: snapshot }}
                 />
               </section>
