@@ -16,6 +16,8 @@ interface KpiCardProps {
   iconColor?: string;
   iconPosition?: 'left' | 'right' | 'top-left';
   colSpan?: number;
+  /** Responsive 12-column export metadata, matching Widget's grid contract. */
+  span?: { xs?: number; sm?: number; md?: number; lg?: number; xl?: number };
   className?: string;
   onClick?: () => void;
 }
@@ -70,6 +72,7 @@ export default function KpiCard({
   iconColor = 'var(--text-secondary)',
   iconPosition = 'right',
   colSpan = 3,
+  span,
   className = '',
   onClick,
 }: KpiCardProps) {
@@ -178,8 +181,21 @@ export default function KpiCard({
         ? 'flex items-center gap-4'
         : 'flex items-center justify-between gap-3';
 
+  const resolvedSpan = {
+    xs: span?.xs ?? (colSpan === 3 ? 12 : colSpan),
+    sm: span?.sm ?? (colSpan === 3 ? 6 : colSpan),
+    md: span?.md ?? span?.sm ?? span?.xs ?? (colSpan === 3 ? 6 : colSpan),
+    lg: span?.lg ?? span?.md ?? span?.sm ?? span?.xs ?? colSpan,
+    xl: span?.xl ?? span?.lg ?? span?.md ?? span?.sm ?? span?.xs ?? colSpan,
+  };
+
   return (
     <div
+      data-grid-span={resolvedSpan.xs}
+      data-grid-span-sm={resolvedSpan.sm}
+      data-grid-span-md={resolvedSpan.md}
+      data-grid-span-lg={resolvedSpan.lg}
+      data-grid-span-xl={resolvedSpan.xl}
       className={`${colClass} rounded-[14px] border p-5 shadow-[var(--shadow-card)] ${layoutClass} ${onClick ? 'cursor-pointer hover:shadow-[var(--shadow-card)] transition-shadow duration-150' : ''} ${className}`}
       style={cardStyle}
       onClick={onClick}
