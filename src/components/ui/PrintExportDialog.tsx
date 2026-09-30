@@ -329,8 +329,8 @@ export function PrintExportDialog({
   };
 
   const buildPrintMarkup = () => `
-    <div class="chiefvoice-export-print-root">
-      <section class="chiefvoice-export-page chiefvoice-export-cover">
+    <div class="chiefvoice-export-print-root" style="width:100%;margin:0;padding:0;background:#fff;">
+      <section class="chiefvoice-export-page chiefvoice-export-cover" style="width:${pageW}mm;height:${pageH}mm;min-height:${pageH}mm;max-height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;background:#fff;break-after:page;page-break-after:always;">
         <div class="chiefvoice-export-cover-inner">
           <img src="${chiefVoiceLogo}" alt="ChiefVoice">
           <h1>${title}</h1>
@@ -338,8 +338,8 @@ export function PrintExportDialog({
         </div>
       </section>
       ${pages.map((page, index) => `
-        <section class="chiefvoice-export-page">
-          <div class="chiefvoice-export-grid">
+        <section class="chiefvoice-export-page" style="width:${pageW}mm;height:${pageH}mm;min-height:${pageH}mm;max-height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;background:#fff;break-after:page;page-break-after:always;">
+          <div class="chiefvoice-export-grid" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row;grid-auto-rows:max-content;align-items:start;gap:6mm;width:100%;min-width:0;box-sizing:border-box;overflow:visible;">
             ${page.rows.flat().map(item => item.html).join('')}
           </div>
         </section>
