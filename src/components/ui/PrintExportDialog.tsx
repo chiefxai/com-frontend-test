@@ -120,6 +120,35 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     .chiefvoice-export-grid table { max-width: 100% !important; }
   `;
 }
+function collectStyles() {
+  let css = '';
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      css += Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+    } catch {
+      // Cross-origin stylesheets cannot be read; inline export CSS still applies.
+    }
+  }
+  return css;
+}
+
+export function PrintExportDialog({
+  open,
+  onClose,
+  title,
+  fromDate,
+  toDate,
+  contentRef,
+  onExportPdf,
+}: PrintExportDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const handleOutsideClick = useCallback(() => {
+    if (open) onClose();
+  }, [open, onClose]);
+
+  useOnClickOutside(dialogRef, handleOutsideClick, open);
+
+
   const [pages, setPages] = useState<ExportPage[]>([]);
 
   useEffect(() => {
