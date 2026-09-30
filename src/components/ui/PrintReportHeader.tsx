@@ -1,7 +1,7 @@
 import React from 'react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
 
-export const PRINT_PAGE_STYLE = \`
+export const PRINT_PAGE_STYLE = `
   @page {
     size: 297mm 210mm;
     margin: 10mm !important;
@@ -181,7 +181,7 @@ export const PRINT_PAGE_STYLE = \`
       appearance: auto !important;
     }
   }
-\`;
+`;
 
 export function formatPrintDateRange(from: string, to: string): string {
   const format = (value: string) =>
