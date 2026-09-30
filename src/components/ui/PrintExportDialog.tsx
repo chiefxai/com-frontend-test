@@ -30,7 +30,10 @@ const PAPER: Record<PaperSize, { width: number; height: number; css: string }> =
   Legal: { width: 355.6, height: 215.9, css: 'Legal' },
 };
 
-interface ExportRowItem { html: string; span: number; }\ninterface ExportPage { rows: ExportRowItem[][]; }\n\nfunction formatRange(from: string, to: string) {
+interface ExportRowItem { html: string; span: number; }
+interface ExportPage { rows: ExportRowItem[][]; }
+
+function formatRange(from: string, to: string) {
   const f = (v: string) => new Date(v + 'T00:00:00').toLocaleDateString(undefined, {
     day: 'numeric', month: 'long', year: 'numeric',
   });
