@@ -360,37 +360,221 @@ export function PrintExportDialog({
   `;
 
   const downloadPdf = async () => {
-    if (!pages.length) return;
+    if (!contentRef.current) return;
+
+    const paper = PAPER[settings.paperSize];
+    const pdfPageW = settings.orientation === 'landscape' ? paper.width : paper.height;
+    const pdfPageH = settings.orientation === 'landscape' ? paper.height : paper.width;
+    const desktopWidth = 1440;
+    const desktopPadding = 38;
+    const desktopGap = 22.6771653546;
+    const pageHeightCss = desktopWidth * (pdfPageH / pdfPageW);
+    const usablePageHeightCss = pageHeightCss - (desktopPadding * 2);
+
     const host = document.createElement('div');
-    const paperPxWidth = Math.ceil((pageW * 96) / 25.4);
-    const paperPxHeight = Math.ceil((pageH * 96) / 25.4);
-    host.style.cssText = 'position:absolute;left:-100000px;top:0;width:' + paperPxWidth + 'px;height:auto;overflow:visible;z-index:-1;pointer-events:none;background:#fff;';
-    host.innerHTML = buildPrintMarkup();
+    host.style.cssText = [
+      'position:absolute',
+      'left:-100000px',
+      'top:0',
+      `width:${desktopWidth}px`,
+      'height:auto',
+      'overflow:visible',
+      'z-index:-1',
+      'pointer-events:none',
+      'background:#fff',
+    ].join(';');
+
+    const clone = contentRef.current.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
+      .forEach(node => node.remove());
+    clone.removeAttribute('id');
+    clone.style.cssText = [
+      'display:grid',
+      'grid-template-columns:repeat(12,minmax(0,1fr))',
+      'grid-auto-flow:row',
+      'grid-auto-rows:max-content',
+      'align-items:start',
+      `gap:${desktopGap}px`,
+      `width:${desktopWidth}px`,
+      `min-width:${desktopWidth}px`,
+      `max-width:${desktopWidth}px`,
+      'height:auto',
+      'min-height:0',
+      'max-height:none',
+      'overflow:visible',
+      'background:#fff',
+      'box-sizing:border-box',
+      `padding:${desktopPadding}px`,
+    ].join(';');
+
+    clone.querySelectorAll(':scope > *').forEach((node) => {
+      const element = node as HTMLElement;
+      const lgSpan = Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12);
+      element.style.width = '100%';
+      element.style.minWidth = '0';
+      element.style.maxWidth = '100%';
+      element.style.height = 'auto';
+      element.style.minHeight = '0';
+      element.style.maxHeight = 'none';
+      element.style.gridColumn = `span ${Math.max(1, Math.min(12, lgSpan))} / span ${Math.max(1, Math.min(12, lgSpan))}`;
+      element.style.breakInside = 'avoid';
+      element.style.pageBreakInside = 'avoid';
+    });
+
+    // Expand dashboard scroll containers for export so tables/lists are not
+    // cropped by the interactive viewport height.
+    clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach((element) => {
+      element.style.maxHeight = 'none';
+      element.style.height = 'auto';
+      element.style.overflow = 'visible';
+    });
+
+    host.appendChild(clone);
     document.body.appendChild(host);
+
     try {
-      const pdfPages = Array.from(host.querySelectorAll('.chiefvoice-export-page')) as HTMLElement[];
-      const mmToPx = 96 / 25.4;
-      const paper = PAPER[settings.paperSize];
-      const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
-      const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
-      const images: { data: string; width: number; height: number }[] = [];
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-      for (const page of pdfPages) {
-        const canvas = await html2canvas(page, {
-          backgroundColor: '#ffffff',
-          scale: 1.5,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          width: Math.round(pageW * mmToPx),
-          height: Math.round(pageH * mmToPx),
-          windowWidth: Math.round(pageW * mmToPx),
-          windowHeight: Math.round(pageH * mmToPx),
-          scrollX: 0,
-          scrollY: 0,
-        });
-        images.push({ data: canvas.toDataURL('image/jpeg', 0.92), width: canvas.width, height: canvas.height });
+
+      // Read the final row geometry from the real dashboard clone. We use the
+      // same 12-column grid for layout and only crop the already-rendered canvas
+      // for pagination; we never rebuild widgets from outerHTML.
+      const children = Array.from(clone.children)
+        .filter((element) => getComputedStyle(element as HTMLElement).display !== 'none') as HTMLElement[];
+
+      const rowsMap = new Map<number, HTMLElement[]>();
+      children.forEach((element) => {
+        const top = Math.round(element.offsetTop);
+        const row = rowsMap.get(top) ?? [];
+        row.push(element);
+        rowsMap.set(top, row);
+      });
+
+      const rows = Array.from(rowsMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([top, elements]) => ({
+          top,
+          bottom: Math.max(...elements.map(element => element.offsetTop + element.offsetHeight)),
+          height: Math.max(...elements.map(element => element.offsetHeight)),
+        }));
+
+      const pageGroups: { start: number; end: number }[] = [];
+      let currentRows: typeof rows = [];
+      let used = 0;
+
+      for (const row of rows) {
+        const needed = currentRows.length === 0 ? row.height : desktopGap + row.height;
+        if (currentRows.length > 0 && used + needed > usablePageHeightCss) {
+          pageGroups.push({
+            start: Math.max(0, currentRows[0].top - desktopPadding),
+            end: Math.min(clone.scrollHeight, currentRows[currentRows.length - 1].bottom + desktopPadding),
+          });
+          currentRows = [];
+          used = 0;
+        }
+        currentRows.push(row);
+        used += needed;
       }
+
+      if (currentRows.length > 0) {
+        pageGroups.push({
+          start: Math.max(0, currentRows[0].top - desktopPadding),
+          end: Math.min(clone.scrollHeight, currentRows[currentRows.length - 1].bottom + desktopPadding),
+        });
+      }
+
+      if (!pageGroups.length) return;
+
+      const fullCanvas = await html2canvas(clone, {
+        backgroundColor: '#ffffff',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        width: desktopWidth,
+        height: Math.max(clone.scrollHeight, pageHeightCss),
+        windowWidth: desktopWidth,
+        windowHeight: Math.max(clone.scrollHeight, pageHeightCss),
+        scrollX: 0,
+        scrollY: 0,
+        imageSmoothing: true,
+        imageSmoothingQuality: 'high',
+      });
+
+      const coverHost = document.createElement('div');
+      coverHost.style.cssText = [
+        'position:absolute',
+        'left:-100000px',
+        'top:0',
+        `width:${Math.ceil(pdfPageW * 96 / 25.4)}px`,
+        `height:${Math.ceil(pdfPageH * 96 / 25.4)}px`,
+        'background:#fff',
+      ].join(';');
+      coverHost.innerHTML = `
+        <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:#fff;display:flex;align-items:center;justify-content:center;text-align:center;">
+          <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+            <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:110px;height:110px;object-fit:contain;margin:0 0 28px 0;">
+            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;">${title}</h1>
+            <p style="font-size:14px;line-height:1.5;margin:0;color:#4b5563;">Filter applied: ${formatRange(fromDate, toDate)}</p>
+          </div>
+        </section>`;
+      document.body.appendChild(coverHost);
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      const coverCanvas = await html2canvas(coverHost.firstElementChild as HTMLElement, {
+        backgroundColor: '#ffffff',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        width: Math.ceil(pdfPageW * 96 / 25.4),
+        height: Math.ceil(pdfPageH * 96 / 25.4),
+        windowWidth: Math.ceil(pdfPageW * 96 / 25.4),
+        windowHeight: Math.ceil(pdfPageH * 96 / 25.4),
+      });
+      coverHost.remove();
+
+      const images: { data: string; width: number; height: number }[] = [
+        { data: coverCanvas.toDataURL('image/jpeg', 0.92), width: coverCanvas.width, height: coverCanvas.height },
+      ];
+
+      // Crop each real dashboard row-group from the single canvas and place
+      // it onto a full-size page canvas. This preserves the exact layout and
+      // prevents the PDF renderer from recomputing grid/flex geometry.
+      const scale = 1.5;
+      const fullCssWidth = desktopWidth;
+      const fullCanvasWidth = fullCanvas.width;
+      const cssToCanvas = fullCanvasWidth / fullCssWidth;
+      const pageCanvasW = Math.round(pdfPageW * 96 / 25.4 * scale);
+      const pageCanvasH = Math.round(pdfPageH * 96 / 25.4 * scale);
+
+      for (const group of pageGroups) {
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = pageCanvasW;
+        sliceCanvas.height = pageCanvasH;
+        const ctx = sliceCanvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, pageCanvasW, pageCanvasH);
+
+        const sourceY = Math.round(group.start * cssToCanvas);
+        const sourceH = Math.max(1, Math.round((group.end - group.start) * cssToCanvas));
+        const destinationX = 0;
+        const destinationY = 0;
+        const destinationW = pageCanvasW;
+        const destinationH = Math.min(pageCanvasH, Math.round(sourceH * (pageCanvasW / fullCanvasWidth)));
+
+        ctx.drawImage(
+          fullCanvas,
+          0, sourceY, fullCanvasWidth, Math.min(sourceH, fullCanvas.height - sourceY),
+          destinationX, destinationY, destinationW, destinationH,
+        );
+
+        images.push({
+          data: sliceCanvas.toDataURL('image/jpeg', 0.92),
+          width: sliceCanvas.width,
+          height: sliceCanvas.height,
+        });
+      }
+
       const objects: string[] = [];
       const addObject = (body: string) => { objects.push(body); return objects.length; };
       const bytesToBinary = (bytes: Uint8Array) => {
@@ -412,26 +596,36 @@ export function PrintExportDialog({
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
         return bytes;
       };
+
       for (const image of images) {
         const jpeg = decodeBase64(image.data);
-        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'));
+        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\\nstream\\n' + bytesToBinary(jpeg) + '\\nendstream'));
       }
-      const pageWidthPt = pageW * 72 / 25.4;
-      const pageHeightPt = pageH * 72 / 25.4;
+
+      const pageWidthPt = pdfPageW * 72 / 25.4;
+      const pageHeightPt = pdfPageH * 72 / 25.4;
       for (let i = 0; i < images.length; i++) {
-        const content = 'q\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
-        contentIds.push(addObject('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
+        const content = 'q\\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\\n/Im' + (i + 1) + ' Do\\nQ';
+        contentIds.push(addObject('<< /Length ' + content.length + ' >>\\nstream\\n' + content + '\\nendstream'));
         pageIds.push(addObject('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageWidthPt + ' ' + pageHeightPt + '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] + ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'));
       }
+
       objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
       objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length + ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
-      let pdf = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
+
+      let pdf = '%PDF-1.4\\n%\\xFF\\xFF\\xFF\\xFF\\n';
       const offsets = [0];
-      objects.forEach((obj, index) => { offsets[index + 1] = pdf.length; pdf += (index + 1) + ' 0 obj\n' + obj + '\nendobj\n'; });
+      objects.forEach((obj, index) => {
+        offsets[index + 1] = pdf.length;
+        pdf += (index + 1) + ' 0 obj\\n' + obj + '\\nendobj\\n';
+      });
       const xref = pdf.length;
-      pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
-      for (let i = 1; i <= objects.length; i++) pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
-      pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+      pdf += 'xref\\n0 ' + (objects.length + 1) + '\\n0000000000 65535 f \\n';
+      for (let i = 1; i <= objects.length; i++) {
+        pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \\n';
+      }
+      pdf += 'trailer\\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\\nstartxref\\n' + xref + '\\n%%EOF';
+
       const pdfBytes = new Uint8Array(pdf.length);
       for (let i = 0; i < pdf.length; i++) pdfBytes[i] = pdf.charCodeAt(i) & 255;
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
