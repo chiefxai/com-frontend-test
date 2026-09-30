@@ -910,6 +910,9 @@ export default function AgentStudioView() {
               <Slider label="Speed" value={form.speed} onChange={v => setForm(f => ({ ...f, speed: v }))} />
               <Slider label="Friendliness" value={form.friendliness} onChange={v => setForm(f => ({ ...f, friendliness: v }))} />
             </div>
+            <p className="text-[10px] text-[var(--text-muted)] mt-3 leading-relaxed">
+              Speed controls how fast the agent speaks on live calls and on the phone opening greeting. If the first line still feels slow, raise Speed (try 65–75) and save the agent.
+            </p>
           </div>
 
           
