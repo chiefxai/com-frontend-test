@@ -1036,7 +1036,12 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
     // to be called back later would show as done. Simulation-mode calls
     // (no realCallLog at all) have no such backend status, so those still
     // default to "Completed" exactly as before.
-    const realCallLogStatus = realCallLog?.status === 'Callback Scheduled' ? 'Callback Scheduled' as const : 'Completed' as const;
+    const backendStatus = realCallLog?.status;
+    const realCallLogStatus =
+      backendStatus === 'Callback Scheduled' ? 'Callback Scheduled' as const
+        : backendStatus === 'No Answer' ? 'No Answer' as const
+        : backendStatus === 'Answering Machine' ? 'Answering Machine' as const
+        : 'Completed' as const;
 
     // Update results inside selected task
     const updatedTasks = tasks.map((task) => {

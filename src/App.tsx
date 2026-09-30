@@ -469,6 +469,10 @@ export default function App() {
               // number strings.
               setCallLogs((prev) => [{ ...data.callLog, providerCallSid: data.providerCallSid }, ...prev]);
             }
+            // callFinalizer patches dialer_tasks.call_results server-side;
+            // refresh so campaign Survey Status / sentiment / answers match
+            // the authoritative row without waiting for the 8s poll.
+            refreshDialerTasks();
             pushNotification('call_completed', `Call completed${data.callLog?.leadName ? ` with ${data.callLog.leadName}` : ''}`);
           } else if (data.type === 'auto_dial_progress') {
             // Refetch immediately instead of trying to patch the specific
@@ -497,7 +501,7 @@ export default function App() {
     };
   // kcUser?.id, not the object — see the comment above; otherwise every
   // token refresh tore down and reopened this SSE connection too.
-  }, [kcUser?.id, hasLoaded]);
+  }, [kcUser?.id, hasLoaded, refreshDialerTasks]);
 
   // Redirect if a non-lending org lands on a lending-only route or a retired route.
   useEffect(() => {
