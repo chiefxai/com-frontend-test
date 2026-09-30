@@ -438,9 +438,37 @@ export default function DashboardView({
       overflow: visible !important;
       flex: none !important;
     }
+    /* CSS grid pagination is inconsistent in browser print engines and can
+       result in only the first grid item being painted. Flatten the dashboard
+       grid into a normal document flow for printing so every widget is part
+       of the printable document and can continue onto subsequent pages. */
     body.chiefvoice-printing .chiefvoice-print-content .grid {
+      display: block !important;
+      width: 100% !important;
       height: auto !important;
       min-height: 0 !important;
+      overflow: visible !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content .grid > * {
+      display: flex !important;
+      width: 100% !important;
+      max-width: none !important;
+      grid-column: auto !important;
+      grid-row: auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      margin: 0 0 12px 0 !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content .grid > * > * {
+      max-height: none !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content [data-widget-scroll] {
+      max-height: none !important;
+      height: auto !important;
       overflow: visible !important;
     }
   }
