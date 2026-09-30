@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Download, FileText, Printer, X } from 'lucide-react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
 
@@ -43,8 +43,8 @@ export function buildExportPageStyle(settings: ExportSettings): string {
   const usableWidth = pageWidth - 20;
   const scale = usableWidth / 297;
   const desktopWidth = 1440;
-  const coverHeightPx = ((pageHeight - 20) * 3.7795275591) / zoom;
   const zoom = (usableWidth * 3.7795275591) / 1440;
+  const coverHeightPx = ((pageHeight - 20) * 3.7795275591) / zoom;
 
   return `
     @page { size: ${p.css} ${settings.orientation}; margin: 10mm !important; }
