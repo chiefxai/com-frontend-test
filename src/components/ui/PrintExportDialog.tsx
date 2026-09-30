@@ -341,48 +341,6 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-            <div className="mx-auto" style={{ width: previewWidth }}>
-              <div className="text-xs text-slate-500 mb-2">{settings.paperSize} · {settings.orientation} · {pages.length + 1} page{pages.length === 0 ? '' : 's'} · 12-column grid</div>
-
-              <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
-                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: '#f8faff', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40 }}>
-                  <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
-                  <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'#111827' }}>{title}</h1>
-                  <p style={{ textAlign:'center', fontSize:14, color:'#4b5563', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
-                </div>
-              </section>
-
-              {pages.map((page, pageIndex) => {
-                const pageHtml = page.rows.flat().map(item => item.html).join('');
-                return (
-                  <React.Fragment key={pageIndex}>
-                    <div className="h-8" />
-                    <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
-                      <div
-                        style={{
-                          width: desktopWidth,
-                          height: desktopPageHeight,
-                          padding: 37.795275591,
-                          boxSizing: 'border-box',
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
-                          gridAutoFlow: 'row',
-                          gridAutoRows: 'max-content',
-                          alignItems: 'start',
-                          gap: 22.6771653546,
-                          transform: `scale(${renderScale})`,
-                          transformOrigin: 'top left',
-                          background: '#fff',
-                        }}
-                        dangerouslySetInnerHTML={{ __html: pageHtml }}
-                      />
-                    </section>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-
   if (!open) return null;
 
   return (
