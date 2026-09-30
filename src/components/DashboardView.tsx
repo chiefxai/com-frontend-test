@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import {
   PhoneIncoming,
   PhoneOutgoing,
@@ -43,7 +42,7 @@ import FilterBar from './ui/FilterBar';
 import SlideOver from './ui/SlideOver';
 import Tooltip from './ui/Tooltip';
 import PrintReportHeader from './ui/PrintReportHeader';
-import PrintExportDialog, { buildExportPageStyle, ExportSettings } from './ui/PrintExportDialog';
+import PrintExportDialog from './ui/PrintExportDialog';
 
 // Loosely typed like ReportsView's DialTask — this page only needs
 // the task's own name + each lead's call outcome, not the full shape.
@@ -151,32 +150,7 @@ export default function DashboardView({
   costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK,
 }: DashboardViewProps) {
   const dashboardPrintRef = useRef<HTMLDivElement>(null);
-  const exportPrintRef = useRef<HTMLDivElement>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportSettings, setExportSettings] = useState<ExportSettings>({
-    format: 'pdf', paperSize: 'A4', orientation: 'landscape',
-  });
-  const [pendingPdfExport, setPendingPdfExport] = useState(false);
-  const [exportPrintMarkup, setExportPrintMarkup] = useState('');
-  const printDashboard = useReactToPrint({
-    contentRef: exportPrintRef,
-    documentTitle: 'ChiefVoice_Executive_Desk',
-    pageStyle: buildExportPageStyle(exportSettings),
-    onAfterPrint: () => {
-      setExportOpen(false);
-      setPendingPdfExport(false);
-    },
-  });
-
-  useEffect(() => {
-    if (!pendingPdfExport) return;
-    setPendingPdfExport(false);
-    const id = window.setTimeout(() => printDashboard(), 0);
-    return () => window.clearTimeout(id);
-    // printDashboard is intentionally the callback from the render that
-    // contains the newly selected export settings.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingPdfExport]);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [allEnquiries, setAllEnquiries] = useState<{ id: string; callId: string | null; createdAt: string }[]>([]);
   interface ScheduledCallback {
@@ -774,13 +748,6 @@ export default function DashboardView({
       </SlideOver>
     </PageShell>
 
-      <div
-        ref={exportPrintRef}
-        aria-hidden="true"
-        style={{ position: 'absolute', left: '-100000px', top: 0, width: '1440px', height: 'auto', overflow: 'visible', pointerEvents: 'none' }}
-        dangerouslySetInnerHTML={{ __html: exportPrintMarkup }}
-      />
-
       <PrintExportDialog
         open={exportOpen}
         onClose={() => setExportOpen(false)}
@@ -788,11 +755,6 @@ export default function DashboardView({
         fromDate={fromDate}
         toDate={toDate}
         contentRef={dashboardPrintRef}
-        onExportPdf={(settings, printableMarkup) => {
-          setExportSettings(settings);
-          setExportPrintMarkup(printableMarkup);
-          setPendingPdfExport(true);
-        }}
       />
     </>
   );
