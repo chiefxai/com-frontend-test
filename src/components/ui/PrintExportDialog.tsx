@@ -383,3 +383,113 @@ export function buildExportPageStyle(settings: ExportSettings): string {
               })}
             </div>
 
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[2000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div ref={dialogRef} className="w-full max-w-7xl h-[94vh] bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-2xl overflow-hidden flex flex-col">
+        <div className="h-16 shrink-0 px-5 flex items-center justify-between border-b border-[var(--border)]">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">Export {title}</h2>
+            <p className="text-xs text-[var(--text-muted)]">Preview the document before exporting.</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-muted)]" aria-label="Close export preview">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 flex overflow-hidden">
+          <aside className="w-72 shrink-0 border-r border-[var(--border)] p-5 space-y-5 overflow-y-auto">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Format</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(['pdf','doc'] as ExportFormat[]).map(format => (
+                  <button key={format} onClick={() => setSettings(s => ({ ...s, format }))}
+                    className={`rounded-xl border p-3 text-left transition ${settings.format === format ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
+                    {format === 'pdf' ? <Printer className="h-4 w-4 mb-2" /> : <FileText className="h-4 w-4 mb-2" />}
+                    <span className="block text-xs font-semibold">{format === 'pdf' ? 'PDF' : 'Word (.doc)'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Paper size</span>
+              <select value={settings.paperSize} onChange={e => setSettings(s => ({ ...s, paperSize: e.target.value as PaperSize }))}
+                className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm">
+                {Object.keys(PAPER).map(size => <option key={size}>{size}</option>)}
+              </select>
+            </label>
+
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Orientation</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(['landscape','portrait'] as Orientation[]).map(orientation => (
+                  <button key={orientation} onClick={() => setSettings(s => ({ ...s, orientation }))}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold capitalize ${settings.orientation === orientation ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
+                    {orientation}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-muted)] leading-relaxed">
+              Each export page is laid out independently. Width always follows the dashboard's 12-column grid; whole rows move to the next page when the available paper height is exhausted.
+            </div>
+
+            <button onClick={() => settings.format === 'pdf' ? onExportPdf(settings, buildPrintMarkup()) : downloadDoc()}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-3 text-sm font-semibold hover:bg-indigo-700">
+              <Download className="h-4 w-4" />
+              Export {settings.format === 'pdf' ? 'PDF' : 'Word'}
+            </button>
+          </aside>
+
+          <main className="flex-1 overflow-auto bg-slate-100 p-8">
+            <div className="mx-auto" style={{ width: previewWidth }}>
+              <div className="text-xs text-slate-500 mb-2">
+                {settings.paperSize} · {settings.orientation} · {pages.length + 1} page{pages.length === 0 ? '' : 's'} · 12-column grid
+              </div>
+
+              <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
+                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: '#f8faff', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40 }}>
+                  <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
+                  <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'#111827' }}>{title}</h1>
+                  <p style={{ textAlign:'center', fontSize:14, color:'#4b5563', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
+                </div>
+              </section>
+
+              {pages.map((page, pageIndex) => {
+                const pageHtml = page.rows.flat().map(item => item.html).join('');
+                return (
+                  <React.Fragment key={pageIndex}>
+                    <div className="h-8" />
+                    <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
+                      <div
+                        style={{
+                          width: desktopWidth,
+                          height: desktopPageHeight,
+                          padding: 37.795275591,
+                          boxSizing: 'border-box',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
+                          gridAutoFlow: 'row',
+                          gridAutoRows: 'max-content',
+                          alignItems: 'start',
+                          gap: 22.6771653546,
+                          transform: `scale(${renderScale})`,
+                          transformOrigin: 'top left',
+                          background: '#fff',
+                        }}
+                        dangerouslySetInnerHTML={{ __html: pageHtml }}
+                      />
+                    </section>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
