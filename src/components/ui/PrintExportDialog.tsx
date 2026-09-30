@@ -330,12 +330,13 @@ export function PrintExportDialog({
   const withGridSpan = (html: string, span: number) => {
     const safeSpan = Math.max(1, Math.min(12, span));
     const gridStyle = `grid-column:span ${safeSpan} / span ${safeSpan};width:100%;min-width:0;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;`;
-    return html.replace(/^<([a-zA-Z][^>]*)(style="[^"]*")?/, (_match, tag, styleAttr) => {
-      if (styleAttr) {
-        const existing = styleAttr.slice(7, -1);
-        return `<${tag}${styleAttr.slice(0, 7)}${existing};${gridStyle}"`;
+    return html.replace(/^<([a-zA-Z][^>]*)>/, (match, attrs) => {
+      const styleMatch = attrs.match(/style="([^"]*)"/);
+      if (styleMatch) {
+        const merged = styleMatch[1] + ';' + gridStyle;
+        return match.replace(styleMatch[0], 'style="' + merged + '"');
       }
-      return `<${tag} style="${gridStyle}"`;
+      return '<' + attrs + ' style="' + gridStyle + '">';
     });
   };
 
