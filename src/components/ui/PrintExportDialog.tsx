@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download, FileText, Printer, X } from 'lucide-react';
+import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
 
 export type ExportFormat = 'pdf' | 'doc';
 export type PaperSize = 'A4' | 'A3' | 'Letter' | 'Legal';
@@ -159,7 +160,7 @@ export default function PrintExportDialog({
         .chiefvoice-print-content{width:1440px!important;min-width:1440px!important;display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:24px!important}
       </style></head><body>
       <div style="text-align:center;font-family:Arial,sans-serif;padding:32px 0 24px">
-        <img src="${new URL('/src/assets/chiefvoice-logo.webp', window.location.origin).href}" style="width:72px;height:72px;object-fit:contain">
+        <img src="${chiefVoiceLogo}" style="width:72px;height:72px;object-fit:contain">
         <h1 style="font-size:24px;margin:12px 0 6px">${title}</h1>
         <p style="color:#4b5563;margin:0">Filter applied: ${formatRange(fromDate,toDate)}</p>
       </div>
@@ -240,7 +241,7 @@ export default function PrintExportDialog({
               <div className="text-xs text-slate-500 mb-2">{settings.paperSize} · {settings.orientation} · {Math.round(previewScale * 100)}% preview</div>
               <section className="bg-white shadow-xl overflow-hidden" style={{ width: previewWidth, height: previewHeight }}>
                 <div style={{ width: pageW * 3.7795, height: pageH * 3.7795, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: '#f8faff', boxSizing: 'border-box', paddingTop: 76 }}>
-                  <img src="/src/assets/chiefvoice-logo.webp" alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
+                  <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'#111827' }}>{title}</h1>
                   <p style={{ textAlign:'center', fontSize:14, color:'#4b5563', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
                 </div>
