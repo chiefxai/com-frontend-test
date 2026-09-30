@@ -2,7 +2,7 @@ import React from 'react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
 
 export const PRINT_PAGE_STYLE = `
-  @page { size: A4 portrait; margin: 12mm; }
+  @page { size: A4 landscape; margin: 10mm; }
   html, body { height: auto !important; overflow: visible !important; }
 
   .chiefvoice-print-content {
@@ -30,11 +30,11 @@ export const PRINT_PAGE_STYLE = `
       align-items: center !important;
       justify-content: flex-start !important;
       width: 100% !important;
-      height: 273mm !important;
-      min-height: 273mm !important;
-      max-height: 273mm !important;
+      height: 190mm !important;
+      min-height: 190mm !important;
+      max-height: 190mm !important;
       box-sizing: border-box !important;
-      padding-top: 28mm !important;
+      padding-top: 20mm !important;
       text-align: center !important;
       break-after: avoid !important;
       page-break-after: avoid !important;
