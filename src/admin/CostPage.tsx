@@ -3,6 +3,8 @@ import { Loader2, Save, Phone, Cpu, Archive, Zap } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import Widget from '../components/ui/Widget';
 import KpiCard from '../components/ui/KpiCard';
+import DataTable, { Column } from '../components/ui/DataTable';
+import FilterBar from '../components/ui/FilterBar';
 
 // Every provider's identity (key/kind/label) is defined in code — see the
 // backend's platform/costProviders.js KNOWN_PROVIDERS. This page can only
@@ -75,6 +77,7 @@ export default function CostPage() {
   const [error, setError] = useState('');
   const [archive, setArchive] = useState<CostArchiveEntry[]>([]);
   const [loadingArchive, setLoadingArchive] = useState(true);
+  const [archiveQuery, setArchiveQuery] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -123,6 +126,24 @@ export default function CostPage() {
   if (loading) {
     return <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>;
   }
+
+  const filteredArchive = archive.filter((row) => {
+    const q = archiveQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (row.orgName || '').toLowerCase().includes(q)
+      || (row.workspaceName || '').toLowerCase().includes(q)
+      || (row.industry || '').toLowerCase().includes(q)
+      || (row.deletedByEmail || '').toLowerCase().includes(q);
+  });
+
+  const archiveColumns: Column<CostArchiveEntry>[] = [
+    { key: 'organization', header: 'Organization', cell: (row) => <><p className="font-semibold text-[var(--text-primary)]">{row.orgName || row.orgId}</p><p className="text-[10px] text-[var(--text-muted)]">{row.industry || '—'}</p></> },
+    { key: 'deleted', header: 'Deleted', cell: (row) => <><span className="text-[var(--text-secondary)]">{new Date(row.deletedAt).toLocaleDateString()}</span>{row.deletedByEmail && <p className="text-[10px] text-[var(--text-muted)]">{row.deletedByEmail}</p>}</> },
+    { key: 'minutes', header: 'AI Minutes', cell: (row) => <span className="font-mono">{(row.aiMinutesUsed ?? 0).toFixed(2)}</span> },
+    { key: 'callCost', header: 'Call Cost', cell: (row) => <span className="font-mono">₹{(row.phoneCharges ?? 0).toFixed(2)}{row.callProviderLabel && <span className="text-[10px] text-[var(--text-muted)] ml-1">({row.callProviderLabel})</span>}</span> },
+    { key: 'tokens', header: 'Tokens', cell: (row) => <span className="font-mono">{(row.aiTotalTokens ?? 0).toLocaleString()}</span> },
+    { key: 'tokenCost', header: 'Token Cost', cell: (row) => <span className="font-mono">{row.aiTokenTotalCostInr != null ? `₹${row.aiTokenTotalCostInr.toFixed(2)}` : '—'}{row.aiTokenProviderLabel && <span className="text-[10px] text-[var(--text-muted)] ml-1">({row.aiTokenProviderLabel})</span>}</span> },
+  ];
 
   const activeCallProviderCount = callProviders.filter((p) => p.active).length;
   const activeAiProviderCount = aiProviders.filter((p) => p.active).length;
@@ -180,48 +201,21 @@ export default function CostPage() {
         scrollable
         padding="md"
       >
-        {loadingArchive ? (
-          <div className="flex items-center justify-center py-10 text-slate-400"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…</div>
-        ) : archive.length === 0 ? (
-          <div className="py-8 text-center text-slate-400 dark:text-[var(--text-muted)] text-xs">No organizations have been deleted yet.</div>
-        ) : (
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-wide text-[10px]">
-                <th className="py-2 pr-4">Organization</th>
-                <th className="py-2 pr-4">Deleted</th>
-                <th className="py-2 pr-4">AI Minutes</th>
-                <th className="py-2 pr-4">Call Cost</th>
-                <th className="py-2 pr-4">Tokens</th>
-                <th className="py-2 pr-4">Token Cost</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-[var(--border)]">
-              {archive.map((row) => (
-                <tr key={row.id}>
-                  <td className="py-2.5 pr-4">
-                    <p className="font-semibold text-slate-700 dark:text-[var(--text-primary)]">{row.orgName || row.orgId}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-[var(--text-muted)]">{row.industry || '—'}</p>
-                  </td>
-                  <td className="py-2.5 pr-4 text-slate-500 dark:text-[var(--text-secondary)]">
-                    {new Date(row.deletedAt).toLocaleDateString()}
-                    {row.deletedByEmail && <p className="text-[10px] text-slate-400 dark:text-[var(--text-muted)]">{row.deletedByEmail}</p>}
-                  </td>
-                  <td className="py-2.5 pr-4 font-mono">{(row.aiMinutesUsed ?? 0).toFixed(2)}</td>
-                  <td className="py-2.5 pr-4 font-mono">
-                    ₹{(row.phoneCharges ?? 0).toFixed(2)}
-                    {row.callProviderLabel && <span className="text-[10px] text-slate-400 dark:text-[var(--text-muted)] ml-1">({row.callProviderLabel})</span>}
-                  </td>
-                  <td className="py-2.5 pr-4 font-mono">{(row.aiTotalTokens ?? 0).toLocaleString()}</td>
-                  <td className="py-2.5 pr-4 font-mono">
-                    {row.aiTokenTotalCostInr != null ? `₹${row.aiTokenTotalCostInr.toFixed(2)}` : '—'}
-                    {row.aiTokenProviderLabel && <span className="text-[10px] text-slate-400 dark:text-[var(--text-muted)] ml-1">({row.aiTokenProviderLabel})</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <FilterBar
+          search={{ value: archiveQuery, onChange: setArchiveQuery, placeholder: 'Search deleted organizations…' }}
+          resultCount={{ filtered: filteredArchive.length, total: archive.length, label: 'archived organizations' }}
+        />
+        <div className="mt-3">
+          <DataTable
+            columns={archiveColumns}
+            rows={filteredArchive}
+            rowKey={(row) => row.id}
+            loading={loadingArchive}
+            emptyMessage={archiveQuery ? `No deleted organizations match "${archiveQuery}"` : 'No organizations have been deleted yet.'}
+            paginated
+            defaultPageSize={25}
+          />
+        </div>
       </Widget>
     </div>
   );
