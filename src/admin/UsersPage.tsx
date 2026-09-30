@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Loader2, Users as UsersIcon, UserX } from 'lucide-react';
+import { Loader2, Users as UsersIcon, UserX } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { UserRow } from './types';
 import Widget from '../components/ui/Widget';
 import KpiCard from '../components/ui/KpiCard';
+import DataTable, { Column } from '../components/ui/DataTable';
+import FilterBar from '../components/ui/FilterBar';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -25,57 +27,36 @@ export default function UsersPage() {
 
   const unassignedCount = useMemo(() => users.filter((u) => !u.orgName).length, [users]);
 
+  const columns: Column<UserRow>[] = [
+    { key: 'email', header: 'Email', cell: (u) => <span className="font-medium text-[var(--text-primary)]">{u.email}</span> },
+    { key: 'org', header: 'Organization', cell: (u) => u.orgName || <span className="text-rose-400">unassigned</span> },
+    { key: 'role', header: 'Role', cell: (u) => u.role || '—' },
+    { key: 'created', header: 'Signed Up', cell: (u) => <span className="text-xs whitespace-nowrap">{new Date(u.createdAt).toLocaleDateString()}</span> },
+    { key: 'lastSignIn', header: 'Last Sign-in', cell: (u) => <span className="text-xs whitespace-nowrap">{u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString() : 'never'}</span> },
+  ];
+
   return (
     <div className="grid grid-cols-12 gap-4">
       <KpiCard colSpan={3} label="Registered users" value={users.length} icon={UsersIcon} iconBg="#2a78d61a" iconColor="#2a78d6" />
       <KpiCard colSpan={3} label="Unassigned to an org" value={unassignedCount} icon={UserX} iconBg="#e11d481a" iconColor="#e11d48" />
 
-      <Widget
-        colSpan={12}
-        title="All users"
-        scrollable
-        action={
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search users or organizations…"
-              className="w-72 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-            />
-          </div>
-        }
-      >
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-[var(--border)] text-left text-[10px] font-bold text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-wide">
-                <th className="px-5 py-3">Email</th>
-                <th className="px-5 py-3">Organization</th>
-                <th className="px-5 py-3">Role</th>
-                <th className="px-5 py-3">Signed Up</th>
-                <th className="px-5 py-3">Last Sign-in</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((u) => (
-                <tr key={u.id} className="border-b border-slate-50 dark:border-[var(--border)] last:border-0">
-                  <td className="px-5 py-3 font-medium text-slate-700 dark:text-[var(--text-primary)]">{u.email}</td>
-                  <td className="px-5 py-3 text-slate-500 dark:text-[var(--text-secondary)]">{u.orgName || <span className="text-rose-400">unassigned</span>}</td>
-                  <td className="px-5 py-3 text-slate-500 dark:text-[var(--text-secondary)]">{u.role || '—'}</td>
-                  <td className="px-5 py-3 text-slate-400 dark:text-[var(--text-muted)] text-xs whitespace-nowrap">{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td className="px-5 py-3 text-slate-400 dark:text-[var(--text-muted)] text-xs whitespace-nowrap">{u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString() : 'never'}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400 dark:text-[var(--text-muted)] text-xs">No users match "{query}"</td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </Widget>
+      <div className="col-span-12">
+        <FilterBar
+          search={{ value: query, onChange: setQuery, placeholder: 'Search users or organizations…' }}
+          resultCount={{ filtered: filtered.length, total: users.length, label: 'users' }}
+        />
+        <div className="mt-3">
+          <DataTable
+            columns={columns}
+            rows={filtered}
+            rowKey={(u) => u.id}
+            loading={loading}
+            emptyMessage={query ? `No users match "${query}"` : 'No users yet.'}
+            paginated
+            defaultPageSize={25}
+          />
+        </div>
+      </div>
     </div>
   );
 }
