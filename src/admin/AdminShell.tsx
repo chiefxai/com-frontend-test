@@ -69,14 +69,15 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto min-w-0">
-        <div className="h-16 bg-[var(--header-bg)] border-b border-[var(--border)] flex items-center justify-between px-8 sticky top-0 z-20">
+      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <header className="h-16 shrink-0 bg-[var(--header-bg)] border-b border-[var(--border)] flex items-center justify-between px-8 z-20">
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             Platform control center
           </div>
           <ProfileMenu kcUser={{ name: email, email }} dbRole="Platform Admin" logout={onLogout} />
-        </div>
+        </header>
+        <div className="flex-1 min-h-0 overflow-y-auto">
         <Routes>
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview"      element={<PageWrap title="Overview" section="Overview"><OverviewPage /></PageWrap>} />
@@ -90,6 +91,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           <Route path="prompts"       element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />
           <Route path="*"             element={<Navigate to="overview" replace />} />
         </Routes>
+        </div>
       </main>
     </div>
   );
@@ -108,7 +110,7 @@ function PageWrap({
 }) {
   return (
     <div className="admin-page">
-      <div className="sticky top-16 z-10 border-b border-[var(--border)] bg-[var(--header-bg)]/95 backdrop-blur">
+      <div className="border-b border-[var(--border)] bg-[var(--header-bg)]">
         <div className="px-8 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
