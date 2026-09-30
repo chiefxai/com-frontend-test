@@ -42,7 +42,8 @@ import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import SlideOver from './ui/SlideOver';
 import Tooltip from './ui/Tooltip';
-import PrintReportHeader, { PRINT_PAGE_STYLE } from './ui/PrintReportHeader';
+import PrintReportHeader from './ui/PrintReportHeader';
+import PrintExportDialog, { buildExportPageStyle, ExportSettings } from './ui/PrintExportDialog';
 
 // Loosely typed like ReportsView's DialTask — this page only needs
 // the task's own name + each lead's call outcome, not the full shape.
@@ -150,10 +151,15 @@ export default function DashboardView({
   costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK,
 }: DashboardViewProps) {
   const dashboardPrintRef = useRef<HTMLDivElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportSettings, setExportSettings] = useState<ExportSettings>({
+    format: 'pdf', paperSize: 'A4', orientation: 'landscape',
+  });
   const printDashboard = useReactToPrint({
     contentRef: dashboardPrintRef,
     documentTitle: 'ChiefVoice_Executive_Desk',
-    pageStyle: PRINT_PAGE_STYLE,
+    pageStyle: buildExportPageStyle(exportSettings),
+    onAfterPrint: () => setExportOpen(false),
   });
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [allEnquiries, setAllEnquiries] = useState<{ id: string; callId: string | null; createdAt: string }[]>([]);
@@ -418,8 +424,8 @@ export default function DashboardView({
         <Tooltip label="Print dashboard" side="bottom">
           <button
             type="button"
-            onClick={printDashboard}
-            aria-label="Print dashboard"
+            onClick={() => setExportOpen(true)}
+            aria-label="Export dashboard"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
@@ -751,6 +757,19 @@ export default function DashboardView({
         })()}
       </SlideOver>
     </PageShell>
+
+      <PrintExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        title="Executive Desk"
+        fromDate={fromDate}
+        toDate={toDate}
+        contentRef={dashboardPrintRef}
+        onExportPdf={(settings) => {
+          setExportSettings(settings);
+          window.setTimeout(() => printDashboard(), 0);
+        }}
+      />
     </>
   );
 }
