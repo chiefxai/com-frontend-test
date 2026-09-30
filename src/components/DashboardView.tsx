@@ -788,8 +788,9 @@ export default function DashboardView({
         fromDate={fromDate}
         toDate={toDate}
         contentRef={dashboardPrintRef}
-        onExportPdf={(settings) => {
+        onExportPdf={(settings, printableMarkup) => {
           setExportSettings(settings);
+          setExportPrintMarkup(printableMarkup);
           setPendingPdfExport(true);
         }}
       />
