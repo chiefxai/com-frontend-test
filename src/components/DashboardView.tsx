@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
 import {
   PhoneIncoming,
   PhoneOutgoing,
@@ -43,6 +42,7 @@ import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import SlideOver from './ui/SlideOver';
 import Tooltip from './ui/Tooltip';
+import PrintReportHeader, { PRINT_PAGE_STYLE } from './ui/PrintReportHeader';
 
 // Loosely typed like ReportsView's DialTask — this page only needs
 // the task's own name + each lead's call outcome, not the full shape.
@@ -129,50 +129,6 @@ function trendBadge(current: number, previous: number): { label: string; color: 
   const pct = Math.round(((current - previous) / previous) * 100);
   if (pct === 0) return { label: '0%', color: 'neutral' };
   return pct > 0 ? { label: `↑ ${pct}%`, color: 'green' } : { label: `↓ ${Math.abs(pct)}%`, color: 'rose' };
-}
-
-const PRINT_PAGE_STYLE = `
-  @page { size: auto; margin: 10mm; }
-  html, body { height: auto !important; overflow: visible !important; }
-  .chiefvoice-print-content {
-    display: block !important;
-    width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #fff !important;
-  }
-  .chiefvoice-print-filter { display: none !important; }\n  .chiefvoice-print-header { display: block !important; break-after: avoid; page-break-after: avoid; }\n  .chiefvoice-print-content > * {
-    display: flex !important;
-    width: 100% !important;
-    max-width: none !important;
-    grid-column: auto !important;
-    grid-row: auto !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: visible !important;
-    margin: 0 0 12px 0 !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-  .chiefvoice-print-content [data-widget-scroll] {
-    max-height: none !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-`;
-
-function formatPrintDateRange(from: string, to: string): string {
-  const format = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  return `${format(from)} – ${format(to)}`;
 }
 
 const CHART_TOOLTIP = {
@@ -471,15 +427,7 @@ export default function DashboardView({
       }
     >
 
-      <div className="chiefvoice-print-header col-span-12" aria-hidden="true">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0 18px 0', marginBottom: 18, borderBottom: '1px solid #d1d5db' }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginBottom: 5 }}>Executive Desk</div>
-            <div style={{ fontSize: 12, color: '#4b5563' }}>Filter applied: {formatPrintDateRange(fromDate, toDate)}</div>
-          </div>
-          <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
-        </div>
-      </div>
+      <PrintReportHeader title="Executive Desk" fromDate={fromDate} toDate={toDate} />
 
       {/* ── Global date-range filter ── */}
       <Widget colSpan={12} showHeader={false} padding="md">
