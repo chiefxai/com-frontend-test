@@ -168,9 +168,13 @@ export default function DashboardView({
 
   useEffect(() => {
     if (!pendingPdfExport) return;
+    setPendingPdfExport(false);
     const id = window.setTimeout(() => printDashboard(), 0);
     return () => window.clearTimeout(id);
-  }, [pendingPdfExport, printDashboard]);
+    // printDashboard is intentionally the callback from the render that
+    // contains the newly selected export settings.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPdfExport]);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
   const [allEnquiries, setAllEnquiries] = useState<{ id: string; callId: string | null; createdAt: string }[]>([]);
   interface ScheduledCallback {
