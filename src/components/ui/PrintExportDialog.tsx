@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, FileText, Printer, X } from 'lucide-react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
+import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 
 export type ExportFormat = 'pdf' | 'doc';
 export type PaperSize = 'A4' | 'A3' | 'Letter' | 'Legal';
@@ -61,6 +62,8 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       max-height: none !important; overflow: visible !important; margin: 0 !important; padding: 0 !important;
       box-sizing: border-box !important; zoom: ${zoom} !important; background: #fff !important;
     }
+    .chiefvoice-print-content > * { width:100% !important; min-width:0 !important; max-width:100% !important; }
+    }
     .chiefvoice-print-filter { display:none !important; }
     .chiefvoice-print-header {
       display:flex !important; flex-direction:column !important; align-items:center !important;
@@ -80,18 +83,18 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     }
     .chiefvoice-print-content > [class*="lg\\:col-span-1"] { grid-column:span 1 / span 1 !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-2"] { grid-column:span 2 / span 2 !important; }
-    .chiefvoice-print-content > [class*="lg\\:col-span-3"] { grid-column:span 3 / span 3 !important; }
+    .chiefvoice-print-content > [class*="lg\\:col-span-3"] { grid-column:span 3 / span 3 !important; width:100% !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-4"] { grid-column:span 4 / span 4 !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-5"] { grid-column:span 5 / span 5 !important; }
     .chiefvoice-print-content > [class*="md\\:col-span-6"],
     .chiefvoice-print-content > [class*="lg\\:col-span-6"],
-    .chiefvoice-print-content > .col-span-6 { grid-column:span 6 / span 6 !important; }
+    .chiefvoice-print-content > .col-span-6 { grid-column:span 6 / span 6 !important; width:100% !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-7"] { grid-column:span 7 / span 7 !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-8"] { grid-column:span 8 / span 8 !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-9"] { grid-column:span 9 / span 9 !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-10"] { grid-column:span 10 / span 10 !important; }
     .chiefvoice-print-content > [class*="lg\\:col-span-11"] { grid-column:span 11 / span 11 !important; }
-    .chiefvoice-print-content > .col-span-12 { grid-column:span 12 / span 12 !important; }
+    .chiefvoice-print-content > .col-span-12 { grid-column:span 12 / span 12 !important; width:100% !important; }
     .chiefvoice-print-content > :not(.chiefvoice-print-header):not(.chiefvoice-print-filter):not(.chiefvoice-print-page-break) {
       box-sizing:border-box !important; min-width:0 !important; max-width:100% !important;
       break-inside:avoid-page !important; page-break-inside:avoid !important;
@@ -122,6 +125,9 @@ export default function PrintExportDialog({
     format: 'pdf', paperSize: 'A4', orientation: 'landscape',
   });
   const [snapshot, setSnapshot] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const handleOutsideClick = useCallback(() => onClose(), [onClose]);
+  useOnClickOutside(dialogRef, handleOutsideClick, open);
 
   useEffect(() => {
     if (!open || !contentRef.current) return;
@@ -137,10 +143,22 @@ export default function PrintExportDialog({
       'min-width:1440px',
       'max-width:1440px',
       'height:auto',
+      'min-height:0',
+      'max-height:none',
       'overflow:visible',
       'background:#fff',
       'box-sizing:border-box',
     ].join(';');
+    clone.querySelectorAll(':scope > *').forEach((node) => {
+      const element = node as HTMLElement;
+      element.style.width = '100%';
+      element.style.minWidth = '0';
+      element.style.maxWidth = '100%';
+      element.style.height = 'auto';
+      element.style.minHeight = '0';
+      element.style.maxHeight = 'none';
+      element.style.overflow = 'visible';
+    });
     setSnapshot(clone.outerHTML);
   }, [open, contentRef]);
 
@@ -188,7 +206,7 @@ export default function PrintExportDialog({
 
   return (
     <div className="fixed inset-0 z-[2000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-7xl h-[94vh] bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-2xl overflow-hidden flex flex-col">
+      <div ref={dialogRef} className="w-full max-w-7xl h-[94vh] bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] shadow-2xl overflow-hidden flex flex-col">
         <div className="h-16 shrink-0 px-5 flex items-center justify-between border-b border-[var(--border)]">
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Export {title}</h2>
