@@ -149,6 +149,11 @@ export function PrintExportDialog({
   useOnClickOutside(dialogRef, handleOutsideClick, open);
 
 
+  const [settings, setSettings] = useState<ExportSettings>({
+    format: 'pdf',
+    paperSize: 'A4',
+    orientation: 'landscape',
+  });
   const [pages, setPages] = useState<ExportPage[]>([]);
 
   useEffect(() => {
