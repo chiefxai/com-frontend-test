@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { apiFetch } from '../lib/api';
 import { PhoneOutgoing, PhoneIncoming, Clock, DollarSign, Activity, UserCheck, MessageCircleQuestion, BarChart3, Users, PieChart as PieChartIcon, Printer } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
@@ -14,6 +15,41 @@ import { callCostInr, formatInr, COST_PER_MINUTE_INR_FALLBACK } from '../lib/pri
 import FilterBar from './ui/FilterBar';
 import DataTable, { Column } from './ui/DataTable';
 import Tooltip from './ui/Tooltip';
+
+const PRINT_PAGE_STYLE = `
+  @page { size: auto; margin: 10mm; }
+  html, body { height: auto !important; overflow: visible !important; }
+  .chiefvoice-print-content {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .chiefvoice-print-content > * {
+    display: flex !important;
+    width: 100% !important;
+    max-width: none !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 0 12px 0 !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+  .chiefvoice-print-content [data-widget-scroll] {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+`;
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -227,18 +263,11 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
     return groups;
   }, [dialerTasks]);
   const reportPrintRef = useRef<HTMLDivElement>(null);
-  const [isPrintingReport, setIsPrintingReport] = useState(false);
-
-  const handlePrintReport = () => {
-    if (!reportPrintRef.current || isPrintingReport) return;
-    setIsPrintingReport(true);
-    document.body.classList.add('chiefvoice-printing');
-    window.setTimeout(() => {
-      window.print();
-      document.body.classList.remove('chiefvoice-printing');
-      setIsPrintingReport(false);
-    }, 0);
-  };
+  const printReport = useReactToPrint({
+    contentRef: reportPrintRef,
+    documentTitle: 'ChiefVoice_Reports',
+    pageStyle: PRINT_PAGE_STYLE,
+  });
 
   // ── Campaign Details table (bottom, full width) ─────────────────────────
   // Every dialer task is one campaign run — sorted newest first so the
@@ -615,102 +644,14 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
 
   return (
     <>
-      <style>{`
-  @page {
-    size: auto;
-    margin: 10mm;
-  }
-  @media print {
-    html, body {
-      height: auto !important;
-      overflow: visible !important;
-    }
-    body.chiefvoice-printing * {
-      visibility: hidden !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content,
-    body.chiefvoice-printing .chiefvoice-print-content * {
-      visibility: visible !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content {
-      position: static !important;
-      display: block !important;
-      width: 100% !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      background: #fff !important;
-    }
-    /* PageShell's actual scroll viewport is the first flex-1 child.
-       Remove that viewport during printing so the browser paginates the
-       entire document instead of printing only the visible viewport. */
-    body.chiefvoice-printing .chiefvoice-print-content > div {
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      flex: none !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content > .flex-1 {
-      display: block !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      position: static !important;
-      flex: none !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content > .flex-1 > .grid {
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    /* CSS grid pagination is inconsistent in browser print engines and can
-       result in only the first grid item being painted. Flatten the dashboard
-       grid into a normal document flow for printing so every widget is part
-       of the printable document and can continue onto subsequent pages. */
-    body.chiefvoice-printing .chiefvoice-print-content .grid {
-      display: block !important;
-      width: 100% !important;
-      height: auto !important;
-      min-height: 0 !important;
-      overflow: visible !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content .grid > * {
-      display: flex !important;
-      width: 100% !important;
-      max-width: none !important;
-      grid-column: auto !important;
-      grid-row: auto !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      margin: 0 0 12px 0 !important;
-      break-inside: auto !important;
-      page-break-inside: auto !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content .grid > * > * {
-      max-height: none !important;
-    }
-    body.chiefvoice-printing .chiefvoice-print-content [data-widget-scroll] {
-      max-height: none !important;
-      height: auto !important;
-      overflow: visible !important;
-    }
-  }
-`}</style>
+
     <PageShell
       title={<BreadcrumbTitle group="Dashboard" page="Reports" />}
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
       contentRef={reportPrintRef} className="chiefvoice-print-content"
       titleActions={
         <Tooltip label="Print report" side="bottom">
-          <button type="button" onClick={handlePrintReport} aria-label="Print report"
+          <button type="button" onClick={printReport} aria-label="Print report"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
