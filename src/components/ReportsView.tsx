@@ -644,12 +644,30 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
       margin: 0 !important;
       background: #fff !important;
     }
+    /* PageShell's actual scroll viewport is the first flex-1 child.
+       Remove that viewport during printing so the browser paginates the
+       entire document instead of printing only the visible viewport. */
     body.chiefvoice-printing .chiefvoice-print-content > div {
       height: auto !important;
       min-height: 0 !important;
       max-height: none !important;
       overflow: visible !important;
       flex: none !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content > .flex-1 {
+      display: block !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      position: static !important;
+      flex: none !important;
+    }
+    body.chiefvoice-printing .chiefvoice-print-content > .flex-1 > .grid {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
     }
     /* CSS grid pagination is inconsistent in browser print engines and can
        result in only the first grid item being painted. Flatten the dashboard
