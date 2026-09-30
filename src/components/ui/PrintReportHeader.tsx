@@ -16,10 +16,13 @@ export const PRINT_PAGE_STYLE = `
     background: #fff !important;
   }
   .chiefvoice-print-filter { display: none !important; }
-  .chiefvoice-print-header {
-    display: block !important;
-    break-after: avoid !important;
-    page-break-after: avoid !important;
+  .chiefvoice-print-header { display: none !important; }
+  @media print {
+    .chiefvoice-print-header {
+      display: block !important;
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
   }
   .chiefvoice-print-content > * {
     display: flex !important;
