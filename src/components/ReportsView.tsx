@@ -633,7 +633,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
 
         {/* ── Global date-range filter — everything below (KPIs and all 10
             widgets) is scoped to this one control. ── */}
-        <Widget colSpan={12} showHeader={false} padding="md">
+        <Widget colSpan={12} showHeader={false} padding="md" className="chiefvoice-print-filter">
           <FilterBar
             dates={[
               { key: 'from', label: 'From', value: fromDate, onChange: setFromDate },
