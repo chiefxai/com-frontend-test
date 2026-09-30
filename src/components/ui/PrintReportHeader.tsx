@@ -20,8 +20,8 @@ export const PRINT_PAGE_STYLE = `
   @media print {
     .chiefvoice-print-header {
       display: block !important;
-      break-after: avoid !important;
-      page-break-after: avoid !important;
+      break-after: page !important;
+      page-break-after: always !important;
     }
   }
   .chiefvoice-print-content > * {
@@ -69,7 +69,7 @@ export default function PrintReportHeader({
   filters,
 }: PrintReportHeaderProps) {
   return (
-    <div className="chiefvoice-print-header col-span-12" aria-hidden="true">
+    <div className="chiefvoice-print-header col-span-12" aria-hidden="true" style={{ display: 'none' }}>
       <div
         style={{
           display: 'flex',
