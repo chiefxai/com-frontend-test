@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
 import { apiFetch } from '../lib/api';
 import { PhoneOutgoing, PhoneIncoming, Clock, DollarSign, Activity, UserCheck, MessageCircleQuestion, BarChart3, Users, PieChart as PieChartIcon, Printer } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
@@ -30,7 +31,7 @@ const PRINT_PAGE_STYLE = `
     padding: 0 !important;
     background: #fff !important;
   }
-  .chiefvoice-print-content > * {
+  .chiefvoice-print-filter { display: none !important; }\n  .chiefvoice-print-header { display: block !important; break-after: avoid; page-break-after: avoid; }\n  .chiefvoice-print-content > * {
     display: flex !important;
     width: 100% !important;
     max-width: none !important;
@@ -41,8 +42,8 @@ const PRINT_PAGE_STYLE = `
     max-height: none !important;
     overflow: visible !important;
     margin: 0 0 12px 0 !important;
-    break-inside: auto !important;
-    page-break-inside: auto !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
   .chiefvoice-print-content [data-widget-scroll] {
     max-height: none !important;
@@ -50,6 +51,15 @@ const PRINT_PAGE_STYLE = `
     overflow: visible !important;
   }
 `;
+
+function formatPrintDateRange(from: string, to: string): string {
+  const format = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return `${format(from)} – ${format(to)}`;
+}
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -658,6 +668,18 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
         </Tooltip>
       }
     >
+        <div className="chiefvoice-print-header col-span-12" aria-hidden="true">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0 18px 0', marginBottom: 18, borderBottom: '1px solid #d1d5db' }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginBottom: 5 }}>Reports</div>
+              <div style={{ fontSize: 12, color: '#4b5563' }}>
+                Filter applied: {formatPrintDateRange(fromDate, toDate)} · {direction === 'all' ? 'All calls' : direction === 'inbound' ? 'Incoming calls only' : 'Outgoing calls only'}
+              </div>
+            </div>
+            <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
+          </div>
+        </div>
+
         {/* ── Global date-range filter — everything below (KPIs and all 10
             widgets) is scoped to this one control. ── */}
         <Widget colSpan={12} showHeader={false} padding="md">
