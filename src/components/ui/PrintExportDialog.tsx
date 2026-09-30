@@ -138,7 +138,7 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       'grid-auto-flow:row',
       'grid-auto-rows:max-content',
       'align-items:start',
-      'gap:24px',
+      'gap:22.6771653546px',
       'width:1440px',
       'min-width:1440px',
       'max-width:1440px',
@@ -211,9 +211,9 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
       const usableW = pageW - 20;
       const usableH = pageH - 20;
-      const desktopGridW = 1440 - 76;
+      const desktopGridW = 1440 - (2 * 37.795275591);
       const desktopUsableH = (usableH / usableW) * desktopGridW;
-      const rowGap = 24;
+      const rowGap = 22.6771653546;
 
       const result: ExportPage[] = [];
       let current: ExportRowItem[][] = [];
@@ -255,11 +255,11 @@ export function buildExportPageStyle(settings: ExportSettings): string {
   const previewWidth = pageW * mmToPx * previewScale;
   const previewHeight = pageH * mmToPx * previewScale;
   const desktopWidth = 1440;
-  const desktopGridWidth = desktopWidth - 76;
+  const desktopGridWidth = desktopWidth - (2 * 37.795275591);
   const usableWidthPx = (pageW - 20) * mmToPx;
   const gridScale = usableWidthPx / desktopGridWidth;
   const renderScale = gridScale * previewScale;
-  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth + 76;
+  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth + (2 * 37.795275591);
   const previewPaperStyle = {
     width: `${previewWidth}px`,
     height: `${previewHeight}px`,
@@ -363,14 +363,14 @@ export function buildExportPageStyle(settings: ExportSettings): string {
                         style={{
                           width: desktopWidth,
                           height: desktopPageHeight,
-                          padding: 38,
+                          padding: 37.795275591,
                           boxSizing: 'border-box',
                           display: 'grid',
                           gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
                           gridAutoFlow: 'row',
                           gridAutoRows: 'max-content',
                           alignItems: 'start',
-                          gap: 24,
+                          gap: 22.6771653546,
                           transform: `scale(${renderScale})`,
                           transformOrigin: 'top left',
                           background: '#fff',
