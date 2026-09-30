@@ -43,7 +43,8 @@ export function buildExportPageStyle(settings: ExportSettings): string {
   const usableWidth = pageWidth - 20;
   const scale = usableWidth / 297;
   const desktopWidth = 1440;
-  const zoom = scale * 0.727034;
+  const coverHeightPx = ((pageHeight - 20) * 3.7795275591) / zoom;
+  const zoom = (usableWidth * 3.7795275591) / 1440;
 
   return `
     @page { size: ${p.css} ${settings.orientation}; margin: 10mm !important; }
@@ -65,7 +66,7 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     .chiefvoice-print-header {
       display:flex !important; flex-direction:column !important; align-items:center !important;
       justify-content:flex-start !important; width:${desktopWidth}px !important;
-      height:${pageHeight - 20}mm !important; min-height:${pageHeight - 20}mm !important;
+      height:${coverHeightPx}px !important; min-height:${coverHeightPx}px !important;
       box-sizing:border-box !important; padding-top:20mm !important; text-align:center !important;
       break-after:avoid !important; page-break-after:avoid !important; background:#f8faff !important;
     }
@@ -170,7 +171,7 @@ export default function PrintExportDialog({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${title.replace(/\\s+/g, '_')}.doc`;
+    a.download = `${title.replace(/\s+/g, '_')}.doc`;
     a.click();
     URL.revokeObjectURL(url);
   };
