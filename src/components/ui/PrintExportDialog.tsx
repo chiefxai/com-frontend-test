@@ -376,6 +376,14 @@ export function PrintExportDialog({
       }
       const objects: string[] = [];
       const addObject = (body: string) => { objects.push(body); return objects.length; };
+      const bytesToBinary = (bytes: Uint8Array) => {
+        let result = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          result += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+        }
+        return result;
+      };
       const catalogId = addObject('');
       const pagesId = addObject('');
       const pageIds: number[] = [];
@@ -389,12 +397,14 @@ export function PrintExportDialog({
       };
       for (const image of images) {
         const jpeg = decodeBase64(image.data);
-        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n' + String.fromCharCode(...jpeg) + '\nendstream'));
+        imageIds.push(addObject('<< /Type /XObject /Subtype /Image /Width ' + image.width + ' /Height ' + image.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'));
       }
+      const pageWidthPt = pageW * 72 / 25.4;
+      const pageHeightPt = pageH * 72 / 25.4;
       for (let i = 0; i < images.length; i++) {
-        const content = 'q\n' + pageW + ' 0 0 ' + pageH + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
+        const content = 'q\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
         contentIds.push(addObject('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
-        pageIds.push(addObject('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] + ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'));
+        pageIds.push(addObject('<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageWidthPt + ' ' + pageHeightPt + '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] + ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'));
       }
       objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
       objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length + ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
