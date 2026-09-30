@@ -19,8 +19,6 @@
   },
   "dependencies": {
     "@xyflow/react": "^12.11.6",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
     "keycloak-js": "^26.2.4",
     "lucide-react": "^1.22.0",
     "motion": "^12.42.2",
@@ -31,7 +29,8 @@
     "recharts": "^3.9.0",
     "remark-gfm": "^4.0.1",
     "firebase": "^12.2.1",
-    "aws-amplify": "^6.15.5"
+    "aws-amplify": "^6.15.5",
+    "react-to-print": "^3.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.2",
