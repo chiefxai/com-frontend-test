@@ -151,13 +151,15 @@ export default function DashboardView({
   costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK,
 }: DashboardViewProps) {
   const dashboardPrintRef = useRef<HTMLDivElement>(null);
+  const exportPrintRef = useRef<HTMLDivElement>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSettings, setExportSettings] = useState<ExportSettings>({
     format: 'pdf', paperSize: 'A4', orientation: 'landscape',
   });
   const [pendingPdfExport, setPendingPdfExport] = useState(false);
+  const [exportPrintMarkup, setExportPrintMarkup] = useState('');
   const printDashboard = useReactToPrint({
-    contentRef: dashboardPrintRef,
+    contentRef: exportPrintRef,
     documentTitle: 'ChiefVoice_Executive_Desk',
     pageStyle: buildExportPageStyle(exportSettings),
     onAfterPrint: () => {
@@ -771,6 +773,13 @@ export default function DashboardView({
         })()}
       </SlideOver>
     </PageShell>
+
+      <div
+        ref={exportPrintRef}
+        aria-hidden="true"
+        style={{ position: 'absolute', left: '-100000px', top: 0, width: '1440px', height: 'auto', overflow: 'visible', pointerEvents: 'none' }}
+        dangerouslySetInnerHTML={{ __html: exportPrintMarkup }}
+      />
 
       <PrintExportDialog
         open={exportOpen}
