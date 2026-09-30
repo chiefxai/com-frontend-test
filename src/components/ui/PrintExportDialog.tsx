@@ -472,35 +472,29 @@ export function PrintExportDialog({
         const clonedRoot = doc.querySelector(`[data-chiefvoice-export-root="${exportKey}"]`) as HTMLElement | null;
         if (!clonedRoot) return;
 
-        const sourceRoot = source;
-        const styleProperties = [
-          'box-sizing','display','position','top','right','bottom','left','z-index',
-          'width','min-width','max-width','height','min-height','max-height',
-          'margin','margin-top','margin-right','margin-bottom','margin-left',
-          'padding','padding-top','padding-right','padding-bottom','padding-left',
-          'gap','row-gap','column-gap','grid-template-columns','grid-template-rows',
-          'grid-column','grid-row','grid-auto-flow','grid-auto-rows','grid-auto-columns',
-          'align-items','align-content','align-self','justify-content','justify-items','justify-self',
-          'flex','flex-grow','flex-shrink','flex-basis','flex-direction','flex-wrap',
-          'order','overflow','overflow-x','overflow-y','white-space','text-align',
-          'text-transform','text-decoration','text-overflow','vertical-align',
-          'font-family','font-size','font-weight','font-style','font-stretch','line-height',
-          'letter-spacing','word-spacing','color','background','background-color',
-          'background-image','background-size','background-position','background-repeat',
-          'border','border-top','border-right','border-bottom','border-left',
-          'border-width','border-style','border-color','border-radius',
-          'box-shadow','opacity','visibility','transform','transform-origin',
-          'object-fit','object-position','list-style','cursor'
-        ];
-
         const copy = (from: Element, to: Element) => {
-          const computed = window.getComputedStyle(from as Element);
-          if (!computed) return;
-
+          const computed = window.getComputedStyle(from);
           const target = to as HTMLElement;
-          for (const property of styleProperties) {
+
+          // Copy the complete resolved computed style, not a hand-picked list.
+          // This resolves Tailwind v4 utilities, CSS variables, inherited values,
+          // gradients, shadows, typography, borders, transforms and layout rules
+          // before html2canvas parses the clone.
+          for (let i = 0; i < computed.length; i++) {
+            const property = computed.item(i);
             const value = computed.getPropertyValue(property);
-            if (value) target.style.setProperty(property, value);
+            if (value) {
+              target.style.setProperty(property, value, 'important');
+            }
+          }
+
+          // Explicitly preserve custom properties too. They are used extensively
+          // by the ChiefVoice theme and can otherwise disappear in a cloned DOM.
+          for (let i = 0; i < computed.length; i++) {
+            const property = computed.item(i);
+            if (property.startsWith('--')) {
+              target.style.setProperty(property, computed.getPropertyValue(property), 'important');
+            }
           }
 
           const fromChildren = Array.from(from.children);
@@ -510,23 +504,39 @@ export function PrintExportDialog({
           }
         };
 
-        // The cloned document contains the same DOM but html2canvas may not
-        // reliably reproduce Tailwind v4's generated stylesheet rules and
-        // CSS-variable/theme rules. Resolve those rules in the browser first,
-        // then put the resolved values directly on the clone.
-        copy(sourceRoot, clonedRoot);
+        copy(source, clonedRoot);
 
-        clonedRoot.querySelectorAll('svg').forEach(svg => {
-          const original = sourceRoot.querySelectorAll('svg')[
-            Array.from(clonedRoot.querySelectorAll('svg')).indexOf(svg)
-          ];
-          if (!original) return;
-          const sourceSvgStyle = window.getComputedStyle(original);
-          const targetSvgStyle = svg as SVGElement;
-          targetSvgStyle.setAttribute('fill', sourceSvgStyle.fill);
-          targetSvgStyle.setAttribute('stroke', sourceSvgStyle.stroke);
-          targetSvgStyle.setAttribute('color', sourceSvgStyle.color);
-        });
+        // Materialize pseudo-element content that is visually meaningful.
+        const copyPseudo = (from: Element, to: Element, pseudo: '::before' | '::after') => {
+          const style = window.getComputedStyle(from, pseudo);
+          const content = style.content;
+          if (!content || content === 'none' || content === 'normal') return;
+
+          const marker = document.createElement('span');
+          marker.textContent = content.replace(/^["']|["']$/g, '');
+          marker.style.cssText =
+            'display:inline-block!important;' +
+            'box-sizing:border-box!important;' +
+            'font:inherit!important;' +
+            'color:inherit!important;' +
+            'background:inherit!important;' +
+            'border:inherit!important;' +
+            'position:static!important;';
+          if (pseudo === '::before') to.insertBefore(marker, to.firstChild);
+          else to.appendChild(marker);
+        };
+
+        const walk = (from: Element, to: Element) => {
+          copyPseudo(from, to, '::before');
+          copyPseudo(from, to, '::after');
+          const fromChildren = Array.from(from.children);
+          const toChildren = Array.from(to.children);
+          for (let i = 0; i < Math.min(fromChildren.length, toChildren.length); i++) {
+            walk(fromChildren[i], toChildren[i]);
+          }
+        };
+
+        walk(source, clonedRoot);
       };
 
       const fullCanvas = await html2canvas(source, {
@@ -543,7 +553,7 @@ export function PrintExportDialog({
         scrollY: 0,
         imageSmoothing: true,
         imageSmoothingQuality: 'high',
-        foreignObjectRendering: true,
+        foreignObjectRendering: false,
         onclone: inlineComputedStyles,
       });
 
