@@ -266,7 +266,7 @@ export default function WorkflowBuilderView({
       }
 
     >
-      <div className="overflow-y-auto flex-1 px-8 pb-8 pt-6 space-y-6">
+      <div className="overflow-y-auto flex-1 space-y-6">
 
       {/* Manual run panel */}
       <Widget title="Run Workflow" icon={Play} accent="#6366f1" padding="md">
