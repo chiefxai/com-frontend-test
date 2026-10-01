@@ -484,7 +484,7 @@ export default function ContactDirectoryView({
       }
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
         <FilterBar
