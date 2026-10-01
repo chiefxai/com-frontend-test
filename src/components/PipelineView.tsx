@@ -30,44 +30,76 @@ interface CampaignTask {
   name: string;
   leadIds: string[];
   createdAt: string;
+  workflowId?: string;
+  workflowName?: string;
   // Present on the real dialerTasks rows App.tsx passes down (typed
   // loosely as any[] there) — only the callId is needed here, to fetch
   // the same "Extracted Campaign Answers" the Active Campaign List's own
   // Workflow View shows for this lead.
-  callResults?: { [leadId: string]: { callId?: string } };
+  callResults?: { [leadId: string]: { callId?: string; pipelineStage?: Lead['pipelineStage']; leadStatus?: Lead['status']; status?: string } };
 }
 
 interface PipelineViewProps {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   dialerTasks?: CampaignTask[];
+  setDialerTasks?: React.Dispatch<React.SetStateAction<CampaignTask[]>>;
 }
 
 // The most recent call (by owning task's createdAt) that has a callId for
 // this lead, across every campaign it's ever been part of — same data
 // DialerSimulator's Workflow View reads from, just not scoped to one
 // selected task here since Pipeline has no single "selected campaign".
-function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[]): string | null {
-  const withCallId = [...dialerTasks]
-    .filter((t) => t.callResults?.[leadId]?.callId)
+function campaignPipelineRows(leads: Lead[], dialerTasks: CampaignTask[]): Array<Lead & { campaignId?: string; campaignName?: string; campaignStatus?: string; originalLeadId: string }> {
+  const rows: Array<Lead & { campaignId?: string; campaignName?: string; campaignStatus?: string; originalLeadId: string }> = [];
+  const represented = new Set<string>();
+  for (const task of dialerTasks) {
+    for (const leadId of task.leadIds || []) {
+      const lead = leads.find((l) => l.id === leadId);
+      const result = task.callResults?.[leadId];
+      if (!lead || !result?.pipelineStage || !['opportunity', 'client'].includes(result.pipelineStage)) continue;
+      represented.add(leadId);
+      rows.push({
+        ...lead,
+        originalLeadId: lead.id,
+        campaignId: task.id,
+        campaignName: task.name,
+        campaignStatus: result.status || (result.pipelineStage === 'client' ? 'Completed' : 'In Progress'),
+        pipelineStage: result.pipelineStage,
+        status: result.leadStatus || lead.status,
+      });
+    }
+  }
+  for (const lead of leads) {
+    if (['opportunity', 'client'].includes(lead.pipelineStage || '') && !represented.has(lead.id)) {
+      rows.push({ ...lead, originalLeadId: lead.id });
+    }
+  }
+  return rows;
+}
+
+function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[], campaignId?: string | null): string | null {
+  if (campaignId) return dialerTasks.find((t) => t.id === campaignId)?.callResults?.[leadId]?.callId ?? null;
+  const withCallId = [...dialerTasks].filter((t) => t.callResults?.[leadId]?.callId)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return withCallId[0]?.callResults?.[leadId]?.callId ?? null;
 }
 
-export default function PipelineView({ leads, setLeads, dialerTasks = [] }: PipelineViewProps) {
+export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks }: PipelineViewProps) {
   const { stages } = usePipelineStages();
   const [subTab, setSubTab] = React.useState<SubTab>('ongoing');
   const [advancingId, setAdvancingId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sourceFilter, setSourceFilter] = React.useState('All');
   const [campaignFilter, setCampaignFilter] = React.useState('All');
-  const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = React.useState<(Lead & { campaignId?: string; campaignName?: string; campaignStatus?: string; originalLeadId: string }) | null>(null);
   const [exportOpen, setExportOpen] = React.useState(false);
   const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || campaignFilter !== 'All';
   const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setCampaignFilter('All'); };
 
-  const ongoing = leads.filter((l) => l.pipelineStage === 'opportunity');
-  const clients = leads.filter((l) => l.pipelineStage === 'client');
+  const campaignRows = React.useMemo(() => campaignPipelineRows(leads, dialerTasks), [leads, dialerTasks]);
+  const ongoing = campaignRows.filter((l) => l.pipelineStage === 'opportunity');
+  const clients = campaignRows.filter((l) => l.pipelineStage === 'client');
   const activeSet = subTab === 'ongoing' ? ongoing : clients;
 
   const uniqueSources = [...new Set(activeSet.map((l) => l.source).filter(Boolean))].sort();
@@ -79,7 +111,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
       l.phone.includes(searchTerm) ||
       (l.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'All' || l.source === sourceFilter;
-    const matchesCampaign = !selectedCampaign || selectedCampaign.leadIds.includes(l.id);
+    const matchesCampaign = campaignFilter === 'All' || l.campaignId === campaignFilter;
     return matchesSearch && matchesSource && matchesCampaign;
   });
 
@@ -94,14 +126,35 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
   // advance(): edits `status` like any other Contact edit (App.tsx's
   // existing sync persists it), and sets pipelineStage locally too so the
   // row moves to the Clients tab immediately instead of waiting on a resync.
-  const markAsClient = (lead: Lead) => {
-    setAdvancingId(lead.id);
-    setLeads(leads.map((l) => (l.id === lead.id ? { ...l, status: 'Converted', pipelineStage: 'client' } : l)));
-    setSelectedLead((cur) => (cur && cur.id === lead.id ? { ...cur, status: 'Converted', pipelineStage: 'client' } : cur));
+  const markAsClient = (lead: Lead & { campaignId?: string; originalLeadId: string }) => {
+    if (lead.campaignId && setDialerTasks) {
+      setAdvancingId(lead.campaignId + ':' + lead.originalLeadId);
+      setDialerTasks((tasks) => tasks.map((task) =>
+        task.id !== lead.campaignId ? task : {
+          ...task,
+          callResults: {
+            ...(task.callResults || {}),
+            [lead.originalLeadId]: {
+              ...(task.callResults?.[lead.originalLeadId] || {}),
+              pipelineStage: 'client',
+              leadStatus: 'Converted',
+              status: 'Completed',
+            },
+          },
+        }
+      ));
+      setSelectedLead((cur) => cur && cur.campaignId === lead.campaignId && cur.originalLeadId === lead.originalLeadId
+        ? { ...cur, pipelineStage: 'client', status: 'Converted', campaignStatus: 'Completed' } : cur);
+      setTimeout(() => setAdvancingId(null), 400);
+      return;
+    }
+    setAdvancingId(lead.originalLeadId);
+    setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: 'Converted', pipelineStage: 'client' } : l)));
+    setSelectedLead((cur) => (cur && cur.originalLeadId === lead.originalLeadId ? { ...cur, status: 'Converted', pipelineStage: 'client' } : cur));
     setTimeout(() => setAdvancingId(null), 400);
   };
 
-  const csvFields: CsvField<Lead>[] = [
+  const csvFields: CsvField<typeof activeSet[number]>[] = [
     { key: 'name', label: 'Name', getValue: (l) => l.name },
     { key: 'phone', label: 'Phone', getValue: (l) => formatPhone(l.phone) || l.phone },
     { key: 'email', label: 'Email', getValue: (l) => l.email },
@@ -117,7 +170,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
     { key: 'createdAt', label: 'Added On', getValue: (l) => new Date(l.createdAt).toLocaleString() },
   ];
 
-  const baseColumns: Column<Lead>[] = [
+  const baseColumns: Column<typeof activeSet[number]>[] = [
     {
       key: 'name',
       header: 'Name',
@@ -138,7 +191,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
     },
   ];
 
-  const columns: Column<Lead>[] = subTab === 'ongoing'
+  const columns: Column<typeof activeSet[number]>[] = subTab === 'ongoing'
     ? [
         ...baseColumns,
         {
@@ -149,7 +202,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
             <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => markAsClient(l)}
-                disabled={advancingId === l.id}
+                disabled={advancingId === (l.campaignId ? l.campaignId + ':' + l.originalLeadId : l.originalLeadId)}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
                 title={`Mark as ${stageLabel(stages, 'client')}`}
               >
@@ -226,7 +279,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
           ) : filtered.length === 0 ? (
             <EmptyState heading="No contacts match your search" />
           ) : (
-            <DataTable bare resizable paginated columns={columns} rows={filtered} rowKey={(l) => l.id} onRowClick={setSelectedLead} />
+            <DataTable bare resizable paginated columns={columns} rows={filtered} rowKey={(l) => l.campaignId ? `${l.campaignId}::${l.originalLeadId}` : `contact::${l.originalLeadId}`} onRowClick={setSelectedLead} />
           )}
         </Widget>
       </div>
@@ -234,7 +287,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
         stages={stages}
-        callId={selectedLead ? latestCallIdForLead(selectedLead.id, dialerTasks) : null}
+        callId={selectedLead ? latestCallIdForLead(selectedLead.originalLeadId, dialerTasks, selectedLead.campaignId) : null}
         actions={selectedLead && selectedLead.pipelineStage !== 'client' && (
           <button
             onClick={() => markAsClient(selectedLead)}
