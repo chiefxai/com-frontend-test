@@ -2356,14 +2356,18 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                               Dial
                             </Button>
                           </>
-                        ) : result.status === 'Completed' ? (
+                        ) : result.status === 'Completed' || result.status === 'Callback Scheduled' ? (
                           <Button variant="secondary" size="xs" icon={Eye} onClick={() => handleOpenTapePlayer(row.leadId)}>
                             View
                           </Button>
-                        ) : (
+                        ) : result.status === 'No Answer' || result.status === 'Answering Machine' ? (
                           <Button variant="ghost" size="xs" onClick={() => { setActiveLead(row.lead); setCallState('idle'); }}>
                             Redial
                           </Button>
+                        ) : result.status === 'Skipped' ? (
+                          <span className="text-[10px] text-[var(--text-muted)]">Skipped</span>
+                        ) : (
+                          <span className="text-[10px] text-[var(--text-muted)]">—</span>
                         )}
                       </div>
                     );
