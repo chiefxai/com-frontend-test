@@ -240,7 +240,7 @@ export default function CampaignView({
       }
     >
       <div className="flex-1 overflow-y-auto">
-        <div className="space-y-6">
+        <div className="space-y-6 p-2 sm:p-3 md:p-0">
           {/* Main workspace */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 items-start">
             <Widget
