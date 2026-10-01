@@ -43,6 +43,8 @@ interface ContactDirectoryViewProps {
     name: string;
     workflowId?: string;
     workflowName?: string;
+    leadIds?: string[];
+    callResults?: Record<string, { status?: string; callId?: string; duration?: number; sentiment?: string; intent?: string }>;
   }>;
   // Non-lending orgs store contacts as Industry Objects records, not rows
   // in the lending `leads` table — this is that object type's key, needed
@@ -623,15 +625,21 @@ export default function ContactDirectoryView({
         const history = callLogs
           .filter((log) => log.leadId === viewingLead.id)
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const campaignRuns = dialerTasks
+          .filter((task) => (task.leadIds || []).includes(viewingLead.id))
+          .sort((a, b) => {
+            const aLog = history.find((log) => log.campaignId === a.id);
+            const bLog = history.find((log) => log.campaignId === b.id);
+            return new Date(bLog?.createdAt || 0).getTime() - new Date(aLog?.createdAt || 0).getTime();
+          });
+
         return (
           <Modal open onClose={() => setViewingLead(null)} title={`Contact Activity: ${viewingLead.name}`} maxWidth="max-w-3xl">
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
                   <p className="text-[10px] uppercase font-bold text-slate-400">Campaigns</p>
-                  <p className="text-lg font-bold text-slate-800 mt-1">
-                    {new Set(history.map((h) => h.campaignId).filter(Boolean)).size}
-                  </p>
+                  <p className="text-lg font-bold text-slate-800 mt-1">{campaignRuns.length}</p>
                 </div>
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
                   <p className="text-[10px] uppercase font-bold text-slate-400">Calls</p>
@@ -645,42 +653,80 @@ export default function ContactDirectoryView({
                 </div>
               </div>
 
-              {history.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-400">No campaign activity for this contact yet.</div>
-              ) : (
-                <div className="space-y-2 max-h-[55vh] overflow-y-auto">
-                  {history.map((log) => {
-                    const task = log.campaignId ? dialerTasks.find((t) => t.id === log.campaignId) : undefined;
-                    return (
-                      <div key={log.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-800">
-                              {task?.name || (log.campaignId ? `Campaign ${log.campaignId}` : 'Unscoped call')}
-                            </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              {task?.workflowName || 'Workflow not recorded'} · {new Date(log.createdAt).toLocaleString()}
-                            </p>
+              {campaignRuns.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Campaign Runs</h3>
+                  <div className="space-y-2">
+                    {campaignRuns.map((task) => {
+                      const result = task.callResults?.[viewingLead.id];
+                      const status = result?.status || 'Pending';
+                      return (
+                        <div key={task.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">{task.name}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {task.workflowName || 'Workflow not recorded'} · Campaign ID {task.id}
+                              </p>
+                            </div>
+                            <Badge color={status === 'Completed' ? 'green' : status === 'Callback Scheduled' ? 'amber' : status === 'No Answer' ? 'slate' : 'blue'}>
+                              {status}
+                            </Badge>
                           </div>
-                          <Badge color={log.status === 'Completed' ? 'green' : log.status === 'Callback Scheduled' ? 'amber' : 'slate'}>
-                            {log.status}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3 mt-3 text-[11px] text-slate-500">
-                          <span>{log.duration}s</span>
-                          <span>Sentiment: {log.sentiment || 'Unknown'}</span>
-                          <span>Intent: {log.intent || 'Unknown'}</span>
-                          {log.callId && <span className="font-mono text-slate-400">Call: {log.callId}</span>}
-                          {log.recordingUrl && (
-                            <a href={getPlayableRecordingUrl(log.id, log.recordingUrl)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
-                              Play recording
-                            </a>
+                          {result?.callId && (
+                            <div className="flex flex-wrap items-center gap-3 mt-3 text-[11px] text-slate-500">
+                              <span>{result.duration ?? 0}s</span>
+                              <span>Sentiment: {result.sentiment || 'Unknown'}</span>
+                              <span>Intent: {result.intent || 'Unknown'}</span>
+                              <span className="font-mono text-slate-400">Call: {result.callId}</span>
+                            </div>
                           )}
                         </div>
-                        {log.summary && <p className="text-xs text-slate-600 mt-3">{log.summary}</p>}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {history.length === 0 ? (
+                <div className="py-8 text-center text-sm text-slate-400">No call activity for this contact yet.</div>
+              ) : (
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Call History</h3>
+                  <div className="space-y-2 max-h-[45vh] overflow-y-auto">
+                    {history.map((log) => {
+                      const task = log.campaignId ? dialerTasks.find((t) => t.id === log.campaignId) : undefined;
+                      return (
+                        <div key={log.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-800">
+                                {task?.name || (log.campaignId ? `Campaign ${log.campaignId}` : 'Unscoped call')}
+                              </p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {task?.workflowName || 'Workflow not recorded'} · {new Date(log.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <Badge color={log.status === 'Completed' ? 'green' : log.status === 'Callback Scheduled' ? 'amber' : 'slate'}>
+                              {log.status}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-3 text-[11px] text-slate-500">
+                            <span>{log.duration}s</span>
+                            <span>Sentiment: {log.sentiment || 'Unknown'}</span>
+                            <span>Intent: {log.intent || 'Unknown'}</span>
+                            {log.callId && <span className="font-mono text-slate-400">Call: {log.callId}</span>}
+                            {log.recordingUrl && (
+                              <a href={getPlayableRecordingUrl(log.id, log.recordingUrl)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
+                                Play recording
+                              </a>
+                            )}
+                          </div>
+                          {log.summary && <p className="text-xs text-slate-600 mt-3">{log.summary}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
