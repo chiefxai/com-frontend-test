@@ -102,7 +102,7 @@ export default function EnquiriesView() {
       onRefresh={() => load()}
       layout="fill"
     >
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col p-0 md:p-2">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <Widget className="flex-1 min-h-0 w-full" bodyClassName="flex-1 min-h-0 overflow-hidden flex flex-col" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
             <FilterBar
