@@ -26,7 +26,7 @@ import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
-import { Campaign, CampaignStatus, Workflow } from '../types';
+import { Campaign, CampaignRetryConfig, CampaignStatus, Workflow } from '../types';
 
 interface CampaignViewProps {
   campaigns: Campaign[];
@@ -73,6 +73,14 @@ export default function CampaignView({
   const [campaignName, setCampaignName] = useState('');
   const [selectedWorkflow, setSelectedWorkflow] = useState(workflows[0]?.id || '');
   const [targetLeadsCount, setTargetLeadsCount] = useState('25');
+  const [retryConfig, setRetryConfig] = useState<CampaignRetryConfig>({
+    enabled: true,
+    strategy: 'exponential',
+    intervalMinutes: 120,
+    maxRetries: 3,
+    quietHoursStart: '21:00',
+    quietHoursEnd: '08:00',
+  });
 
   const filteredCampaigns = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -132,6 +140,7 @@ export default function CampaignView({
       calledLeads: 0,
       successfulCalls: 0,
       createdAt: new Date().toISOString(),
+      retryConfig: { ...retryConfig },
     };
 
     setCampaigns([...campaigns, launched]);
@@ -139,6 +148,7 @@ export default function CampaignView({
     setIsLaunchModalOpen(false);
     setCampaignName('');
     setTargetLeadsCount('25');
+    setRetryConfig({ enabled: true, strategy: 'exponential', intervalMinutes: 120, maxRetries: 3, quietHoursStart: '21:00', quietHoursEnd: '08:00' });
 
     setLogs([
       `Dialer initiated for Campaign: "${launched.name}".`,
@@ -722,6 +732,85 @@ export default function CampaignView({
                         <span className="mt-1.5 block text-[10px] text-[var(--text-muted)]">Set the initial number of CRM leads for this campaign.</span>
                       </label>
                     </div>
+                  </section>
+
+                  <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">3. Retry mechanism</p>
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                          Controls automatic retries for No Answer / Answering Machine outcomes. Caller-requested callbacks remain separate.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={retryConfig.enabled}
+                        onClick={() => setRetryConfig((prev) => ({ ...prev, enabled: !prev.enabled }))}
+                        className={`relative h-6 w-11 rounded-full transition-colors ${retryConfig.enabled ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                      >
+                        <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${retryConfig.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+
+                    {retryConfig.enabled && (
+                      <div className="mt-4 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <label className="block">
+                            <span className="block text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Retry pattern</span>
+                            <select
+                              value={retryConfig.strategy}
+                              onChange={(e) => setRetryConfig((prev) => ({ ...prev, strategy: e.target.value as CampaignRetryConfig['strategy'] }))}
+                              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)]"
+                            >
+                              <option value="exponential">Gradual — 2h, 4h, 8h…</option>
+                              <option value="fixed">Same interval each time</option>
+                            </select>
+                          </label>
+                          <label className="block">
+                            <span className="block text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">First retry after</span>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={0.25}
+                                max={24}
+                                step={0.25}
+                                value={retryConfig.intervalMinutes / 60}
+                                onChange={(e) => setRetryConfig((prev) => ({ ...prev, intervalMinutes: Math.max(15, Number(e.target.value || 2) * 60) }))}
+                                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)]"
+                              />
+                              <span className="text-xs text-[var(--text-muted)] shrink-0">hours</span>
+                            </div>
+                          </label>
+                          <label className="block">
+                            <span className="block text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Maximum retries</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              step={1}
+                              value={retryConfig.maxRetries}
+                              onChange={(e) => setRetryConfig((prev) => ({ ...prev, maxRetries: Math.max(0, Math.min(10, Number(e.target.value || 0))) }))}
+                              className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)]"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="flex items-start gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 px-3 py-2.5">
+                          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                          <div className="text-[11px] text-amber-800 dark:text-amber-200">
+                            <span className="font-semibold">Quiet hours: 9:00 PM–8:00 AM.</span> Retries are delayed until 8:00 AM in the contact's local timezone.
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          {retryConfig.strategy === 'exponential'
+                            ? `Retries will run at ${retryConfig.intervalMinutes / 60}h → ${retryConfig.intervalMinutes / 30}h → ${retryConfig.intervalMinutes / 15}h…`
+                            : `Each retry waits ${retryConfig.intervalMinutes / 60}h.`}
+                          {' '}The initial call is not counted as a retry.
+                        </p>
+                      </div>
+                    )}
                   </section>
 
                   <section className="rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-5 shadow-sm dark:border-emerald-500/15 dark:bg-emerald-500/[0.05]">
