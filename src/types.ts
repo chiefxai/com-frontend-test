@@ -51,6 +51,15 @@ export interface ContactGroup {
 
 export type CampaignStatus = 'Draft' | 'Running' | 'Paused' | 'Completed';
 
+export interface CampaignRetryConfig {
+  enabled: boolean;
+  strategy: 'fixed' | 'exponential';
+  intervalMinutes: number;
+  maxRetries: number;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -60,6 +69,7 @@ export interface Campaign {
   calledLeads: number;
   successfulCalls: number;
   createdAt: string;
+  retryConfig?: CampaignRetryConfig;
 }
 
 export type NodeType = 'trigger' | 'call' | 'question' | 'decision' | 'action';
