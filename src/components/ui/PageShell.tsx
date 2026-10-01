@@ -166,11 +166,11 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
 
       {/* ── Content area: no mobile inset, small desktop inset (shared across pages) ── */}
       {layout === 'fill' ? (
-        <div className="flex-1 flex flex-col overflow-hidden p-0 md:p-2">
+        <div className="flex-1 flex flex-col overflow-hidden p-0 md:p-2 xl:p-3">
           {children}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-0 md:p-2">
+        <div className="flex-1 overflow-y-auto p-0 md:p-2 xl:p-3">
           <div ref={contentRef} className="grid grid-cols-12 gap-4 md:gap-5 xl:gap-6 content-start">
             {children}
           </div>
