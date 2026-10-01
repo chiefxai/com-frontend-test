@@ -152,7 +152,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
       onRefresh={() => load()}
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
