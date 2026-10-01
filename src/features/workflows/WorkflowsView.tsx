@@ -522,7 +522,7 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
       action={<IconButton icon={Plus} label="New Workflow" onClick={handleCreate} />}
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <div className="flex-1 flex flex-col overflow-hidden">
       <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
         <div className="border-b border-[var(--border)] px-4 py-3 bg-[var(--bg-surface)] shrink-0">
           <FilterBar
