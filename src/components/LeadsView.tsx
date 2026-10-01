@@ -219,7 +219,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/voice-simulator/outbound?campaign=${encodeURIComponent(task.id)}`);
+              navigate(`/campaign/outbound?campaign=${encodeURIComponent(task.id)}`);
             }}
             className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline cursor-pointer"
             title="Open campaign in Voice Simulator"
@@ -233,15 +233,6 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       key: 'stage',
       header: 'Stage',
       cell: (l) => <Badge color={STAGE_COLOR[l.pipelineStage || 'contact']}>{stageLabel(stages, l.pipelineStage)}</Badge>,
-    },
-    {
-      key: 'campaignStatus',
-      header: 'Campaign Status',
-      cell: (l) => (
-        <span className="text-xs font-medium text-slate-600 dark:text-[var(--text-secondary)]">
-          {l.campaignId ? (l.campaignStatus || 'Pending') : '—'}
-        </span>
-      ),
     },
     {
       key: 'actions',
@@ -360,7 +351,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
             >
               <CheckCircle2 className="h-4 w-4" /> Mark as {stageLabel(stages, 'client')}
             </button>}
-            {selectedLead?.campaignId && <button onClick={() => navigate(`/voice-simulator/outbound?campaign=${encodeURIComponent(selectedLead.campaignId!)}`)} className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50 cursor-pointer">Open Campaign</button>}
+            {selectedLead?.campaignId && <button onClick={() => navigate(`/campaign/outbound?campaign=${encodeURIComponent(selectedLead.campaignId!)}`)} className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50 cursor-pointer">Open Campaign</button>}
           </div>
         )}
       />
