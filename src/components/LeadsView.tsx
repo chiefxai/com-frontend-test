@@ -235,27 +235,42 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       cell: (l) => <Badge color={STAGE_COLOR[l.pipelineStage || 'contact']}>{stageLabel(stages, l.pipelineStage)}</Badge>,
     },
     {
+      key: 'campaignStatus',
+      header: 'Campaign Status',
+      cell: (l) => (
+        <span className="text-xs font-medium text-slate-600 dark:text-[var(--text-secondary)]">
+          {l.campaignId ? (l.campaignStatus || 'Pending') : '—'}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
       align: 'right',
       cell: (l) => (
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => advance(l, 'Qualified', 'opportunity')}
-            disabled={Boolean(l.campaignId) || advancingId === l.originalLeadId}
-            className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
-            title={`Advance to ${stageLabel(stages, 'opportunity')}`}
-          >
-            <ArrowRightCircle className="h-3.5 w-3.5" /> {stageLabel(stages, 'opportunity')}
-          </button>
-          <button
-            onClick={() => advance(l, 'Converted', 'client')}
-            disabled={Boolean(l.campaignId) || advancingId === l.originalLeadId}
-            className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
-            title={`Mark as ${stageLabel(stages, 'client')}`}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}
-          </button>
+          {!l.campaignId ? (
+            <>
+              <button
+                onClick={() => advance(l, 'Qualified', 'opportunity')}
+                disabled={advancingId === l.originalLeadId}
+                className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
+                title={`Advance to ${stageLabel(stages, 'opportunity')}`}
+              >
+                <ArrowRightCircle className="h-3.5 w-3.5" /> {stageLabel(stages, 'opportunity')}
+              </button>
+              <button
+                onClick={() => advance(l, 'Converted', 'client')}
+                disabled={advancingId === l.originalLeadId}
+                className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
+                title={`Mark as ${stageLabel(stages, 'client')}`}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}
+              </button>
+            </>
+          ) : (
+            <span className="text-[11px] font-medium text-slate-400">Campaign-scoped</span>
+          )}
         </div>
       ),
     },
