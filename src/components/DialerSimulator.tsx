@@ -1876,7 +1876,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
       }
     >
       {!taskPage && (
-      <div className="overflow-y-auto flex-1 px-8 pb-8 pt-6 space-y-6">
+      <div className="overflow-y-auto flex-1 space-y-6">
 
       {dialerMode === 'outbound' ? (
         <>
