@@ -43,7 +43,7 @@ interface CampaignTask {
   // loosely as any[] there) — only the callId is needed here, to fetch
   // the same "Extracted Campaign Answers" the Active Campaign List's own
   // Workflow View shows for this lead.
-  callResults?: { [leadId: string]: { callId?: string } };
+  callResults?: { [leadId: string]: { callId?: string; advisorCallback?: { time?: string | null } } };
 }
 
 interface LeadsViewProps {
@@ -95,6 +95,9 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[]): CampaignL
         campaignWorkflowName: task.workflowName,
         campaignStatus: result?.status || 'Pending',
         status: result?.leadStatus || lead.status,
+        // Advisor callbacks are campaign-scoped. Do not read the shared
+        // contact callbackTime because it can belong to another campaign.
+        callbackTime: result?.advisorCallback?.time || lead.callbackTime,
         pipelineStage: 'lead',
       });
     }
