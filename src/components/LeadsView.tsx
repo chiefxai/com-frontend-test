@@ -245,7 +245,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       subtitle={`Contacts currently in the ${stageLabel(stages, 'lead')} stage — advance one to ${stageLabel(stages, 'opportunity')} or ${stageLabel(stages, 'client')} as it moves forward.`}
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
       <FilterBar
