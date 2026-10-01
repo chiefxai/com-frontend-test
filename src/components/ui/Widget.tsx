@@ -124,7 +124,7 @@ export default function Widget({
       data-grid-span-md={span?.md ?? span?.sm ?? span?.xs ?? colSpan}
       data-grid-span-lg={span?.lg ?? span?.md ?? span?.sm ?? span?.xs ?? colSpan}
       data-grid-span-xl={span?.xl ?? span?.lg ?? span?.md ?? span?.sm ?? span?.xs ?? colSpan}
-      className={`${spanClass} bg-white dark:bg-[var(--bg-surface)] rounded-[14px] border border-slate-200 dark:border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col overflow-hidden ${hover ? 'hover:shadow-md transition-shadow duration-150' : ''} ${className}`}
+      className={`${spanClass} bg-white dark:bg-[var(--bg-surface)] rounded-none sm:rounded-[14px] border border-slate-200 dark:border-[var(--border)] shadow-[var(--shadow-card)] flex flex-col overflow-hidden ${hover ? 'hover:shadow-md transition-shadow duration-150' : ''} ${className}`}
     >
       {/* ── Header ───────────────────────────────────────────────── */}
       {showHeader && (
