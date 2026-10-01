@@ -127,7 +127,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
       subtitle="Every real inbound and outbound call — transcript, recording, and sentiment."
       layout="fill"
     >
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden p-2 sm:p-3 md:p-0">
         <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
             <FilterBar
