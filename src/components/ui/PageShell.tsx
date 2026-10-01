@@ -170,7 +170,7 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
           {children}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 sm:px-5 md:px-6 xl:px-8 pb-6 pt-4">
+        <div className="flex-1 overflow-y-auto p-0 md:p-2">
           <div ref={contentRef} className="grid grid-cols-12 gap-4 md:gap-5 xl:gap-6 content-start">
             {children}
           </div>
