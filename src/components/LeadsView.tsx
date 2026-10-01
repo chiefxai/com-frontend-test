@@ -56,32 +56,55 @@ interface LeadsViewProps {
 // this lead, across every campaign it's ever been part of — same data
 // DialerSimulator's Workflow View reads from, just not scoped to one
 // selected task here since Leads has no single "selected campaign".
-function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[]): string | null {
-  const withCallId = [...dialerTasks]
-    .filter((t) => t.callResults?.[leadId]?.callId)
+function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[], campaignId?: string | null): string | null {
+  if (campaignId) return dialerTasks.find((t) => t.id === campaignId)?.callResults?.[leadId]?.callId ?? null;
+  const withCallId = [...dialerTasks].filter((t) => t.callResults?.[leadId]?.callId)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return withCallId[0]?.callResults?.[leadId]?.callId ?? null;
 }
 
-// The dialer task (campaign) this lead was most recently dialed under —
-// prefer tasks that already have callResults for this lead (actual dial)
-// over tasks that only list the lead in leadIds, since the same workflow
-// can spawn multiple campaigns and membership alone is ambiguous.
 function latestCampaignTaskForLead(leadId: string, dialerTasks: CampaignTask[]): CampaignTask | null {
-  const byCreated = (a: CampaignTask, b: CampaignTask) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  const dialed = [...dialerTasks]
-    .filter((t) => t.callResults && leadId in t.callResults)
-    .sort(byCreated);
+  const byCreated = (a: CampaignTask, b: CampaignTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const dialed = [...dialerTasks].filter((t) => t.callResults && leadId in t.callResults).sort(byCreated);
   if (dialed[0]) return dialed[0];
-  const listed = [...dialerTasks]
-    .filter((t) => t.leadIds?.includes(leadId))
-    .sort(byCreated);
-  return listed[0] ?? null;
+  return [...dialerTasks].filter((t) => t.leadIds?.includes(leadId)).sort(byCreated)[0] ?? null;
 }
 
 function latestCampaignForLead(leadId: string, dialerTasks: CampaignTask[]): string | null {
   return latestCampaignTaskForLead(leadId, dialerTasks)?.name ?? null;
+}
+
+function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[]): CampaignLeadRow[] {
+  const rows: CampaignLeadRow[] = [];
+  const represented = new Set<string>();
+  for (const task of dialerTasks) {
+    for (const leadId of task.leadIds || []) {
+      const lead = leads.find((l) => l.id === leadId);
+      if (!lead) continue;
+      const result = task.callResults?.[leadId];
+      const isLeadForCampaign =
+        result?.pipelineStage === 'lead' ||
+        (!result?.pipelineStage && lead.pipelineStage === 'lead' && Boolean(result?.callId));
+      if (!isLeadForCampaign) continue;
+      represented.add(leadId);
+      rows.push({
+        ...lead,
+        originalLeadId: lead.id,
+        campaignId: task.id,
+        campaignName: task.name,
+        campaignWorkflowName: task.workflowName,
+        campaignStatus: result?.status || 'Pending',
+        status: result?.leadStatus || lead.status,
+        pipelineStage: 'lead',
+      });
+    }
+  }
+  for (const lead of leads) {
+    if (lead.pipelineStage === 'lead' && !represented.has(lead.id)) {
+      rows.push({ ...lead, originalLeadId: lead.id, pipelineStage: 'lead' });
+    }
+  }
+  return rows;
 }
 
 export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsViewProps) {
@@ -92,21 +115,19 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
   const [sourceFilter, setSourceFilter] = React.useState('All');
   const [campaignFilter, setCampaignFilter] = React.useState('All');
   const [statusFilter, setStatusFilter] = React.useState('All');
-  const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = React.useState<CampaignLeadRow | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = React.useState<string | null>(null);
   const [exportOpen, setExportOpen] = React.useState(false);
 
-  const activeLeads = leads.filter((l) => l.pipelineStage === 'lead');
+  const activeLeads = React.useMemo(() => campaignLeadRows(leads, dialerTasks), [leads, dialerTasks]);
   const uniqueSources = [...new Set(activeLeads.map((l) => l.source).filter(Boolean))].sort();
-  const campaignOptions = [...dialerTasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const campaignOptions = [...dialerTasks].filter((t) => t.leadIds?.some((id) => activeLeads.some((l) => l.originalLeadId === id && l.campaignId === t.id))).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const selectedCampaign = campaignOptions.find((t) => t.id === campaignFilter) || null;
   const statusOptions = [...new Set(activeLeads.map((l) => l.status).filter(Boolean))].sort();
   const filteredLeads = activeLeads.filter((l) => {
-    const matchesSearch = !searchTerm ||
-      l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.phone.includes(searchTerm) ||
-      (l.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !searchTerm || l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm) || (l.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'All' || l.source === sourceFilter;
-    const matchesCampaign = !selectedCampaign || selectedCampaign.leadIds.includes(l.id);
+    const matchesCampaign = campaignFilter === 'All' || l.campaignId === campaignFilter;
     const matchesStatus = statusFilter === 'All' || l.status === statusFilter;
     return matchesSearch && matchesSource && matchesCampaign && matchesStatus;
   });
@@ -132,10 +153,11 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
   // status (Qualified -> opportunity, Converted -> client), but it's set
   // here too so the row moves off this filtered list immediately instead
   // of waiting on a resync to reflect what the backend is about to do.
-  const advance = (lead: Lead, toStatus: Lead['status'], toStage: Lead['pipelineStage']) => {
-    setAdvancingId(lead.id);
-    setLeads(leads.map((l) => (l.id === lead.id ? { ...l, status: toStatus, pipelineStage: toStage } : l)));
-    setSelectedLead(null); // the row is about to leave this filtered list
+  const advance = (lead: CampaignLeadRow, toStatus: Lead['status'], toStage: Lead['pipelineStage']) => {
+    if (lead.campaignId) return;
+    setAdvancingId(lead.originalLeadId);
+    setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: toStatus, pipelineStage: toStage } : l)));
+    setSelectedLead(null);
     setTimeout(() => setAdvancingId(null), 400);
   };
 
@@ -156,7 +178,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
     { key: 'createdAt', label: 'Added On', getValue: (l) => new Date(l.createdAt).toLocaleString() },
   ];
 
-  const columns: Column<Lead>[] = [
+  const columns: Column<CampaignLeadRow>[] = [
     {
       key: 'name',
       header: 'Name',
@@ -188,7 +210,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
       key: 'campaign',
       header: 'Campaign',
       cell: (l) => {
-        const task = latestCampaignTaskForLead(l.id, dialerTasks);
+        const task = l.campaignId ? dialerTasks.find((t) => t.id === l.campaignId) || null : latestCampaignTaskForLead(l.originalLeadId, dialerTasks);
         if (!task?.name) {
           return <span className="text-xs text-slate-300 dark:text-[var(--text-muted)]">—</span>;
         }
@@ -220,7 +242,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
         <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => advance(l, 'Qualified', 'opportunity')}
-            disabled={advancingId === l.id}
+            disabled={Boolean(l.campaignId) || advancingId === l.originalLeadId}
             className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
             title={`Advance to ${stageLabel(stages, 'opportunity')}`}
           >
@@ -228,7 +250,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
           </button>
           <button
             onClick={() => advance(l, 'Converted', 'client')}
-            disabled={advancingId === l.id}
+            disabled={Boolean(l.campaignId) || advancingId === l.originalLeadId}
             className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
             title={`Mark as ${stageLabel(stages, 'client')}`}
           >
@@ -297,7 +319,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
           ) : filteredLeads.length === 0 ? (
             <EmptyState icon={UserPlus} heading="No leads match your search" />
           ) : (
-            <DataTable bare resizable paginated columns={columns} rows={filteredLeads} rowKey={(l) => l.id} onRowClick={setSelectedLead} />
+            <DataTable bare resizable paginated columns={columns} rows={filteredLeads} rowKey={(l) => l.campaignId ? `${l.campaignId}::${l.originalLeadId}` : `contact::${l.originalLeadId}`} onRowClick={(row) => { setSelectedLead(row); setSelectedCampaignId(row.campaignId || null); }} />
           )}
         </Widget>
       </div>
@@ -306,23 +328,24 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
         lead={selectedLead}
         onClose={() => setSelectedLead(null)}
         stages={stages}
-        callId={selectedLead ? latestCallIdForLead(selectedLead.id, dialerTasks) : null}
+        callId={selectedLead ? latestCallIdForLead(selectedLead.originalLeadId, dialerTasks, selectedCampaignId) : null}
         actions={selectedLead && (
           <div className="flex items-center gap-2">
-            <button
+            {!selectedLead?.campaignId && <button
               onClick={() => advance(selectedLead, 'Qualified', 'opportunity')}
               disabled={advancingId === selectedLead.id}
               className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-3 py-2 rounded-xl border border-amber-200 hover:bg-amber-50 cursor-pointer"
             >
               <ArrowRightCircle className="h-4 w-4" /> Advance to {stageLabel(stages, 'opportunity')}
-            </button>
-            <button
+            </button>}
+            {!selectedLead?.campaignId && <button
               onClick={() => advance(selectedLead, 'Converted', 'client')}
               disabled={advancingId === selectedLead.id}
               className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-3 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-50 cursor-pointer"
             >
               <CheckCircle2 className="h-4 w-4" /> Mark as {stageLabel(stages, 'client')}
-            </button>
+            </button>}
+            {selectedLead?.campaignId && <button onClick={() => navigate(`/voice-simulator/outbound?campaign=${encodeURIComponent(selectedLead.campaignId!)}`)} className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50 cursor-pointer">Open Campaign</button>}
           </div>
         )}
       />
