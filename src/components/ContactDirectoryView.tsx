@@ -15,7 +15,8 @@ import {
   Mail,
   CheckCircle2,
   FolderOpen,
-  Settings2
+  Settings2,
+  Eye
 } from 'lucide-react';
 import { Lead, CallLog, ContactGroup } from '../types';
 import { apiFetch, getPlayableRecordingUrl } from '../lib/api';
@@ -29,14 +30,20 @@ import ActionMenu from './ui/ActionMenu';
 import DataTable, { Column } from './ui/DataTable';
 import { newClientId } from '../lib/ids';
 import Badge from './ui/Badge';
-import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
-
-
 interface ContactDirectoryViewProps {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   industry?: string;
   callLogs?: CallLog[];
+  // Campaign execution history is intentionally separate from the contact
+  // record. The same contact can participate in multiple campaigns, even
+  // when those campaigns reuse the same workflow.
+  dialerTasks?: Array<{
+    id: string;
+    name: string;
+    workflowId?: string;
+    workflowName?: string;
+  }>;
   // Non-lending orgs store contacts as Industry Objects records, not rows
   // in the lending `leads` table — this is that object type's key, needed
   // to hit the right delete/update route (see App.tsx's own primaryObject
@@ -52,21 +59,22 @@ export default function ContactDirectoryView({
   setLeads,
   industry,
   callLogs = [],
+  dialerTasks = [],
   primaryObjectKey,
   primaryObjectFields = []
 }: ContactDirectoryViewProps) {
+  const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+
   // Contact Directory is a lightweight address book (name/phone/email +
   // groups) shared across every industry — loan-specific details
   // (amount requested, employer, income, credit score/DTI) belong to
   // Leads/Pipeline, not here, so this view never displays or collects them.
-  const { stages: pipelineStages } = usePipelineStages();
   // Navigation & filtering state
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [groupFilter, setGroupFilter] = useState('All');
-  const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || statusFilter !== 'All' || groupFilter !== 'All';
-  const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setStatusFilter('All'); setGroupFilter('All'); };
+   const [groupFilter, setGroupFilter] = useState('All');
+  const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || groupFilter !== 'All';
+  const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setGroupFilter('All'); };
 
   // Groups
   const [contactGroups, setContactGroups] = useState<ContactGroup[]>([]);
@@ -163,10 +171,9 @@ export default function ContactDirectoryView({
       lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.financialInfo?.employer || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSource = sourceFilter === 'All' || lead.source === sourceFilter;
-    const matchesStatus = statusFilter === 'All' || lead.status === statusFilter;
-    const matchesGroup = groupFilter === 'All'
+     const matchesGroup = groupFilter === 'All'
       || (groupFilter === NO_GROUP ? (lead.groupIds || []).length === 0 : (lead.groupIds || []).includes(groupFilter));
-    return matchesSearch && matchesSource && matchesStatus && matchesGroup;
+    return matchesSearch && matchesSource && matchesGroup;
   });
 
   // Unique sources for filter dropdown
@@ -507,19 +514,6 @@ export default function ContactDirectoryView({
               options: uniqueSources.map((src) => ({ label: src, value: src })),
             },
             {
-              key: 'status',
-              label: 'Status',
-              value: statusFilter,
-              onChange: setStatusFilter,
-              options: [
-                { label: 'All CRM Statuses', value: 'All' },
-                { label: 'New', value: 'New' },
-                { label: 'In Progress', value: 'In Progress' },
-                { label: 'Qualified', value: 'Qualified' },
-                { label: 'Unqualified', value: 'Unqualified' },
-              ],
-            },
-            {
               key: 'group',
               label: 'Group',
               value: groupFilter,
@@ -577,21 +571,18 @@ export default function ContactDirectoryView({
               ),
             },
             {
-              key: 'stage',
-              header: 'Stage',
-              cell: (lead) => {
-                const STAGE_COLOR: Record<string, 'blue' | 'amber' | 'green' | 'slate' | 'indigo'> = {
-                  contact: 'slate', campaign: 'blue', lead: 'indigo', opportunity: 'amber', client: 'green',
-                };
-                return <Badge color={STAGE_COLOR[lead.pipelineStage || 'contact']}>{stageLabel(pipelineStages, lead.pipelineStage)}</Badge>;
-              },
-            },
-            {
               key: 'actions',
               header: 'Actions',
               align: 'right',
               cell: (lead) => (
                 <div className="flex items-center justify-end space-x-1">
+                  <button
+                    onClick={() => setViewingLead(lead)}
+                    title="View Contact Activity"
+                    className="p-1.5 hover:bg-[var(--bg-subtle)] hover:text-blue-600 rounded-lg text-slate-400 transition-all cursor-pointer"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => openEditModal(lead)}
                     title="Edit Contact"
@@ -625,6 +616,77 @@ export default function ContactDirectoryView({
         })()}
       </Widget>
       </div>
+
+      {/* MODAL: Contact Activity — campaign status/history is kept out of the
+          directory table and is available only when the user explicitly views a contact. */}
+      {viewingLead && (() => {
+        const history = callLogs
+          .filter((log) => log.leadId === viewingLead.id)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return (
+          <Modal open onClose={() => setViewingLead(null)} title={`Contact Activity: ${viewingLead.name}`} maxWidth="max-w-3xl">
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Campaigns</p>
+                  <p className="text-lg font-bold text-slate-800 mt-1">
+                    {new Set(history.map((h) => h.campaignId).filter(Boolean)).size}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Calls</p>
+                  <p className="text-lg font-bold text-slate-800 mt-1">{history.length}</p>
+                </div>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Last Call</p>
+                  <p className="text-xs font-semibold text-slate-700 mt-2">
+                    {history[0] ? new Date(history[0].createdAt).toLocaleString() : 'No calls yet'}
+                  </p>
+                </div>
+              </div>
+
+              {history.length === 0 ? (
+                <div className="py-10 text-center text-sm text-slate-400">No campaign activity for this contact yet.</div>
+              ) : (
+                <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+                  {history.map((log) => {
+                    const task = log.campaignId ? dialerTasks.find((t) => t.id === log.campaignId) : undefined;
+                    return (
+                      <div key={log.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-800">
+                              {task?.name || (log.campaignId ? `Campaign ${log.campaignId}` : 'Unscoped call')}
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              {task?.workflowName || 'Workflow not recorded'} · {new Date(log.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <Badge color={log.status === 'Completed' ? 'green' : log.status === 'Callback Scheduled' ? 'amber' : 'slate'}>
+                            {log.status}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 mt-3 text-[11px] text-slate-500">
+                          <span>{log.duration}s</span>
+                          <span>Sentiment: {log.sentiment || 'Unknown'}</span>
+                          <span>Intent: {log.intent || 'Unknown'}</span>
+                          {log.callId && <span className="font-mono text-slate-400">Call: {log.callId}</span>}
+                          {log.recordingUrl && (
+                            <a href={getPlayableRecordingUrl(log.id, log.recordingUrl)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
+                              Play recording
+                            </a>
+                          )}
+                        </div>
+                        {log.summary && <p className="text-xs text-slate-600 mt-3">{log.summary}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* MODAL: Add / Edit Single Contact */}
       {isAddModalOpen && (
