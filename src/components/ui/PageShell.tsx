@@ -166,7 +166,7 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
 
       {/* ── Content area ── */}
       {layout === 'fill' ? (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden p-0 md:p-2">
           {children}
         </div>
       ) : (
