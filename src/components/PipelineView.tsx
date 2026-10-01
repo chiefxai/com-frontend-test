@@ -201,7 +201,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [] }: Pipe
       layout="fill"
       action={subTabToggle}
     >
-      <div className="flex-1 flex flex-col overflow-hidden px-8 pb-8 pt-6">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Widget className="flex-1" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
             <FilterBar
