@@ -350,7 +350,7 @@ export default function CompanyProfileView({
         </div>
       }
     >
-      <div className="overflow-y-auto px-8 pb-8 pt-6 space-y-6">
+      <div className="overflow-y-auto space-y-6">
 
       {/* Quick Stats Bento bar */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
