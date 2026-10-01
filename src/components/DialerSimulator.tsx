@@ -1133,18 +1133,10 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
       setCallLogs([globalLog, ...callLogs]);
     }
 
-    // Update Lead status in leads database
-    const updatedDatabase = leadsDatabase.map((l) => {
-      if (l.id === activeLead.id) {
-        return {
-          ...l,
-          status: currentIntent === 'Interested' ? 'Qualified' : currentIntent === 'Not Interested' ? 'Unqualified' : l.status,
-          notes: `Dialer Task Summary [${selectedTask.name}]:\n${summaryText}\n\n${l.notes}`
-        };
-      }
-      return l;
-    });
-    setLeadsDatabase(updatedDatabase);
+    // Do NOT mutate the global contact/lead status from a campaign call.
+    // Contact identity is shared, but campaign execution state is not.
+    // The result is already persisted against selectedTask.id/callLog.campaignId
+    // and is available from Contact Directory -> View Activity.
   };
 
   // Submit Caller response - proceed question by question!
