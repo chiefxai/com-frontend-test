@@ -17,11 +17,11 @@ interface ScheduledCallback {
   callerNumber?: string;
   direction?: 'inbound' | 'outbound';
   status?: string;
-  // "callback" — the caller explicitly asked to be called back.
-  // "not_answered" — nobody picked up, or it hit voicemail/an answering
-  // machine — still queued for an automatic redial, just for a different
-  // reason. See db.getScheduledCallbacks.
-  kind?: 'callback' | 'not_answered';
+  // "callback" — caller asked the AI agent to call back.
+  // "not_answered" — automatic redial because nobody answered/voicemail.
+  // "human_advisor" — caller requested a callback with a human advisor;
+  // this is never placed into the AI redial queue.
+  kind?: 'callback' | 'not_answered' | 'human_advisor';
   reason?: string;
   callbackTime?: string;
   callbackReason?: string;
@@ -39,9 +39,10 @@ interface ScheduledCallback {
   scheduleLocalLabel?: string;
 }
 
-const KIND_CHIP: Record<'callback' | 'not_answered', { label: string; className: string }> = {
-  callback: { label: 'Callback', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+const KIND_CHIP: Record<'callback' | 'not_answered' | 'human_advisor', { label: string; className: string }> = {
+  callback: { label: 'AI Callback', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   not_answered: { label: 'Not Answered', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+  human_advisor: { label: 'Human Advisor', className: 'bg-amber-50 text-amber-700 border-amber-200' },
 };
 
 interface ScheduledCallbacksViewProps {
@@ -148,7 +149,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
   return (
     <PageShell
       title={<BreadcrumbTitle group="Campaign" page="Scheduled Callbacks" />}
-      subtitle="Calls waiting on an automatic redial — either the caller asked to be called back, or nobody answered — with the reason and when it'll try again."
+      subtitle="Scheduled follow-ups: AI callbacks, automatic redials, and callbacks reserved for a human advisor."
       onRefresh={() => load()}
       layout="fill"
     >
@@ -159,7 +160,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
           <div className="flex-1 flex flex-col min-h-0 gap-3">
             <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
             {rows.length === 0
-              ? <EmptyState icon={Clock} heading="Nothing pending a redial" message="A caller asking to be called back, or a call nobody answered, will show up here with the reason and next attempt time." />
+              ? <EmptyState icon={Clock} heading="Nothing scheduled" message="AI callbacks, automatic redials, and human-advisor callback requests will appear here." />
               : (() => {
                   const columns: Column<ScheduledCallback>[] = [
                     {
@@ -169,7 +170,11 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                         const chip = KIND_CHIP[r.kind || 'not_answered'];
                         return (
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border whitespace-nowrap ${chip.className}`}>
-                            {r.kind === 'callback' ? <CalendarClock className="h-3 w-3" /> : <PhoneMissed className="h-3 w-3" />}
+                            {r.kind === 'human_advisor'
+                              ? <CalendarClock className="h-3 w-3" />
+                              : r.kind === 'callback'
+                                ? <CalendarClock className="h-3 w-3" />
+                                : <PhoneMissed className="h-3 w-3" />}
                             {chip.label}
                           </span>
                         );
@@ -204,7 +209,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                       header: 'Timing',
                       cell: (r) => (
                         <div>
-                          {r.kind === 'callback' && (
+                          {(r.kind === 'callback' || r.kind === 'human_advisor') && (
                             <div className="text-slate-700 font-medium whitespace-nowrap">
                               {r.callbackTimeLocalLabel || r.scheduleLocalLabel
                                 || (r.callbackTime
@@ -212,9 +217,14 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                                   : 'Not specified')}
                             </div>
                           )}
+                          {r.kind === 'human_advisor' && (
+                            <div className="text-[10px] text-amber-700 mt-0.5 whitespace-nowrap">
+                              Human call — no AI redial
+                            </div>
+                          )}
                           {r.nextRetryAt && (
-                            <div className={r.kind === 'callback' ? 'text-[10px] text-slate-400 mt-0.5 whitespace-nowrap' : 'text-xs text-slate-700 font-medium whitespace-nowrap'}>
-                              {r.kind === 'callback' ? 'Next attempt: ' : 'Retries at '}
+                            <div className={(r.kind === 'callback' || r.kind === 'human_advisor') ? 'text-[10px] text-slate-400 mt-0.5 whitespace-nowrap' : 'text-xs text-slate-700 font-medium whitespace-nowrap'}>
+                              {r.kind === 'callback' ? 'Next AI attempt: ' : 'Retries at '}
                               {r.nextRetryAtLocalLabel
                                 || new Date(r.nextRetryAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                               {r.callerTimezone ? ` (${r.callerTimezone})` : ''}
@@ -238,7 +248,7 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                               type="button"
                               onClick={() => {
                                 if (campaignId) {
-                                  navigate(`/voice-simulator/outbound?campaign=${encodeURIComponent(campaignId)}`);
+                                  navigate(`/campaign/outbound?campaign=${encodeURIComponent(campaignId)}`);
                                 }
                               }}
                               className={`inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline cursor-pointer text-left ${campaignId ? '' : 'pointer-events-none'}`}
@@ -297,7 +307,8 @@ export default function ScheduledCallbacksView({ leads = [] }: ScheduledCallback
                   onChange: setKindFilter,
                   options: [
                     { label: 'All types', value: 'all' },
-                    { label: 'Callback', value: 'callback' },
+                    { label: 'AI Callback', value: 'callback' },
+                    { label: 'Human Advisor', value: 'human_advisor' },
                     { label: 'Not Answered', value: 'not_answered' },
                   ],
                 },
