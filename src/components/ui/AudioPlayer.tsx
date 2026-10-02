@@ -47,7 +47,18 @@ export default function AudioPlayer({
   });
   const [muted, setMuted] = useState(false);
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(() => {
+    const saved = Number(localStorage.getItem('chiefvoice_audio_volume'));
+    return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : 1;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('chiefvoice_audio_speed', String(speed));
+  }, [speed]);
+
+  useEffect(() => {
+    localStorage.setItem('chiefvoice_audio_volume', String(volume));
+  }, [volume]);
 
   useEffect(() => {
     let cancelled = false;
