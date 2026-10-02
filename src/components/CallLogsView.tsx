@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, PlayCircle, Download, X, MessageCircleQuestion, RefreshCw } from 'lucide-react';
+import { Eye, Download, X, MessageCircleQuestion, RefreshCw } from 'lucide-react';
 import SlideOver from './ui/SlideOver';
 import { CallLog, Lead } from '../types';
 import { callCostInr, formatInr } from '../lib/pricing';
 import { normalizePhone, formatPhone } from '../lib/phone';
-import { apiFetch, getPlayableRecordingUrl } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Button from './ui/Button';
+import AudioPlayer from './ui/AudioPlayer';
 import Badge from './ui/Badge';
 import FilterBar from './ui/FilterBar';
 import EmptyState from './ui/EmptyState';
@@ -198,10 +199,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
 
             {/* Recording */}
             {selected.recordingUrl && (
-              <div className="rounded-[9px] p-3 flex items-center gap-3 border" style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
-                <PlayCircle className="h-5 w-5 text-blue-600 shrink-0" />
-                <audio controls src={getPlayableRecordingUrl(selected.id, selected.recordingUrl)} className="w-full h-8" />
-              </div>
+              <AudioPlayer callId={selected.id} src={selected.recordingUrl} />
             )}
 
             {/* Meta row */}
