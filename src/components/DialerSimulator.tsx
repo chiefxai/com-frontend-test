@@ -520,7 +520,7 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
       removeFromPipeline: false,
     });
     try {
-      const res = await apiFetch(\`/api/dialer-tasks/\${encodeURIComponent(task.id)}/delete-impact\`);
+      const res = await apiFetch(`/api/dialer-tasks/${encodeURIComponent(task.id)}/delete-impact`);
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error || "Unable to load deletion details.");
       setDeleteImpact(body);
@@ -534,7 +534,7 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
     if (!deleteTask || !isOrganizationAdmin || !deleteImpact) return;
     setDeleteBusy(true);
     try {
-      const res = await apiFetch(\`/api/dialer-tasks/\${encodeURIComponent(deleteTask.id)}\`, {
+      const res = await apiFetch(`/api/dialer-tasks/${encodeURIComponent(deleteTask.id)}`, {
         method: "DELETE",
         body: JSON.stringify({ confirm: true, ...deleteOptions }),
       });
@@ -557,7 +557,7 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
 
       setDeleteTask(null);
       setDeleteImpact(null);
-      alert(\`Campaign task "\${deleteTask.name}" deleted successfully.\`);
+      alert(`Campaign task "${deleteTask.name}" deleted successfully.`);
     } catch (err: any) {
       alert(err?.message || "Failed to delete campaign task.");
     } finally {
@@ -3261,7 +3261,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                   />
                   <span>
                     <span className="block text-xs font-semibold text-[var(--text-primary)]">Delete associated enquiries</span>
-                    <span className="block text-[10px] text-[var(--text-muted)] mt-0.5">{deleteImpact.counts.enquiries} entr{deleteImpact.counts.enquiries === 1 ? "y" : "ies"} linked to this task’s calls.</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] mt-0.5">{deleteImpact.counts.enquiries} {deleteImpact.counts.enquiries === 1 ? "enquiry" : "enquiries"} linked to this task’s calls.</span>
                   </span>
                 </label>
 
