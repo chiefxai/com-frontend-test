@@ -53,41 +53,42 @@ export default function AudioPlayer({
   useEffect(() => {
     let cancelled = false;
 
-    // If the API already supplied a playable recording URL, use it.
-    // This preserves historical recordings and avoids an unnecessary
-    // call-id lookup. callId is used only when the page has no URL.
-    if (src) {
-      setSource(src);
-      setLoading(false);
-      setError(null);
-      return () => { cancelled = true; };
-    }
-
-    if (!callId) {
-      setSource(null);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSource(null);
 
-    apiFetch(`/api/recordings/${encodeURIComponent(callId)}/url`)
-      .then(async (response) => {
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok || !body?.url) {
-          throw new Error(body?.error || 'Recording is not available');
-        }
-        if (!cancelled) setSource(body.url);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load recording');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const fallback = () => {
+      if (!cancelled && src) {
+        setSource(src);
+        setLoading(false);
+        setError(null);
+      } else if (!cancelled) {
+        setLoading(false);
+        setError("Recording is not available");
+      }
+    };
 
+    // Prefer a freshly resolved URL whenever a call id exists. This avoids
+    // replaying an expired S3 presigned URL that was already present in React
+    // state when the page was opened.
+    if (callId) {
+      apiFetch(`/api/recordings/${encodeURIComponent(callId)}/url`)
+        .then(async (response) => {
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok || !body?.url) {
+            throw new Error(body?.error || "Recording is not available");
+          }
+          if (!cancelled) {
+            setSource(body.url);
+            setLoading(false);
+          }
+        })
+        .catch(() => fallback());
+
+      return () => { cancelled = true; };
+    }
+
+    fallback();
     return () => { cancelled = true; };
   }, [callId, src]);
 
