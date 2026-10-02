@@ -90,6 +90,8 @@ interface DialerSimulatorProps {
   // different device, instead of resetting every time like it used to.
   orgSettings?: OrganizationSettings;
   setOrgSettings?: React.Dispatch<React.SetStateAction<OrganizationSettings>>;
+  /** Only the customer Organization Admin may delete a campaign task. */
+  isOrganizationAdmin?: boolean;
   /** True only while the Voice Simulator/Dialer tab is the visible app tab. */
   isActive?: boolean;
 }
@@ -493,6 +495,76 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
   });
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) || tasks[0];
+
+  const [deleteTask, setDeleteTask] = useState<DialTask | null>(null);
+  const [deleteImpact, setDeleteImpact] = useState<{
+    task: { id: string; name: string; autoDialEnabled: boolean; currentProviderCallSid: string | null };
+    counts: { leads: number; enquiries: number; scheduledCallbacks: number; pipeline: number };
+  } | null>(null);
+  const [deleteOptions, setDeleteOptions] = useState({
+    deleteLeads: false,
+    deleteEnquiries: false,
+    deleteScheduledCallbacks: false,
+    removeFromPipeline: false,
+  });
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const openDeleteTask = async (task: DialTask) => {
+    if (!isOrganizationAdmin) return;
+    setDeleteTask(task);
+    setDeleteImpact(null);
+    setDeleteOptions({
+      deleteLeads: false,
+      deleteEnquiries: false,
+      deleteScheduledCallbacks: false,
+      removeFromPipeline: false,
+    });
+    try {
+      const res = await apiFetch(\`/api/dialer-tasks/\${encodeURIComponent(task.id)}/delete-impact\`);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || "Unable to load deletion details.");
+      setDeleteImpact(body);
+    } catch (err: any) {
+      setDeleteTask(null);
+      alert(err?.message || "Unable to load deletion details.");
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!deleteTask || !isOrganizationAdmin || !deleteImpact) return;
+    setDeleteBusy(true);
+    try {
+      const res = await apiFetch(\`/api/dialer-tasks/\${encodeURIComponent(deleteTask.id)}\`, {
+        method: "DELETE",
+        body: JSON.stringify({ confirm: true, ...deleteOptions }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || "Failed to delete campaign task.");
+
+      const remaining = tasks.filter((task) => task.id !== deleteTask.id);
+      setTasks(remaining);
+      if (selectedTaskId === deleteTask.id) setSelectedTaskId(remaining[0]?.id || "");
+
+      if (deleteOptions.deleteLeads) {
+        const deletedIds = new Set(deleteTask.leadIds || []);
+        setLeadsDatabase((prev) => prev.filter((lead) => !deletedIds.has(lead.id)));
+      } else if (deleteOptions.removeFromPipeline) {
+        const deletedIds = new Set(deleteTask.leadIds || []);
+        setLeadsDatabase((prev) => prev.map((lead) =>
+          deletedIds.has(lead.id) ? { ...lead, pipelineStage: "contact" } : lead
+        ));
+      }
+
+      setDeleteTask(null);
+      setDeleteImpact(null);
+      alert(\`Campaign task "\${deleteTask.name}" deleted successfully.\`);
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete campaign task.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
 
   // Deep-link from Leads / Scheduled Callbacks (?campaign=<dialer task id>).
   useEffect(() => {
@@ -2034,19 +2106,22 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                           className="w-full flex"
                           label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${effectiveStatus}`}
                         >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTaskId(task.id);
-                            setPlayingTapeId(null);
-                            setIsTapePlaying(false);
-                          }}
-                          className={`w-full text-left rounded-xl border transition-all p-3 group ${
+                        <div
+                          className={`w-full rounded-xl border transition-all p-3 group ${
                             isActive
                               ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 shadow-sm'
                               : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)]'
                           }`}
                         >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedTaskId(task.id);
+                              setPlayingTapeId(null);
+                              setIsTapePlaying(false);
+                            }}
+                            className="w-full text-left"
+                          >
                           <div className="flex items-start gap-2.5">
                             <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
                             <div className="min-w-0 flex-1">
@@ -2077,8 +2152,25 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                                 </span>
                               </div>
                             </div>
-                          </div>
-                        </button>
+                            </div>
+                          </button>
+                          {isOrganizationAdmin && (
+                            <div className="flex justify-end mt-1">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openDeleteTask(task);
+                                }}
+                                className="h-7 w-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                aria-label={`Delete campaign task ${task.name}`}
+                                title="Delete campaign task"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         </Tooltip>
                       );
                     })}
@@ -3117,6 +3209,107 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           </WizardFrame>
         );
       })()}
+
+
+      {deleteTask && (
+        <Modal
+          open
+          onClose={() => !deleteBusy && setDeleteTask(null)}
+          title="Delete Campaign Task"
+          subtitle="Choose what related CRM data should also be removed."
+          maxWidth="max-w-lg"
+        >
+          <div className="p-6 space-y-5">
+            <div className="rounded-xl border border-rose-200 bg-rose-50/70 dark:border-rose-500/20 dark:bg-rose-500/10 p-4">
+              <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                “{deleteTask.name}” will be permanently deleted.
+              </p>
+              <p className="text-xs text-rose-600/80 dark:text-rose-300/70 mt-1">
+                Call history is retained. Related data is changed only when you select it below.
+              </p>
+            </div>
+
+            {!deleteImpact ? (
+              <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                Loading deletion details…
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                <label className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-3 cursor-pointer hover:bg-[var(--bg-subtle)]">
+                  <input
+                    type="checkbox"
+                    checked={deleteOptions.deleteLeads}
+                    onChange={(e) => setDeleteOptions((prev) => ({
+                      ...prev,
+                      deleteLeads: e.target.checked,
+                      removeFromPipeline: e.target.checked ? false : prev.removeFromPipeline,
+                    }))}
+                    className="mt-0.5"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-[var(--text-primary)]">Delete associated leads</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] mt-0.5">{deleteImpact.counts.leads} lead{deleteImpact.counts.leads === 1 ? "" : "s"} will be deleted.</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-3 cursor-pointer hover:bg-[var(--bg-subtle)]">
+                  <input
+                    type="checkbox"
+                    checked={deleteOptions.deleteEnquiries}
+                    onChange={(e) => setDeleteOptions((prev) => ({ ...prev, deleteEnquiries: e.target.checked }))}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-xs font-semibold text-[var(--text-primary)]">Delete associated enquiries</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] mt-0.5">{deleteImpact.counts.enquiries} entr{deleteImpact.counts.enquiries === 1 ? "y" : "ies"} linked to this task’s calls.</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-3 cursor-pointer hover:bg-[var(--bg-subtle)]">
+                  <input
+                    type="checkbox"
+                    checked={deleteOptions.deleteScheduledCallbacks}
+                    onChange={(e) => setDeleteOptions((prev) => ({ ...prev, deleteScheduledCallbacks: e.target.checked }))}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-xs font-semibold text-[var(--text-primary)]">Cancel scheduled callbacks</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] mt-0.5">{deleteImpact.counts.scheduledCallbacks} scheduled callback{deleteImpact.counts.scheduledCallbacks === 1 ? "" : "s"} will be cancelled. Call history remains.</span>
+                  </span>
+                </label>
+
+                <label className={`flex items-start gap-3 rounded-xl border border-[var(--border)] p-3 ${deleteOptions.deleteLeads ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-[var(--bg-subtle)]"}`}>
+                  <input
+                    type="checkbox"
+                    disabled={deleteOptions.deleteLeads}
+                    checked={deleteOptions.deleteLeads ? false : deleteOptions.removeFromPipeline}
+                    onChange={(e) => setDeleteOptions((prev) => ({ ...prev, removeFromPipeline: e.target.checked }))}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-xs font-semibold text-[var(--text-primary)]">Remove associated leads from Pipeline</span>
+                    <span className="block text-[10px] text-[var(--text-muted)] mt-0.5">{deleteImpact.counts.pipeline} lead{deleteImpact.counts.pipeline === 1 ? "" : "s"} will be moved back to the Contact stage.</span>
+                  </span>
+                </label>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button type="button" variant="secondary" onClick={() => setDeleteTask(null)} disabled={deleteBusy}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={handleDeleteTask}
+                disabled={deleteBusy || !deleteImpact}
+              >
+                {deleteBusy ? "Deleting…" : "Delete Campaign Task"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showWizardContactModal && (
         <Modal
