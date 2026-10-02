@@ -512,13 +512,9 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
 
   const openDeleteTask = async (task: DialTask) => {
     if (!isOrganizationAdmin) return;
-    // The backend intentionally rejects deletion while the task is still
-    // auto-dialing or has an active provider call. Surface that state before
-    // opening the deletion dialog instead of producing a 409 after confirmation.
-    if ((task as any).autoDialEnabled || (task as any).currentProviderCallSid) {
-      alert('Stop the campaign first. A running campaign or active call cannot be deleted.');
-      return;
-    }
+    // Do not infer runtime state from the browser's task snapshot. The server
+    // owns auto-dial/call state and can clear stale markers after a call ends.
+    // Fetch deletion impact first and let that authoritative state decide.
     setDeleteTask(task);
     setDeleteImpact(null);
     setDeleteOptions({
