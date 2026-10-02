@@ -132,7 +132,7 @@ function PageWrap({
           </div>
         </div>
       </div>
-      <div className="p-8 pt-5">{children}</div>
+      <div className="px-8 pb-4 pt-5">{children}</div>
     </div>
   );
 }
