@@ -759,6 +759,7 @@ export default function App() {
             setMode={(m) => setActiveSubTab(m, 'dialer')}
             orgSettings={orgSettings}
             setOrgSettings={setOrgSettings}
+            isOrganizationAdmin={dbRole === 'Organization Admin'}
             isActive={activeTab === 'dialer'}
           />
         );
