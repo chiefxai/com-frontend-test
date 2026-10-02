@@ -46,10 +46,7 @@ export default function AudioPlayer({
     return SPEEDS.includes(saved) ? saved : 1;
   });
   const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(() => {
-    const saved = Number(localStorage.getItem('chiefvoice_audio_volume'));
-    return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : 1;
-  });
+  const [volume, setVolume] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
