@@ -124,15 +124,17 @@ function PageWrap({
         <span className="flex items-center gap-2 min-w-0">
           <span className="text-[10px] font-medium text-[var(--text-muted)]">Admin</span>
           <span className="text-[var(--border)]">/</span>
-          {backTo && (
-            <Link
-              to={backTo}
-              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-              aria-label={`Back to ${section}`}
-            >
-              ←
-            </Link>
-          )}
+          {backTo ? (
+            <>
+              <Link
+                to={backTo}
+                className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                {section}
+              </Link>
+              <span className="text-[var(--border)]">/</span>
+            </>
+          ) : null}
           <span className="truncate">{title}</span>
         </span>
       )
