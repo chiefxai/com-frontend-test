@@ -583,7 +583,8 @@ export default function App() {
   useDebouncedSync('/api/workflows/sync', workflows, hasLoaded);
 
   useEffect(() => { saveToStorage('chiefx_calllogs', callLogs); }, [callLogs]);
-  useDebouncedSync('/api/call-logs/sync', callLogs, hasLoaded);
+  // Call Logs are backend-authoritative. Do not replace/reinsert the whole
+  // call_logs table from browser state; enquiries and other records reference it.
 
   useEffect(() => { saveToStorage('chiefx_dialer_tasks', dialerTasks); }, [dialerTasks]);
 
