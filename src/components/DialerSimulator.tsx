@@ -991,8 +991,7 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
     setActiveQuestionIndex(0);
     setExtractedAnswers({});
     setPlayingTapeId(null);
-    setIsTapePlaying(false);
-
+    
     try {
       const assignedMember = selectedTask?.assignedTeamMemberId
         ? teamMembers.find((m) => m.id === selectedTask.assignedTeamMemberId)
@@ -2024,8 +2023,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                             onClick={() => {
                               setSelectedTaskId(task.id);
                               setPlayingTapeId(null);
-                              setIsTapePlaying(false);
-                            }}
+                                                          }}
                             className="w-full text-left"
                           >
                           <div className="flex items-start gap-2.5">
@@ -3275,8 +3273,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         open={tapeSlideOverOpen}
         onClose={() => {
           setPlayingTapeId(null);
-          setIsTapePlaying(false);
-        }}
+                  }}
         title={tapeDisplayTitle}
         subtitle={tapeDisplaySubtitle}
         maxWidth="max-w-2xl"
