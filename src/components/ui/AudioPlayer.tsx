@@ -53,7 +53,10 @@ export default function AudioPlayer({
   useEffect(() => {
     let cancelled = false;
 
-    if (!callId && src) {
+    // If the API already supplied a playable recording URL, use it.
+    // This preserves historical recordings and avoids an unnecessary
+    // call-id lookup. callId is used only when the page has no URL.
+    if (src) {
       setSource(src);
       setLoading(false);
       setError(null);
