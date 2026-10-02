@@ -60,7 +60,10 @@ export async function signInWithCognito(provider?: 'Google' | 'Facebook' | 'Amaz
 export async function getCognitoToken() {
   configureCognito();
   const session = await fetchAuthSession();
-  return session.tokens?.idToken?.toString() ?? session.tokens?.accessToken?.toString() ?? '';
+  // API authorization should use Cognito's access token. The ID token is for
+  // application identity/profile claims, while the access token is the token
+  // intended to authorize protected resources.
+  return session.tokens?.accessToken?.toString() ?? session.tokens?.idToken?.toString() ?? '';
 }
 
 export async function getCognitoUser() {
