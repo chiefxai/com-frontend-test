@@ -1552,7 +1552,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
 
         {/* Common recording player — resolves the private S3 URL through the backend. */}
         {activeTapeResult.recordingUrl && activeTapeCallId && (
-          <AudioPlayer callId={activeTapeCallId} />
+          <AudioPlayer callId={activeTapeCallId} src={activeTapeResult.recordingUrl} />
         )}
 
         {/* Cognitive Metrics */}
