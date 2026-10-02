@@ -335,6 +335,7 @@ export default function DialerSimulator({
   setMode,
   orgSettings,
   setOrgSettings,
+  isOrganizationAdmin = false,
   isActive = true
 }: DialerSimulatorProps) {
   const { showToast } = useToast();
