@@ -333,74 +333,55 @@ export default function CampaignView({
                         key={campaign.id}
                         type="button"
                         onClick={() => handleSelectCampaign(campaign)}
-                        className={`w-full text-left p-3 sm:p-3.5 transition-colors group ${
+                        className={`w-full text-left px-3 py-2.5 transition-colors group ${
                           isActive
                             ? 'bg-blue-50 border-l-2 border-blue-500 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.10)] dark:bg-blue-500/[0.08] dark:border-blue-400'
                             : 'hover:bg-[var(--bg-subtle)]/60'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-2.5">
                           <div
-                            className={`mt-0.5 h-8 w-8 rounded-[8px] flex items-center justify-center shrink-0 border ${
+                            className={`h-7 w-7 rounded-[7px] flex items-center justify-center shrink-0 border ${
                               isActive
                                 ? 'bg-blue-100 border-blue-300 text-blue-700 shadow-sm dark:bg-blue-500/15 dark:border-blue-400/30 dark:text-blue-300'
                                 : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)]'
                             }`}
                           >
-                            <Target className="h-4 w-4" />
+                            <Target className="h-3.5 w-3.5" />
                           </div>
 
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                              <h3 className="text-xs font-semibold text-[var(--text-primary)] truncate">
                                 {campaign.name}
                               </h3>
                               <span
-                                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-[10px] font-semibold ${statusStyles[campaign.status]}`}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] font-semibold ${statusStyles[campaign.status]}`}
                               >
                                 <span className={`h-1.5 w-1.5 rounded-full ${statusDotStyles[campaign.status]}`} />
                                 {campaign.status}
                               </span>
                             </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[var(--text-muted)]">
-                              <span className="flex items-center gap-1">
-                                <Layers3 className="h-3 w-3" />
-                                {getWorkflowName(campaign.workflowId)}
+                            <div className="mt-0.5 flex items-center justify-between gap-2 text-[9px] text-[var(--text-muted)]">
+                              <span>
+                                {campaign.calledLeads.toLocaleString()} dialed · {Math.max(0, campaign.totalLeads - campaign.calledLeads).toLocaleString()} pending
                               </span>
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {campaign.totalLeads.toLocaleString()} leads
-                              </span>
+                              <span className="font-semibold tabular-nums">{progress}%</span>
                             </div>
 
-                            <div className="mt-2.5 flex items-center gap-2.5">
-                              <div className="h-1 flex-1 max-w-[240px] overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                                 <div
                                   className="h-full rounded-full bg-[image:var(--brand-gradient)] transition-all"
                                   style={{ width: `${progress}%` }}
                                 />
                               </div>
-                              <span className="text-[10px] font-semibold text-[var(--text-secondary)] tabular-nums">
-                                {progress}%
-                              </span>
+                              <span className="hidden">{progress}%</span>
                             </div>
                           </div>
 
-                          <div className="hidden sm:flex items-center gap-3 shrink-0">
-                            <div className="text-right">
-                              <p className="text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
-                                Connect
-                              </p>
-                              <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">
-                                {connectRate}%
-                              </p>
-                            </div>
-
-                            <div
-                              className="flex items-center gap-1"
-                              onClick={(event) => event.stopPropagation()}
-                            >
+                          <div className="hidden sm:flex items-center gap-1 shrink-0" onClick={(event) => event.stopPropagation()}>
                               {campaign.status === 'Running' || campaign.status === 'Paused' ? (
                                 <button
                                   type="button"
@@ -412,7 +393,7 @@ export default function CampaignView({
                                       ? 'Pause campaign'
                                       : 'Resume campaign'
                                   }
-                                  className="h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
+                                  className="h-7 w-7 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
                                 >
                                   {campaign.status === 'Running' ? (
                                     <Pause className="h-3.5 w-3.5" />
@@ -421,7 +402,7 @@ export default function CampaignView({
                                   )}
                                 </button>
                               ) : null}
-                              <span className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)]">
+                              <span className="h-7 w-7 rounded-lg flex items-center justify-center text-[var(--text-muted)]">
                                 <MoreHorizontal className="h-4 w-4" />
                               </span>
                               <ChevronRight
