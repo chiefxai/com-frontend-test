@@ -210,17 +210,17 @@ export default function CreateWorkspacePage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Workspace Slug *</label>
-          <div className="relative">
-            <input
-              value={form.workspaceName}
-              readOnly
-              placeholder="acme-corp"
-              required
-              className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 pr-24 text-sm text-slate-600 cursor-not-allowed focus:outline-none"
-            />
-            <span className="absolute right-3 top-2.5 text-[10px] font-medium text-slate-400">Auto-generated</span>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="block text-xs font-medium text-slate-500">Workspace Slug *</label>
+            <span className="text-[10px] font-medium text-slate-400">Auto-generated</span>
           </div>
+          <input
+            value={form.workspaceName}
+            readOnly
+            placeholder="acme-corp"
+            required
+            className="w-full border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-600 cursor-not-allowed focus:outline-none"
+          />
           <p className="text-[10px] text-slate-400 mt-1">Generated automatically from the organization name.</p>
           </div>
           </div>
