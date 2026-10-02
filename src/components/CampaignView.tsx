@@ -333,21 +333,21 @@ export default function CampaignView({
                         key={campaign.id}
                         type="button"
                         onClick={() => handleSelectCampaign(campaign)}
-                        className={`w-full text-left p-4 sm:p-5 transition-colors group ${
+                        className={`w-full text-left p-3 sm:p-3.5 transition-colors group ${
                           isActive
                             ? 'bg-blue-50 border-l-2 border-blue-500 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.10)] dark:bg-blue-500/[0.08] dark:border-blue-400'
                             : 'hover:bg-[var(--bg-subtle)]/60'
                         }`}
                       >
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-start gap-3">
                           <div
-                            className={`mt-0.5 h-10 w-10 rounded-[9px] flex items-center justify-center shrink-0 border ${
+                            className={`mt-0.5 h-8 w-8 rounded-[8px] flex items-center justify-center shrink-0 border ${
                               isActive
                                 ? 'bg-blue-100 border-blue-300 text-blue-700 shadow-sm dark:bg-blue-500/15 dark:border-blue-400/30 dark:text-blue-300'
                                 : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)]'
                             }`}
                           >
-                            <Target className="h-4.5 w-4.5" />
+                            <Target className="h-4 w-4" />
                           </div>
 
                           <div className="min-w-0 flex-1">
@@ -363,23 +363,19 @@ export default function CampaignView({
                               </span>
                             </div>
 
-                            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-muted)]">
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[var(--text-muted)]">
                               <span className="flex items-center gap-1">
-                                <CalendarDays className="h-3.5 w-3.5" />
-                                {new Date(campaign.createdAt).toLocaleDateString()}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Layers3 className="h-3.5 w-3.5" />
+                                <Layers3 className="h-3 w-3" />
                                 {getWorkflowName(campaign.workflowId)}
                               </span>
                               <span className="flex items-center gap-1">
-                                <Users className="h-3.5 w-3.5" />
+                                <Users className="h-3 w-3" />
                                 {campaign.totalLeads.toLocaleString()} leads
                               </span>
                             </div>
 
-                            <div className="mt-4 flex items-center gap-3">
-                              <div className="h-1.5 flex-1 max-w-[280px] overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                            <div className="mt-2.5 flex items-center gap-2.5">
+                              <div className="h-1 flex-1 max-w-[240px] overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                                 <div
                                   className="h-full rounded-full bg-[image:var(--brand-gradient)] transition-all"
                                   style={{ width: `${progress}%` }}
@@ -391,12 +387,12 @@ export default function CampaignView({
                             </div>
                           </div>
 
-                          <div className="hidden sm:flex items-center gap-5 shrink-0">
+                          <div className="hidden sm:flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+                              <p className="text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
                                 Connect
                               </p>
-                              <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                              <p className="mt-0.5 text-xs font-semibold text-[var(--text-primary)]">
                                 {connectRate}%
                               </p>
                             </div>
