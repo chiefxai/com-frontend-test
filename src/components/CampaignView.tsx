@@ -321,13 +321,6 @@ export default function CampaignView({
                       campaign.totalLeads > 0
                         ? Math.round((campaign.calledLeads / campaign.totalLeads) * 100)
                         : 0;
-                    const connectRate =
-                      campaign.calledLeads > 0
-                        ? Math.round(
-                            (campaign.successfulCalls / campaign.calledLeads) * 100,
-                          )
-                        : 0;
-
                     return (
                       <button
                         key={campaign.id}
@@ -377,7 +370,6 @@ export default function CampaignView({
                                   style={{ width: `${progress}%` }}
                                 />
                               </div>
-                              <span className="hidden">{progress}%</span>
                             </div>
                           </div>
 
@@ -402,9 +394,6 @@ export default function CampaignView({
                                   )}
                                 </button>
                               ) : null}
-                              <span className="h-7 w-7 rounded-lg flex items-center justify-center text-[var(--text-muted)]">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </span>
                               <ChevronRight
                                 className={`h-4 w-4 transition-transform ${
                                   isActive
