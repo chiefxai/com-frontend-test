@@ -40,9 +40,9 @@ export default function AudioPlayer({
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(() => {\n    const saved = Number(localStorage.getItem('chiefvoice_audio_speed'));\n    return SPEEDS.includes(saved) ? saved : 1;\n  });
   const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(() => {\n    const saved = Number(localStorage.getItem('chiefvoice_audio_volume'));\n    return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : 1;\n  });
 
   useEffect(() => {
     let cancelled = false;
