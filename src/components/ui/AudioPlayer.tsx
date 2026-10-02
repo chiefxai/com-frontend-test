@@ -249,7 +249,7 @@ export default function AudioPlayer({
               type="button"
               role="menuitem"
               onClick={() => setSpeed(value)}
-              className={`w-full px-2 py-1.5 rounded text-xs text-left hover:bg-[var(--bg-muted)] ${speed === value ? 'font-bold text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
+              className={`w-full px-2 py-1.5 rounded text-xs text-left hover:bg-[var(--bg-muted)] ${speed === value ? 'bg-[var(--bg-muted)] font-bold text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
             >
               {value}×
             </button>
