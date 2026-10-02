@@ -1,7 +1,6 @@
 import { Amplify } from 'aws-amplify';
 import {
   fetchAuthSession,
-  fetchUserAttributes,
   getCurrentUser,
   signInWithRedirect,
   signOut,
@@ -35,7 +34,7 @@ export function configureCognito() {
             domain: String(config.domain).trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
             // Request the OIDC profile scope so Cognito can return profile
             // claims such as name/given_name/family_name in the ID token.
-            scopes: ['openid', 'email', 'profile', 'aws.cognito.signin.user.admin'],
+            scopes: ['openid', 'email', 'profile'],
             redirectSignIn: [String(config.redirectSignIn).trim()],
             redirectSignOut: [String(config.redirectSignOut).trim()],
             responseType: 'code',
@@ -77,11 +76,11 @@ export async function getCognitoUser() {
 
 export async function getCognitoProfile() {
   configureCognito();
-
   try {
-    const attributes = await fetchUserAttributes();
+    const session = await fetchAuthSession();
+    const payload = session.tokens?.idToken?.payload ?? {};
     return Object.fromEntries(
-      Object.entries(attributes).filter(([, value]) => value != null && value !== ''),
+      Object.entries(payload).filter(([, value]) => value != null && value !== ''),
     );
   } catch {
     return {};
