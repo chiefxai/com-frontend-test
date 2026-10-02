@@ -53,7 +53,7 @@ export default function CommonDropdown({
               : trigger.right - panel.width;
       left = Math.max(margin, Math.min(left, window.innerWidth - panel.width - margin));
       top = Math.max(margin, Math.min(top, window.innerHeight - panel.height - margin));
-      setStyle({ position: 'fixed', top, left, width: width === 'auto' ? undefined : width, maxHeight });
+      setStyle({ position: 'fixed', top, left });
       setPositioned(true);
     };
     update();
@@ -93,6 +93,8 @@ export default function CommonDropdown({
             position: 'fixed',
             top: 0,
             left: 0,
+            width: width === 'auto' ? undefined : width,
+            maxHeight,
             ...style,
             visibility: positioned ? 'visible' : 'hidden',
             pointerEvents: positioned ? 'auto' : 'none',
