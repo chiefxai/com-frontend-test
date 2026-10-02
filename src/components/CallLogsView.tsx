@@ -199,7 +199,7 @@ export default function CallLogsView({ callLogs, costPerMinuteInr, leads = [] }:
 
             {/* Recording */}
             {selected.recordingUrl && (
-              <AudioPlayer callId={selected.id} src={selected.recordingUrl} />
+              <AudioPlayer callId={selected.id} />
             )}
 
             {/* Meta row */}
