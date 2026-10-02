@@ -46,6 +46,7 @@ export default function AudioPlayer({
     return SPEEDS.includes(saved) ? saved : 1;
   });
   const [muted, setMuted] = useState(false);
+  const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const [volume, setVolume] = useState(1);
 
   useEffect(() => {
@@ -231,7 +232,8 @@ export default function AudioPlayer({
           align="right"
           offset={6}
           width="96px"
-          closeOnSelect
+          open={speedMenuOpen}
+          onOpenChange={setSpeedMenuOpen}
           contentClassName="p-1"
           trigger={
             <span
@@ -248,7 +250,10 @@ export default function AudioPlayer({
               key={value}
               type="button"
               role="menuitem"
-              onClick={() => setSpeed(value)}
+              onClick={() => {
+                setSpeed(value);
+                setSpeedMenuOpen(false);
+              }}
               className={`w-full px-2 py-1.5 rounded text-xs text-left hover:bg-[var(--bg-muted)] ${speed === value ? 'bg-[var(--bg-muted)] font-bold text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
             >
               {value}×
