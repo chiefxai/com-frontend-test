@@ -600,7 +600,7 @@ export default function App() {
     const id = setInterval(() => { refreshDialerTasks(); }, 8000);
     return () => clearInterval(id);
   }, [hasActiveAutoDial, refreshDialerTasks]);
-  useDebouncedSync('/api/dialer-tasks/sync', dialerTasks, hasLoaded);
+  // Dialer tasks are server-authoritative; writes use the dedicated create/patch APIs.
 
   useEffect(() => { saveToStorage('chiefx_loans', loans); }, [loans]);
   useDebouncedSync('/api/loans/sync', loans, hasLoaded);
