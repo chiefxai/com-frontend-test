@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import AudioPlayer from './ui/AudioPlayer';
 import { useSearchParams } from 'react-router-dom';
 import {
   PhoneCall,
@@ -54,7 +55,7 @@ import SlideOver from './ui/SlideOver';
 import Badge from './ui/Badge';
 import Tooltip from './ui/Tooltip';
 import VoiceSimulatorWorkspace from './VoiceSimulatorWorkspace';
-import { apiFetch, getPlayableRecordingUrl } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { callCostInr, formatInr } from '../lib/pricing';
 import { useToast } from './ui/Toast';
 
@@ -679,11 +680,6 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
   // Audio Playback states for Call Tape (Supports both Outbound and Inbound recordings)
   const [playingTapeId, setPlayingTapeId] = useState<string | null>(null);
   const [playingTapeType, setPlayingTapeType] = useState<'outbound' | 'inbound'>('outbound');
-  const [isTapePlaying, setIsTapePlaying] = useState(false);
-  const [tapeProgress, setTapeProgress] = useState(0);
-  const [tapeSpeed, setTapeSpeed] = useState<number>(1);
-  const [tapeDuration, setTapeDuration] = useState<number>(0);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   // Whether the caller in the tape currently open raised an enquiry
   // mid-call, and its status — fetched per call, not bundled onto the
@@ -785,31 +781,6 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
       chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [transcript.length, isAiResponding]);
-
-  // Real audio playback for the call recording <audio> element — mirrors
-  // isTapePlaying/tapeProgress/tapeSpeed off the actual element instead of
-  // a fake setInterval animation, so the player genuinely plays the
-  // uploaded recording rather than just simulating a moving progress bar.
-  useEffect(() => {
-    const el = audioElRef.current;
-    if (!el) return;
-    if (isTapePlaying) {
-      el.play().catch(() => setIsTapePlaying(false));
-    } else {
-      el.pause();
-    }
-  }, [isTapePlaying, playingTapeId]);
-
-  useEffect(() => {
-    const el = audioElRef.current;
-    if (el) el.playbackRate = tapeSpeed;
-  }, [tapeSpeed]);
-
-  const formatTime = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const secs = sec % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
     // Wizard: submit final task
   const handleCreateTask = async () => {
@@ -1340,28 +1311,11 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
   const handleOpenTapePlayer = (id: string, type: 'outbound' | 'inbound' = 'outbound') => {
     setPlayingTapeId(id);
     setPlayingTapeType(type);
-    setTapeProgress(0);
-    setTapeDuration(0);
-    // Open the player paused — it used to auto-play the recording the
-    // instant the sidebar opened, before the user had asked for it.
-    setIsTapePlaying(false);
   };
 
   const activeTapeResult = playingTapeType === 'inbound'
     ? realInboundCallLogs.find((log) => log.id === playingTapeId)
     : selectedTask?.callResults[playingTapeId || ''];
-
-  // Inbound tape entries are real CallLog rows (have a stable call_logs
-  // id), so Vobiz-hosted recordings can go through the authenticated
-  // proxy (see getPlayableRecordingUrl — media.vobiz.ai requires headers
-  // a plain <audio src> can't send). Outbound dialer-task results don't
-  // carry that id, so those still use the raw URL — a pre-existing gap,
-  // not something introduced here.
-  const playableTapeRecordingUrl = activeTapeResult?.recordingUrl
-    ? (playingTapeType === 'inbound'
-        ? getPlayableRecordingUrl((activeTapeResult as CallLog).id, activeTapeResult.recordingUrl)
-        : activeTapeResult.recordingUrl)
-    : undefined;
 
   const activeTapeLead = playingTapeType === 'inbound'
     ? null
@@ -1596,62 +1550,10 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           )}
         </div>
 
-        {/* Recording player */}
-        <div className="bg-[var(--bg-subtle)] border border-[var(--border)] rounded-xl p-3 flex items-center gap-3">
-          {playableTapeRecordingUrl && (
-            <audio
-              ref={audioElRef}
-              src={playableTapeRecordingUrl}
-              preload="metadata"
-              onLoadedMetadata={(e) => setTapeDuration(e.currentTarget.duration || 0)}
-              onTimeUpdate={(e) => {
-                const el = e.currentTarget;
-                if (el.duration) setTapeProgress((el.currentTime / el.duration) * 100);
-              }}
-              onEnded={() => {
-                setIsTapePlaying(false);
-                setTapeProgress(100);
-              }}
-              style={{ display: 'none' }}
-            />
-          )}
-          <button
-            onClick={() => setIsTapePlaying(!isTapePlaying)}
-            disabled={!playableTapeRecordingUrl}
-            className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-600/10"
-            title={!playableTapeRecordingUrl ? 'No recording available' : isTapePlaying ? 'Pause Tape' : 'Play Tape'}
-          >
-            {isTapePlaying ? (
-              <Pause className="h-4 w-4 fill-white text-white" />
-            ) : (
-              <Play className="h-4 w-4 fill-white text-white ml-0.5" />
-            )}
-          </button>
-          <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-muted)]">
-              <span className="truncate font-semibold text-blue-600">{filename}</span>
-              <span className="shrink-0 font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {activeTapeResult.recordingUrl
-                  ? `${formatTime(Math.round(((tapeDuration || activeTapeResult.duration) * tapeProgress) / 100))} / ${formatTime(Math.round(tapeDuration || activeTapeResult.duration))}`
-                  : 'No recording available'}
-              </span>
-            </div>
-            <div className="relative h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-1.5 transition-all" style={{ width: `${tapeProgress}%` }}></div>
-            </div>
-          </div>
-          <div className="flex border border-[var(--border)] bg-[var(--bg-surface)] rounded-lg overflow-hidden text-[10px] h-8 items-center shrink-0">
-            {[1, 1.5, 2].map((sp) => (
-              <button
-                key={sp}
-                onClick={() => setTapeSpeed(sp)}
-                className={`px-2 h-full font-mono font-bold ${tapeSpeed === sp ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'} cursor-pointer transition-all`}
-              >
-                {sp}x
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Common recording player — resolves the private S3 URL through the backend. */}
+        {activeTapeResult.recordingUrl && activeTapeCallId && (
+          <AudioPlayer callId={activeTapeCallId} />
+        )}
 
         {/* Cognitive Metrics */}
         <div className="grid grid-cols-3 gap-2">
