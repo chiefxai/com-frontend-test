@@ -370,7 +370,6 @@ export default function CampaignView({
                                 : 'text-[var(--text-muted)] group-hover:translate-x-0.5'
                             }`}
                           />
-                          </div>
                         </div>
                       </button>
                     );
