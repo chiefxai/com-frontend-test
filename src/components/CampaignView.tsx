@@ -326,23 +326,13 @@ export default function CampaignView({
                         key={campaign.id}
                         type="button"
                         onClick={() => handleSelectCampaign(campaign)}
-                        className={`w-full text-left px-3 py-2.5 transition-colors group ${
+                        className={`w-full text-left px-3 py-2 transition-colors group ${
                           isActive
                             ? 'bg-blue-50 border-l-2 border-blue-500 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.10)] dark:bg-blue-500/[0.08] dark:border-blue-400'
                             : 'hover:bg-[var(--bg-subtle)]/60'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`h-7 w-7 rounded-[7px] flex items-center justify-center shrink-0 border ${
-                              isActive
-                                ? 'bg-blue-100 border-blue-300 text-blue-700 shadow-sm dark:bg-blue-500/15 dark:border-blue-400/30 dark:text-blue-300'
-                                : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)]'
-                            }`}
-                          >
-                            <Target className="h-3.5 w-3.5" />
-                          </div>
-
+                        <div className="flex items-center gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="text-xs font-semibold text-[var(--text-primary)] truncate">
@@ -363,8 +353,8 @@ export default function CampaignView({
                               <span className="font-semibold tabular-nums">{progress}%</span>
                             </div>
 
-                            <div className="mt-1.5 flex items-center gap-2">
-                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                                 <div
                                   className="h-full rounded-full bg-[image:var(--brand-gradient)] transition-all"
                                   style={{ width: `${progress}%` }}
@@ -373,35 +363,13 @@ export default function CampaignView({
                             </div>
                           </div>
 
-                          <div className="hidden sm:flex items-center gap-1 shrink-0" onClick={(event) => event.stopPropagation()}>
-                              {campaign.status === 'Running' || campaign.status === 'Paused' ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleToggleStatus(campaign.id, campaign.status)
-                                  }
-                                  aria-label={
-                                    campaign.status === 'Running'
-                                      ? 'Pause campaign'
-                                      : 'Resume campaign'
-                                  }
-                                  className="h-7 w-7 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
-                                >
-                                  {campaign.status === 'Running' ? (
-                                    <Pause className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <Play className="h-3.5 w-3.5" />
-                                  )}
-                                </button>
-                              ) : null}
-                              <ChevronRight
-                                className={`h-4 w-4 transition-transform ${
-                                  isActive
-                                    ? 'text-blue-500 translate-x-0.5'
-                                    : 'text-[var(--text-muted)] group-hover:translate-x-0.5'
-                                }`}
-                              />
-                            </div>
+                          <ChevronRight
+                            className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                              isActive
+                                ? 'text-blue-500 translate-x-0.5'
+                                : 'text-[var(--text-muted)] group-hover:translate-x-0.5'
+                            }`}
+                          />
                           </div>
                         </div>
                       </button>
