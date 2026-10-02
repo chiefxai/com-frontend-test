@@ -96,6 +96,16 @@ export default function ContactDirectoryView({
   useEffect(loadGroups, []);
 
   const refreshLeads = useRefresh();
+
+  // Contact Directory must always read the latest server state when this page
+  // becomes active. The global app state can legitimately be populated before
+  // the organization/primary-object context is resolved, especially after a
+  // login refresh. Re-running the app refresh when the primary object changes
+  // prevents the directory from rendering a stale/empty contact list.
+  useEffect(() => {
+    refreshLeads?.();
+  }, [refreshLeads, primaryObjectKey]);
+
   const handlePageRefresh = () => { loadGroups(); refreshLeads?.(); };
 
   const groupNameById = (id: string) => contactGroups.find(g => g.id === id)?.name || 'Unknown Group';
