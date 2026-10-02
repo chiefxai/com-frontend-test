@@ -4,6 +4,7 @@ import {
   Gauge, Loader2, AlertCircle,
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import CommonDropdown from './CommonDropdown';
 
 interface AudioPlayerProps {
   /** Internal call id used to resolve a private S3 recording through the API. */
@@ -228,28 +229,35 @@ export default function AudioPlayer({
           </>
         )}
 
-        <div className="relative group">
-          <button
-            type="button"
-            aria-label="Playback speed"
-            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-muted)]"
-          >
-            <Gauge className="h-3.5 w-3.5" />
-            {speed}×
-          </button>
-          <div className="hidden group-hover:flex absolute right-0 bottom-full mb-1 z-20 flex-col min-w-[78px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-lg p-1">
-            {SPEEDS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setSpeed(value)}
-                className={`px-2 py-1.5 rounded text-xs text-left hover:bg-[var(--bg-muted)] ${speed === value ? 'font-bold text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
-              >
-                {value}×
-              </button>
-            ))}
-          </div>
-        </div>
+        <CommonDropdown
+          side="auto"
+          align="right"
+          offset={6}
+          width="96px"
+          closeOnSelect
+          contentClassName="p-1"
+          trigger={
+            <span
+              aria-label="Playback speed"
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-muted)]"
+            >
+              <Gauge className="h-3.5 w-3.5" />
+              {speed}×
+            </span>
+          }
+        >
+          {SPEEDS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="menuitem"
+              onClick={() => setSpeed(value)}
+              className={`w-full px-2 py-1.5 rounded text-xs text-left hover:bg-[var(--bg-muted)] ${speed === value ? 'font-bold text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
+            >
+              {value}×
+            </button>
+          ))}
+        </CommonDropdown>
       </div>
     </div>
   );
