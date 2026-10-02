@@ -11,6 +11,8 @@ import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
+import PageHeaderBar from '../components/ui/PageHeaderBar';
+import { PageHeaderProvider, usePageHeaderContext } from '../lib/PageHeaderContext';
 import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
@@ -77,7 +79,10 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           </div>
           <ProfileMenu kcUser={{ name: email, email }} dbRole="Platform Admin" logout={onLogout} />
         </header>
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <PageHeaderProvider>
+            <PageHeaderBar />
+            <div className="flex-1 min-h-0 overflow-y-auto">
         <Routes>
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview"      element={<PageWrap title="Overview" section="Overview"><OverviewPage /></PageWrap>} />
@@ -91,6 +96,8 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           <Route path="prompts"       element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />
           <Route path="*"             element={<Navigate to="overview" replace />} />
         </Routes>
+            </div>
+          </PageHeaderProvider>
         </div>
       </main>
     </div>
@@ -108,31 +115,29 @@ function PageWrap({
   backTo?: string;
   children: React.ReactNode;
 }) {
-  return (
-    <div className="admin-page">
-      <div className="border-b border-[var(--border)] bg-[var(--header-bg)]">
-        <div className="px-8 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-[10px] font-medium text-[var(--text-muted)]">
-                <span>Admin</span>
-                <span className="text-[var(--border)]">/</span>
-                {backTo && (
-                  <Link
-                    to={backTo}
-                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-                    aria-label={`Back to ${section}`}
-                  >
-                    ←
-                  </Link>
-                )}
-                <span className="truncate text-[var(--text-secondary)]">{title}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="px-8 pb-4 pt-5">{children}</div>
-    </div>
-  );
+  const headerCtx = usePageHeaderContext();
+
+  React.useEffect(() => {
+    if (!headerCtx) return;
+    headerCtx.setHeader({
+      title: (
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] font-medium text-[var(--text-muted)]">Admin</span>
+          <span className="text-[var(--border)]">/</span>
+          {backTo && (
+            <Link
+              to={backTo}
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+              aria-label={`Back to ${section}`}
+            >
+              ←
+            </Link>
+          )}
+          <span className="truncate">{title}</span>
+        </span>
+      )
+    });
+  }, [headerCtx?.setHeader, title, section, backTo]);
+
+  return <div className="admin-page px-8 pb-4 pt-5">{children}</div>;
 }
