@@ -609,8 +609,10 @@ export default function App() {
   const ADMIN_ROLE_SET = new Set(['Organization Admin', 'Super Admin']);
   const isAdmin = ADMIN_ROLE_SET.has(dbRole || kcUser?.role || '');
 
+  // Team membership is persisted through the dedicated /api/settings/team CRUD endpoints.
+  // There is intentionally no whole-list /sync endpoint; keeping this hook would
+  // continuously POST to a nonexistent route and produce a 500 on every admin session.
   useEffect(() => { saveToStorage('chiefx_team', teamMembers); }, [teamMembers]);
-  useDebouncedSync('/api/settings/team/sync', teamMembers, hasLoaded && isAdmin);
 
   useEffect(() => { saveToStorage('chiefx_question_flows', questionFlows); }, [questionFlows]);
   useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded);
