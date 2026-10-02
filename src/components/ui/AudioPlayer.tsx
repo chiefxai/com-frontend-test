@@ -47,7 +47,7 @@ export default function AudioPlayer({
   useEffect(() => {
     let cancelled = false;
 
-    if (src) {
+    if (!callId && src) {
       setSource(src);
       setLoading(false);
       setError(null);
