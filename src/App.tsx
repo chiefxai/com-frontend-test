@@ -518,12 +518,16 @@ export default function App() {
 
   // Redirect if a non-lending org lands on a lending-only route or a retired route.
   useEffect(() => {
-    const isLending = !orgSettings.industry || orgSettings.industry === 'lending';
-    const lendingOnlyTabs = new Set(['loans']);
-    if ((!isLending && lendingOnlyTabs.has(activeTab)) || activeTab === 'objects') {
+    // Industry modules, not industry-name conditionals, decide whether a
+    // domain-specific route exists for this organization.
+    const industryTabIds = new Set(
+      effectiveIndustryProfile.modules.map((module) => module.tabId).filter(Boolean)
+    );
+    const isDomainRoute = activeTab === 'loans' || activeTab === 'objects';
+    if (isDomainRoute && !industryTabIds.has(activeTab)) {
       navigate('/', { replace: true });
     }
-  }, [orgSettings.industry, activeTab]);
+  }, [effectiveIndustryProfile, activeTab]);
 
   useEffect(() => {
     saveToStorage('chiefx_leads', leads);
