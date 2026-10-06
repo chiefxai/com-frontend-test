@@ -81,7 +81,9 @@ export const INDUSTRY_PROFILES: Record<string, IndustryProfile> = {
       enquiry: { singular: 'Enquiry', plural: 'Enquiries' },
       deal: { singular: 'Loan', plural: 'Loans' },
     },
-    modules: [],
+    modules: [
+      { key: 'loan_lifecycle', label: 'Loan Lifecycle', route: '/loans', tabId: 'loans', iconKey: 'layers', domainSpecific: true },
+    ],
     pipeline: {
       key: 'lending', label: 'Loan Pipeline',
       stages: [
@@ -135,7 +137,6 @@ export const INDUSTRY_PROFILES: Record<string, IndustryProfile> = {
         { key: 'lost', label: 'Lost', order: 120, terminal: 'lost' },
       ],
     },
-    domainModel: CORE_DOMAIN_MODEL,
     domainModel: AUTOMOTIVE_DOMAIN_MODEL,
     metadata: {
       objectKeys: {
