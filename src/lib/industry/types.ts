@@ -37,6 +37,16 @@ export interface IndustryProfile {
   metadata?: Record<string, unknown>;
 }
 
+export interface RemoteIndustryConfig {
+  industry: IndustryKey;
+  businessType?: BusinessTypeKey | null;
+  labels: IndustryProfile['labels'];
+  modules: IndustryModuleDefinition[];
+  pipeline: IndustryProfile['pipeline'];
+  domainObjects: Array<Record<string, unknown>>;
+  label?: string;
+}
+
 export interface ResolvedIndustryContext {
   industry: IndustryKey;
   businessType?: BusinessTypeKey;
