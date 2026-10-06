@@ -12,6 +12,8 @@ export interface IndustryModuleDefinition {
   label: string;
   description?: string;
   route: string;
+  tabId?: string;
+  iconKey?: string;
   featureFlag?: string;
   domainSpecific?: boolean;
 }
@@ -31,6 +33,7 @@ export interface IndustryProfile {
   labels: Record<IndustryLabelKey, IndustryLabel>;
   modules: IndustryModuleDefinition[];
   pipeline: { key: string; label: string; stages: IndustryPipelineStage[] };
+  domainModel?: import('./domain').IndustryDomainModel;
   metadata?: Record<string, unknown>;
 }
 
