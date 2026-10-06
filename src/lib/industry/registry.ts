@@ -1,4 +1,70 @@
 import type { IndustryProfile } from './types';
+import type { IndustryDomainModel } from './domain';
+
+export const CORE_DOMAIN_MODEL: IndustryDomainModel = {
+  objects: [
+    { key: 'contact', label: 'Contact', pluralLabel: 'Contacts', searchable: true, auditable: true, primary: true, fields: [
+      { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'phone', label: 'Phone', type: 'phone' },
+      { key: 'email', label: 'Email', type: 'email' },
+    ] },
+    { key: 'campaign', label: 'Campaign', pluralLabel: 'Campaigns', auditable: true, fields: [
+      { key: 'name', label: 'Name', type: 'text', required: true },
+      { key: 'status', label: 'Status', type: 'select' },
+    ] },
+    { key: 'call', label: 'Call', pluralLabel: 'Calls', auditable: true, fields: [
+      { key: 'direction', label: 'Direction', type: 'select', options: ['inbound', 'outbound'] },
+      { key: 'duration', label: 'Duration', type: 'number' },
+    ] },
+  ],
+  relationships: [
+    { from: 'campaign', to: 'contact', type: 'many_to_many', label: 'targets' },
+    { from: 'call', to: 'contact', type: 'many_to_one', label: 'contact' },
+  ],
+};
+
+export const AUTOMOTIVE_DOMAIN_MODEL: IndustryDomainModel = {
+  ...CORE_DOMAIN_MODEL,
+  objects: [
+    ...CORE_DOMAIN_MODEL.objects,
+    { key: 'vehicle', label: 'Vehicle', pluralLabel: 'Vehicles', searchable: true, auditable: true, fields: [
+      { key: 'vin', label: 'VIN', type: 'text' },
+      { key: 'make', label: 'Make', type: 'text' },
+      { key: 'model', label: 'Model', type: 'text' },
+      { key: 'year', label: 'Year', type: 'number' },
+      { key: 'price', label: 'Price', type: 'currency' },
+      { key: 'status', label: 'Status', type: 'select', options: ['available', 'reserved', 'sold'] },
+    ] },
+    { key: 'test_drive', label: 'Test Drive', pluralLabel: 'Test Drives', auditable: true, fields: [
+      { key: 'scheduledAt', label: 'Scheduled At', type: 'datetime', required: true },
+      { key: 'vehicleId', label: 'Vehicle', type: 'relation', relationObjectKey: 'vehicle' },
+      { key: 'contactId', label: 'Customer', type: 'relation', relationObjectKey: 'contact' },
+    ] },
+    { key: 'vehicle_quotation', label: 'Quotation', pluralLabel: 'Quotations', auditable: true, fields: [
+      { key: 'vehicleId', label: 'Vehicle', type: 'relation', relationObjectKey: 'vehicle' },
+      { key: 'amount', label: 'Amount', type: 'currency' },
+    ] },
+    { key: 'vehicle_booking', label: 'Booking', pluralLabel: 'Bookings', auditable: true, fields: [
+      { key: 'vehicleId', label: 'Vehicle', type: 'relation', relationObjectKey: 'vehicle' },
+      { key: 'contactId', label: 'Customer', type: 'relation', relationObjectKey: 'contact' },
+    ] },
+    { key: 'vehicle_sale', label: 'Vehicle Sale', pluralLabel: 'Vehicle Sales', auditable: true, fields: [
+      { key: 'vehicleId', label: 'Vehicle', type: 'relation', relationObjectKey: 'vehicle' },
+      { key: 'contactId', label: 'Customer', type: 'relation', relationObjectKey: 'contact' },
+      { key: 'amount', label: 'Sale Amount', type: 'currency' },
+    ] },
+  ],
+  relationships: [
+    ...CORE_DOMAIN_MODEL.relationships,
+    { from: 'test_drive', to: 'vehicle', type: 'many_to_one' },
+    { from: 'test_drive', to: 'contact', type: 'many_to_one' },
+    { from: 'vehicle_quotation', to: 'vehicle', type: 'many_to_one' },
+    { from: 'vehicle_booking', to: 'vehicle', type: 'many_to_one' },
+    { from: 'vehicle_booking', to: 'contact', type: 'many_to_one' },
+    { from: 'vehicle_sale', to: 'vehicle', type: 'many_to_one' },
+    { from: 'vehicle_sale', to: 'contact', type: 'many_to_one' },
+  ],
+};
 
 export const INDUSTRY_PROFILES: Record<string, IndustryProfile> = {
   lending: {
@@ -69,6 +135,8 @@ export const INDUSTRY_PROFILES: Record<string, IndustryProfile> = {
         { key: 'lost', label: 'Lost', order: 120, terminal: 'lost' },
       ],
     },
+    domainModel: CORE_DOMAIN_MODEL,
+    domainModel: AUTOMOTIVE_DOMAIN_MODEL,
     metadata: {
       objectKeys: {
         customer: 'contact', enquiry: 'vehicle_enquiry', vehicle: 'vehicle',
