@@ -3,7 +3,7 @@ import { resolveIndustryContext } from './resolve';
 import type { OrganizationSettings } from '../../types';
 
 export function useIndustry(
-  settings?: Pick<OrganizationSettings, 'industry' | 'businessType'> | null,
+  settings?: Partial<Pick<OrganizationSettings, 'industry' | 'businessType'>> | null,
 ) {
   return useMemo(
     () => resolveIndustryContext(settings),
