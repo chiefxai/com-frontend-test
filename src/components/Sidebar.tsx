@@ -35,6 +35,7 @@ import {
 import { UserRole } from '../types';
 import { useFeatureFlags } from '../features/feature-flags/FeatureFlagContext';
 import { TAB_TO_FLAG } from '../features/feature-flags/registry';
+import { useIndustry } from '../lib/industry';
 
 interface SidebarProps {
   activeTab: string;
@@ -204,7 +205,8 @@ export default function Sidebar({
   organizationName,
   industry,
 }: SidebarProps) {
-  const isLending = !industry || industry === 'lending';
+  const industryContext = useIndustry({ industry });
+  const isLending = industryContext.industry === 'lending';
   const isAdmin = userRole === 'Organization Admin' || userRole === 'Super Admin';
   const { isEnabled } = useFeatureFlags();
 
@@ -250,19 +252,19 @@ export default function Sidebar({
     });
   };
 
-  const tagline = INDUSTRY_TAGLINES[industry] || 'AI CRM Platform';
+  const tagline = industryContext.profile.tagline;
 
   const allMenuItems = [
-    { id: 'leads',        label: 'Leads',             icon: UserPlus },
-    { id: 'pipeline',     label: 'Pipeline',          icon: Target },
-    { id: 'contacts',     label: 'Contact Directory', icon: Contact },
+    { id: 'leads',        label: industryContext.labels.lead.plural,             icon: UserPlus },
+    { id: 'pipeline',     label: industryContext.labels.pipeline.plural,          icon: Target },
+    { id: 'contacts',     label: `${industryContext.labels.contact.plural} Directory`, icon: Contact },
     { id: 'workflows',    label: 'Workflow Builder',  icon: GitBranch },
     { id: 'call-logs',    label: 'Call Logs',         icon: History },
     { id: 'inbox',        label: 'Unified Inbox',     icon: Inbox },
     { id: 'agent-studio', label: 'Agent Studio',      icon: Sparkles },
     { id: 'compliance',   label: 'Compliance',        icon: ShieldBan },
     { id: 'knowledge',    label: 'Knowledge Base',    icon: BookOpen },
-    { id: 'enquiries',    label: 'Enquiries',         icon: MessageCircleQuestion },
+    { id: 'enquiries',    label: industryContext.labels.enquiry.plural,         icon: MessageCircleQuestion },
     { id: 'audit-log',    label: 'Audit Log',         icon: ScrollText },
     { id: 'loans',        label: 'Loan Lifecycle',    icon: Layers },
   ];
