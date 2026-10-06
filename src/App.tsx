@@ -22,6 +22,7 @@ import {
   UserRole
 } from './types';
 import { useAuth } from './features/auth/AuthProvider';
+import { resolveIndustryContext } from './lib/industry';
 
 // Placeholder shown only until the real org settings arrive from the backend.
 const EMPTY_ORG_SETTINGS: OrganizationSettings = {
@@ -288,6 +289,7 @@ export default function App() {
     loadFromStorage<QuestionFlow[]>('chiefx_question_flows', [])
   );
   const { isEnabled } = useFeatureFlags();
+  const industryContext = resolveIndustryContext(orgSettings);
 
   // Live call notifications — set when a real inbound/outbound call is in
   // progress (from the org-scoped /api/logs-stream SSE connection below),
@@ -718,8 +720,8 @@ export default function App() {
           <ContactDirectoryView
             leads={leads}
             setLeads={setLeads}
-            industry={orgSettings.industry}
-        businessType={orgSettings.businessType}
+            industry={industryContext.industry}
+        businessType={industryContext.businessType}
             callLogs={callLogs}
             dialerTasks={dialerTasks}
             primaryObjectKey={primaryObject?.key}
