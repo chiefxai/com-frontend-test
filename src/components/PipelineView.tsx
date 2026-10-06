@@ -89,6 +89,7 @@ function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[], campai
 
 export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks, industryProfile }: PipelineViewProps) {
   const { stages } = usePipelineStages();
+  const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || labelForStage(key);
   const opportunityStageKey = industryProfile?.pipeline.stages.find(s => s.key === 'opportunity')?.key || industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || 'opportunity';
   const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || 'client';
   const [subTab, setSubTab] = React.useState<SubTab>('ongoing');
@@ -163,7 +164,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
     { key: 'phone', label: 'Phone', getValue: (l) => formatPhone(l.phone) || l.phone },
     { key: 'email', label: 'Email', getValue: (l) => l.email },
     { key: 'source', label: 'Source', getValue: (l) => l.source },
-    { key: 'stage', label: 'Stage', getValue: (l) => stageLabel(stages, l.pipelineStage) },
+    { key: 'stage', label: 'Stage', getValue: (l) => labelForStage(l.pipelineStage) },
     { key: 'status', label: 'CRM Status', getValue: (l) => l.status },
     { key: 'score', label: 'AI Score', getValue: (l) => l.score },
     { key: 'amountRequested', label: 'Amount Requested', getValue: (l) => l.amountRequested },
@@ -191,7 +192,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
     {
       key: 'stage',
       header: 'Stage',
-      cell: (l) => <Badge color={l.pipelineStage === 'client' ? 'green' : 'amber'}>{stageLabel(stages, l.pipelineStage)}</Badge>,
+      cell: (l) => <Badge color={l.pipelineStage === 'client' ? 'green' : 'amber'}>{labelForStage(l.pipelineStage)}</Badge>,
     },
   ];
 
@@ -208,9 +209,9 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
                 onClick={() => markAsClient(l)}
                 disabled={advancingId === (l.campaignId ? l.campaignId + ':' + l.originalLeadId : l.originalLeadId)}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
-                title={`Mark as ${stageLabel(stages, clientStageKey)}`}
+                title={`Mark as ${labelForStage(clientStageKey)}`}
               >
-                <CheckCircle2 className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}
+                <CheckCircle2 className="h-3.5 w-3.5" /> {labelForStage('client')}
               </button>
             </div>
           ),
@@ -238,7 +239,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
           subTab === 'ongoing' ? 'bg-white dark:bg-[var(--bg-surface)] text-blue-600 shadow-sm' : 'text-slate-500 dark:text-[var(--text-muted)] hover:text-slate-700'
         }`}
       >
-        <Target className="h-3.5 w-3.5" /> {stageLabel(stages, opportunityStageKey)} ({ongoing.length})
+        <Target className="h-3.5 w-3.5" /> {labelForStage(opportunityStageKey)} ({ongoing.length})
       </button>
       <button
         onClick={() => switchTab('clients')}
@@ -246,7 +247,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
           subTab === 'clients' ? 'bg-white dark:bg-[var(--bg-surface)] text-emerald-600 shadow-sm' : 'text-slate-500 dark:text-[var(--text-muted)] hover:text-slate-700'
         }`}
       >
-        <Trophy className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}s ({clients.length})
+        <Trophy className="h-3.5 w-3.5" /> {labelForStage('client')}s ({clients.length})
       </button>
     </div>
   );
@@ -254,7 +255,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
   return (
     <PageShell
       title={industryProfile?.labels.pipeline.plural || "Pipeline"}
-      subtitle={`Manage ${stageLabel(stages, 'opportunity')} and ${stageLabel(stages, 'client')} contacts in one place.`}
+      subtitle={`Manage ${labelForStage('opportunity')} and ${labelForStage('client')} contacts in one place.`}
       layout="fill"
       action={subTabToggle}
     >
@@ -269,7 +270,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
               ]}
               onClear={clearFilters}
               hasActiveFilters={hasActiveFilters}
-              resultCount={{ filtered: filtered.length, total: activeSet.length, label: subTab === 'ongoing' ? stageLabel(stages, 'opportunity') : stageLabel(stages, 'client') }}
+              resultCount={{ filtered: filtered.length, total: activeSet.length, label: subTab === 'ongoing' ? labelForStage('opportunity') : labelForStage('client') }}
               actions={
                 <button onClick={() => setExportOpen(true)} disabled={filtered.length === 0} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-muted)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap">
                   <Download className="h-3.5 w-3.5" /> Export CSV
@@ -279,7 +280,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
           </div>
 
           {activeSet.length === 0 ? (
-            <EmptyState icon={subTab === 'ongoing' ? Target : Trophy} heading={subTab === 'ongoing' ? `No ${stageLabel(stages, 'opportunity').toLowerCase()} contacts yet` : `No ${stageLabel(stages, 'client').toLowerCase()}s yet`} message={subTab === 'ongoing' ? `Advance a lead to ${stageLabel(stages, 'opportunity')} from the Leads page once it's worth pursuing.` : `Contacts show up here once they're marked ${stageLabel(stages, 'client')}.`} />
+            <EmptyState icon={subTab === 'ongoing' ? Target : Trophy} heading={subTab === 'ongoing' ? `No ${labelForStage('opportunity').toLowerCase()} contacts yet` : `No ${labelForStage('client').toLowerCase()}s yet`} message={subTab === 'ongoing' ? `Advance a lead to ${labelForStage('opportunity')} from the Leads page once it's worth pursuing.` : `Contacts show up here once they're marked ${labelForStage('client')}.`} />
           ) : filtered.length === 0 ? (
             <EmptyState heading="No contacts match your search" />
           ) : (
@@ -298,7 +299,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
             disabled={advancingId === selectedLead.id}
             className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-3 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-50 cursor-pointer"
           >
-            <CheckCircle2 className="h-4 w-4" /> Mark as {stageLabel(stages, 'client')}
+            <CheckCircle2 className="h-4 w-4" /> Mark as {labelForStage('client')}
           </button>
         )}
       />
