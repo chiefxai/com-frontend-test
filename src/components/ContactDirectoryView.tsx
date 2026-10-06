@@ -493,8 +493,8 @@ export default function ContactDirectoryView({
 
   return (
     <PageShell
-      title="Contact Directory"
-      subtitle="Build, edit, and bulk upload your client repository. These contacts automatically stream into the outbound Task Assignment channels."
+      title={`${contactLabel} Directory`}
+      subtitle={`Build, edit, and bulk upload your ${contactLabel.toLowerCase()} repository. These ${contactLabel.toLowerCase()} automatically stream into the outbound Task Assignment channels.`}
       onRefresh={handlePageRefresh}
       action={
         <ActionMenu
