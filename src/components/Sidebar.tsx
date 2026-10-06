@@ -97,18 +97,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
   },
 ];
 
-const INDUSTRY_TAGLINES: Record<string, string> = {
-  lending:        'Loan CRM Platform',
-  real_estate:    'Real Estate CRM Platform',
-  healthcare:     'Healthcare CRM Platform',
-  insurance:      'Insurance CRM Platform',
-  education:      'Education CRM Platform',
-  ecommerce:      'E-commerce CRM Platform',
-  automotive:     'Automotive CRM Platform',
-  field_services: 'Field Services CRM Platform',
-  it_sales:       'IT Sales CRM Platform',
-};
-
 // ── Tooltip (flat items in collapsed mode) ────────────────────────────────────
 // Thin wrapper over the shared ui/Tooltip — kept as its own name since
 // every call site below already uses <CollapsedTooltip>, and this is just
