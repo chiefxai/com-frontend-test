@@ -76,7 +76,7 @@ function latestCampaignForLead(leadId: string, dialerTasks: CampaignTask[]): str
   return latestCampaignTaskForLead(leadId, dialerTasks)?.name ?? null;
 }
 
-function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[]): CampaignLeadRow[] {
+function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageKey: string): CampaignLeadRow[] {
   const rows: CampaignLeadRow[] = [];
   const represented = new Set<string>();
   for (const task of dialerTasks) {
@@ -105,7 +105,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[]): CampaignL
     }
   }
   for (const lead of leads) {
-    if (lead.pipelineStage === 'lead' && !represented.has(lead.id)) {
+    if (lead.pipelineStage === leadStageKey && !represented.has(lead.id)) {
       rows.push({ ...lead, originalLeadId: lead.id, pipelineStage: 'lead' });
     }
   }
@@ -127,9 +127,9 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
   const [exportOpen, setExportOpen] = React.useState(false);
 
   const leadStageKey = activeStage('lead');
-  const opportunityStageKey = activeStage(opportunityStageKey);
-  const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || activeStage(clientStageKey);
-  const activeLeads = React.useMemo(() => campaignLeadRows(leads, dialerTasks), [leads, dialerTasks]);
+  const opportunityStageKey = activeStage('opportunity');
+  const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || activeStage('client');
+  const activeLeads = React.useMemo(() => campaignLeadRows(leads, dialerTasks, leadStageKey), [leads, dialerTasks, leadStageKey]);
   const uniqueSources = [...new Set(activeLeads.map((l) => l.source).filter(Boolean))].sort();
   const campaignOptions = [...dialerTasks].filter((t) => t.leadIds?.some((id) => activeLeads.some((l) => l.originalLeadId === id && l.campaignId === t.id))).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const selectedCampaign = campaignOptions.find((t) => t.id === campaignFilter) || null;
