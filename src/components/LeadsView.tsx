@@ -85,7 +85,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
       if (!lead) continue;
       const result = task.callResults?.[leadId];
       const isLeadForCampaign =
-        result?.pipelineStage === 'lead' ||
+        result?.pipelineStage === leadStageKey ||
         (!result?.pipelineStage && lead.pipelineStage === 'lead' && Boolean(result?.callId));
       if (!isLeadForCampaign) continue;
       represented.add(leadId);
@@ -115,6 +115,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
 export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile }: LeadsViewProps) {
   const navigate = useNavigate();
   const { stages } = usePipelineStages();
+  const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || labelForStage(key);
   const stageKeys = React.useMemo(() => new Set((industryProfile?.pipeline.stages || stages).map(s => s.key)), [industryProfile, stages]);
   const activeStage = (key: string) => stageKeys.has(key) ? key : (industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || key);
   const [advancingId, setAdvancingId] = React.useState<string | null>(null);
@@ -177,7 +178,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
     { key: 'email', label: 'Email', getValue: (l) => l.email },
     { key: 'source', label: 'Source', getValue: (l) => l.source },
     { key: 'campaign', label: 'Campaign', getValue: (l) => latestCampaignForLead(l.id, dialerTasks) || '' },
-    { key: 'stage', label: 'Stage', getValue: (l) => stageLabel(stages, l.pipelineStage) },
+    { key: 'stage', label: 'Stage', getValue: (l) => labelForStage(l.pipelineStage) },
     { key: 'status', label: 'CRM Status', getValue: (l) => l.status },
     { key: 'score', label: 'AI Score', getValue: (l) => l.score },
     { key: 'amountRequested', label: 'Amount Requested', getValue: (l) => l.amountRequested },
@@ -242,7 +243,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
     {
       key: 'stage',
       header: 'Stage',
-      cell: (l) => <Badge color={STAGE_COLOR[l.pipelineStage || 'contact']}>{stageLabel(stages, l.pipelineStage)}</Badge>,
+      cell: (l) => <Badge color={STAGE_COLOR[l.pipelineStage || 'contact']}>{labelForStage(l.pipelineStage)}</Badge>,
     },
     {
       key: 'actions',
@@ -256,17 +257,17 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
                 onClick={() => advance(l, 'Qualified', 'opportunity')}
                 disabled={advancingId === l.originalLeadId}
                 className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
-                title={`Advance to ${stageLabel(stages, opportunityStageKey)}`}
+                title={`Advance to ${labelForStage(opportunityStageKey)}`}
               >
-                <ArrowRightCircle className="h-3.5 w-3.5" /> {stageLabel(stages, 'opportunity')}
+                <ArrowRightCircle className="h-3.5 w-3.5" /> {labelForStage('opportunity')}
               </button>
               <button
                 onClick={() => advance(l, 'Converted', 'client')}
                 disabled={advancingId === l.originalLeadId}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
-                title={`Mark as ${stageLabel(stages, clientStageKey)}`}
+                title={`Mark as ${labelForStage(clientStageKey)}`}
               >
-                <CheckCircle2 className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}
+                <CheckCircle2 className="h-3.5 w-3.5" /> {labelForStage('client')}
               </button>
             </>
           ) : (
@@ -280,7 +281,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
   return (
     <PageShell
       title={industryProfile?.labels.lead.plural || "Leads"}
-      subtitle={`Contacts currently in the ${stageLabel(stages, leadStageKey)} stage — advance one to ${stageLabel(stages, 'opportunity')} or ${stageLabel(stages, 'client')} as it moves forward.`}
+      subtitle={`Contacts currently in the ${labelForStage(leadStageKey)} stage — advance one to ${labelForStage('opportunity')} or ${labelForStage('client')} as it moves forward.`}
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -352,14 +353,14 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
               disabled={advancingId === selectedLead.id}
               className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-3 py-2 rounded-xl border border-amber-200 hover:bg-amber-50 cursor-pointer"
             >
-              <ArrowRightCircle className="h-4 w-4" /> Advance to {stageLabel(stages, 'opportunity')}
+              <ArrowRightCircle className="h-4 w-4" /> Advance to {labelForStage('opportunity')}
             </button>}
             {!selectedLead?.campaignId && <button
               onClick={() => advance(selectedLead, 'Converted', 'client')}
               disabled={advancingId === selectedLead.id}
               className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-3 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-50 cursor-pointer"
             >
-              <CheckCircle2 className="h-4 w-4" /> Mark as {stageLabel(stages, 'client')}
+              <CheckCircle2 className="h-4 w-4" /> Mark as {labelForStage('client')}
             </button>}
             {selectedLead?.campaignId && <button onClick={() => navigate(`/campaign/outbound?campaign=${encodeURIComponent(selectedLead.campaignId!)}`)} className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50 cursor-pointer">Open Campaign</button>}
           </div>
