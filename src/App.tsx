@@ -719,6 +719,7 @@ export default function App() {
             leads={leads}
             setLeads={setLeads}
             industry={orgSettings.industry}
+        businessType={orgSettings.businessType}
             callLogs={callLogs}
             dialerTasks={dialerTasks}
             primaryObjectKey={primaryObject?.key}
