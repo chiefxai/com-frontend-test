@@ -48,8 +48,6 @@ interface SidebarProps {
   businessType?: string;
 }
 
-const LENDING_ONLY_TAB_IDS = new Set(['loans']);
-
 // Synthetic key for the "Dashboard" group's own expand/collapse + flyout
 // state — not a real routable tab, just a Set/Map key (see DASHBOARD_GROUP
 // usage below), so it can share the exact same generic toggleGroup()/
@@ -196,7 +194,6 @@ export default function Sidebar({
   businessType,
 }: SidebarProps) {
   const industryContext = useIndustry({ industry, businessType });
-  const isLending = industryContext.industry === 'lending';
   const isAdmin = userRole === 'Organization Admin' || userRole === 'Super Admin';
   const { isEnabled } = useFeatureFlags();
 
@@ -244,6 +241,25 @@ export default function Sidebar({
 
   const tagline = industryContext.profile.tagline;
 
+  const industryModuleIcons: Record<string, React.ElementType> = {
+    layers: Layers,
+    users: Users,
+    target: Target,
+    contact: Contact,
+    phone: Phone,
+    calendar: Clock,
+    sparkles: Sparkles,
+  };
+
+  const industryModuleItems = industryContext.profile.modules
+    .filter((module) => module.tabId)
+    .filter((module) => !module.featureFlag || isEnabled(module.featureFlag))
+    .map((module) => ({
+      id: module.tabId!,
+      label: module.label,
+      icon: industryModuleIcons[module.iconKey || 'layers'] || Layers,
+    }));
+
   const allMenuItems = [
     { id: 'leads',        label: industryContext.labels.lead.plural,             icon: UserPlus },
     { id: 'pipeline',     label: industryContext.labels.pipeline.plural,          icon: Target },
@@ -256,11 +272,10 @@ export default function Sidebar({
     { id: 'knowledge',    label: 'Knowledge Base',    icon: BookOpen },
     { id: 'enquiries',    label: industryContext.labels.enquiry.plural,         icon: MessageCircleQuestion },
     { id: 'audit-log',    label: 'Audit Log',         icon: ScrollText },
-    { id: 'loans',        label: 'Loan Lifecycle',    icon: Layers },
+    ...industryModuleItems,
   ];
 
   const menuItems = allMenuItems.filter((item) => {
-    if (LENDING_ONLY_TAB_IDS.has(item.id) && !isLending) return false;
     const flagKey = TAB_TO_FLAG[item.id];
     if (flagKey && !isEnabled(flagKey)) return false;
     return true;
