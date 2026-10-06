@@ -5,6 +5,7 @@ import { Lead } from '../types';
 import { formatPhone } from '../lib/phone';
 import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
 import { CsvField } from '../lib/csvExport';
+import type { IndustryProfile } from '../lib/industry/types';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Badge from './ui/Badge';
@@ -50,6 +51,7 @@ interface LeadsViewProps {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   dialerTasks?: CampaignTask[];
+  industryProfile?: IndustryProfile;
 }
 
 // The most recent call (by owning task's createdAt) that has a callId for
@@ -98,7 +100,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[]): CampaignL
         // Advisor callbacks are campaign-scoped. Do not read the shared
         // contact callbackTime because it can belong to another campaign.
         callbackTime: result?.advisorCallback?.time || lead.callbackTime,
-        pipelineStage: 'lead',
+        pipelineStage: leadStageKey,
       });
     }
   }
@@ -110,9 +112,11 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[]): CampaignL
   return rows;
 }
 
-export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsViewProps) {
+export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile }: LeadsViewProps) {
   const navigate = useNavigate();
   const { stages } = usePipelineStages();
+  const stageKeys = React.useMemo(() => new Set((industryProfile?.pipeline.stages || stages).map(s => s.key)), [industryProfile, stages]);
+  const activeStage = (key: string) => stageKeys.has(key) ? key : (industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || key);
   const [advancingId, setAdvancingId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sourceFilter, setSourceFilter] = React.useState('All');
@@ -122,6 +126,9 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
   const [selectedCampaignId, setSelectedCampaignId] = React.useState<string | null>(null);
   const [exportOpen, setExportOpen] = React.useState(false);
 
+  const leadStageKey = activeStage('lead');
+  const opportunityStageKey = activeStage(opportunityStageKey);
+  const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || activeStage(clientStageKey);
   const activeLeads = React.useMemo(() => campaignLeadRows(leads, dialerTasks), [leads, dialerTasks]);
   const uniqueSources = [...new Set(activeLeads.map((l) => l.source).filter(Boolean))].sort();
   const campaignOptions = [...dialerTasks].filter((t) => t.leadIds?.some((id) => activeLeads.some((l) => l.originalLeadId === id && l.campaignId === t.id))).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -249,7 +256,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
                 onClick={() => advance(l, 'Qualified', 'opportunity')}
                 disabled={advancingId === l.originalLeadId}
                 className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
-                title={`Advance to ${stageLabel(stages, 'opportunity')}`}
+                title={`Advance to ${stageLabel(stages, opportunityStageKey)}`}
               >
                 <ArrowRightCircle className="h-3.5 w-3.5" /> {stageLabel(stages, 'opportunity')}
               </button>
@@ -257,7 +264,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
                 onClick={() => advance(l, 'Converted', 'client')}
                 disabled={advancingId === l.originalLeadId}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
-                title={`Mark as ${stageLabel(stages, 'client')}`}
+                title={`Mark as ${stageLabel(stages, clientStageKey)}`}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}
               </button>
@@ -272,8 +279,8 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [] }: LeadsVi
 
   return (
     <PageShell
-      title="Leads"
-      subtitle={`Contacts currently in the ${stageLabel(stages, 'lead')} stage — advance one to ${stageLabel(stages, 'opportunity')} or ${stageLabel(stages, 'client')} as it moves forward.`}
+      title={industryProfile?.labels.lead.plural || "Leads"}
+      subtitle={`Contacts currently in the ${stageLabel(stages, leadStageKey)} stage — advance one to ${stageLabel(stages, 'opportunity')} or ${stageLabel(stages, 'client')} as it moves forward.`}
       layout="fill"
     >
       <div className="flex-1 flex flex-col overflow-hidden">
