@@ -45,6 +45,7 @@ interface SidebarProps {
   userRole: UserRole | null;
   organizationName: string;
   industry: string;
+  businessType?: string;
 }
 
 const LENDING_ONLY_TAB_IDS = new Set(['loans']);
@@ -204,8 +205,9 @@ export default function Sidebar({
   userRole,
   organizationName,
   industry,
+  businessType,
 }: SidebarProps) {
-  const industryContext = useIndustry({ industry });
+  const industryContext = useIndustry({ industry, businessType });
   const isLending = industryContext.industry === 'lending';
   const isAdmin = userRole === 'Organization Admin' || userRole === 'Super Admin';
   const { isEnabled } = useFeatureFlags();
