@@ -89,7 +89,7 @@ function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[], campai
 
 export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks, industryProfile }: PipelineViewProps) {
   const { stages } = usePipelineStages();
-  const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || labelForStage(key);
+  const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || stageLabel(stages, key);
   const opportunityStageKey = industryProfile?.pipeline.stages.find(s => s.key === 'opportunity')?.key || industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || 'opportunity';
   const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || 'client';
   const [subTab, setSubTab] = React.useState<SubTab>('ongoing');
