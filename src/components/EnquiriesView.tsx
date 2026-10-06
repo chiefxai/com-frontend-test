@@ -7,6 +7,7 @@ import Badge from './ui/Badge';
 import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
+import type { IndustryProfile } from '../lib/industry/types';
 
 interface Enquiry {
   id: string;
@@ -23,7 +24,9 @@ interface Enquiry {
 
 const STATUS_COLOR: Record<string, 'amber' | 'blue' | 'green'> = { new: 'amber', contacted: 'blue', resolved: 'green' };
 
-export default function EnquiriesView() {
+export default function EnquiriesView({ industryProfile }: { industryProfile?: IndustryProfile }) {
+  const enquiryLabel = industryProfile?.labels.enquiry.plural || 'Enquiries';
+  const contactLabel = industryProfile?.labels.contact.singular || 'Contact';
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [total, setTotal] = useState(0);
   const [openCount, setOpenCount] = useState(0);
@@ -97,8 +100,8 @@ export default function EnquiriesView() {
   return (
     <PageShell
       className="min-h-0"
-      title="Enquiries"
-      subtitle={`Callers who asked something mid-call and need a follow-up — ${openCount} still open.`}
+      title={enquiryLabel}
+      subtitle={`${contactLabel}s who asked something mid-call and need a follow-up — ${openCount} still open.`}
       onRefresh={() => load()}
       layout="fill"
     >
