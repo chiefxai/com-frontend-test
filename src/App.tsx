@@ -23,6 +23,7 @@ import {
 } from './types';
 import { useAuth } from './features/auth/AuthProvider';
 import { resolveIndustryContext } from './lib/industry';
+import type { RemoteIndustryConfig } from './lib/industry/types';
 
 // Placeholder shown only until the real org settings arrive from the backend.
 const EMPTY_ORG_SETTINGS: OrganizationSettings = {
@@ -273,6 +274,9 @@ export default function App() {
   const [primaryObject, setPrimaryObject] = useState<{ key: string; stages: { id: string; key: string; label: string }[]; fields: { id: string; key: string; label: string; type: string; required?: boolean }[] } | null>(null);
 
   const [hasLoaded, setHasLoaded] = useState<boolean>(false);
+  // Server is the source of truth for industry semantics. The local registry
+  // remains a safe fallback for startup/offline rendering and tests.
+  const [remoteIndustryConfig, setRemoteIndustryConfig] = useState<RemoteIndustryConfig | null>(null);
   // DB membership role — authoritative once /api/settings/me resolves.
   const [dbRole, setDbRole] = useState<string>('');
   const [flagsReady, setFlagsReady] = useState<boolean>(flagsLoaded);
@@ -290,6 +294,12 @@ export default function App() {
   );
   const { isEnabled } = useFeatureFlags();
   const industryContext = resolveIndustryContext(orgSettings);
+  const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
+    ? { ...industryContext.profile, labels: remoteIndustryConfig.labels, modules: remoteIndustryConfig.modules, pipeline: remoteIndustryConfig.pipeline }
+    : industryContext.profile;
+  const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
+    ? { ...industryContext.profile, labels: remoteIndustryConfig.labels, modules: remoteIndustryConfig.modules, pipeline: remoteIndustryConfig.pipeline }
+    : industryContext.profile;
 
   // Live call notifications — set when a real inbound/outbound call is in
   // progress (from the org-scoped /api/logs-stream SSE connection below),
@@ -338,7 +348,8 @@ export default function App() {
         resOrg,
         resDialerTasks,
         resBilling,
-        resQuestionFlows
+        resQuestionFlows,
+        resIndustry
       ] = await Promise.all([
         apiFetch('/api/leads').then(r => r.json()).catch(() => null),
         apiFetch('/api/workflows').then(r => r.json()).catch(() => null),
@@ -349,7 +360,8 @@ export default function App() {
         apiFetch('/api/settings/org').then(r => r.json()).catch(() => null),
         apiFetch('/api/dialer-tasks').then(r => r.json()).catch(() => null),
         apiFetch('/api/billing').then(r => r.json()).catch(() => null),
-        apiFetch('/api/question-flows').then(r => r.json()).catch(() => null)
+        apiFetch('/api/question-flows').then(r => r.json()).catch(() => null),
+        apiFetch('/api/settings/industry').then(r => r.ok ? r.json() : null).catch(() => null)
       ]);
 
       if (Array.isArray(resLeads)) setLeads(resLeads);
@@ -366,6 +378,7 @@ export default function App() {
       if (resBilling && resBilling.aiTokenUsage) setAiTokenUsage(resBilling.aiTokenUsage);
       if (resBilling && resBilling.callProvider) setCallProviderRate(resBilling.callProvider);
       if (resOrg && Object.keys(resOrg).length > 0) setOrgSettings({ ...EMPTY_ORG_SETTINGS, ...resOrg });
+      if (resIndustry && typeof resIndustry.industry === 'string') setRemoteIndustryConfig(resIndustry);
       if (Array.isArray(resDialerTasks)) setDialerTasks(resDialerTasks);
       if (Array.isArray(resQuestionFlows) && resQuestionFlows.length > 0)
         setQuestionFlows(resQuestionFlows.map((f: any) => ({ nodes: [], edges: [], variables: [], ...f })));
