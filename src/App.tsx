@@ -297,9 +297,7 @@ export default function App() {
   const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
     ? { ...industryContext.profile, labels: remoteIndustryConfig.labels, modules: remoteIndustryConfig.modules, pipeline: remoteIndustryConfig.pipeline }
     : industryContext.profile;
-  const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
-    ? { ...industryContext.profile, labels: remoteIndustryConfig.labels, modules: remoteIndustryConfig.modules, pipeline: remoteIndustryConfig.pipeline }
-    : industryContext.profile;
+  const effectiveIndustryProfileundefined
 
   // Live call notifications — set when a real inbound/outbound call is in
   // progress (from the org-scoped /api/logs-stream SSE connection below),
