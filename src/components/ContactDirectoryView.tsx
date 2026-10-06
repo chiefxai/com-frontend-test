@@ -30,10 +30,12 @@ import ActionMenu from './ui/ActionMenu';
 import DataTable, { Column } from './ui/DataTable';
 import { newClientId } from '../lib/ids';
 import Badge from './ui/Badge';
+import type { IndustryProfile } from '../lib/industry/types';
 interface ContactDirectoryViewProps {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   industry?: string;
+  industryProfile?: IndustryProfile;
   callLogs?: CallLog[];
   // Campaign execution history is intentionally separate from the contact
   // record. The same contact can participate in multiple campaigns, even
@@ -60,11 +62,14 @@ export default function ContactDirectoryView({
   leads,
   setLeads,
   industry,
+  industryProfile,
   callLogs = [],
   dialerTasks = [],
   primaryObjectKey,
   primaryObjectFields = []
 }: ContactDirectoryViewProps) {
+  const contactLabel = industryProfile?.labels.contact.plural || 'Contacts';
+  const leadLabel = industryProfile?.labels.lead.plural || 'Leads';
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
 
   // Contact Directory is a lightweight address book (name/phone/email +
