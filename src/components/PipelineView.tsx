@@ -4,6 +4,7 @@ import { Lead } from '../types';
 import { formatPhone } from '../lib/phone';
 import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
 import { CsvField } from '../lib/csvExport';
+import type { IndustryProfile } from '../lib/industry/types';
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Badge from './ui/Badge';
@@ -44,6 +45,7 @@ interface PipelineViewProps {
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   dialerTasks?: CampaignTask[];
   setDialerTasks?: React.Dispatch<React.SetStateAction<CampaignTask[]>>;
+  industryProfile?: IndustryProfile;
 }
 
 // The most recent call (by owning task's createdAt) that has a callId for
@@ -57,7 +59,7 @@ function campaignPipelineRows(leads: Lead[], dialerTasks: CampaignTask[]): Array
     for (const leadId of task.leadIds || []) {
       const lead = leads.find((l) => l.id === leadId);
       const result = task.callResults?.[leadId];
-      if (!lead || !result?.pipelineStage || !['opportunity', 'client'].includes(result.pipelineStage)) continue;
+      if (!lead || !result?.pipelineStage || !['opportunity', clientStageKey].includes(result.pipelineStage)) continue;
       represented.add(leadId);
       rows.push({
         ...lead,
@@ -85,8 +87,10 @@ function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[], campai
   return withCallId[0]?.callResults?.[leadId]?.callId ?? null;
 }
 
-export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks }: PipelineViewProps) {
+export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks, industryProfile }: PipelineViewProps) {
   const { stages } = usePipelineStages();
+  const opportunityStageKey = industryProfile?.pipeline.stages.find(s => s.key === 'opportunity')?.key || industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || 'opportunity';
+  const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || 'client';
   const [subTab, setSubTab] = React.useState<SubTab>('ongoing');
   const [advancingId, setAdvancingId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -98,8 +102,8 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
   const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setCampaignFilter('All'); };
 
   const campaignRows = React.useMemo(() => campaignPipelineRows(leads, dialerTasks), [leads, dialerTasks]);
-  const ongoing = campaignRows.filter((l) => l.pipelineStage === 'opportunity');
-  const clients = campaignRows.filter((l) => l.pipelineStage === 'client');
+  const ongoing = campaignRows.filter((l) => l.pipelineStage === opportunityStageKey);
+  const clients = campaignRows.filter((l) => l.pipelineStage === clientStageKey);
   const activeSet = subTab === 'ongoing' ? ongoing : clients;
 
   const uniqueSources = [...new Set(activeSet.map((l) => l.source).filter(Boolean))].sort();
@@ -204,7 +208,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
                 onClick={() => markAsClient(l)}
                 disabled={advancingId === (l.campaignId ? l.campaignId + ':' + l.originalLeadId : l.originalLeadId)}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
-                title={`Mark as ${stageLabel(stages, 'client')}`}
+                title={`Mark as ${stageLabel(stages, clientStageKey)}`}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> {stageLabel(stages, 'client')}
               </button>
@@ -234,7 +238,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
           subTab === 'ongoing' ? 'bg-white dark:bg-[var(--bg-surface)] text-blue-600 shadow-sm' : 'text-slate-500 dark:text-[var(--text-muted)] hover:text-slate-700'
         }`}
       >
-        <Target className="h-3.5 w-3.5" /> {stageLabel(stages, 'opportunity')} ({ongoing.length})
+        <Target className="h-3.5 w-3.5" /> {stageLabel(stages, opportunityStageKey)} ({ongoing.length})
       </button>
       <button
         onClick={() => switchTab('clients')}
@@ -249,7 +253,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
 
   return (
     <PageShell
-      title="Pipeline"
+      title={industryProfile?.labels.pipeline.plural || "Pipeline"}
       subtitle={`Manage ${stageLabel(stages, 'opportunity')} and ${stageLabel(stages, 'client')} contacts in one place.`}
       layout="fill"
       action={subTabToggle}
