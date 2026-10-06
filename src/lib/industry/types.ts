@@ -43,7 +43,8 @@ export interface RemoteIndustryConfig {
   labels: IndustryProfile['labels'];
   modules: IndustryModuleDefinition[];
   pipeline: IndustryProfile['pipeline'];
-  domainObjects: Array<Record<string, unknown>>;
+  domainObjects: import('./domain').DomainObjectDefinition[];
+  domainModel?: import('./domain').IndustryDomainModel;
   label?: string;
 }
 
