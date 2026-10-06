@@ -31,7 +31,7 @@ export interface Lead {
   // Advanced automatically when a contact joins a campaign or a call to
   // them is answered; advanced manually (via `status`) into opportunity/
   // client. Missing/undefined reads as "contact", the starting stage.
-  pipelineStage?: 'contact' | 'campaign' | 'lead' | 'opportunity' | 'client';
+  pipelineStage?: string;
   // Preferred time for a human advisor to speak with this contact (from questionnaire).
   callbackTime?: string;
 }
@@ -39,7 +39,7 @@ export interface Lead {
 // One of the 5 universal pipeline stage keys, worded for this org's
 // industry — see GET /api/settings/pipeline-stages.
 export interface PipelineStageLabel {
-  key: 'contact' | 'campaign' | 'lead' | 'opportunity' | 'client';
+  key: string;
   label: string;
 }
 
