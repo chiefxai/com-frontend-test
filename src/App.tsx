@@ -295,7 +295,16 @@ export default function App() {
   const { isEnabled } = useFeatureFlags();
   const industryContext = resolveIndustryContext(orgSettings);
   const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
-    ? { ...industryContext.profile, labels: remoteIndustryConfig.labels, modules: remoteIndustryConfig.modules, pipeline: remoteIndustryConfig.pipeline }
+    ? {
+        ...industryContext.profile,
+        labels: remoteIndustryConfig.labels,
+        modules: remoteIndustryConfig.modules,
+        pipeline: remoteIndustryConfig.pipeline,
+        domainModel: remoteIndustryConfig.domainModel || {
+          objects: remoteIndustryConfig.domainObjects,
+          relationships: industryContext.profile.domainModel?.relationships || [],
+        },
+      }
     : industryContext.profile;
 
 
