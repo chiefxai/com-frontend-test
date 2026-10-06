@@ -805,7 +805,7 @@ export default function App() {
       case 'knowledge':
         return <KnowledgeBaseView />;
       case 'enquiries':
-        return <EnquiriesView />;
+        return <EnquiriesView industryProfile={effectiveIndustryProfile} />;
       case 'audit-log':
         return <AuditLogView />;
       case 'company':
