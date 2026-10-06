@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PipelineStageLabel } from '../types';
 import { apiFetch } from './api';
+import { getIndustryProfile } from './industry';
 
 // The universal contact -> campaign -> lead -> opportunity -> client
 // progression, worded for this org's own industry (see backend's
@@ -17,7 +18,9 @@ const FALLBACK_STAGES: PipelineStageLabel[] = [
 ];
 
 export function usePipelineStages(): { stages: PipelineStageLabel[]; loading: boolean } {
-  const [stages, setStages] = useState<PipelineStageLabel[]>(FALLBACK_STAGES);
+  const fallback = getIndustryProfile(window.localStorage.getItem('chiefx_industry') || undefined).pipeline.stages
+    .map(({ key, label }) => ({ key, label }));
+  const [stages, setStages] = useState<PipelineStageLabel[]>(fallback.length ? fallback : FALLBACK_STAGES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
