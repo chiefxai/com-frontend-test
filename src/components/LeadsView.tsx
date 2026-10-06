@@ -86,7 +86,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
       const result = task.callResults?.[leadId];
       const isLeadForCampaign =
         result?.pipelineStage === leadStageKey ||
-        (!result?.pipelineStage && lead.pipelineStage === 'lead' && Boolean(result?.callId));
+        (!result?.pipelineStage && lead.pipelineStage === leadStageKey && Boolean(result?.callId));
       if (!isLeadForCampaign) continue;
       represented.add(leadId);
       rows.push({
