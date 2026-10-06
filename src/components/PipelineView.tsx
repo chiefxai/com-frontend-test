@@ -52,28 +52,28 @@ interface PipelineViewProps {
 // this lead, across every campaign it's ever been part of — same data
 // DialerSimulator's Workflow View reads from, just not scoped to one
 // selected task here since Pipeline has no single "selected campaign".
-function campaignPipelineRows(leads: Lead[], dialerTasks: CampaignTask[]): Array<Lead & { campaignId?: string; campaignName?: string; campaignStatus?: string; originalLeadId: string }> {
+function campaignPipelineRows(leads: Lead[], dialerTasks: CampaignTask[], opportunityStageKey: string, clientStageKey: string): Array<Lead & { campaignId?: string; campaignName?: string; campaignStatus?: string; originalLeadId: string }> {
   const rows: Array<Lead & { campaignId?: string; campaignName?: string; campaignStatus?: string; originalLeadId: string }> = [];
   const represented = new Set<string>();
   for (const task of dialerTasks) {
     for (const leadId of task.leadIds || []) {
       const lead = leads.find((l) => l.id === leadId);
       const result = task.callResults?.[leadId];
-      if (!lead || !result?.pipelineStage || !['opportunity', clientStageKey].includes(result.pipelineStage)) continue;
+      if (!lead || !result?.pipelineStage || ![opportunityStageKey, clientStageKey].includes(result.pipelineStage)) continue;
       represented.add(leadId);
       rows.push({
         ...lead,
         originalLeadId: lead.id,
         campaignId: task.id,
         campaignName: task.name,
-        campaignStatus: result.status || (result.pipelineStage === 'client' ? 'Completed' : 'In Progress'),
+        campaignStatus: result.status || (result.pipelineStage === clientStageKey ? 'Completed' : 'In Progress'),
         pipelineStage: result.pipelineStage,
         status: result.leadStatus || lead.status,
       });
     }
   }
   for (const lead of leads) {
-    if (['opportunity', 'client'].includes(lead.pipelineStage || '') && !represented.has(lead.id)) {
+    if ([opportunityStageKey, clientStageKey].includes(lead.pipelineStage || '') && !represented.has(lead.id)) {
       rows.push({ ...lead, originalLeadId: lead.id });
     }
   }
@@ -101,7 +101,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
   const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || campaignFilter !== 'All';
   const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setCampaignFilter('All'); };
 
-  const campaignRows = React.useMemo(() => campaignPipelineRows(leads, dialerTasks), [leads, dialerTasks]);
+  const campaignRows = React.useMemo(() => campaignPipelineRows(leads, dialerTasks, opportunityStageKey, clientStageKey), [leads, dialerTasks, opportunityStageKey, clientStageKey]);
   const ongoing = campaignRows.filter((l) => l.pipelineStage === opportunityStageKey);
   const clients = campaignRows.filter((l) => l.pipelineStage === clientStageKey);
   const activeSet = subTab === 'ongoing' ? ongoing : clients;
