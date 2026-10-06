@@ -890,6 +890,8 @@ export default function App() {
         userRole={((dbRole || kcUser?.role) as UserRole) ?? null}
         organizationName={orgSettings.name}
         industry={orgSettings.industry}
+        businessType={orgSettings.businessType}
+        industryProfile={effectiveIndustryProfile}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}
