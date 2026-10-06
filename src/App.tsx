@@ -727,9 +727,9 @@ export default function App() {
           />
         );
       case 'leads':
-        return <LeadsView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} />;
+        return <LeadsView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} industryProfile={effectiveIndustryProfile} />;
       case 'pipeline':
-        return <PipelineView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} setDialerTasks={setDialerTasks} />;
+        return <PipelineView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} setDialerTasks={setDialerTasks} industryProfile={effectiveIndustryProfile} />;
       case 'contacts':
         return (
           <ContactDirectoryView
