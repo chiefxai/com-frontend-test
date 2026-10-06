@@ -106,7 +106,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
   }
   for (const lead of leads) {
     if (lead.pipelineStage === leadStageKey && !represented.has(lead.id)) {
-      rows.push({ ...lead, originalLeadId: lead.id, pipelineStage: 'lead' });
+      rows.push({ ...lead, originalLeadId: lead.id, pipelineStage: leadStageKey });
     }
   }
   return rows;
@@ -115,7 +115,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
 export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile }: LeadsViewProps) {
   const navigate = useNavigate();
   const { stages } = usePipelineStages();
-  const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || labelForStage(key);
+  const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || stageLabel(stages, key);
   const stageKeys = React.useMemo(() => new Set((industryProfile?.pipeline.stages || stages).map(s => s.key)), [industryProfile, stages]);
   const activeStage = (key: string) => stageKeys.has(key) ? key : (industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || key);
   const [advancingId, setAdvancingId] = React.useState<string | null>(null);
