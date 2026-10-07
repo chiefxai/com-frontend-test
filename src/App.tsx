@@ -217,6 +217,8 @@ export default function App() {
   );
   const [workspaces, setWorkspaces] = useState<Array<{
     orgId: string;
+    workspaceId?: string;
+    workspace?: { id: string; name: string; industry?: string; branchName?: string; status?: string };
     role: string;
     organization: { id: string; name: string; workspaceName: string; industry?: string; status?: string };
   }>>([]);
@@ -472,12 +474,20 @@ export default function App() {
         if (!Array.isArray(rows)) throw new Error('Invalid workspace list');
         if (cancelled) return;
         setWorkspaces(rows);
-        const stored = localStorage.getItem('chiefx_active_workspace_id');
-        const selected = rows.some((row: any) => row.orgId === stored)
-          ? stored
-          : (rows[0]?.orgId || '');
-        if (!selected) localStorage.removeItem('chiefx_active_workspace_id');
+        const stored = sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id');
+        const availableRows = rows.filter((row: any) => row.organization?.status !== 'Suspended' && (!row.workspace?.status || row.workspace.status === 'Active'));
+        const selectedRow = availableRows.find((row: any) => (row.workspaceId || row.orgId) === stored) || availableRows[0];
+        const selected = selectedRow?.workspaceId || selectedRow?.orgId || '';
+        if (!selected) {
+          localStorage.removeItem('chiefx_active_workspace_id');
+          localStorage.removeItem('chiefx_active_org_id');
+          sessionStorage.removeItem('chiefx_active_workspace_id');
+          sessionStorage.removeItem('chiefx_active_org_id');
+        }
         if (selected) {
+          sessionStorage.setItem('chiefx_active_org_id', selectedRow.orgId);
+          sessionStorage.setItem('chiefx_active_workspace_id', selected);
+          localStorage.setItem('chiefx_active_org_id', selectedRow.orgId);
           localStorage.setItem('chiefx_active_workspace_id', selected);
           setActiveWorkspaceId(selected);
         }
@@ -489,7 +499,7 @@ export default function App() {
           throw new Error(body.error || 'No accessible workspace was found.');
         }
         if (cancelled) return;
-        setStorageScope(kcUser.id, selected);
+        setStorageScope(kcUser.id, selected ? `${selectedRow.orgId}:${selected}` : null);
         setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
         setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
         setOrgSettings(EMPTY_ORG_SETTINGS); setDialerTasks([]); setQuestionFlows([]);
@@ -988,16 +998,22 @@ export default function App() {
             <div className="border-b px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>Your Workspaces</div>
             <div className="max-h-64 overflow-y-auto">
               {workspaces.map(workspace => {
-                const active = workspace.orgId === (activeWorkspaceId || orgSettings.id);
+                const workspaceId = workspace.workspaceId || workspace.orgId;
+                const active = workspaceId === (activeWorkspaceId || orgSettings.id);
+                const unavailable = workspace.organization.status === 'Suspended' || (workspace.workspace?.status && workspace.workspace.status !== 'Active');
                 return (
                   <button
-                    key={workspace.orgId}
+                    key={workspaceId}
+                    disabled={Boolean(unavailable)}
                     type="button"
                     role="menuitem"
                     onClick={() => {
                       if (!active) {
-                        localStorage.setItem('chiefx_active_workspace_id', workspace.orgId);
-                        setActiveWorkspaceId(workspace.orgId);
+                        sessionStorage.setItem('chiefx_active_org_id', workspace.orgId);
+                        sessionStorage.setItem('chiefx_active_workspace_id', workspaceId);
+                        localStorage.setItem('chiefx_active_org_id', workspace.orgId);
+                        localStorage.setItem('chiefx_active_workspace_id', workspaceId);
+                        setActiveWorkspaceId(workspaceId);
                         window.location.reload();
                       }
                     }}
@@ -1005,8 +1021,8 @@ export default function App() {
                   >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{workspace.organization.workspaceName}.chief.ai</span>
-                      <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}</span>
+                      <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{workspace.workspace?.name || workspace.organization.workspaceName}</span>
+                      <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}{unavailable ? ' · Unavailable' : ''}</span>
                     </span>
                     {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
                   </button>

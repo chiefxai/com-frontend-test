@@ -64,10 +64,20 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // Snapshot the scope before token refresh: a delayed request must never be
   // redirected into the workspace selected while it was waiting.
   let selectedOrgId: string | null = null;
-  try { selectedOrgId = localStorage.getItem('chiefx_active_workspace_id'); } catch { /* unavailable */ }
+  let selectedWorkspaceId: string | null = null;
+  const currentScope = () => {
+    // Keep each browser tab in its own workspace. localStorage is only the
+    // remembered default for a new tab, never a live cross-tab scope switch.
+    const workspaceId = sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id');
+    return { workspaceId, orgId: sessionStorage.getItem('chiefx_active_org_id') || localStorage.getItem('chiefx_active_org_id') || workspaceId };
+  };
+  try {
+    const scope = currentScope();
+    selectedOrgId = scope.orgId; selectedWorkspaceId = scope.workspaceId;
+  } catch { /* unavailable */ }
   const token = await getSessionAuthToken();
   try {
-    if (selectedOrgId !== localStorage.getItem('chiefx_active_workspace_id')) {
+    if (selectedOrgId !== currentScope().orgId || selectedWorkspaceId !== currentScope().workspaceId) {
       throw new DOMException('Workspace changed during request', 'AbortError');
     }
   } catch (error) {
@@ -88,10 +98,11 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // user can switch organizations without changing identity-provider state.
   // The backend validates this ID against the user's memberships.
   try {
-    const workspaceId = selectedOrgId;
-    if (workspaceId && !headers.has('X-Organization-Id')) {
-      headers.set('X-Organization-Id', workspaceId);
+    const orgId = selectedOrgId;
+    if (orgId && !headers.has('X-Organization-Id')) {
+      headers.set('X-Organization-Id', orgId);
     }
+    if (selectedWorkspaceId && !headers.has('X-Workspace-Id')) headers.set('X-Workspace-Id', selectedWorkspaceId);
   } catch { /* localStorage may be unavailable in private/restricted contexts */ }
   if (options.body && !headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -112,7 +123,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // endpoint denial). Redirecting to Keycloak from the fetch layer can cause
   // a reload -> login -> reload loop, especially on /admin.
   try {
-    if (selectedOrgId !== localStorage.getItem('chiefx_active_workspace_id')) {
+    if (selectedOrgId !== currentScope().orgId || selectedWorkspaceId !== currentScope().workspaceId) {
       throw new DOMException('Workspace changed during request', 'AbortError');
     }
   } catch (error) {
