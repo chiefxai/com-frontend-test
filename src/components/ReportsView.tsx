@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import { apiFetch } from '../lib/api';
 import { PhoneOutgoing, PhoneIncoming, Clock, DollarSign, Activity, UserCheck, MessageCircleQuestion, BarChart3, Users, PieChart as PieChartIcon, Printer } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
@@ -15,7 +14,8 @@ import { callCostInr, formatInr, COST_PER_MINUTE_INR_FALLBACK } from '../lib/pri
 import FilterBar from './ui/FilterBar';
 import DataTable, { Column } from './ui/DataTable';
 import Tooltip from './ui/Tooltip';
-import PrintReportHeader, { PRINT_PAGE_STYLE } from './ui/PrintReportHeader';
+import PrintReportHeader from './ui/PrintReportHeader';
+import PrintExportDialog from './ui/PrintExportDialog';
 
 const CHART_TOOLTIP = {
   contentStyle: {
@@ -229,11 +229,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
     return groups;
   }, [dialerTasks]);
   const reportPrintRef = useRef<HTMLDivElement>(null);
-  const printReport = useReactToPrint({
-    contentRef: reportPrintRef,
-    documentTitle: 'ChiefVoice_Reports',
-    pageStyle: PRINT_PAGE_STYLE,
-  });
+  const [exportOpen, setExportOpen] = useState(false);
 
   // ── Campaign Details table (bottom, full width) ─────────────────────────
   // Every dialer task is one campaign run — sorted newest first so the
@@ -616,8 +612,8 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
       subtitle="Calls, campaigns, agents, and cost — for the selected date range."
       contentRef={reportPrintRef} className="chiefvoice-print-content"
       titleActions={
-        <Tooltip label="Print report" side="bottom">
-          <button type="button" onClick={printReport} aria-label="Print report"
+        <Tooltip label="Export report" side="bottom">
+          <button type="button" onClick={() => setExportOpen(true)} aria-label="Export report"
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-[var(--bg-subtle)] transition-colors">
             <Printer className="h-4 w-4" />
           </button>
@@ -1111,7 +1107,15 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
         </Widget>
 
     </PageShell>
+    <PrintExportDialog
+      open={exportOpen}
+      onClose={() => setExportOpen(false)}
+      title="Reports"
+      fromDate={fromDate}
+      toDate={toDate}
+      filters={direction === 'all' ? 'All calls' : direction === 'inbound' ? 'Incoming calls only' : 'Outgoing calls only'}
+      contentRef={reportPrintRef}
+    />
     </>
   );
 }
-

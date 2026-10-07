@@ -20,6 +20,7 @@ interface PrintExportDialogProps {
   title: string;
   fromDate: string;
   toDate: string;
+  filters?: string;
   contentRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -138,6 +139,7 @@ export function PrintExportDialog({
   title,
   fromDate,
   toDate,
+  filters,
   contentRef,
 }: PrintExportDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -315,6 +317,7 @@ export function PrintExportDialog({
           <img src="${chiefVoiceLogo}" alt="ChiefVoice">
           <h1>${title}</h1>
           <p>Filter applied: ${formatRange(fromDate, toDate)}</p>
+          ${filters ? `<p>Additional filters: ${filters}</p>` : ''}
         </div>
       </section>`;
     const content = pages.map((page, index) => `
