@@ -389,6 +389,9 @@ export function PrintExportDialog({
     captureSource.style.maxHeight = 'none';
     captureSource.style.overflow = 'visible';
     captureSource.style.alignContent = 'start';
+    // Keep any theme marker that lives on an app shell from overriding the
+    // selected export theme through ancestor selectors.
+    captureHost.setAttribute('data-theme', settings.theme);
     captureHost.appendChild(captureSource);
     document.body.appendChild(captureHost);
 
@@ -470,11 +473,14 @@ export function PrintExportDialog({
       captureSource.setAttribute('data-chiefvoice-export-root', exportKey);
 
       const inlineComputedStyles = (doc: Document) => {
+        doc.documentElement.classList.toggle('dark', settings.theme === 'dark');
+        doc.documentElement.setAttribute('data-theme', settings.theme);
+        doc.body.classList.toggle('dark', settings.theme === 'dark');
         const clonedRoot = doc.querySelector(`[data-chiefvoice-export-root="${exportKey}"]`) as HTMLElement | null;
         if (!clonedRoot) return;
 
         const copy = (from: Element, to: Element) => {
-          const computed = window.getComputedStyle(from);
+          const computed = doc.defaultView?.getComputedStyle(to) ?? window.getComputedStyle(from);
           const target = to as HTMLElement;
 
           // Copy the complete resolved computed style, not a hand-picked list.
@@ -509,11 +515,11 @@ export function PrintExportDialog({
 
         // Materialize pseudo-element content that is visually meaningful.
         const copyPseudo = (from: Element, to: Element, pseudo: '::before' | '::after') => {
-          const style = window.getComputedStyle(from, pseudo);
+          const style = doc.defaultView?.getComputedStyle(to, pseudo) ?? window.getComputedStyle(from, pseudo);
           const content = style.content;
           if (!content || content === 'none' || content === 'normal') return;
 
-          const marker = document.createElement('span');
+          const marker = doc.createElement('span');
           marker.textContent = content.replace(/^["']|["']$/g, '');
           marker.style.cssText =
             'display:inline-block!important;' +
