@@ -6,6 +6,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { FeatureFlag, FeatureFlagKey, DEFAULT_FLAGS } from './types';
 import { loadFromStorage, saveToStorage } from '../../lib/storage';
 import { subscribe } from './userFlagsStore';
+import { can } from '../../lib/authorization';
 import { useAuth } from '../auth/AuthProvider';
 
 // Only platform-level super admins bypass org feature flag restrictions.
@@ -57,7 +58,7 @@ export function FeatureFlagProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const unsub = subscribe((granted, loaded, dbRole, org) => {
-      const adminByDb = isAdminRole(dbRole);
+      const adminByDb = can('platform.manage');
       setFlags(buildFlags(granted, loaded, adminByDb));
       setOrgFlags(org);
     });

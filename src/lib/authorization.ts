@@ -1,0 +1,56 @@
+import { useSyncExternalStore } from 'react';
+export interface Authorization {
+  organizationRole: string;
+  workspaceRole: string | null;
+  platformAdmin: boolean;
+  permissions: string[];
+}
+let current: Authorization | null = null;
+const listeners = new Set<() => void>();
+export function setAuthorization(value: Authorization | null) {
+  current = value && Array.isArray(value.permissions) ? value : null;
+  listeners.forEach(listener => listener());
+}
+export function getAuthorization() { return current; }
+export function can(permission: string) { return current?.permissions.includes(permission) === true; }
+export function useAuthorization() {
+  const access = useSyncExternalStore(listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },getAuthorization);
+  return { authorization: access, can: (permission: string) => access?.permissions.includes(permission) === true };
+}
+// Only initial-workspace rollout compatibility uses legacy roles. Server
+// permissions become authoritative as soon as the VM has been upgraded.
+export function legacyAuthorization(role: string): Authorization {
+  const admin = ['Organization Admin','Owner','Super Admin','Workspace Admin'].includes(role);
+  const viewer = ['Viewer','Customer'].includes(role);
+  const billingOnly = role === 'Billing Admin';
+  return { organizationRole: role,workspaceRole: billingOnly ? null : admin ? 'Workspace Admin' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
+    permissions: [
+      ...(!billingOnly ? ['workspace.read'] : []),
+      ...(!viewer && !billingOnly ? ['workspace.write','workspace.call'] : []),
+      ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.audit.read'] : []),
+      ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read'] : []),
+      ...(billingOnly ? ['organization.read','billing.read'] : []),
+    ] };
+}
+export function permissionForRequest(path: string,method: string): string | null {
+  const read = ['GET','HEAD','OPTIONS'].includes(method);
+  path = path.toLowerCase().replace(/\/+$/,'');
+  if (['/api/auth/me','/api/auth/roles','/api/settings/me'].includes(path)) return null;
+  if (/^\/api\/(billing|ai-usage)(?:\/|$)/.test(path)) return 'billing.read';
+  if (/^\/api\/settings\/team(?:\/|$)/.test(path)) return read ? 'organization.members.read' : 'organization.members.manage';
+  if (path === '/api/settings/org') return read ? 'organization.read' : 'organization.manage';
+  if (path === '/api/logs-stream/ticket') return 'workspace.read';
+  if (path === '/api/voice-session/ticket' || /^\/api\/(vobiz|twilio|telecmi|piopiy)\/(call|hangup)$/.test(path) || ['/api/simulate-call','/api/gemini/simulate-call','/api/config/preview'].includes(path)) return 'workspace.call';
+  if (!read && (/^\/api\/(config|agents|channels|knowledge)(?:\/|$)/.test(path) || /^\/api\/settings\/(workspace|numbers|vobiz-inbound-webhook)(?:\/|$)/.test(path))) return 'workspace.settings.manage';
+  return method === 'DELETE' ? 'workspace.delete' : read ? 'workspace.read' : 'workspace.write';
+}
+export function canAccessTab(tab: string,subTab?: string) {
+  if (tab === 'settings') {
+    if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
+    return can(subTab === 'billing' ? 'billing.read' : subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage');
+  }
+  if (tab === 'company' || tab === 'agent-studio') return can('workspace.settings.manage');
+  if (tab === 'audit-log') return can('workspace.audit.read');
+  if (tab === 'dialer') return can('workspace.call');
+  return can('workspace.read');
+}

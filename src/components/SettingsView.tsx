@@ -833,6 +833,11 @@ export default function SettingsView({
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Job title</label>
                             <select value={newStaffRole} onChange={(e: any) => setNewStaffRole(e.target.value)} className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
                               <option value="Sales Manager">Sales Manager</option>
+                              <option value="Member">Member</option>
+                              <option value="Manager">Manager</option>
+                              <option value="Viewer">Viewer (read-only)</option>
+                              <option value="Workspace Admin">Workspace Admin</option>
+                              <option value="Billing Admin">Billing Admin (organization billing)</option>
                               <option value="Loan Agent">Loan Agent</option>
                               <option value="Collection Agent">Collection Agent</option>
                               <option value="AI Agent Manager">AI Agent Manager</option>

@@ -12,6 +12,7 @@
 //   hasRestriction()   → true if the user has a limited flag set
 //   getGrantedFlags()  → string[] of allowed flag keys
 
+import { setAuthorization, legacyAuthorization } from '../../lib/authorization';
 import { apiFetch } from '../../lib/api';
 
 let _granted: string[] = [];
@@ -50,6 +51,7 @@ export async function fetchUserFlags(): Promise<string[]> {
         _granted = Array.isArray(data?.featureFlags) ? data.featureFlags : [];
         _orgFlags = Array.isArray(data?.orgFeatureFlags) ? data.orgFeatureFlags : _granted;
         _role = data?.role ?? '';
+        setAuthorization(data?.authorization || legacyAuthorization(_role));
       }
       // Non-ok (403 for platform admins, etc.) — no grants, but still mark loaded
       // so the sidebar knows it can apply the "no restriction" state.
@@ -76,6 +78,7 @@ export function getMembershipRole(): string { return _role; }
 // Reset — useful for logout / user switch. Notifies subscribers so they
 // revert to the loading (all-disabled) state immediately.
 export function resetUserFlags() {
+  setAuthorization(null);
   _generation += 1;
   _granted = [];
   _orgFlags = [];

@@ -1,3 +1,4 @@
+import { useAuthorization, getAuthorization, setAuthorization, canAccessTab } from './lib/authorization';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch, getAuthToken, getApiBase } from './lib/api';
@@ -290,6 +291,7 @@ export default function App() {
     loadFromStorage<QuestionFlow[]>('chiefx_question_flows', [])
   );
   const { isEnabled } = useFeatureFlags();
+  const { can } = useAuthorization();
   const industryContext = resolveIndustryContext(orgSettings);
   const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
     ? {
@@ -345,6 +347,11 @@ export default function App() {
   const refreshData = useCallback(async () => {
     if (!kcUser) return;
     try {
+      const allowed = (permission: string,path: string) => {
+        const access = getAuthorization();
+        if (access && !access.permissions.includes(permission)) return Promise.resolve(null);
+        return apiFetch(path).then(r => r.ok ? r.json() : null).catch(() => null);
+      };
       const [
         resLeads,
         resWorkflows,
@@ -358,17 +365,17 @@ export default function App() {
         resQuestionFlows,
         resIndustry
       ] = await Promise.all([
-        apiFetch('/api/leads').then(r => r.json()).catch(() => null),
-        apiFetch('/api/workflows').then(r => r.json()).catch(() => null),
-        apiFetch('/api/call-logs').then(r => r.json()).catch(() => null),
-        apiFetch('/api/loans').then(r => r.json()).catch(() => null),
-        apiFetch('/api/settings/numbers').then(r => r.json()).catch(() => null),
-        apiFetch('/api/settings/team').then(r => r.json()).catch(() => null),
-        apiFetch('/api/settings/workspace').then(r => r.json()).catch(() => null),
-        apiFetch('/api/dialer-tasks').then(r => r.json()).catch(() => null),
-        apiFetch('/api/billing').then(r => r.json()).catch(() => null),
-        apiFetch('/api/question-flows').then(r => r.json()).catch(() => null),
-        apiFetch('/api/settings/industry').then(r => r.ok ? r.json() : null).catch(() => null)
+        allowed('workspace.read', '/api/leads'),
+        allowed('workspace.read', '/api/workflows'),
+        allowed('workspace.read', '/api/call-logs'),
+        allowed('workspace.read', '/api/loans'),
+        allowed('workspace.read', '/api/settings/numbers'),
+        allowed('organization.members.read', '/api/settings/team'),
+        allowed('workspace.read', '/api/settings/workspace'),
+        allowed('workspace.read', '/api/dialer-tasks'),
+        allowed('billing.read', '/api/billing'),
+        allowed('workspace.read', '/api/question-flows'),
+        allowed('workspace.read', '/api/settings/industry')
       ]);
 
       if (Array.isArray(resLeads)) setLeads(resLeads);
@@ -391,7 +398,7 @@ export default function App() {
         setQuestionFlows(resQuestionFlows.map((f: any) => ({ nodes: [], edges: [], variables: [], ...f })));
 
       const industry = (resOrg && resOrg.industry) || orgSettings.industry;
-      if (industry && industry !== 'lending') {
+      if (getAuthorization()?.permissions.includes('workspace.read') !== false && industry && industry !== 'lending') {
         try {
           const objects = await apiFetch('/api/objects').then(r => r.json());
           const primary = Array.isArray(objects) ? objects[0] : null;
@@ -505,10 +512,11 @@ export default function App() {
           throw new Error('Your workspace selection could not be confirmed.');
         }
         if (cancelled) return;
+        setAuthorization(session.authorization || null);
         setStorageScope(kcUser.id, selected ? `${selectedRow.orgId}:${selected}` : null);
         setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
         setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
-        setOrgSettings(EMPTY_ORG_SETTINGS); setDialerTasks([]); setQuestionFlows([]);
+        setOrgSettings({ ...EMPTY_ORG_SETTINGS,...(session.org || {}) }); setDialerTasks([]); setQuestionFlows([]);
         await fetchUserFlags();
         if (cancelled) return;
         setMembershipStatus('ok');
@@ -526,11 +534,13 @@ export default function App() {
 
   // Live call events — SSE stream, authenticated with a short-lived ticket.
   useEffect(() => {
-    if (!kcUser || !hasLoaded) return;
+    if (!kcUser || !hasLoaded || !can('workspace.read')) return;
     let source: EventSource | null = null;
     let closed = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    (async () => {
+    const connect = async () => {
+      if (closed) return;
       let ticket: string;
       try {
         const response = await apiFetch('/api/logs-stream/ticket', { method: 'POST' });
@@ -538,7 +548,8 @@ export default function App() {
         const data = await response.json();
         ticket = data.ticket;
       } catch (err) {
-        console.warn('SSE: failed to create ticket, skipping stream creation', err);
+        console.warn('SSE: ticket unavailable', err);
+        if (!closed) retryTimer = setTimeout(connect,10000);
         return;
       }
       if (closed || !ticket) return;
@@ -587,13 +598,15 @@ export default function App() {
         }
       };
       source.onerror = () => {
-        // EventSource auto-reconnects on its own; nothing to do here beyond
-        // not crashing the app if the tunnel/backend is briefly unreachable.
+        source?.close();
+        if (!closed) retryTimer = setTimeout(connect,5000);
       };
-    })();
+    };
+    void connect();
 
     return () => {
       closed = true;
+      if (retryTimer) clearTimeout(retryTimer);
       source?.close();
     };
   // kcUser?.id, not the object — see the comment above; otherwise every
@@ -615,7 +628,7 @@ export default function App() {
 
   useEffect(() => {
     saveToStorage('chiefx_leads', leads);
-    if (!hasLoaded) return;
+    if (!hasLoaded || !can('workspace.write')) return;
 
     if (primaryObject) {
       // Non-lending organizations persist the canonical DomainRecord collection.
@@ -674,7 +687,7 @@ export default function App() {
   }, [leads, domainRecords, hasLoaded, primaryObject]);
 
   useEffect(() => { saveToStorage('chiefx_workflows', workflows); }, [workflows]);
-  useDebouncedSync('/api/workflows/sync', workflows, hasLoaded);
+  useDebouncedSync('/api/workflows/sync', workflows, hasLoaded && can('workspace.write'));
 
   useEffect(() => { saveToStorage('chiefx_calllogs', callLogs); }, [callLogs]);
   // Call Logs are backend-authoritative. Do not replace/reinsert the whole
@@ -697,12 +710,11 @@ export default function App() {
   // Dialer tasks are server-authoritative; writes use the dedicated create/patch APIs.
 
   useEffect(() => { saveToStorage('chiefx_loans', loans); }, [loans]);
-  useDebouncedSync('/api/loans/sync', loans, hasLoaded);
+  useDebouncedSync('/api/loans/sync', loans, hasLoaded && can('workspace.write'));
 
   // Only org admins / super admins can write to team, numbers, and org settings.
   // DB role is authoritative once loaded; JWT role is the optimistic initial value.
-  const ADMIN_ROLE_SET = new Set(['Organization Admin', 'Super Admin']);
-  const isAdmin = ADMIN_ROLE_SET.has(dbRole || kcUser?.role || '');
+  const isAdmin = can('workspace.settings.manage');
 
   // Team membership is persisted through the dedicated /api/settings/team CRUD endpoints.
   // There is intentionally no whole-list /sync endpoint; keeping this hook would
@@ -710,7 +722,7 @@ export default function App() {
   useEffect(() => { saveToStorage('chiefx_team', teamMembers); }, [teamMembers]);
 
   useEffect(() => { saveToStorage('chiefx_question_flows', questionFlows); }, [questionFlows]);
-  useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded);
+  useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded && can('workspace.write'));
 
   useEffect(() => { saveToStorage('chiefx_org', orgSettings); }, [orgSettings]);
   useDebouncedSync('/api/settings/workspace', orgSettings, hasLoaded && isAdmin);
@@ -731,7 +743,7 @@ export default function App() {
         if (res.ok) return;
         const body = await res.json().catch(() => ({}));
         alert(body.error || 'Failed to save virtual number(s) — reverting to last saved state.');
-        const fresh = await apiFetch('/api/settings/numbers').then(r => r.json()).catch(() => null);
+        const fresh = await apiFetch('/api/settings/numbers').then(r => r.ok ? r.json() : null).catch(() => null);
         if (Array.isArray(fresh)) setVirtualNumbers(fresh);
       } catch (err) { console.error("Error syncing virtual numbers:", err); }
     }, 800);
@@ -742,7 +754,8 @@ export default function App() {
   useEffect(() => {
     if (!flagsReady) return;
     const flagKey = TAB_TO_FLAG[activeTab];
-    if (!flagKey || isEnabled(flagKey)) return; // current tab is fine
+    if (canAccessTab(activeTab,activeTab === 'settings' ? activeSubTab : undefined) && (!flagKey || isEnabled(flagKey))) return; // current tab is fine
+    if (!can('workspace.read') && can('billing.read')) { navigate('/administration/billing',{ replace: true }); return; }
 
     // Find the first sidebar tab the user can actually see
     const orderedTabs = [
@@ -752,7 +765,7 @@ export default function App() {
     ];
     const firstAccessible = orderedTabs.find(tab => {
       const fk = TAB_TO_FLAG[tab];
-      return !fk || isEnabled(fk);
+      return canAccessTab(tab) && (!fk || isEnabled(fk));
     });
 
     if (firstAccessible) {
@@ -766,6 +779,9 @@ export default function App() {
   // the keep-alive rendering below, which keeps previously-visited tabs
   // mounted so switching back to one doesn't re-run its initial data fetch).
   const renderTabContent = (tab: string) => {
+    if (!canAccessTab(tab,tab === 'settings' ? activeSubTab : undefined)) {
+      return <PageShell title="Access restricted"><p className="col-span-12 p-6">Your current role does not have access to this page.</p></PageShell>;
+    }
     const flagKey = TAB_TO_FLAG[tab];
     // Only block when flags are fully loaded — render content optimistically
     // while flags are still in-flight so the page doesn't flash null → content.
@@ -860,7 +876,7 @@ export default function App() {
             setMode={(m) => setActiveSubTab(m, 'dialer')}
             orgSettings={orgSettings}
             setOrgSettings={setOrgSettings}
-            isOrganizationAdmin={dbRole === 'Organization Admin'}
+            isOrganizationAdmin={can('workspace.delete')}
             isActive={activeTab === 'dialer'}
           />
         );
@@ -980,6 +996,7 @@ export default function App() {
 
       {/* Main Workspace — fills remaining 12-col grid space */}
       <main className="flex flex-col min-w-0 overflow-hidden relative">
+        {can('workspace.read') && !can('workspace.write') && <div className="px-6 py-2 text-sm bg-slate-100 text-slate-600">Viewer access: workspace data is read-only.</div>}
         {liveCallBanner && (
           <div className="absolute top-0 left-0 right-0 z-50 bg-emerald-600 text-white text-xs font-semibold px-4 py-2 flex items-center justify-center gap-2 animate-pulse">
             <span className="h-1.5 w-1.5 rounded-full bg-white"></span>

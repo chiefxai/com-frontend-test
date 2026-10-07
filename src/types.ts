@@ -204,6 +204,12 @@ export interface VirtualNumber {
 }
 
 export type UserRole =
+  | 'Owner'
+  | 'Billing Admin'
+  | 'Workspace Admin'
+  | 'Manager'
+  | 'Member'
+  | 'Viewer'
   | 'Super Admin'
   | 'Organization Admin'
   | 'Sales Manager'

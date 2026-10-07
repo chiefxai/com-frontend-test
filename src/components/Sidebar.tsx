@@ -1,3 +1,4 @@
+import { useAuthorization, canAccessTab } from '../lib/authorization';
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
 import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
@@ -197,7 +198,8 @@ export default function Sidebar({
   industryProfile,
 }: SidebarProps) {
   const industryContext = useIndustry({ industry, businessType });
-  const isAdmin = userRole === 'Organization Admin' || userRole === 'Super Admin';
+  const { can } = useAuthorization();
+  const isAdmin = can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
   const { isEnabled } = useFeatureFlags();
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -280,12 +282,16 @@ export default function Sidebar({
   ];
 
   const menuItems = allMenuItems.filter((item) => {
+    if (!canAccessTab(item.id)) return false;
     const flagKey = TAB_TO_FLAG[item.id];
     if (flagKey && !isEnabled(flagKey)) return false;
     return true;
   });
 
-  const visibleGroups = SIDEBAR_GROUPS.filter((group) => {
+  const visibleGroups = SIDEBAR_GROUPS.map(group => ({ ...group,
+    subItems: group.subItems.filter(item => canAccessTab(group.tabId,item.id)),
+  })).filter((group) => {
+    if (!group.subItems.length || !canAccessTab(group.tabId)) return false;
     const flagKey = TAB_TO_FLAG[group.tabId];
     return !flagKey || isEnabled(flagKey);
   });
@@ -305,6 +311,7 @@ export default function Sidebar({
     // Keep Reports visible when the feature flag is enabled.
     // TAB_TO_FLAG is derived from the feature registry.
 
+    if (!canAccessTab(item.id)) return false;
     const flagKey = TAB_TO_FLAG[item.id];
     return !flagKey || isEnabled(flagKey);
   });

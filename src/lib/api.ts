@@ -1,3 +1,4 @@
+import { getAuthorization, permissionForRequest } from './authorization';
 // API fetch layer — token management is delegated to the configured auth provider.
 // The selected auth provider owns token lifecycle (Keycloak in dev,
 // Identity Platform in UAT/production). apiFetch obtains a fresh bearer
@@ -116,6 +117,11 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     ? url
     : `${getApiBase()}${url.startsWith('/') ? url : `/${url}`}`;
 
+  const access = getAuthorization();
+  const permission = permissionForRequest(new URL(requestUrl,'http://local').pathname,(options.method || 'GET').toUpperCase());
+  if (access && permission && !['GET','HEAD','OPTIONS'].includes((options.method || 'GET').toUpperCase()) && !access.permissions.includes(permission)) {
+    throw new Error(`You do not have permission for this action (${permission}).`);
+  }
   let res = await fetch(requestUrl, { ...options, headers });
   const path = new URL(requestUrl, 'http://local').pathname;
   // Vercel can deploy before the VM. Only the original default workspace
