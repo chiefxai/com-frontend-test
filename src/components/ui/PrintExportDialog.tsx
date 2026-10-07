@@ -385,22 +385,27 @@ export function PrintExportDialog({
   } as const;
 
   const buildWordRows = (rows: ExportRowItem[][]) => rows.map(row => {
-    const cells = row.map(item =>
-      `<td colspan="${item.span}" style="width:${(item.span / 12) * 100}%;vertical-align:top;padding:0 6px 14px 6px">${item.html}</td>`
+    const cells = row.map((item, index) => {
+      const left = index === 0 ? 0 : 11.3386;
+      const right = index === row.length - 1 ? 0 : 11.3386;
+      return `<td colspan="${item.span}" style="width:${(item.span / 12) * 100}%;vertical-align:top;padding:0 ${right}px 22.677px ${left}px">${item.html}</td>`;
+    }
     ).join('');
     const used = row.reduce((sum, item) => sum + item.span, 0);
     const filler = used < 12 ? `<td colspan="${12 - used}" style="width:${((12 - used) / 12) * 100}%"></td>` : '';
     return `<tr style="page-break-inside:avoid">${cells}${filler}</tr>`;
   }).join('');
 
-  const buildWordPages = () => {
+  const buildWordPages = (dashboardScale: number, headerScale: number, contentWidth: number) => {
     const rows = pages.flatMap(page => page.rows);
     return `<main class="chiefvoice-word-document">
-      <header class="chiefvoice-word-header" style="display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border);page-break-after:avoid">
-        <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:42px;height:42px;object-fit:contain">
-        <div><h1 style="font-size:20px;line-height:1.25;margin:0 0 4px;color:var(--text-primary)">${title}</h1><p style="font-size:10pt;color:var(--text-secondary);margin:2px 0 0">Filter applied: ${formatRange(fromDate, toDate)}</p>${filters ? `<p style="font-size:10pt;color:var(--text-secondary);margin:2px 0 0">Additional filters: ${filters}</p>` : ''}</div>
+      <header class="chiefvoice-word-header" style="width:${contentWidth}px;zoom:${headerScale};margin:0 auto 12px;box-sizing:border-box;padding:12px 0 16px;border-bottom:1px solid var(--border);text-align:center;page-break-after:avoid;font-family:Arial,sans-serif">
+        <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="display:block;width:88px;height:88px;object-fit:contain;margin:0 auto 14px">
+        <h1 style="font-size:28px;line-height:1.2;margin:0 0 8px;color:var(--text-primary)">${title}</h1><p style="font-size:14px;color:var(--text-secondary);margin:0">Filter applied: ${formatRange(fromDate, toDate)}</p>${filters ? `<p style="font-size:14px;color:var(--text-secondary);margin:4px 0 0">Additional filters: ${filters}</p>` : ''}
       </header>
-      <table role="presentation" class="chiefvoice-word-grid" style="width:100%;table-layout:fixed;border-collapse:collapse"><tbody>${buildWordRows(rows)}</tbody></table>
+      <div class="chiefvoice-word-dashboard" style="width:1440px;zoom:${dashboardScale};margin:0 auto;background:var(--bg-base);color:var(--text-primary);padding:37.795px;box-sizing:border-box">
+        <table role="presentation" class="chiefvoice-word-grid" style="width:100%;table-layout:fixed;border-collapse:collapse"><tbody>${buildWordRows(rows)}</tbody></table>
+      </div>
     </main>`;
   };
 
@@ -451,19 +456,51 @@ export function PrintExportDialog({
     const captureHost = document.createElement('div');
     captureHost.className = settings.theme === 'dark' ? 'dark' : '';
     captureHost.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
+    captureHost.setAttribute('data-theme', settings.theme);
+    Object.assign(captureHost.style, EXPORT_THEME_VARS[settings.theme]);
     const captureSource = source.cloneNode(true) as HTMLElement;
     captureSource.removeAttribute('data-chiefvoice-export-root');
+    // The live report stylesheet applies browser-print zoom to this class.
+    // That zoom changes the off-screen capture's layout and canvas dimensions.
+    captureSource.classList.remove('chiefvoice-print-content');
+    captureSource.classList.toggle('dark', settings.theme === 'dark');
+    captureSource.setAttribute('data-theme', settings.theme);
+    captureSource.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
+      .forEach(node => node.remove());
     // Match the 1440px measurement/preview canvas so grid widths and gaps
     // scale into the same 10mm printable area on every device size.
+    captureSource.style.display = 'grid';
+    captureSource.style.gridTemplateColumns = 'repeat(12,minmax(0,1fr))';
+    captureSource.style.gridAutoFlow = 'row';
+    captureSource.style.gridAutoRows = 'max-content';
+    captureSource.style.alignItems = 'stretch';
+    captureSource.style.gap = '22.6771653546px';
     captureSource.style.width = '1440px';
+    captureSource.style.minWidth = '1440px';
+    captureSource.style.maxWidth = '1440px';
+    captureSource.style.padding = '38px';
+    captureSource.style.boxSizing = 'border-box';
+    captureSource.style.zoom = '1';
     captureSource.style.height = 'auto';
     captureSource.style.minHeight = '0';
     captureSource.style.maxHeight = 'none';
     captureSource.style.overflow = 'visible';
     captureSource.style.alignContent = 'start';
+    Object.assign(captureSource.style, EXPORT_THEME_VARS[settings.theme]);
+    captureSource.querySelectorAll(':scope > *').forEach(node => {
+      const element = node as HTMLElement;
+      const span = Math.max(1, Math.min(12, Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12)));
+      element.style.width = '100%';
+      element.style.minWidth = '0';
+      element.style.maxWidth = '100%';
+      element.style.height = 'auto';
+      element.style.minHeight = '0';
+      element.style.maxHeight = 'none';
+      element.style.overflow = 'visible';
+      element.style.gridColumn = `span ${span} / span ${span}`;
+    });
     // Keep any theme marker that lives on an app shell from overriding the
     // selected export theme through ancestor selectors.
-    captureHost.setAttribute('data-theme', settings.theme);
     captureHost.appendChild(captureSource);
     document.body.appendChild(captureHost);
 
@@ -638,6 +675,10 @@ export function PrintExportDialog({
         imageSmoothing: true,
         imageSmoothingQuality: 'high',
         foreignObjectRendering: false,
+        // html2canvas-pro normalizes transforms by default. Keep the measured
+        // chart and widget transforms intact; animations are already given two
+        // animation frames to settle before capture.
+        normalizeDom: false,
         onclone: inlineComputedStyles,
       });
 
@@ -821,19 +862,15 @@ export function PrintExportDialog({
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
         ${collectStyles()}
-        @page { size:${paper.css} ${settings.orientation}; margin:12mm; }
+        @page { size:${paper.css} ${settings.orientation}; margin:10mm; }
         html,body{margin:0;padding:0;background:${settings.theme === 'dark' ? '#080D1C' : '#fff'};color:${settings.theme === 'dark' ? '#F7F9FC' : '#111827'};font-family:Arial,sans-serif}
         .chiefvoice-word-document{width:100%;color:var(--text-primary);background:var(--bg-surface)}
-        .chiefvoice-word-header{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid #e2e8f0;page-break-after:avoid}
-        .chiefvoice-word-header img{width:42px;height:42px;object-fit:contain}
-        .chiefvoice-word-header h1{font-size:20px;line-height:1.25;margin:0 0 4px;color:var(--text-primary)}
-        .chiefvoice-word-header p{font-size:10pt;color:var(--text-secondary);margin:2px 0 0}
         .chiefvoice-word-grid{width:100%;table-layout:fixed;border-collapse:collapse}
         .chiefvoice-word-grid tr{page-break-inside:avoid;break-inside:avoid}
         .chiefvoice-word-grid td{vertical-align:top}
         .chiefvoice-word-grid img,.chiefvoice-word-grid svg,.chiefvoice-word-grid canvas{max-width:100%}
       </style></head><body><div class="${settings.theme === 'dark' ? 'dark' : ''}" data-theme="${settings.theme}" style="${themeStyle}">
-      ${buildWordPages()}
+      ${buildWordPages(((pageW - 20) * mmToPx) / desktopWidth, 1, (pageW - 20) * mmToPx)}
       </div></body></html>`;
     const files = [
       { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="html" ContentType="text/html"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
@@ -948,8 +985,8 @@ export function PrintExportDialog({
               </div>
 
       {settings.format === 'docx' ? (
-        <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', padding: 28, boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
-          <div dangerouslySetInnerHTML={{ __html: buildWordPages() }} />
+        <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
+          <div dangerouslySetInnerHTML={{ __html: buildWordPages(renderScale, previewScale, usableWidthPx) }} />
         </section>
       ) : <>
       <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
