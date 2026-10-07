@@ -355,6 +355,8 @@ export function PrintExportDialog({
     return cover + content;
   };
 
+  const previewTheme: ExportTheme = settings.format === 'pdf' ? settings.theme : 'light';
+
   const withGridSpan = (html: string, span: number) => {
     const safeSpan = Math.max(1, Math.min(12, span));
     const gridStyle = `grid-column:span ${safeSpan} / span ${safeSpan};width:100%;min-width:0;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;`;
@@ -862,20 +864,34 @@ export function PrintExportDialog({
                 {settings.paperSize} · {settings.orientation} · {pages.length + 1} page{pages.length === 0 ? '' : 's'} · 12-column grid
               </div>
 
-      <section className={`${settings.theme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[settings.theme], backgroundColor: 'var(--bg-base)' }}>
+      {settings.format === 'pdf' ? <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
                 <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
                   <p style={{ textAlign:'center', fontSize:14, color:'var(--text-secondary)', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
                 </div>
-              </section>
+              </section> : <section className="shadow-xl overflow-hidden" style={{ ...previewPaperStyle, boxSizing: 'border-box', background: '#fff', color: '#111827', fontFamily: 'Arial, sans-serif' }}>
+                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                  <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ width: 72, height: 72, objectFit: 'contain', marginBottom: 12 }} />
+                  <h1 style={{ fontSize: 24, margin: '12px 0 6px', color: '#111827' }}>{title}</h1>
+                  <p style={{ color: '#4b5563', margin: 0 }}>Filter applied: {formatRange(fromDate, toDate)}</p>
+                  {filters && <p style={{ color: '#4b5563', margin: '4px 0 0' }}>Additional filters: {filters}</p>}
+                </div>
+              </section>}
 
               {pages.map((page, pageIndex) => {
                 const pageHtml = page.rows.flat().map(item => item.html).join('');
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className={`${settings.theme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[settings.theme], backgroundColor: 'var(--bg-base)' }}>
+                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...(settings.format === 'pdf' ? EXPORT_THEME_VARS[previewTheme] : {}), backgroundColor: settings.format === 'doc' ? '#fff' : 'var(--bg-base)', color: settings.format === 'doc' ? '#111827' : 'var(--text-primary)', fontFamily: settings.format === 'doc' ? 'Arial, sans-serif' : undefined }}>
+                      {settings.format === 'doc' ? (
+                        <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: '#fff', color: '#111827', fontFamily: 'Arial, sans-serif' }}>
+                          <table role="presentation" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                            <tbody dangerouslySetInnerHTML={{ __html: buildWordRows(page.rows) }} />
+                          </table>
+                        </div>
+                      ) : (
                       <div
                         style={{
                           width: desktopWidth,
@@ -895,6 +911,7 @@ export function PrintExportDialog({
                         }}
                         dangerouslySetInnerHTML={{ __html: pageHtml }}
                       />
+                      )}
                     </section>
                   </React.Fragment>
                 );
