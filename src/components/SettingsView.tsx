@@ -35,6 +35,7 @@ import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import DataTable, { Column } from './ui/DataTable';
 import WorkspaceManagement from './WorkspaceManagement';
+import WorkspaceSharing from './WorkspaceSharing';
 
 interface SettingsViewProps {
   virtualNumbers: VirtualNumber[];
@@ -65,6 +66,7 @@ interface SettingsViewProps {
   setActiveSubTab?: (sub: string) => void;
   currentUserEmail?: string;
   multipleWorkspacesEnabled?: boolean;
+  workspaceSharingEnabled?: boolean;
   onWorkspaceCreated?: () => Promise<void>;
 }
 
@@ -141,6 +143,7 @@ export default function SettingsView({
   setActiveSubTab: setActiveSubTabProp,
   currentUserEmail,
   multipleWorkspacesEnabled = false,
+  workspaceSharingEnabled = false,
   onWorkspaceCreated = async () => {},
 }: SettingsViewProps) {
   const { can } = useAuthorization();
@@ -729,6 +732,7 @@ export default function SettingsView({
           {subTab === 'team' && (
             <div className="space-y-6">
               <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
+              <WorkspaceSharing enabled={workspaceSharingEnabled} />
               {staffAddMsg && (
                 <div className={`px-4 py-2.5 rounded-lg text-xs font-medium ${staffAddMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                   {staffAddMsg.text}

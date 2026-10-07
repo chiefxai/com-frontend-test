@@ -224,6 +224,7 @@ export default function App() {
     organization: { id: string; name: string; workspaceName: string; industry?: string; status?: string };
   }>>([]);
   const [multipleWorkspacesEnabled, setMultipleWorkspacesEnabled] = useState(false);
+  const [workspaceSharingEnabled, setWorkspaceSharingEnabled] = useState(false);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
     try { return localStorage.getItem('chiefx_active_workspace_id') || ''; } catch { return ''; }
   });
@@ -473,6 +474,8 @@ export default function App() {
     setDbRole('');
     setHasLoaded(false);
     setMembershipStatus('checking');
+    setMultipleWorkspacesEnabled(false);
+    setWorkspaceSharingEnabled(false);
     let cancelled = false;
 
     apiFetch('/api/auth/workspaces')
@@ -515,6 +518,7 @@ export default function App() {
         if (cancelled) return;
         setAuthorization(session.authorization || null);
         setMultipleWorkspacesEnabled(session.workspaceCapabilities?.multipleWorkspaces === true);
+        setWorkspaceSharingEnabled(session.workspaceCapabilities?.sharing === true);
         setStorageScope(kcUser.id, selected ? `${selectedRow.orgId}:${selected}` : null);
         setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
         setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
@@ -934,6 +938,7 @@ export default function App() {
             setActiveSubTab={setActiveSubTab}
             currentUserEmail={kcUser?.email}
             multipleWorkspacesEnabled={multipleWorkspacesEnabled}
+            workspaceSharingEnabled={workspaceSharingEnabled}
             onWorkspaceCreated={async () => {
               const response = await apiFetch('/api/auth/workspaces');
               if (!response.ok) throw new Error('Workspace was created, but the workspace list could not be refreshed.');
