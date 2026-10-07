@@ -31,6 +31,9 @@ import DataTable, { Column } from './ui/DataTable';
 import { newClientId } from '../lib/ids';
 import Badge from './ui/Badge';
 import type { IndustryProfile } from '../lib/industry/types';
+import type { DomainRecord } from '../lib/industry/domainRecord';
+import { getDomainRecordIdentity } from '../lib/industry/domainRecord';
+import { leadToRecordCreate } from '../lib/objectContacts';
 interface ContactDirectoryViewProps {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
@@ -54,6 +57,8 @@ interface ContactDirectoryViewProps {
   // state). Undefined for lending orgs.
   primaryObjectKey?: string;
   primaryObjectFields?: { id: string; key: string; label: string; type: string; required?: boolean }[];
+  domainRecords?: DomainRecord[];
+  setDomainRecords?: React.Dispatch<React.SetStateAction<DomainRecord[]>>;
 }
 
 const NO_GROUP = '__no_group__';
@@ -66,10 +71,32 @@ export default function ContactDirectoryView({
   callLogs = [],
   dialerTasks = [],
   primaryObjectKey,
-  primaryObjectFields = []
+  primaryObjectFields = [],
+  domainRecords,
+  setDomainRecords,
 }: ContactDirectoryViewProps) {
   const contactLabel = industryProfile?.labels.contact.plural || 'Contacts';
   const leadLabel = industryProfile?.labels.lead.plural || 'Leads';
+  const canonicalLeads = React.useMemo(() => domainRecords?.map((record) => {
+    const identity = getDomainRecordIdentity(record);
+    const values = record.values;
+    return {
+      id: record.id,
+      name: identity.name,
+      phone: identity.phone || '',
+      email: identity.email || '',
+      gender: values.gender ?? values.sex ? String(values.gender ?? values.sex) : undefined,
+      amountRequested: Number(values.amountRequested ?? values.budget ?? 0) || 0,
+      score: 0,
+      source: String(values.source ?? values.channel ?? 'Manual Entry'),
+      status: (industryProfile?.pipeline.stages.find(s => s.key === record.stageKey)?.label || 'New') as Lead['status'],
+      tags: Array.isArray(values.tags) ? values.tags as string[] : [],
+      createdAt: record.createdAt || new Date().toISOString(),
+      notes: String(values.notes ?? values.condition ?? ''),
+      groupIds: Array.isArray(values.groupIds) ? values.groupIds as string[] : [],
+      pipelineStage: record.stageKey || undefined,
+    } as Lead;
+  }) || leads, [domainRecords, industryProfile, leads]);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
 
   // Contact Directory is a lightweight address book (name/phone/email +
@@ -181,7 +208,7 @@ export default function ContactDirectoryView({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter contacts
-  const filteredLeads = leads.filter((lead) => {
+  const filteredLeads = canonicalLeads.filter((lead) => {
     const matchesSearch =
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.includes(searchTerm) ||
@@ -194,9 +221,9 @@ export default function ContactDirectoryView({
   });
 
   // Unique sources for filter dropdown
-  const uniqueSources = ['All', ...Array.from(new Set(leads.map((l) => l.source)))];
+  const uniqueSources = ['All', ...Array.from(new Set(canonicalLeads.map((l) => l.source)))];
 
-  const totalContacts = leads.length;
+  const totalContacts = canonicalLeads.length;
 
   // Handle open individual add modal
   const openAddModal = () => {
@@ -260,6 +287,12 @@ export default function ContactDirectoryView({
         return l;
       });
       setLeads(updatedLeads);
+      if (primaryObjectKey && setDomainRecords && updatedLead) {
+        setDomainRecords((records) => records.map((record) => record.id === updatedLead!.id ? {
+          ...record,
+          values: { ...record.values, name: formName, phone: formPhone, email: formEmail.trim(), gender: formGender.trim() || undefined, source: formSource, notes: formNotes, groupIds: formGroupIds },
+        } : record));
+      }
       // Non-lending orgs (primaryObjectKey set) are Industry Objects
       // records with per-pack field names — App.tsx's own leads-sync
       // effect already knows how to map a Lead back into that shape
@@ -315,6 +348,9 @@ export default function ContactDirectoryView({
           ? { ...draftLead, id: created.id }
           : created;
         setLeads([newLead, ...leads]);
+        if (primaryObjectKey && setDomainRecords) {
+          setDomainRecords((records) => [{ id: newLead.id, objectKey: primaryObjectKey, stageKey: null, values: body, createdAt: newLead.createdAt }, ...records]);
+        }
       } catch (err: any) {
         console.error('Error creating contact:', err);
         alert(`Failed to create contact: ${err.message || 'Network error'}`);
@@ -333,6 +369,7 @@ export default function ContactDirectoryView({
     if (!confirm(`Are you sure you want to delete ${name} from your contact directory?`)) return;
     const previous = leads;
     setLeads(leads.filter((l) => l.id !== id));
+    if (primaryObjectKey && setDomainRecords) setDomainRecords((records) => records.filter((record) => record.id !== id));
     try {
       const url = primaryObjectKey
         ? `/api/objects/${primaryObjectKey}/records/${id}`
@@ -343,6 +380,7 @@ export default function ContactDirectoryView({
       console.error('Error deleting contact:', err);
       alert('Failed to delete contact — restoring.');
       setLeads(previous);
+      if (primaryObjectKey && setDomainRecords) setDomainRecords((records) => records);
     }
   };
 
