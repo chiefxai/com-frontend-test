@@ -807,7 +807,7 @@ export default function App() {
           />
         );
       case 'objects':
-        return <CustomObjectsView />;
+        return <CustomObjectsView industryProfile={effectiveIndustryProfile} />;
       case 'inbox':
         return <UnifiedInboxView />;
       case 'agent-studio':
