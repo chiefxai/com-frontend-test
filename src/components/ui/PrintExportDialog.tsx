@@ -53,6 +53,7 @@ const EXPORT_THEME_VARS: Record<ExportTheme, React.CSSProperties> = {
 
 interface ExportRowItem { html: string; span: number; }
 interface ExportPage { rows: ExportRowItem[][]; }
+interface MeasuredExportRow { height: number; items: ExportRowItem[]; }
 
 function makeStoredZip(files: Array<{ name: string; data: string }>): Uint8Array {
   const encoder = new TextEncoder();
@@ -214,14 +215,17 @@ export function PrintExportDialog({
     orientation: 'landscape',
     theme: 'light',
   });
-  const [pages, setPages] = useState<ExportPage[]>([]);
+  const [measuredRows, setMeasuredRows] = useState<MeasuredExportRow[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!open || !contentRef.current) {
-      setPages([]);
+      setMeasuredRows([]);
+      setPreviewLoading(false);
       return;
     }
+    setPreviewLoading(true);
 
     const clone = contentRef.current.cloneNode(true) as HTMLElement;
     const sourceScrollables = contentRef.current.querySelectorAll<HTMLElement>('[data-widget-scroll]');
@@ -303,33 +307,6 @@ export function PrintExportDialog({
         });
       });
 
-      // Store the same resolved widget styles that PDF rendering uses. The
-      // preview lives outside the dashboard shell, so relying only on its
-      // Tailwind classes can lose inherited theme tokens and nested styles.
-      const inlineStyles = (element: Element) => {
-        const computed = window.getComputedStyle(element);
-        const style = (element as HTMLElement | SVGElement).style;
-        for (let index = 0; index < computed.length; index++) {
-          const property = computed.item(index);
-          const value = computed.getPropertyValue(property);
-          if (value) style.setProperty(property, value, 'important');
-        }
-        const children = Array.from(element.children);
-        children.forEach(inlineStyles);
-
-        for (const pseudo of ['::before', '::after'] as const) {
-          const pseudoStyle = window.getComputedStyle(element, pseudo);
-          const content = pseudoStyle.content;
-          if (!content || content === 'none' || content === 'normal') continue;
-          const marker = document.createElement('span');
-          marker.textContent = content.replace(/^['"]|['"]$/g, '');
-          marker.style.cssText = 'display:inline-block!important;box-sizing:border-box!important;font:inherit!important;color:inherit!important;background:inherit!important;border:inherit!important;position:static!important;';
-          if (pseudo === '::before') element.insertBefore(marker, element.firstChild);
-          else element.appendChild(marker);
-        }
-      };
-      inlineStyles(clone);
-
       const children = Array.from(clone.children) as HTMLElement[];
       const rowsMap = new Map<number, HTMLElement[]>();
       children.forEach((element) => {
@@ -351,41 +328,8 @@ export function PrintExportDialog({
             })),
         }));
 
-      // The measurement canvas is 1440px wide with 38px padding. The print
-      // page has 10mm padding. Convert the physical paper's usable height into
-      // that same desktop coordinate system so pagination is deterministic.
-      const paper = PAPER[settings.paperSize];
-      const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
-      const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
-      const usableW = pageW - 20;
-      const usableH = pageH - 20;
-      // downloadPdf paginates the full 1440px source canvas before cropping
-      // its 10mm page margins, so preview must use that same source height.
-      const desktopUsableH = (usableH / usableW) * 1440;
-      const rowGap = 22.6771653546;
-
-      const result: ExportPage[] = [];
-      let current: ExportRowItem[][] = [];
-      let used = 0;
-
-      for (const row of rows) {
-        const rowHeight = row.height;
-        const needed = current.length === 0 ? rowHeight : rowGap + rowHeight;
-
-        // Never split a dashboard row. If the next row cannot fit, start a
-        // completely new physical page.
-        if (current.length > 0 && used + needed > desktopUsableH) {
-          result.push({ rows: current });
-          current = [];
-          used = 0;
-        }
-
-        current.push(row.items);
-        used += current.length === 1 ? rowHeight : rowGap + rowHeight;
-      }
-
-      if (current.length > 0) result.push({ rows: current });
-      setPages(result);
+      setMeasuredRows(rows);
+      setPreviewLoading(false);
       measurementHost.remove();
     };
 
@@ -394,7 +338,7 @@ export function PrintExportDialog({
       window.cancelAnimationFrame(frame);
       measurementHost.remove();
     };
-  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme]);
+  }, [open, contentRef]);
 
   const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
@@ -414,6 +358,29 @@ export function PrintExportDialog({
     height: `${previewHeight}px`,
     aspectRatio: `${pageW} / ${pageH}`,
   } as const;
+
+  const pages = React.useMemo(() => {
+    const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
+    const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
+    const desktopUsableH = ((pageH - 20) / (pageW - 20)) * desktopWidth;
+    const rowGap = 22.6771653546;
+    const result: ExportPage[] = [];
+    let current: ExportRowItem[][] = [];
+    let used = 0;
+
+    for (const row of measuredRows) {
+      const needed = current.length === 0 ? row.height : rowGap + row.height;
+      if (current.length > 0 && used + needed > desktopUsableH) {
+        result.push({ rows: current });
+        current = [];
+        used = 0;
+      }
+      current.push(row.items);
+      used += current.length === 1 ? row.height : rowGap + row.height;
+    }
+    if (current.length > 0) result.push({ rows: current });
+    return result;
+  }, [measuredRows, paper, settings.orientation]);
 
   const buildWordRows = (rows: ExportRowItem[][]) => rows.map(row => {
     const cells = row.map((item, index) => {
@@ -1015,7 +982,19 @@ export function PrintExportDialog({
                 {settings.format === 'docx' ? 'Continuous Word document' : `${settings.paperSize} · ${settings.orientation} · ${pages.length + 1} page${pages.length === 0 ? '' : 's'} · 12-column grid`}
               </div>
 
-      {settings.format === 'docx' ? (
+      {previewLoading ? (
+        <section
+          className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl"
+          style={{ width: previewWidth, minHeight: Math.min(previewHeight, 520), ...EXPORT_THEME_VARS[previewTheme], color: 'var(--text-primary)' }}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="w-full max-w-sm px-8">
+            <p className="mb-4 text-sm font-semibold">Preparing preview…</p>
+            <ProgressBar value={null} label="Rendering dashboard preview" />
+          </div>
+        </section>
+      ) : settings.format === 'docx' ? (
         <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
           <div dangerouslySetInnerHTML={{ __html: buildWordPages(renderScale, previewScale, usableWidthPx) }} />
         </section>
