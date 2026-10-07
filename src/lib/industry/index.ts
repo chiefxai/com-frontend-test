@@ -7,3 +7,4 @@ export * from './validate';
 export * from './useIndustry';
 
 export * from './domainRecord';
+export * from './domainStore';
