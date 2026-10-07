@@ -764,6 +764,7 @@ export default function App() {
             openFlowId={activeSubTab}
             onOpenFlow={(id) => navigate(`/${TAB_TO_SLUG.workflows}/${id}`)}
             onCloseFlow={() => navigate(`/${TAB_TO_SLUG.workflows}`)}
+            industryProfile={effectiveIndustryProfile}
           />
         );
       case 'dialer':
