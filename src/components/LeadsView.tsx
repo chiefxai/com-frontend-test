@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, Phone, ArrowRightCircle, CheckCircle2, Download, Megaphone, Clock } from 'lucide-react';
 import { Lead } from '../types';
+import type { DomainRecord } from '../lib/industry/domainRecord';
+import { domainRecordsToLeads } from '../lib/objectContacts';
 import { formatPhone } from '../lib/phone';
 import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
 import { CsvField } from '../lib/csvExport';
@@ -52,6 +54,8 @@ interface LeadsViewProps {
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
   dialerTasks?: CampaignTask[];
   industryProfile?: IndustryProfile;
+  /** Canonical industry records. Used for reads; Lead remains a compatibility mutation contract. */
+  domainRecords?: DomainRecord[];
 }
 
 // The most recent call (by owning task's createdAt) that has a callId for
@@ -112,7 +116,11 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
   return rows;
 }
 
-export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile }: LeadsViewProps) {
+export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile, domainRecords }: LeadsViewProps) {
+  const viewLeads = React.useMemo(
+    () => domainRecords?.length ? domainRecordsToLeads(domainRecords, (industryProfile?.pipeline.stages || []).map(s => ({ id: s.key, key: s.key, label: s.label }))) : leads,
+    [domainRecords, industryProfile, leads],
+  );
   const navigate = useNavigate();
   const { stages } = usePipelineStages();
   const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || stageLabel(stages, key);
@@ -130,7 +138,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
   const leadStageKey = activeStage('lead');
   const opportunityStageKey = activeStage('opportunity');
   const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || activeStage('client');
-  const activeLeads = React.useMemo(() => campaignLeadRows(leads, dialerTasks, leadStageKey), [leads, dialerTasks, leadStageKey]);
+  const activeLeads = React.useMemo(() => campaignLeadRows(viewLeads, dialerTasks, leadStageKey), [viewLeads, dialerTasks, leadStageKey]);
   const uniqueSources = [...new Set(activeLeads.map((l) => l.source).filter(Boolean))].sort();
   const campaignOptions = [...dialerTasks].filter((t) => t.leadIds?.some((id) => activeLeads.some((l) => l.originalLeadId === id && l.campaignId === t.id))).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const selectedCampaign = campaignOptions.find((t) => t.id === campaignFilter) || null;
