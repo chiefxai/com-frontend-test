@@ -93,3 +93,26 @@ export function leadToRecordCreate(lead: Lead, fields: ObjectField[]): Record<st
 
   return data;
 }
+
+
+/**
+ * Compatibility projection for list/pipeline views.
+ * The input remains canonical DomainRecord data; Lead is only the view contract
+ * until those views complete their mutation migration.
+ */
+export function domainRecordsToLeads(
+  records: import('./industry/domainRecord').DomainRecord[],
+  stages: ObjectStage[],
+): Lead[] {
+  return records.map((record) => recordToLead(
+    {
+      ...record.values,
+      id: record.id,
+      stageId: stages.find((stage) => stage.key === record.stageKey)?.id,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    },
+    stages,
+    record.objectKey,
+  ));
+}
