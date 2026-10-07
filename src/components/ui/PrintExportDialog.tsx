@@ -437,413 +437,125 @@ export function PrintExportDialog({
   `;
 
   const downloadPdf = async () => {
-    const source = contentRef.current;
-    if (!source) return;
+    const preview = dialogRef.current;
+    if (!preview) return;
 
     const paper = PAPER[settings.paperSize];
     const pdfPageW = settings.orientation === 'landscape' ? paper.width : paper.height;
     const pdfPageH = settings.orientation === 'landscape' ? paper.height : paper.width;
+    const previewPages = Array.from(preview.querySelectorAll<HTMLElement>('[data-export-preview-page]'));
+    if (!previewPages.length) return;
 
-    // Capture an off-screen copy so the requested export theme never flashes
-    // across the visible dashboard while html2canvas renders it.
-    const captureHost = document.createElement('div');
-    captureHost.className = settings.theme === 'dark' ? 'dark' : '';
-    captureHost.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
-    captureHost.setAttribute('data-theme', settings.theme);
-    Object.assign(captureHost.style, EXPORT_THEME_VARS[settings.theme]);
-    const captureSource = source.cloneNode(true) as HTMLElement;
-    captureSource.removeAttribute('data-chiefvoice-export-root');
-    // The live report stylesheet applies browser-print zoom to this class.
-    // That zoom changes the off-screen capture's layout and canvas dimensions.
-    captureSource.classList.remove('chiefvoice-print-content');
-    captureSource.classList.toggle('dark', settings.theme === 'dark');
-    captureSource.setAttribute('data-theme', settings.theme);
-    captureSource.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
-      .forEach(node => node.remove());
-    // Match the 1440px measurement/preview canvas so grid widths and gaps
-    // scale into the same 10mm printable area on every device size.
-    captureSource.style.display = 'grid';
-    captureSource.style.gridTemplateColumns = 'repeat(12,minmax(0,1fr))';
-    captureSource.style.gridAutoFlow = 'row';
-    captureSource.style.gridAutoRows = 'max-content';
-    captureSource.style.alignItems = 'stretch';
-    captureSource.style.gap = '22.6771653546px';
-    captureSource.style.width = '1440px';
-    captureSource.style.minWidth = '1440px';
-    captureSource.style.maxWidth = '1440px';
-    captureSource.style.padding = '38px';
-    captureSource.style.boxSizing = 'border-box';
-    captureSource.style.zoom = '1';
-    captureSource.style.height = 'auto';
-    captureSource.style.minHeight = '0';
-    captureSource.style.maxHeight = 'none';
-    captureSource.style.overflow = 'visible';
-    captureSource.style.alignContent = 'start';
-    Object.assign(captureSource.style, EXPORT_THEME_VARS[settings.theme]);
-    captureSource.querySelectorAll(':scope > *').forEach(node => {
-      const element = node as HTMLElement;
-      const span = Math.max(1, Math.min(12, Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12)));
-      element.style.width = '100%';
-      element.style.minWidth = '0';
-      element.style.maxWidth = '100%';
-      element.style.height = 'auto';
-      element.style.minHeight = '0';
-      element.style.maxHeight = 'none';
-      element.style.overflow = 'visible';
-      element.style.gridColumn = `span ${span} / span ${span}`;
-    });
-    // Keep any theme marker that lives on an app shell from overriding the
-    // selected export theme through ancestor selectors.
-    captureHost.appendChild(captureSource);
-    document.body.appendChild(captureHost);
+    await document.fonts.ready;
+    const mmToPx = 96 / 25.4;
+    const pageCanvasW = Math.ceil(pdfPageW * mmToPx * 1.5);
+    const pageCanvasH = Math.ceil(pdfPageH * mmToPx * 1.5);
+    const captureScale = 1.5 / previewScale;
+    const background = settings.theme === 'dark' ? '#080D1C' : '#F7F9FC';
+    const images: { data: string; width: number; height: number }[] = [];
 
-    try {
-      await document.fonts.ready;
-
-      captureSource.style.height = 'auto';
-      captureSource.style.minHeight = '0';
-      captureSource.style.maxHeight = 'none';
-      captureSource.style.overflow = 'visible';
-      captureSource.style.alignContent = 'start';
-
-      const sourceScrollables = source.querySelectorAll<HTMLElement>('[data-widget-scroll]');
-      const clonedScrollables = captureSource.querySelectorAll<HTMLElement>('[data-widget-scroll]');
-      sourceScrollables.forEach((sourceElement, index) => {
-        const clonedElement = clonedScrollables[index];
-        if (!clonedElement) return;
-        clonedElement.scrollTop = sourceElement.scrollTop;
-        clonedElement.scrollLeft = sourceElement.scrollLeft;
-      });
-
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-
-      const rect = captureSource.getBoundingClientRect();
-      const cssWidth = Math.max(1, Math.round(rect.width));
-      const cssHeight = Math.max(1, Math.ceil(captureSource.scrollHeight));
-      const pageCssHeight = Math.max(1, Math.floor(cssWidth * ((pdfPageH - 20) / (pdfPageW - 20))));
-
-      const children = Array.from(captureSource.children)
-        .filter(element => getComputedStyle(element as HTMLElement).display !== 'none') as HTMLElement[];
-
-      const rowsMap = new Map<number, HTMLElement[]>();
-      children.forEach(element => {
-        const top = Math.round(element.offsetTop);
-        const row = rowsMap.get(top) ?? [];
-        row.push(element);
-        rowsMap.set(top, row);
-      });
-
-      const rows = Array.from(rowsMap.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([top, elements]) => ({
-          top,
-          bottom: Math.max(...elements.map(element => element.offsetTop + element.offsetHeight)),
-          height: Math.max(...elements.map(element => element.offsetHeight)),
-        }));
-
-      const groups: { start: number; end: number }[] = [];
-      let current: typeof rows = [];
-      let used = 0;
-
-      for (const row of rows) {
-        const gap = current.length ? 24 : 0;
-        const needed = gap + row.height;
-        if (current.length && used + needed > pageCssHeight) {
-          groups.push({
-            start: current[0].top,
-            end: current[current.length - 1].bottom,
-          });
-          current = [];
-          used = 0;
-        }
-        current.push(row);
-        used += needed;
-      }
-
-      if (current.length) {
-        groups.push({
-          start: current[0].top,
-          end: current[current.length - 1].bottom,
-        });
-      }
-
-      if (!groups.length) {
-        groups.push({ start: 0, end: cssHeight });
-      }
-
-      const exportKey = `chiefvoice-export-${Date.now()}`;
-      captureSource.setAttribute('data-chiefvoice-export-root', exportKey);
-
-      const inlineComputedStyles = (doc: Document) => {
-        doc.documentElement.classList.toggle('dark', settings.theme === 'dark');
-        doc.documentElement.setAttribute('data-theme', settings.theme);
-        doc.body.classList.toggle('dark', settings.theme === 'dark');
-        const clonedRoot = doc.querySelector(`[data-chiefvoice-export-root="${exportKey}"]`) as HTMLElement | null;
-        if (!clonedRoot) return;
-
-        const copy = (from: Element, to: Element) => {
-          const computed = doc.defaultView?.getComputedStyle(to) ?? window.getComputedStyle(from);
-          const target = to as HTMLElement;
-
-          // Copy the complete resolved computed style, not a hand-picked list.
-          // This resolves Tailwind v4 utilities, CSS variables, inherited values,
-          // gradients, shadows, typography, borders, transforms and layout rules
-          // before html2canvas parses the clone.
-          for (let i = 0; i < computed.length; i++) {
-            const property = computed.item(i);
-            const value = computed.getPropertyValue(property);
-            if (value) {
-              target.style.setProperty(property, value, 'important');
-            }
-          }
-
-          // Explicitly preserve custom properties too. They are used extensively
-          // by the ChiefVoice theme and can otherwise disappear in a cloned DOM.
-          for (let i = 0; i < computed.length; i++) {
-            const property = computed.item(i);
-            if (property.startsWith('--')) {
-              target.style.setProperty(property, computed.getPropertyValue(property), 'important');
-            }
-          }
-
-          const fromChildren = Array.from(from.children);
-          const toChildren = Array.from(to.children);
-          if (from instanceof HTMLElement && to instanceof HTMLElement) {
-            to.scrollTop = from.scrollTop;
-            to.scrollLeft = from.scrollLeft;
-          }
-          for (let i = 0; i < Math.min(fromChildren.length, toChildren.length); i++) {
-            copy(fromChildren[i], toChildren[i]);
-          }
-        };
-
-        copy(captureSource, clonedRoot);
-
-        // Materialize pseudo-element content that is visually meaningful.
-        const copyPseudo = (from: Element, to: Element, pseudo: '::before' | '::after') => {
-          const style = doc.defaultView?.getComputedStyle(to, pseudo) ?? window.getComputedStyle(from, pseudo);
-          const content = style.content;
-          if (!content || content === 'none' || content === 'normal') return;
-
-          const marker = doc.createElement('span');
-          marker.textContent = content.replace(/^["']|["']$/g, '');
-          marker.style.cssText =
-            'display:inline-block!important;' +
-            'box-sizing:border-box!important;' +
-            'font:inherit!important;' +
-            'color:inherit!important;' +
-            'background:inherit!important;' +
-            'border:inherit!important;' +
-            'position:static!important;';
-          if (pseudo === '::before') to.insertBefore(marker, to.firstChild);
-          else to.appendChild(marker);
-        };
-
-        const walk = (from: Element, to: Element) => {
-          copyPseudo(from, to, '::before');
-          copyPseudo(from, to, '::after');
-          const fromChildren = Array.from(from.children);
-          const toChildren = Array.from(to.children);
-          for (let i = 0; i < Math.min(fromChildren.length, toChildren.length); i++) {
-            walk(fromChildren[i], toChildren[i]);
-          }
-        };
-
-        walk(captureSource, clonedRoot);
-      };
-
-      const fullCanvas = await html2canvas(captureSource, {
-        backgroundColor: '#ffffff',
-        scale: 1.5,
+    // Capture the very same page nodes shown in the PDF preview. The previous
+    // path rebuilt a second off-screen dashboard, so its CSS/theme resolution
+    // could diverge from the preview. The progress overlay is a sibling and is
+    // not part of these page nodes.
+    for (const page of previewPages) {
+      const rendered = await html2canvas(page, {
+        backgroundColor: background,
+        scale: captureScale,
         useCORS: true,
         allowTaint: false,
         logging: false,
-        width: cssWidth,
-        height: cssHeight,
-        windowWidth: Math.max(window.innerWidth, cssWidth, 1440),
-        windowHeight: Math.max(window.innerHeight, cssHeight),
+        width: page.clientWidth,
+        height: page.clientHeight,
+        windowWidth: Math.max(window.innerWidth, page.clientWidth),
+        windowHeight: Math.max(window.innerHeight, page.clientHeight),
         scrollX: 0,
         scrollY: 0,
         imageSmoothing: true,
         imageSmoothingQuality: 'high',
         foreignObjectRendering: false,
-        // html2canvas-pro normalizes transforms by default. Keep the measured
-        // chart and widget transforms intact; animations are already given two
-        // animation frames to settle before capture.
         normalizeDom: false,
-        onclone: inlineComputedStyles,
       });
-
-      const mmToPx = 96 / 25.4;
-      const pageCanvasW = Math.ceil(pdfPageW * mmToPx * 1.5);
-      const pageCanvasH = Math.ceil(pdfPageH * mmToPx * 1.5);
-      const pageMarginPx = Math.ceil(10 * mmToPx * 1.5);
-      const contentCanvasW = pageCanvasW - (2 * pageMarginPx);
-      const contentCanvasH = pageCanvasH - (2 * pageMarginPx);
-      const canvasScale = fullCanvas.width / cssWidth;
-
-      const images: { data: string; width: number; height: number }[] = [];
-
-      // Generate the cover as its own page.
-      const coverHost = document.createElement('div');
-      coverHost.style.cssText = [
-        'position:absolute',
-        'left:-100000px',
-        'top:0',
-        `width:${Math.ceil(pdfPageW * mmToPx)}px`,
-        `height:${Math.ceil(pdfPageH * mmToPx)}px`,
-        'background:#fff',
-      ].join(';');
-      coverHost.innerHTML = `
-        <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:#fff;display:flex;align-items:center;justify-content:center;text-align:center;">
-          <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
-            <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:110px;height:110px;object-fit:contain;margin:0 0 28px 0;">
-            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;color:#101A3A;">${title}</h1>
-            <p style="font-size:14px;line-height:1.5;margin:0;color:#475569;">Filter applied: ${formatRange(fromDate, toDate)}</p>
-          </div>
-        </section>`;
-      document.body.appendChild(coverHost);
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-      const coverCanvas = await html2canvas(coverHost.firstElementChild as HTMLElement, {
-        backgroundColor: '#ffffff',
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        width: Math.ceil(pdfPageW * mmToPx),
-        height: Math.ceil(pdfPageH * mmToPx),
-        windowWidth: Math.ceil(pdfPageW * mmToPx),
-        windowHeight: Math.ceil(pdfPageH * mmToPx),
-      });
-      coverHost.remove();
-
-      images.push({
-        data: coverCanvas.toDataURL('image/jpeg', 0.94),
-        width: coverCanvas.width,
-        height: coverCanvas.height,
-      });
-
-      // Crop the exact mounted dashboard canvas. No widget HTML is rebuilt,
-      // so visual styles remain identical to the live dashboard.
-      for (const group of groups) {
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = pageCanvasW;
-        sliceCanvas.height = pageCanvasH;
-        const ctx = sliceCanvas.getContext('2d');
-        if (!ctx) continue;
-
-        ctx.fillStyle = settings.theme === 'dark' ? '#080D1C' : '#F7F9FC';
-        ctx.fillRect(0, 0, pageCanvasW, pageCanvasH);
-
-        const sourceY = Math.max(0, Math.round(group.start * canvasScale));
-        const sourceH = Math.max(1, Math.min(
-          fullCanvas.height - sourceY,
-          Math.round((group.end - group.start) * canvasScale),
-        ));
-
-        const destinationH = Math.min(
-          contentCanvasH,
-          Math.round(sourceH * (contentCanvasW / fullCanvas.width)),
-        );
-
-        ctx.drawImage(
-          fullCanvas,
-          0, sourceY, fullCanvas.width, sourceH,
-          pageMarginPx, pageMarginPx, contentCanvasW, destinationH,
-        );
-
-        images.push({
-          data: sliceCanvas.toDataURL('image/jpeg', 0.94),
-          width: sliceCanvas.width,
-          height: sliceCanvas.height,
-        });
-      }
-
-      const objects: string[] = [];
-      const addObject = (body: string) => { objects.push(body); return objects.length; };
-      const bytesToBinary = (bytes: Uint8Array) => {
-        let result = '';
-        const chunkSize = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          result += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
-        }
-        return result;
-      };
-      const decodeBase64 = (dataUrl: string) => {
-        const raw = atob(dataUrl.split(',')[1]);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-        return bytes;
-      };
-
-      const catalogId = addObject('');
-      const pagesId = addObject('');
-      const pageIds: number[] = [];
-      const contentIds: number[] = [];
-      const imageIds: number[] = [];
-
-      for (const image of images) {
-        const jpeg = decodeBase64(image.data);
-        imageIds.push(addObject(
-          '<< /Type /XObject /Subtype /Image /Width ' + image.width +
-          ' /Height ' + image.height +
-          ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' +
-          jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'
-        ));
-      }
-
-      const pageWidthPt = pdfPageW * 72 / 25.4;
-      const pageHeightPt = pdfPageH * 72 / 25.4;
-
-      for (let i = 0; i < images.length; i++) {
-        const content = 'q\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
-        contentIds.push(addObject(
-          '<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'
-        ));
-        pageIds.push(addObject(
-          '<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' +
-          pageWidthPt + ' ' + pageHeightPt +
-          '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] +
-          ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'
-        ));
-      }
-
-      objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
-      objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length +
-        ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
-
-      let pdf = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
-      const offsets = [0];
-      objects.forEach((obj, index) => {
-        offsets[index + 1] = pdf.length;
-        pdf += (index + 1) + ' 0 obj\n' + obj + '\nendobj\n';
-      });
-
-      const xref = pdf.length;
-      pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
-      for (let i = 1; i <= objects.length; i++) {
-        pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
-      }
-      pdf += 'trailer\n<< /Size ' + (objects.length + 1) +
-        ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
-
-      const pdfBytes = new Uint8Array(pdf.length);
-      for (let i = 0; i < pdf.length; i++) pdfBytes[i] = pdf.charCodeAt(i) & 255;
-
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = title.split(' ').join('_') + '.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } finally {
-      captureSource.removeAttribute('data-chiefvoice-export-root');
-      captureHost.remove();
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = pageCanvasW;
+      pageCanvas.height = pageCanvasH;
+      const context = pageCanvas.getContext('2d');
+      if (!context) continue;
+      context.fillStyle = background;
+      context.fillRect(0, 0, pageCanvasW, pageCanvasH);
+      context.drawImage(rendered, 0, 0, rendered.width, rendered.height, 0, 0, pageCanvasW, pageCanvasH);
+      images.push({ data: pageCanvas.toDataURL('image/jpeg', 0.94), width: pageCanvas.width, height: pageCanvas.height });
     }
+
+    if (!images.length) return;
+    const objects: string[] = [];
+    const addObject = (body: string) => { objects.push(body); return objects.length; };
+    const bytesToBinary = (bytes: Uint8Array) => {
+      let result = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        result += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+      }
+      return result;
+    };
+    const decodeBase64 = (dataUrl: string) => {
+      const raw = atob(dataUrl.split(',')[1]);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+      return bytes;
+    };
+
+    const catalogId = addObject('');
+    const pagesId = addObject('');
+    const pageIds: number[] = [];
+    const contentIds: number[] = [];
+    const imageIds: number[] = [];
+    for (const image of images) {
+      const jpeg = decodeBase64(image.data);
+      imageIds.push(addObject(
+        '<< /Type /XObject /Subtype /Image /Width ' + image.width +
+        ' /Height ' + image.height +
+        ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' +
+        jpeg.length + ' >>\nstream\n' + bytesToBinary(jpeg) + '\nendstream'
+      ));
+    }
+
+    const pageWidthPt = pdfPageW * 72 / 25.4;
+    const pageHeightPt = pdfPageH * 72 / 25.4;
+    for (let i = 0; i < images.length; i++) {
+      const content = 'q\n' + pageWidthPt + ' 0 0 ' + pageHeightPt + ' 0 0 cm\n/Im' + (i + 1) + ' Do\nQ';
+      contentIds.push(addObject('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream'));
+      pageIds.push(addObject(
+        '<< /Type /Page /Parent ' + pagesId + ' 0 R /MediaBox [0 0 ' + pageWidthPt + ' ' + pageHeightPt +
+        '] /Resources << /XObject << /Im' + (i + 1) + ' ' + imageIds[i] +
+        ' 0 R >> >> /Contents ' + contentIds[i] + ' 0 R >>'
+      ));
+    }
+
+    objects[catalogId - 1] = '<< /Type /Catalog /Pages ' + pagesId + ' 0 R >>';
+    objects[pagesId - 1] = '<< /Type /Pages /Count ' + pageIds.length + ' /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') + '] >>';
+    let pdf = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
+    const offsets = [0];
+    objects.forEach((object, index) => {
+      offsets[index + 1] = pdf.length;
+      pdf += (index + 1) + ' 0 obj\n' + object + '\nendobj\n';
+    });
+    const xref = pdf.length;
+    pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
+    for (let i = 1; i <= objects.length; i++) pdf += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+    pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalogId + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+
+    const pdfBytes = new Uint8Array(pdf.length);
+    for (let i = 0; i < pdf.length; i++) pdfBytes[i] = pdf.charCodeAt(i) & 255;
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = title.split(' ').join('_') + '.pdf';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   };
 
   const downloadDoc = () => {
@@ -1031,7 +743,7 @@ export function PrintExportDialog({
           <div dangerouslySetInnerHTML={{ __html: buildWordPages(renderScale, previewScale, usableWidthPx) }} />
         </section>
       ) : <>
-      <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
+      <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
                 <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
@@ -1044,7 +756,7 @@ export function PrintExportDialog({
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', position: 'relative' }}>
+                    <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', position: 'relative' }}>
                       <div
                         style={{
                           position: 'absolute',
