@@ -8,7 +8,6 @@ import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import type { IndustryProfile } from '../lib/industry/types';
-import type { IndustryProfile } from '../lib/industry/types';
 
 interface Enquiry {
   id: string;
