@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, FileText, Printer, X } from 'lucide-react';
+import { Download, Printer, X } from 'lucide-react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import ProgressBar from './ProgressBar';
 
-export type ExportFormat = 'pdf' | 'docx';
+const EXPORT_FORMATS = [
+  { id: 'pdf', label: 'PDF', Icon: Printer },
+] as const;
+
+export type ExportFormat = typeof EXPORT_FORMATS[number]['id'];
 export type PaperSize = 'A4' | 'A3' | 'Letter' | 'Legal';
 export type Orientation = 'landscape' | 'portrait';
 export type ExportTheme = 'light' | 'dark';
@@ -53,44 +57,6 @@ const EXPORT_THEME_VARS: Record<ExportTheme, React.CSSProperties> = {
 interface ExportRowItem { html: string; span: number; }
 interface ExportPage { rows: ExportRowItem[][]; }
 interface MeasuredExportRow { height: number; items: ExportRowItem[]; }
-
-function makeStoredZip(files: Array<{ name: string; data: string }>): Uint8Array {
-  const encoder = new TextEncoder();
-  const crcTable = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-    crcTable[n] = c >>> 0;
-  }
-  const crc32 = (bytes: Uint8Array) => {
-    let crc = 0xffffffff;
-    for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-    return (crc ^ 0xffffffff) >>> 0;
-  };
-  const u16 = (value: number) => new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
-  const u32 = (value: number) => new Uint8Array([value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff]);
-  const join = (parts: Uint8Array[]) => {
-    const result = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
-    let offset = 0;
-    for (const part of parts) { result.set(part, offset); offset += part.length; }
-    return result;
-  };
-  const local: Uint8Array[] = [];
-  const central: Uint8Array[] = [];
-  let offset = 0;
-  for (const file of files) {
-    const name = encoder.encode(file.name);
-    const data = encoder.encode(file.data);
-    const crc = crc32(data);
-    const header = join([u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), name]);
-    local.push(header, data);
-    central.push(join([u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
-    offset += header.length + data.length;
-  }
-  const centralData = join(central);
-  const end = join([u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(centralData.length), u32(offset), u16(0)]);
-  return join([...local, centralData, end]);
-}
 
 function formatRange(from: string, to: string) {
   const f = (v: string) => new Date(v + 'T00:00:00').toLocaleDateString(undefined, {
@@ -179,18 +145,6 @@ export function buildExportPageStyle(settings: ExportSettings): string {
     .chiefvoice-export-grid table { max-width: 100% !important; }
   `;
 }
-function collectStyles() {
-  let css = '';
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      css += Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
-    } catch {
-      // Cross-origin stylesheets cannot be read; inline export CSS still applies.
-    }
-  }
-  return css;
-}
-
 export function PrintExportDialog({
   open,
   onClose,
@@ -376,31 +330,6 @@ export function PrintExportDialog({
     return result;
   }, [measuredRows, paper, settings.orientation]);
 
-  const buildWordRows = (rows: ExportRowItem[][]) => rows.map(row => {
-    const cells = row.map((item, index) => {
-      const left = index === 0 ? 0 : 11.3386;
-      const right = index === row.length - 1 ? 0 : 11.3386;
-      return `<td colspan="${item.span}" style="width:${(item.span / 12) * 100}%;vertical-align:top;padding:0 ${right}px 22.677px ${left}px">${item.html}</td>`;
-    }
-    ).join('');
-    const used = row.reduce((sum, item) => sum + item.span, 0);
-    const filler = used < 12 ? `<td colspan="${12 - used}" style="width:${((12 - used) / 12) * 100}%"></td>` : '';
-    return `<tr style="page-break-inside:avoid">${cells}${filler}</tr>`;
-  }).join('');
-
-  const buildWordPages = (dashboardScale: number, headerScale: number, contentWidth: number) => {
-    const rows = pages.flatMap(page => page.rows);
-    return `<main class="chiefvoice-word-document">
-      <header class="chiefvoice-word-header" style="width:${contentWidth}px;zoom:${headerScale};margin:0 auto 16px;box-sizing:border-box;padding:20px 0 24px;border-bottom:1px solid var(--border);text-align:center;page-break-after:avoid;font-family:Arial,sans-serif">
-        <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="display:block;width:104px;height:104px;object-fit:contain;margin:0 auto 18px">
-        <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px;color:var(--text-primary)">${title}</h1><p style="font-size:14px;color:var(--text-secondary);margin:0">Filter applied: ${formatRange(fromDate, toDate)}</p>${filters ? `<p style="font-size:14px;color:var(--text-secondary);margin:6px 0 0">Additional filters: ${filters}</p>` : ''}
-      </header>
-      <div class="chiefvoice-word-dashboard" style="width:1440px;zoom:${dashboardScale};margin:0 auto;background:var(--bg-base);color:var(--text-primary);padding:37.795px;box-sizing:border-box">
-        <table role="presentation" class="chiefvoice-word-grid" style="width:100%;table-layout:fixed;border-collapse:collapse"><tbody>${buildWordRows(rows)}</tbody></table>
-      </div>
-    </main>`;
-  };
-
   const previewTheme: ExportTheme = settings.theme;
 
   const withGridSpan = (html: string, span: number, removeShadow = false) => {
@@ -551,82 +480,8 @@ export function PrintExportDialog({
     URL.revokeObjectURL(url);
   };
 
-  const downloadDoc = () => {
-    if (!pages.length) return;
-    const themeStyle = Object.entries(EXPORT_THEME_VARS[settings.theme])
-      .filter(([key]) => key.startsWith('--'))
-      .map(([key, value]) => `${key}:${String(value)}`)
-      .join(';');
-    // Word's HTML importer drops many application stylesheets and CSS
-    // variables. Resolve styles from the real browser DOM into this export
-    // snapshot, only when DOCX is requested, so the live preview stays fast.
-    const styleHost = document.createElement('div');
-    styleHost.className = settings.theme === 'dark' ? 'dark' : '';
-    styleHost.setAttribute('data-theme', settings.theme);
-    styleHost.style.cssText = `position:fixed;left:-100000px;top:0;width:1440px;visibility:hidden;pointer-events:none;${themeStyle}`;
-    styleHost.innerHTML = buildWordPages(((pageW - 20) * mmToPx) / desktopWidth, 1, (pageW - 20) * mmToPx);
-    document.body.appendChild(styleHost);
-    // Theme utility selectors are rooted at <html>. Match the requested
-    // export theme while resolving the detached export styles, then restore
-    // the app theme before yielding control to the browser.
-    const root = document.documentElement;
-    const hadDarkRoot = root.classList.contains('dark');
-    const originalRootTheme = root.getAttribute('data-theme');
-    root.classList.toggle('dark', settings.theme === 'dark');
-    root.setAttribute('data-theme', settings.theme);
-    const inlineWordStyles = (element: Element) => {
-      const computed = window.getComputedStyle(element);
-      const style = (element as HTMLElement | SVGElement).style;
-      for (let index = 0; index < computed.length; index++) {
-        const property = computed.item(index);
-        const value = computed.getPropertyValue(property);
-        if (value) style.setProperty(property, value);
-      }
-      Array.from(element.children).forEach(inlineWordStyles);
-    };
-    let wordContent: string;
-    try {
-      inlineWordStyles(styleHost);
-      wordContent = styleHost.innerHTML;
-    } finally {
-      root.classList.toggle('dark', hadDarkRoot);
-      if (originalRootTheme === null) root.removeAttribute('data-theme');
-      else root.setAttribute('data-theme', originalRootTheme);
-    }
-    styleHost.remove();
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
-      <style>
-        ${collectStyles()}
-        @page { size:${paper.css} ${settings.orientation}; margin:10mm; }
-        html,body{margin:0;padding:0;background:${settings.theme === 'dark' ? '#080D1C' : '#fff'};color:${settings.theme === 'dark' ? '#F7F9FC' : '#111827'};font-family:Arial,sans-serif}
-        .chiefvoice-word-document{width:100%;color:var(--text-primary);background:var(--bg-surface)}
-        .chiefvoice-word-grid{width:100%;table-layout:fixed;border-collapse:collapse}
-        .chiefvoice-word-grid tr{page-break-inside:avoid;break-inside:avoid}
-        .chiefvoice-word-grid td{vertical-align:top}
-        .chiefvoice-word-grid img,.chiefvoice-word-grid svg,.chiefvoice-word-grid canvas{max-width:100%}
-      </style></head><body><div class="${settings.theme === 'dark' ? 'dark' : ''}" data-theme="${settings.theme}" style="${themeStyle}">
-      ${wordContent}
-      </div></body></html>`;
-    const files = [
-      { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="html" ContentType="text/html"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
-      { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
-      { name: 'word/_rels/document.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk" Target="afchunk.html"/></Relationships>' },
-      { name: 'word/document.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:altChunk r:id="rId1"/><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="680" w:right="680" w:bottom="680" w:left="680" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>' },
-      { name: 'word/afchunk.html', data: html },
-    ];
-    const pageWidthTwips = Math.round((pageW / 25.4) * 1440);
-    const pageHeightTwips = Math.round((pageH / 25.4) * 1440);
-    files[3].data = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:altChunk r:id="rId1"/><w:sectPr><w:pgSz w:w="${pageWidthTwips}" w:h="${pageHeightTwips}" w:orient="${settings.orientation}"/><w:pgMar w:top="680" w:right="680" w:bottom="680" w:left="680" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-    const blob = new Blob([makeStoredZip(files)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.replace(/\s+/g, '_')}.docx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
+  const exportHandlers: Record<ExportFormat, () => Promise<void>> = { pdf: downloadPdf };
+  const selectedFormat = EXPORT_FORMATS.find(format => format.id === settings.format) ?? EXPORT_FORMATS[0];
 
   const handleExport = async () => {
     if (exporting) return;
@@ -634,8 +489,7 @@ export function PrintExportDialog({
     // Let React paint the overlay before rendering or ZIP generation starts.
     await new Promise<void>(resolve => requestAnimationFrame(() => window.setTimeout(resolve, 40)));
     try {
-      if (settings.format === 'pdf') await downloadPdf();
-      else downloadDoc();
+      await exportHandlers[settings.format]();
     } finally {
       setExporting(false);
     }
@@ -659,12 +513,12 @@ export function PrintExportDialog({
           <aside className="w-72 shrink-0 border-r border-[var(--border)] p-5 space-y-5 overflow-y-auto">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Format</p>
-              <div className="grid grid-cols-2 gap-2">
-                {(['pdf','docx'] as ExportFormat[]).map(format => (
-                  <button key={format} onClick={() => setSettings(s => ({ ...s, format }))}
-                    className={`rounded-xl border p-3 text-left transition ${settings.format === format ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
-                    {format === 'pdf' ? <Printer className="h-4 w-4 mb-2" /> : <FileText className="h-4 w-4 mb-2" />}
-                    <span className="block text-xs font-semibold">{format === 'pdf' ? 'PDF' : 'Word (.docx)'}</span>
+              <div className="grid grid-cols-1 gap-2">
+                {EXPORT_FORMATS.map(({ id, label, Icon }) => (
+                  <button key={id} onClick={() => setSettings(s => ({ ...s, format: id }))}
+                    className={`rounded-xl border p-3 text-left transition ${settings.format === id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
+                    <Icon className="h-4 w-4 mb-2" />
+                    <span className="block text-xs font-semibold">{label}</span>
                   </button>
                 ))}
               </div>
@@ -709,14 +563,14 @@ export function PrintExportDialog({
             <button disabled={exporting} onClick={handleExport}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-3 text-sm font-semibold hover:bg-indigo-700">
               <Download className="h-4 w-4" />
-              {exporting ? 'Preparing export…' : `Export ${settings.format === 'pdf' ? 'PDF' : 'DOCX'}`}
+              {exporting ? 'Preparing export…' : `Export ${selectedFormat.label}`}
             </button>
           </aside>
 
           <main className="flex-1 overflow-auto bg-slate-100 p-8">
             <div className="mx-auto" style={{ width: previewWidth }}>
               <div className="text-xs text-slate-500 mb-2">
-                {settings.format === 'docx' ? 'Continuous Word document' : `${settings.paperSize} · ${settings.orientation} · ${pages.length + 1} page${pages.length === 0 ? '' : 's'} · 12-column grid`}
+                {`${settings.paperSize} · ${settings.orientation} · ${pages.length + 1} page${pages.length === 0 ? '' : 's'} · 12-column grid`}
               </div>
 
       {previewLoading ? (
@@ -730,10 +584,6 @@ export function PrintExportDialog({
             <p className="mb-4 text-sm font-semibold">Preparing preview…</p>
             <ProgressBar value={null} label="Rendering dashboard preview" />
           </div>
-        </section>
-      ) : settings.format === 'docx' ? (
-        <section className={`${previewTheme === 'dark' ? 'dark' : ''} rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
-          <div dangerouslySetInnerHTML={{ __html: buildWordPages(renderScale, previewScale, usableWidthPx) }} />
         </section>
       ) : <>
       <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
@@ -786,7 +636,7 @@ export function PrintExportDialog({
       {exporting && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm" role="status" aria-live="polite">
           <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-2xl">
-            <p className="mb-4 text-sm font-semibold text-[var(--text-primary)]">Preparing your {settings.format === 'pdf' ? 'PDF' : 'DOCX'} export</p>
+            <p className="mb-4 text-sm font-semibold text-[var(--text-primary)]">Preparing your {selectedFormat.label} export</p>
             <ProgressBar value={null} label="Rendering dashboard" />
           </div>
         </div>
