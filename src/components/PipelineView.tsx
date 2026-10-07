@@ -1,6 +1,8 @@
 import React from 'react';
 import { Target, Phone, CheckCircle2, Trophy, Download } from 'lucide-react';
 import { Lead } from '../types';
+import type { DomainRecord } from '../lib/industry/domainRecord';
+import { domainRecordsToLeads } from '../lib/objectContacts';
 import { formatPhone } from '../lib/phone';
 import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
 import { CsvField } from '../lib/csvExport';
@@ -46,6 +48,8 @@ interface PipelineViewProps {
   dialerTasks?: CampaignTask[];
   setDialerTasks?: React.Dispatch<React.SetStateAction<CampaignTask[]>>;
   industryProfile?: IndustryProfile;
+  /** Canonical industry records. Used for reads; Lead remains a compatibility mutation contract. */
+  domainRecords?: DomainRecord[];
 }
 
 // The most recent call (by owning task's createdAt) that has a callId for
@@ -87,7 +91,11 @@ function latestCallIdForLead(leadId: string, dialerTasks: CampaignTask[], campai
   return withCallId[0]?.callResults?.[leadId]?.callId ?? null;
 }
 
-export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks, industryProfile }: PipelineViewProps) {
+export default function PipelineView({ leads, setLeads, dialerTasks = [], setDialerTasks, industryProfile, domainRecords }: PipelineViewProps) {
+  const viewLeads = React.useMemo(
+    () => domainRecords ? domainRecordsToLeads(domainRecords, (industryProfile?.pipeline.stages || []).map(s => ({ id: s.key, key: s.key, label: s.label }))) : leads,
+    [domainRecords, industryProfile, leads],
+  );
   const { stages } = usePipelineStages();
   const labelForStage = (key: string) => industryProfile?.pipeline.stages.find(s => s.key === key)?.label || stageLabel(stages, key);
   const opportunityStageKey = industryProfile?.pipeline.stages.find(s => s.key === 'opportunity')?.key || industryProfile?.pipeline.stages.find(s => !s.terminal)?.key || stages[0]?.key || 'opportunity';
