@@ -8,6 +8,7 @@ import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import type { IndustryProfile } from '../lib/industry/types';
+import type { IndustryProfile } from '../lib/industry/types';
 
 interface Enquiry {
   id: string;
@@ -21,6 +22,8 @@ interface Enquiry {
   status: 'new' | 'contacted' | 'resolved';
   createdAt: string;
 }
+
+interface EnquiriesViewProps { industryProfile?: IndustryProfile; }
 
 const STATUS_COLOR: Record<string, 'amber' | 'blue' | 'green'> = { new: 'amber', contacted: 'blue', resolved: 'green' };
 
@@ -109,7 +112,7 @@ export default function EnquiriesView({ industryProfile }: { industryProfile?: I
         <Widget className="flex-1 min-h-0 w-full" bodyClassName="flex-1 min-h-0 overflow-hidden flex flex-col" showHeader={false} padding="none">
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
             <FilterBar
-              search={{ value: search, onChange: setSearch, placeholder: 'Search caller, phone, email, enquiry…' }}
+              search={{ value: search, onChange: setSearch, placeholder: `Search ${contactLabel.toLowerCase()}, phone, email, ${enquiryLabel.toLowerCase()}…` }}
               selects={[{
                 key: 'Status',
                 label: 'Status',
@@ -124,7 +127,7 @@ export default function EnquiriesView({ industryProfile }: { industryProfile?: I
               }]}
               onClear={clearFilters}
               hasActiveFilters={hasActiveFilters}
-              resultCount={{ filtered: filteredEnquiries.length, total, label: 'enquiries' }}
+              resultCount={{ filtered: filteredEnquiries.length, total, label: enquiryLabel.toLowerCase() }}
             />
           </div>
         {total === 0
@@ -133,7 +136,7 @@ export default function EnquiriesView({ industryProfile }: { industryProfile?: I
               const columns: Column<Enquiry>[] = [
                 {
                   key: 'caller',
-                  header: 'Caller',
+                  header: contactLabel,
                   cell: (e) => (
                     <>
                       <div className="font-medium text-slate-700">{e.name || 'Unknown caller'}</div>
@@ -145,7 +148,7 @@ export default function EnquiriesView({ industryProfile }: { industryProfile?: I
                     </>
                   ),
                 },
-                { key: 'enquiry', header: 'Enquiry', cell: (e) => <span className="text-slate-600 max-w-sm">{e.queryText}</span> },
+                { key: 'enquiry', header: enquiryLabel.replace(/s$/i, ''), cell: (e) => <span className="text-slate-600 max-w-sm">{e.queryText}</span> },
                 { key: 'status', header: 'Status', cell: (e) => <Badge color={STATUS_COLOR[e.status]}>{e.status}</Badge> },
                 { key: 'when', header: 'When', cell: (e) => <span className="text-slate-400 text-xs whitespace-nowrap">{new Date(e.createdAt).toLocaleString()}</span> },
                 {
