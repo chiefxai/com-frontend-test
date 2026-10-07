@@ -178,13 +178,14 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
   const advance = (lead: CampaignLeadRow, toStatus: Lead['status'], toStage: Lead['pipelineStage']) => {
     if (lead.campaignId) return;
     setAdvancingId(lead.originalLeadId);
-    setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: toStatus, pipelineStage: toStage } : l)));
     if (domainRecords && setDomainRecords) {
       setDomainRecords((records) => records.map((record) =>
         record.id === lead.originalLeadId
           ? { ...record, stageKey: toStage, values: { ...record.values, status: toStatus } }
           : record
       ));
+    } else {
+      setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: toStatus, pipelineStage: toStage } : l)));
     }
     setSelectedLead(null);
     setTimeout(() => setAdvancingId(null), 400);
