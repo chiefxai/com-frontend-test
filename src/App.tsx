@@ -414,6 +414,7 @@ export default function App() {
                   updatedAt: r.updatedAt,
                 }))
               : [];
+            previousDomainRecordsRef.current = canonicalRecords;
             setDomainRecords(canonicalRecords);
             setLeads(canonicalRecords.map((record) => recordToLead({ ...record.values, id: record.id, stageId: primary.stages?.find((s: any) => s.key === record.stageKey)?.id, createdAt: record.createdAt, updatedAt: record.updatedAt }, primary.stages, primary.key)));
             setPrimaryObject({ key: primary.key, stages: primary.stages, fields: primary.fields || [] });
@@ -423,6 +424,7 @@ export default function App() {
         }
       } else {
         setPrimaryObject(null);
+        previousDomainRecordsRef.current = [];
         setDomainRecords([]);
       }
     } catch (err) {
