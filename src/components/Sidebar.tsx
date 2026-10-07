@@ -432,7 +432,10 @@ export default function Sidebar({
       style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)', color: 'var(--text-primary)' }}
     >
       {/* Product brand and organization identity */}
-      <div className={`shrink-0 ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+      <div
+        className={`shrink-0 ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`}
+        style={collapsed ? { borderBottom: '1px solid var(--sidebar-border)' } : undefined}
+      >
         <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
         <img
           src={chiefVoiceLogo}
@@ -446,8 +449,10 @@ export default function Sidebar({
         )}
         </div>
         {!collapsed && (
-          <div className="mt-3 truncate border-t pt-2.5 text-xs font-medium" style={{ borderColor: 'var(--sidebar-border)', color: 'var(--text-secondary)' }} title={organizationName}>
-            {organizationName || 'Organization'}
+          <div className="mt-3 -mx-4 border-t px-4 pt-2.5" style={{ borderColor: 'var(--sidebar-border)' }}>
+            <div className="truncate text-xs font-medium" style={{ color: 'var(--text-secondary)' }} title={organizationName}>
+              {organizationName || 'Organization'}
+            </div>
           </div>
         )}
       </div>

@@ -1007,11 +1007,13 @@ export default function App() {
         <header className="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between gap-4 px-5 md:px-8 shrink-0 relative z-50">
           <CommonDropdown
             trigger={(
-              <span className="flex max-w-[min(18rem,55vw)] items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors hover:bg-[var(--bg-subtle)]" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}>
-                <Building2 className="h-4 w-4 shrink-0" style={{ color: 'var(--accent)' }} />
-                <span className="min-w-0">
-                  <span className="block text-[9px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Workspace</span>
-                  <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{orgSettings.workspaceName || orgSettings.name || 'Select workspace'}</span>
+              <span className="flex h-10 max-w-[min(20rem,60vw)] items-center gap-2.5 rounded-xl border px-2.5 text-left transition-colors hover:bg-[var(--bg-subtle)]" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                  <Building2 className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{orgSettings.name || 'Select workspace'}</span>
+                  <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{orgSettings.workspaceName ? `${orgSettings.workspaceName}.chief.ai` : 'Workspace'}</span>
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
               </span>
