@@ -5,6 +5,7 @@ import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import ActionMenu from './ui/ActionMenu';
+import type { IndustryProfile } from '../lib/industry';
 
 interface ObjectField {
   id: string;
@@ -146,7 +147,7 @@ function parseCsv(text: string, fields: ObjectField[]): { rows: Record<string, s
   return { rows, error: null };
 }
 
-export default function CustomObjectsView() {
+export default function CustomObjectsView({ industryProfile }: { industryProfile?: IndustryProfile }) {
   const [objects, setObjects] = useState<CustomObject[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [records, setRecords] = useState<ObjectRecord[]>([]);
@@ -167,12 +168,31 @@ export default function CustomObjectsView() {
     apiFetch('/api/objects')
       .then((r) => r.json())
       .then((list: CustomObject[]) => {
-        setObjects(list);
-        if (list.length > 0) setSelectedKey(list[0].key);
+        const configured = industryProfile?.domainModel?.objects || [];
+        const configuredByKey = new Map(configured.map((object) => [object.key, object]));
+        const merged = list.map((object) => {
+          const definition = configuredByKey.get(object.key);
+          if (!definition) return object;
+          return {
+            ...object,
+            label: definition.pluralLabel || object.label,
+            description: definition.description || object.description,
+            fields: definition.fields.map((field) => ({
+              id: field.key,
+              key: field.key,
+              label: field.label,
+              type: field.type,
+              options: field.options || [],
+              required: !!field.required,
+            })),
+          };
+        });
+        setObjects(merged);
+        if (merged.length > 0) setSelectedKey(merged[0].key);
       })
       .catch(() => setObjects([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [industryProfile?.domainModel]);
 
   const selectedObject = objects.find((o) => o.key === selectedKey) || null;
 
@@ -297,12 +317,14 @@ export default function CustomObjectsView() {
   }
 
   if (objects.length === 0) {
+    const primaryLabel = industryProfile?.labels.contact.plural || 'Records';
+    const industryLabel = industryProfile?.label || 'your industry';
     return (
-      <PageShell title="Contacts" subtitle="Custom pipelines for your business, beyond lending." layout="fill">
+      <PageShell title={primaryLabel} subtitle={`Custom pipelines and domain records for ${industryLabel}.`} layout="fill">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Boxes className="h-10 w-10 text-slate-300 mb-3" />
           <p className="text-sm text-slate-500 max-w-sm">
-            No custom objects are configured for this organization. These are seeded automatically based on the industry chosen at signup (Real Estate, Healthcare, Education, E-commerce, Automotive, Field Services).
+            No custom domain objects are configured for this organization yet.
           </p>
         </div>
       </PageShell>

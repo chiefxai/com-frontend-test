@@ -11,6 +11,7 @@
 // rather than assuming one fixed schema.
 
 import { Lead } from '../types';
+import { domainRecordToLegacyLead } from './industry/domainRecord';
 
 interface ObjectRecord {
   id: string;
@@ -34,35 +35,19 @@ interface ObjectField {
   required?: boolean;
 }
 
-function firstDefined(record: ObjectRecord, keys: string[]): string {
-  for (const key of keys) {
-    if (record[key]) return String(record[key]);
-  }
-  return '';
-}
-
-export function recordToLead(record: ObjectRecord, stages: ObjectStage[]): Lead {
+export function recordToLead(record: ObjectRecord, stages: ObjectStage[], objectKey = 'primary'): Lead {
   const stage = stages.find((s) => s.id === record.stageId);
-  return {
-    id: record.id,
-    // Every industry pack's name-like field, across every pack currently
-    // defined (services/industryPacks.js) — "contactName" (IT Sales
-    // Leads) was missing here, so every contact for that pack displayed
-    // as "Unnamed Contact" even though the record itself saved correctly.
-    name: firstDefined(record, ['name', 'customerName', 'studentName', 'contactName']) || 'Unnamed Contact',
-    phone: firstDefined(record, ['phone', 'parentPhone']),
-    email: firstDefined(record, ['email']),
-    gender: firstDefined(record, ['gender', 'sex']),
-    amountRequested: Number(record.budget || record.orderValue || 0),
-    score: 0,
-    source: firstDefined(record, ['source', 'channel']),
-    // Real object-pack stage labels don't match this lending-era union —
-    // cast rather than force every pack's stages into New/Qualified/etc.
-    status: (stage?.label || 'New') as Lead['status'],
-    tags: Array.isArray(record.tags) ? record.tags : [],
-    createdAt: record.createdAt || new Date().toISOString(),
-    notes: firstDefined(record, ['notes', 'condition']),
-  };
+  return domainRecordToLegacyLead(
+    {
+      id: record.id,
+      objectKey,
+      stageKey: stage?.key,
+      values: record,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    },
+    stage?.label,
+  );
 }
 
 // What DialerSimulator actually mutates on a lead (tags, notes, status via
@@ -107,4 +92,27 @@ export function leadToRecordCreate(lead: Lead, fields: ObjectField[]): Record<st
   if (amountField && lead.amountRequested) data[amountField.key] = lead.amountRequested;
 
   return data;
+}
+
+
+/**
+ * Compatibility projection for list/pipeline views.
+ * The input remains canonical DomainRecord data; Lead is only the view contract
+ * until those views complete their mutation migration.
+ */
+export function domainRecordsToLeads(
+  records: import('./industry/domainRecord').DomainRecord[],
+  stages: ObjectStage[],
+): Lead[] {
+  return records.map((record) => recordToLead(
+    {
+      ...record.values,
+      id: record.id,
+      stageId: stages.find((stage) => stage.key === record.stageKey)?.id,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    },
+    stages,
+    record.objectKey,
+  ));
 }

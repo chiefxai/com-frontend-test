@@ -35,6 +35,8 @@ import {
 import { UserRole } from '../types';
 import { useFeatureFlags } from '../features/feature-flags/FeatureFlagContext';
 import { TAB_TO_FLAG } from '../features/feature-flags/registry';
+import { useIndustry } from '../lib/industry';
+import type { IndustryProfile } from '../lib/industry/types';
 
 interface SidebarProps {
   activeTab: string;
@@ -44,9 +46,9 @@ interface SidebarProps {
   userRole: UserRole | null;
   organizationName: string;
   industry: string;
+  businessType?: string;
+  industryProfile?: IndustryProfile;
 }
-
-const LENDING_ONLY_TAB_IDS = new Set(['loans']);
 
 // Synthetic key for the "Dashboard" group's own expand/collapse + flyout
 // state — not a real routable tab, just a Set/Map key (see DASHBOARD_GROUP
@@ -94,18 +96,6 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
     ],
   },
 ];
-
-const INDUSTRY_TAGLINES: Record<string, string> = {
-  lending:        'Loan CRM Platform',
-  real_estate:    'Real Estate CRM Platform',
-  healthcare:     'Healthcare CRM Platform',
-  insurance:      'Insurance CRM Platform',
-  education:      'Education CRM Platform',
-  ecommerce:      'E-commerce CRM Platform',
-  automotive:     'Automotive CRM Platform',
-  field_services: 'Field Services CRM Platform',
-  it_sales:       'IT Sales CRM Platform',
-};
 
 // ── Tooltip (flat items in collapsed mode) ────────────────────────────────────
 // Thin wrapper over the shared ui/Tooltip — kept as its own name since
@@ -203,8 +193,10 @@ export default function Sidebar({
   userRole,
   organizationName,
   industry,
+  businessType,
+  industryProfile,
 }: SidebarProps) {
-  const isLending = !industry || industry === 'lending';
+  const industryContext = useIndustry({ industry, businessType });
   const isAdmin = userRole === 'Organization Admin' || userRole === 'Super Admin';
   const { isEnabled } = useFeatureFlags();
 
@@ -250,25 +242,45 @@ export default function Sidebar({
     });
   };
 
-  const tagline = INDUSTRY_TAGLINES[industry] || 'AI CRM Platform';
+  const profile = industryProfile || industryContext.profile;
+  const labels = profile.labels;
+  const tagline = profile.tagline;
+
+  const industryModuleIcons: Record<string, React.ElementType> = {
+    layers: Layers,
+    users: Users,
+    target: Target,
+    contact: Contact,
+    phone: Phone,
+    calendar: Clock,
+    sparkles: Sparkles,
+  };
+
+  const industryModuleItems = profile.modules
+    .filter((module) => module.tabId)
+    .filter((module) => !module.featureFlag || isEnabled(module.featureFlag))
+    .map((module) => ({
+      id: module.tabId!,
+      label: module.label,
+      icon: industryModuleIcons[module.iconKey || 'layers'] || Layers,
+    }));
 
   const allMenuItems = [
-    { id: 'leads',        label: 'Leads',             icon: UserPlus },
-    { id: 'pipeline',     label: 'Pipeline',          icon: Target },
-    { id: 'contacts',     label: 'Contact Directory', icon: Contact },
+    { id: 'leads',        label: labels.lead.plural,             icon: UserPlus },
+    { id: 'pipeline',     label: labels.pipeline.plural,          icon: Target },
+    { id: 'contacts',     label: `${labels.contact.plural} Directory`, icon: Contact },
     { id: 'workflows',    label: 'Workflow Builder',  icon: GitBranch },
     { id: 'call-logs',    label: 'Call Logs',         icon: History },
     { id: 'inbox',        label: 'Unified Inbox',     icon: Inbox },
     { id: 'agent-studio', label: 'Agent Studio',      icon: Sparkles },
     { id: 'compliance',   label: 'Compliance',        icon: ShieldBan },
     { id: 'knowledge',    label: 'Knowledge Base',    icon: BookOpen },
-    { id: 'enquiries',    label: 'Enquiries',         icon: MessageCircleQuestion },
+    { id: 'enquiries',    label: labels.enquiry.plural,         icon: MessageCircleQuestion },
     { id: 'audit-log',    label: 'Audit Log',         icon: ScrollText },
-    { id: 'loans',        label: 'Loan Lifecycle',    icon: Layers },
+    ...industryModuleItems,
   ];
 
   const menuItems = allMenuItems.filter((item) => {
-    if (LENDING_ONLY_TAB_IDS.has(item.id) && !isLending) return false;
     const flagKey = TAB_TO_FLAG[item.id];
     if (flagKey && !isEnabled(flagKey)) return false;
     return true;

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch, getAuthToken, getApiBase } from './lib/api';
 import { COST_PER_MINUTE_INR_FALLBACK as COST_PER_MINUTE_INR } from './lib/pricing';
 import { loadFromStorage, saveToStorage } from './lib/storage';
-import { recordToLead, leadToRecordPatch, leadToRecordCreate } from './lib/objectContacts';
+import { recordToLead } from './lib/objectContacts';
 import { RefreshProvider } from './lib/RefreshContext';
 import { PageHeaderProvider } from './lib/PageHeaderContext';
 import PageHeaderBar from './components/ui/PageHeaderBar';
@@ -22,6 +22,9 @@ import {
   UserRole
 } from './types';
 import { useAuth } from './features/auth/AuthProvider';
+import { resolveIndustryContext } from './lib/industry';
+import type { DomainRecord } from './lib/industry';
+import type { RemoteIndustryConfig } from './lib/industry/types';
 
 // Placeholder shown only until the real org settings arrive from the backend.
 const EMPTY_ORG_SETTINGS: OrganizationSettings = {
@@ -270,8 +273,14 @@ export default function App() {
   // so the Voice Simulator (and anything else reading `leads`) has real
   // data to work with for every industry, not just lending.
   const [primaryObject, setPrimaryObject] = useState<{ key: string; stages: { id: string; key: string; label: string }[]; fields: { id: string; key: string; label: string; type: string; required?: boolean }[] } | null>(null);
+  // Canonical industry-object snapshot. `leads` remains a compatibility projection
+  // for lending-era views; new industry UI should consume these records directly.
+  const [domainRecords, setDomainRecords] = useState<DomainRecord[]>([]);
 
   const [hasLoaded, setHasLoaded] = useState<boolean>(false);
+  // Server is the source of truth for industry semantics. The local registry
+  // remains a safe fallback for startup/offline rendering and tests.
+  const [remoteIndustryConfig, setRemoteIndustryConfig] = useState<RemoteIndustryConfig | null>(null);
   // DB membership role — authoritative once /api/settings/me resolves.
   const [dbRole, setDbRole] = useState<string>('');
   const [flagsReady, setFlagsReady] = useState<boolean>(flagsLoaded);
@@ -282,12 +291,29 @@ export default function App() {
       if (loaded) { setFlagsReady(true); setGrantedFlags(granted); }
     });
   }, []);
-  const syncedLeadIds = useRef(new Set<string>());
   const previousLeadsRef = useRef<Lead[]>([]);
+  const previousDomainRecordsRef = useRef<DomainRecord[]>([]);
   const [questionFlows, setQuestionFlows] = useState<QuestionFlow[]>(() =>
     loadFromStorage<QuestionFlow[]>('chiefx_question_flows', [])
   );
   const { isEnabled } = useFeatureFlags();
+  const industryContext = resolveIndustryContext(orgSettings);
+  const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
+    ? {
+        ...industryContext.profile,
+        label: remoteIndustryConfig.label || industryContext.profile.label,
+        tagline: remoteIndustryConfig.tagline || industryContext.profile.tagline,
+        businessTypes: remoteIndustryConfig.businessTypes || industryContext.profile.businessTypes,
+        labels: remoteIndustryConfig.labels,
+        modules: remoteIndustryConfig.modules,
+        pipeline: remoteIndustryConfig.pipeline,
+        domainModel: remoteIndustryConfig.domainModel || {
+          objects: remoteIndustryConfig.domainObjects,
+          relationships: industryContext.profile.domainModel?.relationships || [],
+        },
+      }
+    : industryContext.profile;
+
 
   // Live call notifications — set when a real inbound/outbound call is in
   // progress (from the org-scoped /api/logs-stream SSE connection below),
@@ -336,7 +362,8 @@ export default function App() {
         resOrg,
         resDialerTasks,
         resBilling,
-        resQuestionFlows
+        resQuestionFlows,
+        resIndustry
       ] = await Promise.all([
         apiFetch('/api/leads').then(r => r.json()).catch(() => null),
         apiFetch('/api/workflows').then(r => r.json()).catch(() => null),
@@ -347,7 +374,8 @@ export default function App() {
         apiFetch('/api/settings/org').then(r => r.json()).catch(() => null),
         apiFetch('/api/dialer-tasks').then(r => r.json()).catch(() => null),
         apiFetch('/api/billing').then(r => r.json()).catch(() => null),
-        apiFetch('/api/question-flows').then(r => r.json()).catch(() => null)
+        apiFetch('/api/question-flows').then(r => r.json()).catch(() => null),
+        apiFetch('/api/settings/industry').then(r => r.ok ? r.json() : null).catch(() => null)
       ]);
 
       if (Array.isArray(resLeads)) setLeads(resLeads);
@@ -364,6 +392,7 @@ export default function App() {
       if (resBilling && resBilling.aiTokenUsage) setAiTokenUsage(resBilling.aiTokenUsage);
       if (resBilling && resBilling.callProvider) setCallProviderRate(resBilling.callProvider);
       if (resOrg && Object.keys(resOrg).length > 0) setOrgSettings({ ...EMPTY_ORG_SETTINGS, ...resOrg });
+      if (resIndustry && typeof resIndustry.industry === 'string') setRemoteIndustryConfig(resIndustry);
       if (Array.isArray(resDialerTasks)) setDialerTasks(resDialerTasks);
       if (Array.isArray(resQuestionFlows) && resQuestionFlows.length > 0)
         setQuestionFlows(resQuestionFlows.map((f: any) => ({ nodes: [], edges: [], variables: [], ...f })));
@@ -375,7 +404,19 @@ export default function App() {
           const primary = Array.isArray(objects) ? objects[0] : null;
           if (primary) {
             const records = await apiFetch(`/api/objects/${primary.key}/records`).then(r => r.json());
-            setLeads(Array.isArray(records) ? records.map((r: any) => recordToLead(r, primary.stages)) : []);
+            const canonicalRecords: DomainRecord[] = Array.isArray(records)
+              ? records.map((r: any) => ({
+                  id: String(r.id),
+                  objectKey: primary.key,
+                  stageKey: r.stageKey ?? primary.stages?.find((s: any) => s.id === r.stageId)?.key ?? null,
+                  values: r.values && typeof r.values === 'object' ? r.values : { ...r },
+                  createdAt: r.createdAt,
+                  updatedAt: r.updatedAt,
+                }))
+              : [];
+            previousDomainRecordsRef.current = canonicalRecords;
+            setDomainRecords(canonicalRecords);
+            setLeads(canonicalRecords.map((record) => recordToLead({ ...record.values, id: record.id, stageId: primary.stages?.find((s: any) => s.key === record.stageKey)?.id, createdAt: record.createdAt, updatedAt: record.updatedAt }, primary.stages, primary.key)));
             setPrimaryObject({ key: primary.key, stages: primary.stages, fields: primary.fields || [] });
           }
         } catch (err) {
@@ -383,6 +424,8 @@ export default function App() {
         }
       } else {
         setPrimaryObject(null);
+        previousDomainRecordsRef.current = [];
+        setDomainRecords([]);
       }
     } catch (err) {
       console.warn("Failed to fetch backend data, using local fallbacks:", err);
@@ -418,7 +461,7 @@ export default function App() {
         'chiefx_feature_flags',
       ];
       CRM_KEYS.forEach(k => localStorage.removeItem(k));
-      setLeads([]); setWorkflows([]); setCallLogs([]);
+      setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
       setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
       setOrgSettings(EMPTY_ORG_SETTINGS); setDialerTasks([]); setQuestionFlows([]);
     }
@@ -505,79 +548,76 @@ export default function App() {
 
   // Redirect if a non-lending org lands on a lending-only route or a retired route.
   useEffect(() => {
-    const isLending = !orgSettings.industry || orgSettings.industry === 'lending';
-    const lendingOnlyTabs = new Set(['loans']);
-    if ((!isLending && lendingOnlyTabs.has(activeTab)) || activeTab === 'objects') {
+    // Industry modules, not industry-name conditionals, decide whether a
+    // domain-specific route exists for this organization.
+    const industryTabIds = new Set(
+      effectiveIndustryProfile.modules.map((module) => module.tabId).filter(Boolean)
+    );
+    const isDomainRoute = activeTab === 'loans' || activeTab === 'objects';
+    if (isDomainRoute && !industryTabIds.has(activeTab)) {
       navigate('/', { replace: true });
     }
-  }, [orgSettings.industry, activeTab]);
+  }, [effectiveIndustryProfile, activeTab]);
 
   useEffect(() => {
     saveToStorage('chiefx_leads', leads);
     if (!hasLoaded) return;
+
     if (primaryObject) {
-      // Non-lending org — `leads` here are really Industry Objects
-      // records (see the load effect above). Patch each one back to its
-      // real record instead of /api/leads/sync, which would write into
-      // the (unused, for this org) lending leads table.
-      const prevLeads = previousLeadsRef.current;
-      leads.forEach((lead) => {
-        // Contacts added via LeadManagementView/CSV import get a
-        // client-generated "L-<n>" id (see handleAddLead) that was never
-        // a real object_records row — PATCHing that id 404s silently, so
-        // the new contact only ever lived in local/localStorage state and
-        // never actually reached the database. Create it for real first,
-        // then swap in the record's actual id so every later edit PATCHes
-        // correctly.
-        if (lead.id.startsWith('L-')) {
-          if (syncedLeadIds.current.has(lead.id)) return;
-          syncedLeadIds.current.add(lead.id);
+      // Non-lending organizations persist the canonical DomainRecord collection.
+      // Lead[] is deliberately not used as a write model anymore.
+      const previousRecords = previousDomainRecordsRef.current;
+
+      domainRecords.forEach((record) => {
+        if (record.id.startsWith('L-')) {
           apiFetch(`/api/objects/${primaryObject.key}/records`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(leadToRecordCreate(lead, primaryObject.fields))
+            body: JSON.stringify({ ...record.values, stageKey: record.stageKey || undefined }),
           })
-            .then(r => r.json())
-            .then(record => {
-              if (record?.id) {
-                syncedLeadIds.current.delete(lead.id);
-                setLeads(prev => prev.map(l => (l.id === lead.id ? { ...l, id: record.id } : l)));
+            .then((res) => res.json())
+            .then((created) => {
+              if (created?.id) {
+                setDomainRecords((records) => records.map((current) =>
+                  current.id === record.id
+                    ? { ...current, id: created.id, createdAt: created.createdAt, updatedAt: created.updatedAt }
+                    : current
+                ));
               }
             })
-            .catch(err => console.error("Error creating object record:", err));
-        } else {
-          // Only PATCH if this lead actually changed since the last sync
-          const prev = prevLeads.find(p => p.id === lead.id);
-          if (prev && JSON.stringify(prev) === JSON.stringify(lead)) return;
-          apiFetch(`/api/objects/${primaryObject.key}/records/${lead.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(leadToRecordPatch(lead, primaryObject.stages))
-          }).catch(err => console.error("Error syncing object record:", err));
+            .catch((err) => console.error("Error creating object record:", err));
+          return;
         }
-      });
-    } else {
-      // Only sync leads that are new or changed
-      const prevLeads = previousLeadsRef.current;
-      const changedLeads = leads.filter(lead => {
-        if (lead.id.startsWith('L-')) {
-          if (syncedLeadIds.current.has(lead.id)) return false;
-          syncedLeadIds.current.add(lead.id);
-          return true;
-        }
-        const prev = prevLeads.find(p => p.id === lead.id);
-        return !prev || JSON.stringify(prev) !== JSON.stringify(lead);
-      });
-      if (changedLeads.length > 0) {
-        apiFetch('/api/leads/sync', {
-          method: 'POST',
+
+        const previous = previousRecords.find((item) => item.id === record.id);
+        if (previous && JSON.stringify(previous) === JSON.stringify(record)) return;
+
+        apiFetch(`/api/objects/${primaryObject.key}/records/${record.id}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(leads)
-        }).catch(err => console.error("Error syncing leads:", err));
-      }
+          body: JSON.stringify({ ...record.values, stageKey: record.stageKey ?? null }),
+        }).catch((err) => console.error("Error syncing object record:", err));
+      });
+
+      previousDomainRecordsRef.current = domainRecords;
+      return;
+    }
+
+    // Lending remains on its existing compatibility endpoint.
+    const prevLeads = previousLeadsRef.current;
+    const changedLeads = leads.filter((lead) => {
+      const prev = prevLeads.find((item) => item.id === lead.id);
+      return !prev || JSON.stringify(prev) !== JSON.stringify(lead);
+    });
+    if (changedLeads.length > 0) {
+      apiFetch('/api/leads/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leads),
+      }).catch((err) => console.error("Error syncing leads:", err));
     }
     previousLeadsRef.current = leads;
-  }, [leads, hasLoaded, primaryObject]);
+  }, [leads, domainRecords, hasLoaded, primaryObject]);
 
   useEffect(() => { saveToStorage('chiefx_workflows', workflows); }, [workflows]);
   useDebouncedSync('/api/workflows/sync', workflows, hasLoaded);
@@ -710,19 +750,22 @@ export default function App() {
           />
         );
       case 'leads':
-        return <LeadsView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} />;
+        return <LeadsView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} industryProfile={effectiveIndustryProfile} domainRecords={domainRecords} setDomainRecords={setDomainRecords} />;
       case 'pipeline':
-        return <PipelineView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} setDialerTasks={setDialerTasks} />;
+        return <PipelineView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} setDialerTasks={setDialerTasks} industryProfile={effectiveIndustryProfile} domainRecords={domainRecords} setDomainRecords={setDomainRecords} />;
       case 'contacts':
         return (
           <ContactDirectoryView
             leads={leads}
             setLeads={setLeads}
-            industry={orgSettings.industry}
+            industry={industryContext.industry}
+            industryProfile={effectiveIndustryProfile}
             callLogs={callLogs}
             dialerTasks={dialerTasks}
             primaryObjectKey={primaryObject?.key}
             primaryObjectFields={primaryObject?.fields || []}
+            domainRecords={domainRecords}
+            setDomainRecords={setDomainRecords}
           />
         );
       case 'call-logs':
@@ -737,6 +780,7 @@ export default function App() {
             openFlowId={activeSubTab}
             onOpenFlow={(id) => navigate(`/${TAB_TO_SLUG.workflows}/${id}`)}
             onCloseFlow={() => navigate(`/${TAB_TO_SLUG.workflows}`)}
+            industryProfile={effectiveIndustryProfile}
           />
         );
       case 'dialer':
@@ -776,7 +820,7 @@ export default function App() {
           />
         );
       case 'objects':
-        return <CustomObjectsView />;
+        return <CustomObjectsView industryProfile={effectiveIndustryProfile} />;
       case 'inbox':
         return <UnifiedInboxView />;
       case 'agent-studio':
@@ -786,7 +830,7 @@ export default function App() {
       case 'knowledge':
         return <KnowledgeBaseView />;
       case 'enquiries':
-        return <EnquiriesView />;
+        return <EnquiriesView industryProfile={effectiveIndustryProfile} />;
       case 'audit-log':
         return <AuditLogView />;
       case 'company':
@@ -876,6 +920,8 @@ export default function App() {
         userRole={((dbRole || kcUser?.role) as UserRole) ?? null}
         organizationName={orgSettings.name}
         industry={orgSettings.industry}
+        businessType={orgSettings.businessType}
+        industryProfile={effectiveIndustryProfile}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}

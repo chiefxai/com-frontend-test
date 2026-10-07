@@ -31,6 +31,7 @@ import ActionMenu from '../../components/ui/ActionMenu';
 import DataTable, { Column } from '../../components/ui/DataTable';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../../shared/toast/ToastContext';
+import type { IndustryProfile } from '../../lib/industry/types';
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -61,6 +62,7 @@ interface WorkflowsViewProps {
   openFlowId?: string;
   onOpenFlow?: (id: string) => void;
   onCloseFlow?: () => void;
+  industryProfile?: IndustryProfile;
 }
 
 // Turns the JS engine's raw JSON.parse error ("Unexpected token j in JSON
@@ -84,7 +86,8 @@ function humanizeJsonError(message: string, jsonStr: string): string {
   return `Invalid JSON: ${message}`;
 }
 
-export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow, onCloseFlow }: WorkflowsViewProps) {
+export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow, onCloseFlow, industryProfile }: WorkflowsViewProps) {
+  const leadLabel = industryProfile?.labels.lead.singular || 'Lead';
   const { showToast } = useToast();
   const [localEditingId, setLocalEditingId] = useState<string | null>(null);
   const editingId = onOpenFlow ? (openFlowId || null) : localEditingId;
