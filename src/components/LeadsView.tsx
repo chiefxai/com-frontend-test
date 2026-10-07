@@ -137,8 +137,10 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
   const [exportOpen, setExportOpen] = React.useState(false);
 
   const leadStageKey = activeStage('lead');
-  const opportunityStageKey = activeStage('opportunity');
-  const clientStageKey = industryProfile?.pipeline.stages.find(s => s.terminal === 'won')?.key || activeStage('client');
+  const pipelineStages = industryProfile?.pipeline.stages || stages;
+  const leadIndex = Math.max(0, pipelineStages.findIndex(s => s.key === leadStageKey));
+  const opportunityStageKey = pipelineStages.find((s, index) => index > leadIndex && !s.terminal)?.key || activeStage('opportunity');
+  const clientStageKey = pipelineStages.find(s => s.terminal === 'won')?.key || activeStage('client');
   const activeLeads = React.useMemo(() => campaignLeadRows(viewLeads, dialerTasks, leadStageKey), [viewLeads, dialerTasks, leadStageKey]);
   const uniqueSources = [...new Set(activeLeads.map((l) => l.source).filter(Boolean))].sort();
   const campaignOptions = [...dialerTasks].filter((t) => t.leadIds?.some((id) => activeLeads.some((l) => l.originalLeadId === id && l.campaignId === t.id))).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -270,7 +272,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
           {!l.campaignId ? (
             <>
               <button
-                onClick={() => advance(l, 'Qualified', 'opportunity')}
+                onClick={() => advance(l, labelForStage(opportunityStageKey) as Lead['status'], opportunityStageKey)}
                 disabled={advancingId === l.originalLeadId}
                 className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
                 title={`Advance to ${labelForStage(opportunityStageKey)}`}
@@ -278,7 +280,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
                 <ArrowRightCircle className="h-3.5 w-3.5" /> {labelForStage('opportunity')}
               </button>
               <button
-                onClick={() => advance(l, 'Converted', 'client')}
+                onClick={() => advance(l, labelForStage(clientStageKey) as Lead['status'], clientStageKey)}
                 disabled={advancingId === l.originalLeadId}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-50 px-2 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 cursor-pointer"
                 title={`Mark as ${labelForStage(clientStageKey)}`}
@@ -365,7 +367,7 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
         actions={selectedLead && (
           <div className="flex items-center gap-2">
             {!selectedLead?.campaignId && <button
-              onClick={() => advance(selectedLead, 'Qualified', 'opportunity')}
+              onClick={() => advance(selectedLead, labelForStage(opportunityStageKey) as Lead['status'], opportunityStageKey)}
               disabled={advancingId === selectedLead.id}
               className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 disabled:opacity-50 px-3 py-2 rounded-xl border border-amber-200 hover:bg-amber-50 cursor-pointer"
             >
