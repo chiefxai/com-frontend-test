@@ -648,31 +648,12 @@ export function PrintExportDialog({
         walk(captureSource, clonedRoot);
       };
 
-      const fullCanvas = await html2canvas(captureSource, {
-        backgroundColor: '#ffffff',
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        width: cssWidth,
-        height: cssHeight,
-        windowWidth: Math.max(window.innerWidth, cssWidth, sourceCanvasWidth),
-        windowHeight: Math.max(window.innerHeight, cssHeight),
-        scrollX: 0,
-        scrollY: 0,
-        imageSmoothing: true,
-        imageSmoothingQuality: 'high',
-        foreignObjectRendering: false,
-        onclone: inlineComputedStyles,
-      });
-
       const mmToPx = 96 / 25.4;
       const pageCanvasW = Math.ceil(pdfPageW * mmToPx * 1.5);
       const pageCanvasH = Math.ceil(pdfPageH * mmToPx * 1.5);
       const pageMarginPx = Math.ceil(10 * mmToPx * 1.5);
       const contentCanvasW = pageCanvasW - (2 * pageMarginPx);
       const contentCanvasH = pageCanvasH - (2 * pageMarginPx);
-      const canvasScale = fullCanvas.width / cssWidth;
 
       const images: { data: string; width: number; height: number }[] = [];
 
@@ -717,8 +698,32 @@ export function PrintExportDialog({
       });
 
       // Crop the exact mounted dashboard canvas. No widget HTML is rebuilt,
-      // so visual styles remain identical to the live dashboard.
+      // so visual styles remain identical to the live dashboard. Capture only
+      // each page region to avoid the browser's maximum canvas-height limit.
       for (const group of groups) {
+        const regionHeight = Math.max(1, Math.ceil(group.end - group.start));
+        const regionCanvas = await html2canvas(captureSource, {
+          backgroundColor: settings.theme === 'dark' ? '#080D1C' : '#F7F9FC',
+          scale: 1.5,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          x: 0,
+          y: group.start,
+          width: cssWidth,
+          height: regionHeight,
+          // Keep vh and responsive breakpoints tied to the actual browser
+          // viewport; using dashboard scrollHeight here resized widgets.
+          windowWidth: window.innerWidth,
+          windowHeight: window.innerHeight,
+          scrollX: 0,
+          scrollY: 0,
+          imageSmoothing: true,
+          imageSmoothingQuality: 'high',
+          foreignObjectRendering: false,
+          onclone: inlineComputedStyles,
+        });
+
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width = pageCanvasW;
         sliceCanvas.height = pageCanvasH;
@@ -728,20 +733,16 @@ export function PrintExportDialog({
         ctx.fillStyle = settings.theme === 'dark' ? '#080D1C' : '#F7F9FC';
         ctx.fillRect(0, 0, pageCanvasW, pageCanvasH);
 
-        const sourceY = Math.max(0, Math.round(group.start * canvasScale));
-        const sourceH = Math.max(1, Math.min(
-          fullCanvas.height - sourceY,
-          Math.round((group.end - group.start) * canvasScale),
-        ));
+        const sourceH = Math.max(1, regionCanvas.height);
 
-        const fitScale = Math.min(contentCanvasW / fullCanvas.width, contentCanvasH / sourceH);
-        const destinationW = Math.round(fullCanvas.width * fitScale);
+        const fitScale = Math.min(contentCanvasW / regionCanvas.width, contentCanvasH / sourceH);
+        const destinationW = Math.round(regionCanvas.width * fitScale);
         const destinationH = Math.round(sourceH * fitScale);
         const destinationX = pageMarginPx + Math.round((contentCanvasW - destinationW) / 2);
 
         ctx.drawImage(
-          fullCanvas,
-          0, sourceY, fullCanvas.width, sourceH,
+          regionCanvas,
+          0, 0, regionCanvas.width, sourceH,
           destinationX, pageMarginPx, destinationW, destinationH,
         );
 
