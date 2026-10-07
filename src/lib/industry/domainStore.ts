@@ -37,3 +37,33 @@ export function patchDomainRecord(
 export function removeDomainRecord(records: DomainRecord[], id: string): DomainRecord[] {
   return records.filter((record) => record.id !== id);
 }
+
+
+export interface DomainRecordMutation {
+  stageKey?: string | null;
+  values?: Record<string, unknown>;
+}
+
+export function updateDomainRecordStage(
+  records: DomainRecord[],
+  id: string,
+  stageKey: string | null,
+  values: Record<string, unknown> = {},
+): DomainRecord[] {
+  return patchDomainRecord(records, id, { stageKey, values, updatedAt: new Date().toISOString() });
+}
+
+export function updateDomainRecordValues(
+  records: DomainRecord[],
+  id: string,
+  values: Record<string, unknown>,
+): DomainRecord[] {
+  return patchDomainRecord(records, id, { values, updatedAt: new Date().toISOString() });
+}
+
+export function createDomainRecord(
+  records: DomainRecord[],
+  record: DomainRecord,
+): DomainRecord[] {
+  return upsertDomainRecord(records, record);
+}
