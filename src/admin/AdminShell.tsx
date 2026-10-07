@@ -33,7 +33,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
     localStorage.setItem('admin-sidebar-collapsed', String(collapsed));
   }, [collapsed]);
   return (
-    <div className="admin-shell flex h-screen w-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)] font-sans">
+    <div className="admin-shell flex h-dvh w-screen overflow-hidden overscroll-none bg-[var(--bg-base)] text-[var(--text-primary)] font-sans">
       <aside className={`admin-sidebar flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-[72px]' : 'w-60'}`}>
         <div className={`h-16 flex items-center border-b border-[var(--border)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
           <div className="h-8 w-8 shrink-0 flex items-center justify-center overflow-hidden">
@@ -82,7 +82,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <PageHeaderProvider>
             <PageHeaderBar />
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
         <Routes>
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview"      element={<PageWrap title="Overview" section="Overview"><OverviewPage /></PageWrap>} />
