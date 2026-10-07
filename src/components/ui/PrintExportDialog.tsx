@@ -403,9 +403,9 @@ export function PrintExportDialog({
 
   const previewTheme: ExportTheme = settings.theme;
 
-  const withGridSpan = (html: string, span: number) => {
+  const withGridSpan = (html: string, span: number, removeShadow = false) => {
     const safeSpan = Math.max(1, Math.min(12, span));
-    const gridStyle = `grid-column:span ${safeSpan} / span ${safeSpan};width:100%;min-width:0;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;`;
+    const gridStyle = `grid-column:span ${safeSpan} / span ${safeSpan};width:100%;min-width:0;max-width:100%;height:auto;min-height:0;max-height:none;overflow:visible;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;${removeShadow ? 'box-shadow:none!important;' : ''}`;
     return html.replace(/^<([a-zA-Z][^>]*)>/, (match, attrs) => {
       const styleMatch = attrs.match(/style="([^"]*)"/);
       if (styleMatch) {
@@ -745,7 +745,9 @@ export function PrintExportDialog({
               </section>
 
               {pages.map((page, pageIndex) => {
-                const pageHtml = page.rows.flat().map(item => item.html).join('');
+                const pageHtml = page.rows.flat()
+                  .map(item => withGridSpan(item.html, item.span, previewTheme === 'light'))
+                  .join('');
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
