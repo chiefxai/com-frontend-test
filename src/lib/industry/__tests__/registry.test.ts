@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getIndustryProfile, INDUSTRY_PROFILES } from '../registry';
 import { validateIndustryProfile } from '../validate';
-import { domainRecordToLegacyLead } from '../domainRecord';
+import { domainRecordToLegacyLead, getDomainRecordIdentity } from '../domainRecord';
 
 describe('industry registry', () => {
   it('contains valid built-in profiles', () => {
@@ -21,6 +21,18 @@ describe('industry registry', () => {
     expect(keys).toContain('vehicle');
     expect(keys).toContain('test_drive');
     expect(keys).toContain('vehicle_sale');
+  });
+
+  it('normalizes identity from industry-specific field names', () => {
+    expect(getDomainRecordIdentity({
+      id: 'customer-1',
+      objectKey: 'contact',
+      values: { customerName: 'Arun', phone: '+919999999999' },
+    })).toEqual({
+      name: 'Arun',
+      phone: '+919999999999',
+      email: undefined,
+    });
   });
 
   it('adapts generic records to the legacy Lead boundary without industry knowledge', () => {
