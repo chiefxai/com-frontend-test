@@ -309,6 +309,12 @@ export default function SettingsView({
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberAssignment[]>([]);
   const [workspaceMembersError, setWorkspaceMembersError] = useState('');
   const [savingWorkspaceMember, setSavingWorkspaceMember] = useState<string | null>(null);
+  const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
+  const [ownerTransferTarget, setOwnerTransferTarget] = useState('');
+  const [ownerTransferError, setOwnerTransferError] = useState('');
+  const [transferringOwner, setTransferringOwner] = useState(false);
+  const currentOwnerMember = teamMembers.find(member => member.role === 'Owner'
+    && currentUserEmail && member.email.toLowerCase() === currentUserEmail.toLowerCase());
 
   useEffect(() => {
     if (subTab !== 'team') return;
@@ -340,6 +346,32 @@ export default function SettingsView({
       setWorkspaceMembersError(error.message || 'Could not update workspace role');
     } finally {
       setSavingWorkspaceMember(null);
+    }
+  };
+
+  const transferOrganizationOwner = async () => {
+    if (!ownerTransferTarget) return;
+    const target = teamMembers.find(member => member.id === ownerTransferTarget);
+    if (!target || target.status !== 'Active') return;
+    if (!window.confirm(`Transfer organization ownership to ${target.name || target.email}? Your Owner role will become Organization Admin.`)) return;
+    setTransferringOwner(true);
+    setOwnerTransferError('');
+    try {
+      const response = await apiFetch('/api/settings/team/owner-transfer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: target.id }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Ownership transfer failed');
+      setTeamMembers(current => current.map(member => member.id === data.from.id
+        ? { ...member, role: 'Organization Admin' as UserRole }
+        : member.id === data.to.id ? { ...member, role: 'Owner' as UserRole } : member));
+      setShowOwnerTransfer(false);
+      setOwnerTransferTarget('');
+    } catch (error: any) {
+      setOwnerTransferError(error.message || 'Ownership transfer failed');
+    } finally {
+      setTransferringOwner(false);
     }
   };
 
@@ -705,7 +737,10 @@ export default function SettingsView({
                 icon={Users}
                 accent="#6366f1"
                 padding="none"
-                action={canManageOrgMembers ? <IconButton icon={Plus} label="Add Member" onClick={() => setShowAddStaff(true)} /> : undefined}
+                action={<div className="flex items-center gap-2">
+                  {currentOwnerMember && <button type="button" onClick={() => { setOwnerTransferError(''); setShowOwnerTransfer(true); }} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100">Transfer Owner</button>}
+                  {canManageOrgMembers && <IconButton icon={Plus} label="Add Member" onClick={() => setShowAddStaff(true)} />}
+                </div>}
               >
                 {(() => {
                   const columns: Column<TeamMember>[] = [
@@ -904,6 +939,25 @@ export default function SettingsView({
               )}
 
               {/* Add Member overlay modal */}
+              {showOwnerTransfer && (
+                <Modal open onClose={() => { if (!transferringOwner) setShowOwnerTransfer(false); }} title="Transfer Organization Ownership" subtitle="The selected active member becomes Owner. You retain Organization Admin access.">
+                  <div className="space-y-4 p-4">
+                    {ownerTransferError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{ownerTransferError}</div>}
+                    <label className="block space-y-1">
+                      <span className="text-[10px] font-bold uppercase text-slate-500">New Owner</span>
+                      <select value={ownerTransferTarget} onChange={event => setOwnerTransferTarget(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                        <option value="">Select an active team member</option>
+                        {teamMembers.filter(member => member.status === 'Active' && member.id !== currentOwnerMember?.id).map(member => <option key={member.id} value={member.id}>{member.name || member.email} · {member.email}</option>)}
+                      </select>
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setShowOwnerTransfer(false)} disabled={transferringOwner} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)]">Cancel</button>
+                      <button type="button" onClick={transferOrganizationOwner} disabled={!ownerTransferTarget || transferringOwner} className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{transferringOwner && <Loader2 className="h-3 w-3 animate-spin" />}{transferringOwner ? 'Transferring…' : 'Transfer Ownership'}</button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+
               {showAddStaff && canManageOrgMembers && (
                 <Modal
                   open
