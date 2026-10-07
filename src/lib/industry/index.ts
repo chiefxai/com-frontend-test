@@ -5,3 +5,5 @@ export * from './resolve';
 export * from './moduleResolver';
 export * from './validate';
 export * from './useIndustry';
+
+export * from './domainRecord';
