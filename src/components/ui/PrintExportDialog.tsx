@@ -721,7 +721,7 @@ export function PrintExportDialog({
 
       {previewLoading ? (
         <section
-          className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-xl"
+          className="flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]"
           style={{ width: previewWidth, minHeight: Math.min(previewHeight, 520), ...EXPORT_THEME_VARS[previewTheme], color: 'var(--text-primary)' }}
           role="status"
           aria-live="polite"
@@ -732,11 +732,11 @@ export function PrintExportDialog({
           </div>
         </section>
       ) : settings.format === 'docx' ? (
-        <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
+        <section className={`${previewTheme === 'dark' ? 'dark' : ''} rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
           <div dangerouslySetInnerHTML={{ __html: buildWordPages(renderScale, previewScale, usableWidthPx) }} />
         </section>
       ) : <>
-      <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
+      <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
                 <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
@@ -749,7 +749,7 @@ export function PrintExportDialog({
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', position: 'relative' }}>
+                    <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', position: 'relative' }}>
                       <div
                         style={{
                           position: 'absolute',
