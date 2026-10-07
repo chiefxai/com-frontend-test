@@ -1,6 +1,7 @@
 import { useAuthorization, canAccessTab } from '../lib/authorization';
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
+import SidebarFrame from './ui/SidebarFrame';
 import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
 import {
   LayoutDashboard,
@@ -422,15 +423,16 @@ export default function Sidebar({
   };
 
   return (
-    <aside
+    <SidebarFrame
       id="sidebar-container"
-      className={`relative flex flex-col h-screen shrink-0 font-sans transition-all duration-200 ease-in-out ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+      collapsed={collapsed}
+      collapsedWidth="w-16"
+      expandedWidth="w-64"
+      className="font-sans transition-all duration-200 ease-in-out"
       style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)', color: 'var(--text-primary)' }}
     >
       {/* Product brand and organization identity */}
-      <div className={`${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className={`shrink-0 ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
         <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
         <img
           src={chiefVoiceLogo}
@@ -592,6 +594,6 @@ export default function Sidebar({
         </div>}
       </nav>
 
-    </aside>
+    </SidebarFrame>
   );
 }

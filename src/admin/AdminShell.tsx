@@ -14,6 +14,7 @@ import ProfileMenu from '../components/ProfileMenu';
 import PageHeaderBar from '../components/ui/PageHeaderBar';
 import { PageHeaderProvider, usePageHeaderContext } from '../lib/PageHeaderContext';
 import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
+import SidebarFrame from '../components/ui/SidebarFrame';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'overview',       label: 'Overview',           icon: LayoutDashboard },
@@ -34,8 +35,13 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
   }, [collapsed]);
   return (
     <div className="admin-shell flex h-dvh w-screen overflow-hidden overscroll-none bg-[var(--bg-base)] text-[var(--text-primary)] font-sans">
-      <aside className={`admin-sidebar flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-[72px]' : 'w-60'}`}>
-        <div className={`h-16 flex items-center border-b border-[var(--border)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
+      <SidebarFrame
+        collapsed={collapsed}
+        collapsedWidth="w-[72px]"
+        expandedWidth="w-60"
+        className="admin-sidebar self-start overflow-hidden transition-all duration-200"
+      >
+        <div className={`sticky top-0 z-10 h-16 shrink-0 flex items-center border-b border-[var(--border)] bg-[var(--sidebar-bg)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
           <div className="h-8 w-8 shrink-0 flex items-center justify-center overflow-hidden">
             <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-9 w-9 object-contain" />
           </div>
@@ -45,7 +51,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           </div>}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 space-y-1">
           {NAV.map(({ path, label, icon: Icon }) => (
             <NavLink
               key={path}
@@ -62,14 +68,14 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           ))}
         </nav>
 
-        <div className="p-3 border-t border-[var(--border)]">
+        <div className="shrink-0 p-3 border-t border-[var(--border)]">
           <button type="button" onClick={() => setCollapsed(value => !value)} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} className={`mb-1 w-full flex items-center rounded-xl text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2.5'}`}>
             {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4 mr-3" />}
             {!collapsed && 'Collapse sidebar'}
           </button>
 
         </div>
-      </aside>
+      </SidebarFrame>
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <header className="h-16 shrink-0 bg-[var(--header-bg)] border-b border-[var(--border)] flex items-center justify-between px-8 z-20">
