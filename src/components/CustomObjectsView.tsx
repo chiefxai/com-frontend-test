@@ -192,7 +192,7 @@ export default function CustomObjectsView({ industryProfile }: { industryProfile
       })
       .catch(() => setObjects([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [industryProfile?.domainModel]);
 
   const selectedObject = objects.find((o) => o.key === selectedKey) || null;
 
@@ -317,12 +317,14 @@ export default function CustomObjectsView({ industryProfile }: { industryProfile
   }
 
   if (objects.length === 0) {
+    const primaryLabel = industryProfile?.labels.contact.plural || 'Records';
+    const industryLabel = industryProfile?.label || 'your industry';
     return (
-      <PageShell title="Contacts" subtitle="Custom pipelines for your business, beyond lending." layout="fill">
+      <PageShell title={primaryLabel} subtitle={`Custom pipelines and domain records for ${industryLabel}.`} layout="fill">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Boxes className="h-10 w-10 text-slate-300 mb-3" />
           <p className="text-sm text-slate-500 max-w-sm">
-            No custom objects are configured for this organization. These are seeded automatically based on the industry chosen at signup (Real Estate, Healthcare, Education, E-commerce, Automotive, Field Services).
+            No custom domain objects are configured for this organization yet.
           </p>
         </div>
       </PageShell>
