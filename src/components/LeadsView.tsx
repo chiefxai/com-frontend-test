@@ -56,6 +56,7 @@ interface LeadsViewProps {
   industryProfile?: IndustryProfile;
   /** Canonical industry records. Used for reads; Lead remains a compatibility mutation contract. */
   domainRecords?: DomainRecord[];
+  setDomainRecords?: React.Dispatch<React.SetStateAction<DomainRecord[]>>;
 }
 
 // The most recent call (by owning task's createdAt) that has a callId for
@@ -116,7 +117,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
   return rows;
 }
 
-export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile, domainRecords }: LeadsViewProps) {
+export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile, domainRecords, setDomainRecords }: LeadsViewProps) {
   const viewLeads = React.useMemo(
     () => domainRecords ? domainRecordsToLeads(domainRecords, (industryProfile?.pipeline.stages || []).map(s => ({ id: s.key, key: s.key, label: s.label }))) : leads,
     [domainRecords, industryProfile, leads],
@@ -176,6 +177,13 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
     if (lead.campaignId) return;
     setAdvancingId(lead.originalLeadId);
     setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: toStatus, pipelineStage: toStage } : l)));
+    if (domainRecords && setDomainRecords) {
+      setDomainRecords((records) => records.map((record) =>
+        record.id === lead.originalLeadId
+          ? { ...record, stageKey: toStage, values: { ...record.values, status: toStatus } }
+          : record
+      ));
+    }
     setSelectedLead(null);
     setTimeout(() => setAdvancingId(null), 400);
   };
