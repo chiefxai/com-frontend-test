@@ -755,9 +755,9 @@ export default function App() {
           />
         );
       case 'leads':
-        return <LeadsView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} industryProfile={effectiveIndustryProfile} domainRecords={domainRecords} />;
+        return <LeadsView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} industryProfile={effectiveIndustryProfile} domainRecords={domainRecords} setDomainRecords={setDomainRecords} />;
       case 'pipeline':
-        return <PipelineView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} setDialerTasks={setDialerTasks} industryProfile={effectiveIndustryProfile} domainRecords={domainRecords} />;
+        return <PipelineView leads={leads} setLeads={setLeads} dialerTasks={dialerTasks} setDialerTasks={setDialerTasks} industryProfile={effectiveIndustryProfile} domainRecords={domainRecords} setDomainRecords={setDomainRecords} />;
       case 'contacts':
         return (
           <ContactDirectoryView
