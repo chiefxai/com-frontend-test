@@ -42,12 +42,12 @@ function firstDefined(record: ObjectRecord, keys: string[]): string {
   return '';
 }
 
-export function recordToLead(record: ObjectRecord, stages: ObjectStage[]): Lead {
+export function recordToLead(record: ObjectRecord, stages: ObjectStage[], objectKey = 'primary'): Lead {
   const stage = stages.find((s) => s.id === record.stageId);
   return domainRecordToLegacyLead(
     {
       id: record.id,
-      objectKey: 'primary',
+      objectKey,
       stageKey: stage?.key,
       values: record,
       createdAt: record.createdAt,
