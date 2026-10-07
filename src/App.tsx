@@ -364,7 +364,7 @@ export default function App() {
         apiFetch('/api/loans').then(r => r.json()).catch(() => null),
         apiFetch('/api/settings/numbers').then(r => r.json()).catch(() => null),
         apiFetch('/api/settings/team').then(r => r.json()).catch(() => null),
-        apiFetch('/api/settings/org').then(r => r.json()).catch(() => null),
+        apiFetch('/api/settings/workspace').then(r => r.json()).catch(() => null),
         apiFetch('/api/dialer-tasks').then(r => r.json()).catch(() => null),
         apiFetch('/api/billing').then(r => r.json()).catch(() => null),
         apiFetch('/api/question-flows').then(r => r.json()).catch(() => null),
@@ -713,7 +713,7 @@ export default function App() {
   useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded);
 
   useEffect(() => { saveToStorage('chiefx_org', orgSettings); }, [orgSettings]);
-  useDebouncedSync('/api/settings/org', orgSettings, hasLoaded && isAdmin);
+  useDebouncedSync('/api/settings/workspace', orgSettings, hasLoaded && isAdmin);
 
   // Numbers sync kept separate — needs error handling + revert on conflict
   const numbersTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

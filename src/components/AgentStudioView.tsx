@@ -183,7 +183,7 @@ export default function AgentStudioView() {
         apiFetch('/api/knowledge/documents').then(r => r.json()).catch(() => []),
         apiFetch('/api/agents/prompt-config').then(r => r.json()).catch(() => null),
         apiFetch('/api/auth/industries').then(r => r.json()).catch(() => []),
-        apiFetch('/api/settings/org').then(r => r.json()).catch(() => null),
+        apiFetch('/api/settings/workspace').then(r => r.json()).catch(() => null),
       ]);
       setAgents(Array.isArray(agentsRes) ? agentsRes : []);
       setSystemAgents(Array.isArray(systemAgentsRes) ? systemAgentsRes : []);

@@ -116,7 +116,20 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     ? url
     : `${getApiBase()}${url.startsWith('/') ? url : `/${url}`}`;
 
-  const res = await fetch(requestUrl, { ...options, headers });
+  let res = await fetch(requestUrl, { ...options, headers });
+  const path = new URL(requestUrl, 'http://local').pathname;
+  // Vercel can deploy before the VM. Only the original default workspace
+  // may use the old settings route while the backend is being upgraded.
+  if (res.status === 404 && selectedOrgId && selectedWorkspaceId === selectedOrgId &&
+      (path === '/api/settings/workspace' || path === '/api/settings/workspace/profile-config')) {
+    const scope = currentScope();
+    if (scope.orgId !== selectedOrgId || scope.workspaceId !== selectedWorkspaceId) {
+      throw new DOMException('Workspace changed during request', 'AbortError');
+    }
+    const legacyUrl = new URL(requestUrl, 'http://local');
+    legacyUrl.pathname = path.replace('/api/settings/workspace', '/api/settings/org');
+    res = await fetch(legacyUrl.toString(), { ...options, headers });
+  }
 
   // Do not automatically call keycloak.login() here. A 401 can be a normal
   // API response (for example, an expired/invalid token or a protected
@@ -131,7 +144,6 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   }
   // Check the server's acknowledged scope before exposing response data.
   // Identity/platform discovery intentionally has no operational scope.
-  const path = new URL(requestUrl, 'http://local').pathname;
   const discovery = path === '/api/auth/workspaces' || path.startsWith('/api/platform/');
   if (res.ok && !discovery && selectedOrgId && selectedWorkspaceId) {
     const acknowledgedOrg = res.headers.get('X-Organization-Id');

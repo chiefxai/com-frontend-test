@@ -276,7 +276,7 @@ export default function SettingsView({
   const [orgAllowedFlags, setOrgAllowedFlags] = useState<string[]>([]);
   useEffect(() => {
     if (subTab !== 'team') return;
-    apiFetch('/api/settings/org')
+    apiFetch('/api/settings/workspace')
       .then(r => r.json())
       .then(data => { if (Array.isArray(data?.featureFlags)) setOrgAllowedFlags(data.featureFlags); })
       .catch(() => {});

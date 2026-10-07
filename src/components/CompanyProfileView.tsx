@@ -127,7 +127,7 @@ export default function CompanyProfileView({
   // not orgSettings.nmlsId).
   useEffect(() => {
     let cancelled = false;
-    apiFetch('/api/settings/org/profile-config')
+    apiFetch('/api/settings/workspace/profile-config')
       .then((r) => r.json())
       .then((cfg: CompanyProfileConfig) => {
         if (cancelled || !cfg || !cfg.license) return;

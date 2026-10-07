@@ -226,6 +226,8 @@ export interface TeamMember {
 
 export interface OrganizationSettings {
   id: string;
+  organizationId?: string;
+  workspaceId?: string;
   name: string;
   workspaceName: string;
   subscriptionPlan: 'Starter' | 'Growth' | 'Enterprise';
@@ -261,9 +263,9 @@ export interface OrganizationSettings {
   // persistence at all — reset to the first dialable number on every
   // reload, even on the same browser, and never carried over to a
   // different device on the same account. Living here means it rides the
-  // existing org-settings sync (POST /api/settings/org — a free-form
+  // workspace settings sync (POST /api/settings/workspace — a free-form
   // "settings" JSONB column on the backend, no schema change needed) like
-  // every other org-level preference.
+  // other workspace preferences.
   defaultOutboundNumber?: string;
   // Recharge-based wallet billing. Only populated/displayed for organizations
   // whose billingMethod is recharge_based.
