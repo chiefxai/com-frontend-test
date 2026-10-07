@@ -2,6 +2,7 @@ import React from 'react';
 import { Target, Phone, CheckCircle2, Trophy, Download } from 'lucide-react';
 import { Lead } from '../types';
 import type { DomainRecord } from '../lib/industry/domainRecord';
+import { updateDomainRecordStage } from '../lib/industry/domainStore';
 import { domainRecordsToLeads } from '../lib/objectContacts';
 import { formatPhone } from '../lib/phone';
 import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
@@ -164,10 +165,11 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
     }
     setAdvancingId(lead.originalLeadId);
     if (domainRecords && setDomainRecords) {
-      setDomainRecords((records) => records.map((record) =>
-        record.id === lead.originalLeadId
-          ? { ...record, stageKey: clientStageKey, values: { ...record.values, status: 'Converted' } }
-          : record
+      setDomainRecords((records) => updateDomainRecordStage(
+        records,
+        lead.originalLeadId,
+        clientStageKey,
+        { status: 'Converted' },
       ));
     } else {
       setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: 'Converted', pipelineStage: clientStageKey } : l)));
