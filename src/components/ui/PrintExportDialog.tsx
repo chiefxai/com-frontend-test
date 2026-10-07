@@ -203,9 +203,8 @@ export function PrintExportDialog({
     clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
       .forEach(node => node.remove());
     clone.removeAttribute('id');
-    clone.classList.toggle('dark', settings.format === 'pdf' && settings.theme === 'dark');
-    clone.setAttribute('data-theme', settings.format === 'pdf' ? settings.theme : 'light');
-    Object.assign(clone.style, EXPORT_THEME_VARS[settings.format === 'pdf' ? settings.theme : 'light']);
+    clone.classList.toggle('dark', settings.theme === 'dark');
+    clone.setAttribute('data-theme', settings.theme);
     clone.style.cssText = [
       'display:grid',
       'grid-template-columns:repeat(12,minmax(0,1fr))',
@@ -224,6 +223,7 @@ export function PrintExportDialog({
       'box-sizing:border-box',
       'padding:38px',
     ].join(';');
+    Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
 
     clone.querySelectorAll(':scope > *').forEach((node) => {
       const element = node as HTMLElement;
@@ -242,8 +242,7 @@ export function PrintExportDialog({
     });
 
     const measurementHost = document.createElement('div');
-    measurementHost.classList.toggle('dark', settings.format === 'pdf' && settings.theme === 'dark');
-    Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.format === 'pdf' ? settings.theme : 'light']);
+    measurementHost.classList.toggle('dark', settings.theme === 'dark');
     measurementHost.style.cssText = [
       'position:absolute',
       'left:-100000px',
@@ -254,6 +253,7 @@ export function PrintExportDialog({
       'pointer-events:none',
       'overflow:visible',
     ].join(';');
+    Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.theme]);
     measurementHost.appendChild(clone);
     document.body.appendChild(measurementHost);
 
@@ -383,7 +383,7 @@ export function PrintExportDialog({
     return cover + content;
   };
 
-  const previewTheme: ExportTheme = settings.format === 'pdf' ? settings.theme : 'light';
+  const previewTheme: ExportTheme = settings.theme;
 
   const withGridSpan = (html: string, span: number) => {
     const safeSpan = Math.max(1, Math.min(12, span));
@@ -432,6 +432,8 @@ export function PrintExportDialog({
     captureHost.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
     const captureSource = source.cloneNode(true) as HTMLElement;
     captureSource.removeAttribute('data-chiefvoice-export-root');
+    captureSource.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
+      .forEach(node => node.remove());
     // Match the 1440px measurement/preview canvas so grid widths and gaps
     // scale into the same 10mm printable area on every device size.
     captureSource.style.width = '1440px';
@@ -440,6 +442,24 @@ export function PrintExportDialog({
     captureSource.style.maxHeight = 'none';
     captureSource.style.overflow = 'visible';
     captureSource.style.alignContent = 'start';
+    captureSource.style.display = 'grid';
+    captureSource.style.gridTemplateColumns = 'repeat(12,minmax(0,1fr))';
+    captureSource.style.gridAutoFlow = 'row';
+    captureSource.style.gridAutoRows = 'max-content';
+    captureSource.style.gap = '22.6771653546px';
+    captureSource.style.padding = '37.795275591px';
+    captureSource.style.boxSizing = 'border-box';
+    captureSource.querySelectorAll<HTMLElement>(':scope > *').forEach(element => {
+      const span = Math.max(1, Math.min(12, Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12)));
+      element.style.width = '100%';
+      element.style.minWidth = '0';
+      element.style.maxWidth = '100%';
+      element.style.height = 'auto';
+      element.style.minHeight = '0';
+      element.style.maxHeight = 'none';
+      element.style.overflow = 'visible';
+      element.style.gridColumn = `span ${span} / span ${span}`;
+    });
     // Keep any theme marker that lives on an app shell from overriding the
     // selected export theme through ancestor selectors.
     captureHost.setAttribute('data-theme', settings.theme);
@@ -637,20 +657,21 @@ export function PrintExportDialog({
 
       // Generate the cover as its own page.
       const coverHost = document.createElement('div');
+      if (settings.theme === 'dark') coverHost.classList.add('dark');
       coverHost.style.cssText = [
         'position:absolute',
         'left:-100000px',
         'top:0',
         `width:${Math.ceil(pdfPageW * mmToPx)}px`,
         `height:${Math.ceil(pdfPageH * mmToPx)}px`,
-        'background:#fff',
+        `background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'}`,
       ].join(';');
       coverHost.innerHTML = `
-        <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:#fff;display:flex;align-items:center;justify-content:center;text-align:center;">
+        <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'};display:flex;align-items:center;justify-content:center;text-align:center;color:${settings.theme === 'dark' ? '#F7F9FC' : '#101A3A'};">
           <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
             <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:110px;height:110px;object-fit:contain;margin:0 0 28px 0;">
-            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;color:#101A3A;">${title}</h1>
-            <p style="font-size:14px;line-height:1.5;margin:0;color:#475569;">Filter applied: ${formatRange(fromDate, toDate)}</p>
+            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;color:${settings.theme === 'dark' ? '#F7F9FC' : '#101A3A'};">${title}</h1>
+            <p style="font-size:14px;line-height:1.5;margin:0;color:${settings.theme === 'dark' ? '#A7B0C2' : '#475569'};">Filter applied: ${formatRange(fromDate, toDate)}</p>
           </div>
         </section>`;
       document.body.appendChild(coverHost);
@@ -802,8 +823,9 @@ export function PrintExportDialog({
       <style>
         ${collectStyles()}
         @page { size:${paper.css} ${settings.orientation}; margin:0; }
-        html,body{margin:0;padding:0;background:#fff;color:#111827}
-        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;page-break-inside:avoid;mso-break-inside:avoid}
+        html,body{margin:0;padding:0;background:var(--bg-base);color:var(--text-primary);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        body{--bg-base:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'};--bg-surface:${settings.theme === 'dark' ? '#10172A' : '#FFFFFF'};--bg-subtle:${settings.theme === 'dark' ? '#151E32' : '#F1F4F9'};--border:${settings.theme === 'dark' ? '#263149' : '#E2E7F0'};--text-primary:${settings.theme === 'dark' ? '#F7F9FC' : '#101A3A'};--text-secondary:${settings.theme === 'dark' ? '#A7B0C2' : '#475569'};--text-muted:${settings.theme === 'dark' ? '#71809B' : '#64748B'};}
+        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;page-break-inside:avoid;mso-break-inside:avoid;background:var(--bg-base);color:var(--text-primary)}
         .chiefvoice-export-cover{page-break-after:always;mso-break-type:page-break}
         .chiefvoice-word-page-break{page-break-before:always;mso-break-type:page-break}
         .chiefvoice-export-page table{width:100%;table-layout:fixed;border-collapse:collapse}
@@ -813,8 +835,8 @@ export function PrintExportDialog({
         .chiefvoice-export-cover-inner{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
         .chiefvoice-export-cover img{width:72px;height:72px;object-fit:contain}
         .chiefvoice-export-cover h1{font-size:24px;margin:12px 0 6px}
-        .chiefvoice-export-cover p{color:#4b5563;margin:0}
-      </style></head><body>
+        .chiefvoice-export-cover p{color:var(--text-secondary);margin:0}
+      </style></head><body class="${settings.theme === 'dark' ? 'dark' : ''}" data-theme="${settings.theme}">
       ${buildWordPages()}
       </body></html>`;
     const blob = new Blob([html], { type: 'application/msword' });
@@ -893,9 +915,8 @@ export function PrintExportDialog({
               </p>
             </div>
 
-            {settings.format === 'pdf' && (
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">PDF theme</p>
+            <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Document theme</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(['light', 'dark'] as ExportTheme[]).map(theme => (
                     <button key={theme} onClick={() => setSettings(s => ({ ...s, theme }))}
@@ -905,7 +926,6 @@ export function PrintExportDialog({
                   ))}
                 </div>
               </div>
-            )}
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-muted)] leading-relaxed">
               {settings.contentMode === 'viewport'
@@ -926,18 +946,18 @@ export function PrintExportDialog({
                 {settings.paperSize} · {settings.orientation} · {pages.length + 1} page{pages.length === 0 ? '' : 's'} · 12-column grid
               </div>
 
-      {settings.format === 'pdf' ? <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
+              {settings.format === 'pdf' ? <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
                 <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
                   <p style={{ textAlign:'center', fontSize:14, color:'var(--text-secondary)', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
                 </div>
-              </section> : <section className="shadow-xl overflow-hidden" style={{ ...previewPaperStyle, boxSizing: 'border-box', background: '#fff', color: '#111827', fontFamily: 'Arial, sans-serif' }}>
-                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+              </section> : <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], boxSizing: 'border-box', background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}>
+                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ width: 72, height: 72, objectFit: 'contain', marginBottom: 12 }} />
-                  <h1 style={{ fontSize: 24, margin: '12px 0 6px', color: '#111827' }}>{title}</h1>
-                  <p style={{ color: '#4b5563', margin: 0 }}>Filter applied: {formatRange(fromDate, toDate)}</p>
-                  {filters && <p style={{ color: '#4b5563', margin: '4px 0 0' }}>Additional filters: {filters}</p>}
+                  <h1 style={{ fontSize: 24, margin: '12px 0 6px', color: 'var(--text-primary)' }}>{title}</h1>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Filter applied: {formatRange(fromDate, toDate)}</p>
+                  {filters && <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0' }}>Additional filters: {filters}</p>}
                 </div>
               </section>}
 
@@ -946,9 +966,9 @@ export function PrintExportDialog({
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...(settings.format === 'pdf' ? EXPORT_THEME_VARS[previewTheme] : {}), backgroundColor: settings.format === 'doc' ? '#fff' : 'var(--bg-base)', color: settings.format === 'doc' ? '#111827' : 'var(--text-primary)', fontFamily: settings.format === 'doc' ? 'Arial, sans-serif' : undefined }}>
+                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: settings.format === 'doc' ? 'Arial, sans-serif' : undefined }}>
                       {settings.format === 'doc' ? (
-                        <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: '#fff', color: '#111827', fontFamily: 'Arial, sans-serif' }}>
+                        <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}>
                           <table role="presentation" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                             <tbody dangerouslySetInnerHTML={{ __html: buildWordRows(page.rows) }} />
                           </table>
