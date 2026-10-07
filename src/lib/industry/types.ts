@@ -40,6 +40,8 @@ export interface IndustryProfile {
 export interface RemoteIndustryConfig {
   industry: IndustryKey;
   businessType?: BusinessTypeKey | null;
+  tagline?: string;
+  businessTypes?: IndustryProfile['businessTypes'];
   labels: IndustryProfile['labels'];
   modules: IndustryModuleDefinition[];
   pipeline: IndustryProfile['pipeline'];
