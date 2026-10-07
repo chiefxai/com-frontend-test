@@ -498,6 +498,12 @@ export default function App() {
           const body = await identity.json().catch(() => ({}));
           throw new Error(body.error || 'No accessible workspace was found.');
         }
+        const session = await identity.json();
+        if (selected && (session.org?.id !== selectedRow.orgId ||
+            (session.workspace?.id && session.workspace.id !== selected) ||
+            (selected !== selectedRow.orgId && !session.workspace?.id))) {
+          throw new Error('Your workspace selection could not be confirmed.');
+        }
         if (cancelled) return;
         setStorageScope(kcUser.id, selected ? `${selectedRow.orgId}:${selected}` : null);
         setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
@@ -541,6 +547,11 @@ export default function App() {
       source.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          const workspaceId = sessionStorage.getItem('chiefx_active_workspace_id');
+          const orgId = sessionStorage.getItem('chiefx_active_org_id');
+          if ((data.orgId && data.orgId !== orgId) ||
+              (data.workspaceId && data.workspaceId !== workspaceId) ||
+              (workspaceId !== orgId && data.orgId && !data.workspaceId)) return;
           if (data.type === 'call_started') {
             const msg = `Incoming call from ${data.callerNumber || 'unknown number'}…`;
             setLiveCallBanner({ message: msg, startedAt: Date.now() });

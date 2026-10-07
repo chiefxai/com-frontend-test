@@ -129,5 +129,18 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
   }
+  // Check the server's acknowledged scope before exposing response data.
+  // Identity/platform discovery intentionally has no operational scope.
+  const path = new URL(requestUrl, 'http://local').pathname;
+  const discovery = path === '/api/auth/workspaces' || path.startsWith('/api/platform/');
+  if (res.ok && !discovery && selectedOrgId && selectedWorkspaceId) {
+    const acknowledgedOrg = res.headers.get('X-Organization-Id');
+    const acknowledgedWorkspace = res.headers.get('X-Workspace-Id');
+    if ((acknowledgedOrg && acknowledgedOrg !== selectedOrgId) ||
+        (acknowledgedWorkspace && acknowledgedWorkspace !== selectedWorkspaceId) ||
+        (selectedWorkspaceId !== selectedOrgId && (!acknowledgedOrg || !acknowledgedWorkspace))) {
+      throw new Error('The server did not confirm the selected workspace');
+    }
+  }
   return res;
 }
