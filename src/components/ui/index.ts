@@ -19,3 +19,5 @@ export { default as ActionMenu } from './ActionMenu';
 export type { ActionMenuItem } from './ActionMenu';
 export { default as PieChart } from './PieChart';
 export type { PieChartSlice } from './PieChart';
+export { default as ProgressBar } from './ProgressBar';
+export type { ProgressBarProps } from './ProgressBar';

@@ -3,19 +3,18 @@ import { Download, FileText, Printer, X } from 'lucide-react';
 import chiefVoiceLogo from '../../assets/chiefvoice-logo.webp';
 import html2canvas from 'html2canvas-pro';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import ProgressBar from './ProgressBar';
 
-export type ExportFormat = 'pdf' | 'doc';
+export type ExportFormat = 'pdf' | 'docx';
 export type PaperSize = 'A4' | 'A3' | 'Letter' | 'Legal';
 export type Orientation = 'landscape' | 'portrait';
 export type ExportTheme = 'light' | 'dark';
-export type ExportContentMode = 'viewport' | 'full';
 
 export interface ExportSettings {
   format: ExportFormat;
   paperSize: PaperSize;
   orientation: Orientation;
   theme: ExportTheme;
-  contentMode: ExportContentMode;
 }
 
 interface PrintExportDialogProps {
@@ -54,6 +53,44 @@ const EXPORT_THEME_VARS: Record<ExportTheme, React.CSSProperties> = {
 
 interface ExportRowItem { html: string; span: number; }
 interface ExportPage { rows: ExportRowItem[][]; }
+
+function makeStoredZip(files: Array<{ name: string; data: string }>): Uint8Array {
+  const encoder = new TextEncoder();
+  const crcTable = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    crcTable[n] = c >>> 0;
+  }
+  const crc32 = (bytes: Uint8Array) => {
+    let crc = 0xffffffff;
+    for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+  const u16 = (value: number) => new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
+  const u32 = (value: number) => new Uint8Array([value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff]);
+  const join = (parts: Uint8Array[]) => {
+    const result = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+    let offset = 0;
+    for (const part of parts) { result.set(part, offset); offset += part.length; }
+    return result;
+  };
+  const local: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+  for (const file of files) {
+    const name = encoder.encode(file.name);
+    const data = encoder.encode(file.data);
+    const crc = crc32(data);
+    const header = join([u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), name]);
+    local.push(header, data);
+    central.push(join([u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
+    offset += header.length + data.length;
+  }
+  const centralData = join(central);
+  const end = join([u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(centralData.length), u32(offset), u16(0)]);
+  return join([...local, centralData, end]);
+}
 
 function formatRange(from: string, to: string) {
   const f = (v: string) => new Date(v + 'T00:00:00').toLocaleDateString(undefined, {
@@ -170,17 +207,15 @@ export function PrintExportDialog({
 
   useOnClickOutside(dialogRef, handleOutsideClick, open);
 
-  const sourceCanvasWidth = Math.max(1, contentRef.current?.getBoundingClientRect().width || 1440);
-  const sourceGridGap = contentRef.current ? getComputedStyle(contentRef.current).gap : '24px';
 
   const [settings, setSettings] = useState<ExportSettings>({
     format: 'pdf',
     paperSize: 'A4',
     orientation: 'landscape',
     theme: 'light',
-    contentMode: 'viewport',
   });
   const [pages, setPages] = useState<ExportPage[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!open || !contentRef.current) {
@@ -189,10 +224,6 @@ export function PrintExportDialog({
     }
 
     const clone = contentRef.current.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
-      .forEach(node => node.remove());
-    const liveExportChildren = Array.from(contentRef.current.children)
-      .filter(node => !node.matches('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')) as HTMLElement[];
     const sourceScrollables = contentRef.current.querySelectorAll<HTMLElement>('[data-widget-scroll]');
     const clonedScrollables = clone.querySelectorAll<HTMLElement>('[data-widget-scroll]');
     sourceScrollables.forEach((sourceElement, index) => {
@@ -200,51 +231,42 @@ export function PrintExportDialog({
       if (!clonedElement) return;
       clonedElement.scrollTop = sourceElement.scrollTop;
       clonedElement.scrollLeft = sourceElement.scrollLeft;
-      if (settings.contentMode === 'full') {
-        clonedElement.style.maxHeight = 'none';
-        clonedElement.style.height = 'auto';
-        clonedElement.style.overflow = 'visible';
-      }
     });
+    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
+      .forEach(node => node.remove());
     clone.removeAttribute('id');
     clone.classList.toggle('dark', settings.theme === 'dark');
     clone.setAttribute('data-theme', settings.theme);
+    Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
     clone.style.cssText = [
       'display:grid',
       'grid-template-columns:repeat(12,minmax(0,1fr))',
       'grid-auto-flow:row',
       'grid-auto-rows:max-content',
       'align-items:stretch',
-      `gap:${sourceGridGap}`,
-      `width:${sourceCanvasWidth}px`,
-      `min-width:${sourceCanvasWidth}px`,
-      `max-width:${sourceCanvasWidth}px`,
+      'gap:22.6771653546px',
+      'width:1440px',
+      'min-width:1440px',
+      'max-width:1440px',
       'height:auto',
       'min-height:0',
       'max-height:none',
       'overflow:visible',
-      'background:#fff',
+      `background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'}`,
       'box-sizing:border-box',
-      'padding:0',
+      'padding:38px',
     ].join(';');
     Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
 
-    clone.querySelectorAll(':scope > *').forEach((node, index) => {
+    clone.querySelectorAll(':scope > *').forEach((node) => {
       const element = node as HTMLElement;
-      const liveElement = liveExportChildren[index] ?? null;
       element.style.width = '100%';
       element.style.minWidth = '0';
       element.style.maxWidth = '100%';
-      if (settings.contentMode === 'viewport' && liveElement) {
-        element.style.height = `${liveElement.getBoundingClientRect().height}px`;
-        element.style.minHeight = `${liveElement.getBoundingClientRect().height}px`;
-        element.style.maxHeight = `${liveElement.getBoundingClientRect().height}px`;
-      } else {
-        element.style.height = 'auto';
-        element.style.minHeight = '0';
-        element.style.maxHeight = 'none';
-        element.style.overflow = 'visible';
-      }
+      element.style.height = 'auto';
+      element.style.minHeight = '0';
+      element.style.maxHeight = 'none';
+      element.style.overflow = 'visible';
       const lgSpan = Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12);
       element.style.gridColumn = `span ${lgSpan} / span ${lgSpan}`;
       element.dataset.exportSpan = String(lgSpan);
@@ -254,11 +276,12 @@ export function PrintExportDialog({
 
     const measurementHost = document.createElement('div');
     measurementHost.classList.toggle('dark', settings.theme === 'dark');
+    Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.theme]);
     measurementHost.style.cssText = [
       'position:absolute',
       'left:-100000px',
       'top:0',
-      `width:${sourceCanvasWidth}px`,
+      'width:1440px',
       'height:auto',
       'visibility:hidden',
       'pointer-events:none',
@@ -269,15 +292,13 @@ export function PrintExportDialog({
     document.body.appendChild(measurementHost);
 
     const run = () => {
-      if (settings.contentMode === 'viewport') {
-        clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(scrollViewport => {
-          const bounds = scrollViewport.getBoundingClientRect();
-          scrollViewport.querySelectorAll<HTMLElement>('tr').forEach(row => {
-            const rowBounds = row.getBoundingClientRect();
-            if (rowBounds.bottom <= bounds.top || rowBounds.top >= bounds.bottom) row.remove();
-          });
+      clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(scrollViewport => {
+        const bounds = scrollViewport.getBoundingClientRect();
+        scrollViewport.querySelectorAll<HTMLElement>('tr').forEach(row => {
+          const rowBounds = row.getBoundingClientRect();
+          if (rowBounds.bottom <= bounds.top || rowBounds.top >= bounds.bottom) row.remove();
         });
-      }
+      });
 
       const children = Array.from(clone.children) as HTMLElement[];
       const rowsMap = new Map<number, HTMLElement[]>();
@@ -308,7 +329,7 @@ export function PrintExportDialog({
       const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
       const usableW = pageW - 20;
       const usableH = pageH - 20;
-      const desktopGridW = sourceCanvasWidth;
+      const desktopGridW = 1440 - (2 * 37.795275591);
       const desktopUsableH = (usableH / usableW) * desktopGridW;
       const rowGap = 22.6771653546;
 
@@ -342,7 +363,7 @@ export function PrintExportDialog({
       window.cancelAnimationFrame(frame);
       measurementHost.remove();
     };
-  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme, settings.contentMode, sourceCanvasWidth, sourceGridGap]);
+  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme]);
 
   const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
@@ -351,12 +372,12 @@ export function PrintExportDialog({
   const previewScale = Math.min(1, 920 / (pageW * mmToPx));
   const previewWidth = pageW * mmToPx * previewScale;
   const previewHeight = pageH * mmToPx * previewScale;
-  const desktopWidth = sourceCanvasWidth;
-  const desktopGridWidth = desktopWidth;
+  const desktopWidth = 1440;
+  const desktopGridWidth = desktopWidth - (2 * 37.795275591);
   const usableWidthPx = (pageW - 20) * mmToPx;
   const gridScale = usableWidthPx / desktopGridWidth;
   const renderScale = gridScale * previewScale;
-  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth;
+  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth + (2 * 37.795275591);
   const previewPaperStyle = {
     width: `${previewWidth}px`,
     height: `${previewHeight}px`,
@@ -373,23 +394,14 @@ export function PrintExportDialog({
   }).join('');
 
   const buildWordPages = () => {
-    const cover = `
-      <section class="chiefvoice-export-page chiefvoice-export-cover">
-        <div class="chiefvoice-export-cover-inner">
-          <img src="${chiefVoiceLogo}" alt="ChiefVoice">
-          <h1>${title}</h1>
-          <p>Filter applied: ${formatRange(fromDate, toDate)}</p>
-          ${filters ? `<p>Additional filters: ${filters}</p>` : ''}
-        </div>
-      </section>`;
-    const allRows = pages.flatMap(page => page.rows);
-    const content = `
-      <section class="chiefvoice-export-page chiefvoice-export-long-list" style="width:${pageW}mm;height:auto;min-height:0;max-height:none;overflow:visible;page-break-inside:auto;mso-break-inside:auto">
-        <table role="presentation" style="width:100%;table-layout:fixed;border-collapse:collapse">
-          <tbody>${buildWordRows(allRows)}</tbody>
-        </table>
-      </section>`;
-    return cover + content;
+    const rows = pages.flatMap(page => page.rows);
+    return `<main class="chiefvoice-word-document">
+      <header class="chiefvoice-word-header" style="display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border);page-break-after:avoid">
+        <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:42px;height:42px;object-fit:contain">
+        <div><h1 style="font-size:20px;line-height:1.25;margin:0 0 4px;color:var(--text-primary)">${title}</h1><p style="font-size:10pt;color:var(--text-secondary);margin:2px 0 0">Filter applied: ${formatRange(fromDate, toDate)}</p>${filters ? `<p style="font-size:10pt;color:var(--text-secondary);margin:2px 0 0">Additional filters: ${filters}</p>` : ''}</div>
+      </header>
+      <table role="presentation" class="chiefvoice-word-grid" style="width:100%;table-layout:fixed;border-collapse:collapse"><tbody>${buildWordRows(rows)}</tbody></table>
+    </main>`;
   };
 
   const previewTheme: ExportTheme = settings.theme;
@@ -441,46 +453,14 @@ export function PrintExportDialog({
     captureHost.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
     const captureSource = source.cloneNode(true) as HTMLElement;
     captureSource.removeAttribute('data-chiefvoice-export-root');
-    captureSource.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
-      .forEach(node => node.remove());
-    const liveExportChildren = Array.from(source.children)
-      .filter(node => !node.matches('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')) as HTMLElement[];
-    // Preserve the live dashboard width so responsive SVG charts keep their
-    // measured dimensions throughout capture and only scale uniformly to paper.
-    captureSource.style.width = `${sourceCanvasWidth}px`;
-    captureSource.style.minWidth = `${sourceCanvasWidth}px`;
-    captureSource.style.maxWidth = `${sourceCanvasWidth}px`;
+    // Match the 1440px measurement/preview canvas so grid widths and gaps
+    // scale into the same 10mm printable area on every device size.
+    captureSource.style.width = '1440px';
     captureSource.style.height = 'auto';
     captureSource.style.minHeight = '0';
     captureSource.style.maxHeight = 'none';
     captureSource.style.overflow = 'visible';
     captureSource.style.alignContent = 'start';
-    captureSource.style.display = 'grid';
-    captureSource.style.gridTemplateColumns = 'repeat(12,minmax(0,1fr))';
-    captureSource.style.gridAutoFlow = 'row';
-    captureSource.style.gridAutoRows = 'max-content';
-    captureSource.style.gap = sourceGridGap;
-    captureSource.style.padding = '0';
-    captureSource.style.boxSizing = 'border-box';
-    captureSource.querySelectorAll<HTMLElement>(':scope > *').forEach((element, index) => {
-      const liveElement = liveExportChildren[index] ?? null;
-      const span = Math.max(1, Math.min(12, Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12)));
-      element.style.width = '100%';
-      element.style.minWidth = '0';
-      element.style.maxWidth = '100%';
-      if (settings.contentMode === 'viewport' && liveElement) {
-        const liveHeight = liveElement.getBoundingClientRect().height;
-        element.style.height = `${liveHeight}px`;
-        element.style.minHeight = `${liveHeight}px`;
-        element.style.maxHeight = `${liveHeight}px`;
-      } else {
-        element.style.height = 'auto';
-        element.style.minHeight = '0';
-        element.style.maxHeight = 'none';
-        element.style.overflow = 'visible';
-      }
-      element.style.gridColumn = `span ${span} / span ${span}`;
-    });
     // Keep any theme marker that lives on an app shell from overriding the
     // selected export theme through ancestor selectors.
     captureHost.setAttribute('data-theme', settings.theme);
@@ -503,11 +483,6 @@ export function PrintExportDialog({
         if (!clonedElement) return;
         clonedElement.scrollTop = sourceElement.scrollTop;
         clonedElement.scrollLeft = sourceElement.scrollLeft;
-        if (settings.contentMode === 'full') {
-          clonedElement.style.maxHeight = 'none';
-          clonedElement.style.height = 'auto';
-          clonedElement.style.overflow = 'visible';
-        }
       });
 
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -648,32 +623,50 @@ export function PrintExportDialog({
         walk(captureSource, clonedRoot);
       };
 
+      const fullCanvas = await html2canvas(captureSource, {
+        backgroundColor: '#ffffff',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        width: cssWidth,
+        height: cssHeight,
+        windowWidth: Math.max(window.innerWidth, cssWidth, 1440),
+        windowHeight: Math.max(window.innerHeight, cssHeight),
+        scrollX: 0,
+        scrollY: 0,
+        imageSmoothing: true,
+        imageSmoothingQuality: 'high',
+        foreignObjectRendering: false,
+        onclone: inlineComputedStyles,
+      });
+
       const mmToPx = 96 / 25.4;
       const pageCanvasW = Math.ceil(pdfPageW * mmToPx * 1.5);
       const pageCanvasH = Math.ceil(pdfPageH * mmToPx * 1.5);
       const pageMarginPx = Math.ceil(10 * mmToPx * 1.5);
       const contentCanvasW = pageCanvasW - (2 * pageMarginPx);
       const contentCanvasH = pageCanvasH - (2 * pageMarginPx);
+      const canvasScale = fullCanvas.width / cssWidth;
 
       const images: { data: string; width: number; height: number }[] = [];
 
       // Generate the cover as its own page.
       const coverHost = document.createElement('div');
-      if (settings.theme === 'dark') coverHost.classList.add('dark');
       coverHost.style.cssText = [
         'position:absolute',
         'left:-100000px',
         'top:0',
         `width:${Math.ceil(pdfPageW * mmToPx)}px`,
         `height:${Math.ceil(pdfPageH * mmToPx)}px`,
-        `background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'}`,
+        'background:#fff',
       ].join(';');
       coverHost.innerHTML = `
-        <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'};display:flex;align-items:center;justify-content:center;text-align:center;color:${settings.theme === 'dark' ? '#F7F9FC' : '#101A3A'};">
+        <section style="width:${pdfPageW}mm;height:${pdfPageH}mm;box-sizing:border-box;padding:10mm;background:#fff;display:flex;align-items:center;justify-content:center;text-align:center;">
           <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
             <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="width:110px;height:110px;object-fit:contain;margin:0 0 28px 0;">
-            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;color:${settings.theme === 'dark' ? '#F7F9FC' : '#101A3A'};">${title}</h1>
-            <p style="font-size:14px;line-height:1.5;margin:0;color:${settings.theme === 'dark' ? '#A7B0C2' : '#475569'};">Filter applied: ${formatRange(fromDate, toDate)}</p>
+            <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px 0;font-weight:700;color:#101A3A;">${title}</h1>
+            <p style="font-size:14px;line-height:1.5;margin:0;color:#475569;">Filter applied: ${formatRange(fromDate, toDate)}</p>
           </div>
         </section>`;
       document.body.appendChild(coverHost);
@@ -698,32 +691,8 @@ export function PrintExportDialog({
       });
 
       // Crop the exact mounted dashboard canvas. No widget HTML is rebuilt,
-      // so visual styles remain identical to the live dashboard. Capture only
-      // each page region to avoid the browser's maximum canvas-height limit.
+      // so visual styles remain identical to the live dashboard.
       for (const group of groups) {
-        const regionHeight = Math.max(1, Math.ceil(group.end - group.start));
-        const regionCanvas = await html2canvas(captureSource, {
-          backgroundColor: settings.theme === 'dark' ? '#080D1C' : '#F7F9FC',
-          scale: 1.5,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          x: 0,
-          y: group.start,
-          width: cssWidth,
-          height: regionHeight,
-          // Keep vh and responsive breakpoints tied to the actual browser
-          // viewport; using dashboard scrollHeight here resized widgets.
-          windowWidth: window.innerWidth,
-          windowHeight: window.innerHeight,
-          scrollX: 0,
-          scrollY: 0,
-          imageSmoothing: true,
-          imageSmoothingQuality: 'high',
-          foreignObjectRendering: false,
-          onclone: inlineComputedStyles,
-        });
-
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width = pageCanvasW;
         sliceCanvas.height = pageCanvasH;
@@ -733,17 +702,21 @@ export function PrintExportDialog({
         ctx.fillStyle = settings.theme === 'dark' ? '#080D1C' : '#F7F9FC';
         ctx.fillRect(0, 0, pageCanvasW, pageCanvasH);
 
-        const sourceH = Math.max(1, regionCanvas.height);
+        const sourceY = Math.max(0, Math.round(group.start * canvasScale));
+        const sourceH = Math.max(1, Math.min(
+          fullCanvas.height - sourceY,
+          Math.round((group.end - group.start) * canvasScale),
+        ));
 
-        const fitScale = Math.min(contentCanvasW / regionCanvas.width, contentCanvasH / sourceH);
-        const destinationW = Math.round(regionCanvas.width * fitScale);
-        const destinationH = Math.round(sourceH * fitScale);
-        const destinationX = pageMarginPx + Math.round((contentCanvasW - destinationW) / 2);
+        const destinationH = Math.min(
+          contentCanvasH,
+          Math.round(sourceH * (contentCanvasW / fullCanvas.width)),
+        );
 
         ctx.drawImage(
-          regionCanvas,
-          0, 0, regionCanvas.width, sourceH,
-          destinationX, pageMarginPx, destinationW, destinationH,
+          fullCanvas,
+          0, sourceY, fullCanvas.width, sourceH,
+          pageMarginPx, pageMarginPx, contentCanvasW, destinationH,
         );
 
         images.push({
@@ -841,33 +814,59 @@ export function PrintExportDialog({
 
   const downloadDoc = () => {
     if (!pages.length) return;
+    const themeStyle = Object.entries(EXPORT_THEME_VARS[settings.theme])
+      .filter(([key]) => key.startsWith('--'))
+      .map(([key, value]) => `${key}:${String(value)}`)
+      .join(';');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
         ${collectStyles()}
-        @page { size:${paper.css} ${settings.orientation}; margin:0; }
-        html,body{margin:0;padding:0;background:var(--bg-base);color:var(--text-primary);-webkit-print-color-adjust:exact;print-color-adjust:exact}
-        body{--bg-base:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'};--bg-surface:${settings.theme === 'dark' ? '#10172A' : '#FFFFFF'};--bg-subtle:${settings.theme === 'dark' ? '#151E32' : '#F1F4F9'};--border:${settings.theme === 'dark' ? '#263149' : '#E2E7F0'};--text-primary:${settings.theme === 'dark' ? '#F7F9FC' : '#101A3A'};--text-secondary:${settings.theme === 'dark' ? '#A7B0C2' : '#475569'};--text-muted:${settings.theme === 'dark' ? '#71809B' : '#64748B'};}
-        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;page-break-inside:avoid;mso-break-inside:avoid;background:var(--bg-base);color:var(--text-primary)}
-        .chiefvoice-export-cover{page-break-after:always;mso-break-type:page-break}
-        .chiefvoice-word-page-break{page-break-before:always;mso-break-type:page-break}
-        .chiefvoice-export-page table{width:100%;table-layout:fixed;border-collapse:collapse}
-        .chiefvoice-export-page tr,.chiefvoice-export-page td{page-break-inside:avoid;break-inside:avoid}
-        .chiefvoice-export-page > *{max-width:100%}
-        .chiefvoice-export-cover{text-align:center;font-family:Arial,sans-serif}
-        .chiefvoice-export-cover-inner{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
-        .chiefvoice-export-cover img{width:72px;height:72px;object-fit:contain}
-        .chiefvoice-export-cover h1{font-size:24px;margin:12px 0 6px}
-        .chiefvoice-export-cover p{color:var(--text-secondary);margin:0}
-      </style></head><body class="${settings.theme === 'dark' ? 'dark' : ''}" data-theme="${settings.theme}">
+        @page { size:${paper.css} ${settings.orientation}; margin:12mm; }
+        html,body{margin:0;padding:0;background:${settings.theme === 'dark' ? '#080D1C' : '#fff'};color:${settings.theme === 'dark' ? '#F7F9FC' : '#111827'};font-family:Arial,sans-serif}
+        .chiefvoice-word-document{width:100%;color:var(--text-primary);background:var(--bg-surface)}
+        .chiefvoice-word-header{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid #e2e8f0;page-break-after:avoid}
+        .chiefvoice-word-header img{width:42px;height:42px;object-fit:contain}
+        .chiefvoice-word-header h1{font-size:20px;line-height:1.25;margin:0 0 4px;color:var(--text-primary)}
+        .chiefvoice-word-header p{font-size:10pt;color:var(--text-secondary);margin:2px 0 0}
+        .chiefvoice-word-grid{width:100%;table-layout:fixed;border-collapse:collapse}
+        .chiefvoice-word-grid tr{page-break-inside:avoid;break-inside:avoid}
+        .chiefvoice-word-grid td{vertical-align:top}
+        .chiefvoice-word-grid img,.chiefvoice-word-grid svg,.chiefvoice-word-grid canvas{max-width:100%}
+      </style></head><body><div class="${settings.theme === 'dark' ? 'dark' : ''}" data-theme="${settings.theme}" style="${themeStyle}">
       ${buildWordPages()}
-      </body></html>`;
-    const blob = new Blob([html], { type: 'application/msword' });
+      </div></body></html>`;
+    const files = [
+      { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="html" ContentType="text/html"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
+      { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+      { name: 'word/_rels/document.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk" Target="afchunk.html"/></Relationships>' },
+      { name: 'word/document.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:altChunk r:id="rId1"/><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="680" w:right="680" w:bottom="680" w:left="680" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>' },
+      { name: 'word/afchunk.html', data: html },
+    ];
+    const pageWidthTwips = Math.round((pageW / 25.4) * 1440);
+    const pageHeightTwips = Math.round((pageH / 25.4) * 1440);
+    files[3].data = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:altChunk r:id="rId1"/><w:sectPr><w:pgSz w:w="${pageWidthTwips}" w:h="${pageHeightTwips}" w:orient="${settings.orientation}"/><w:pgMar w:top="680" w:right="680" w:bottom="680" w:left="680" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    const blob = new Blob([makeStoredZip(files)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${title.replace(/\s+/g, '_')}.doc`;
+    a.download = `${title.replace(/\s+/g, '_')}.docx`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    // Let React paint the overlay before html2canvas or ZIP generation starts.
+    await new Promise<void>(resolve => requestAnimationFrame(() => window.setTimeout(resolve, 40)));
+    try {
+      if (settings.format === 'pdf') await downloadPdf();
+      else downloadDoc();
+    } finally {
+      setExporting(false);
+    }
   };
   if (!open) return null;
 
@@ -889,11 +888,11 @@ export function PrintExportDialog({
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Format</p>
               <div className="grid grid-cols-2 gap-2">
-                {(['pdf','doc'] as ExportFormat[]).map(format => (
+                {(['pdf','docx'] as ExportFormat[]).map(format => (
                   <button key={format} onClick={() => setSettings(s => ({ ...s, format }))}
                     className={`rounded-xl border p-3 text-left transition ${settings.format === format ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
                     {format === 'pdf' ? <Printer className="h-4 w-4 mb-2" /> : <FileText className="h-4 w-4 mb-2" />}
-                    <span className="block text-xs font-semibold">{format === 'pdf' ? 'PDF' : 'Word (.doc)'}</span>
+                    <span className="block text-xs font-semibold">{format === 'pdf' ? 'PDF' : 'Word (.docx)'}</span>
                   </button>
                 ))}
               </div>
@@ -919,26 +918,8 @@ export function PrintExportDialog({
               </div>
             </div>
 
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Widget content</p>
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  ['viewport', 'Current view'],
-                  ['full', 'Full content'],
-                ] as [ExportContentMode, string][]).map(([contentMode, label]) => (
-                  <button key={contentMode} onClick={() => setSettings(s => ({ ...s, contentMode }))}
-                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${settings.contentMode === contentMode ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                Current view exports only the rows visible in each scrollable widget. Scroll the widget before opening export to choose which rows appear.
-              </p>
-            </div>
-
-            <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Document theme</p>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Theme</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(['light', 'dark'] as ExportTheme[]).map(theme => (
                     <button key={theme} onClick={() => setSettings(s => ({ ...s, theme }))}
@@ -947,76 +928,56 @@ export function PrintExportDialog({
                     </button>
                   ))}
                 </div>
-              </div>
-
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-muted)] leading-relaxed">
-              {settings.contentMode === 'viewport'
-                ? 'The preview and export use each widget’s current scroll position and visible height.'
-                : 'Scrollable widgets expand to include all rows. Dashboard rows move to the next page when paper height is exhausted.'}
             </div>
 
-            <button onClick={() => settings.format === 'pdf' ? void downloadPdf() : downloadDoc()}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-muted)] leading-relaxed">
+              Preview and export include the rows visible in each widget at its current scroll position.
+            </div>
+
+            <button disabled={exporting} onClick={handleExport}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-3 text-sm font-semibold hover:bg-indigo-700">
               <Download className="h-4 w-4" />
-              Export {settings.format === 'pdf' ? 'PDF' : 'Word'}
+              {exporting ? 'Preparing export…' : `Export ${settings.format === 'pdf' ? 'PDF' : 'DOCX'}`}
             </button>
           </aside>
 
           <main className="flex-1 overflow-auto bg-slate-100 p-8">
             <div className="mx-auto" style={{ width: previewWidth }}>
               <div className="text-xs text-slate-500 mb-2">
-                {settings.paperSize} · {settings.orientation} · {settings.format === 'doc' ? 'continuous Word list' : `${pages.length + 1} PDF page${pages.length === 0 ? '' : 's'}`} · 12-column grid
+                {settings.format === 'docx' ? 'Continuous Word document' : `${settings.paperSize} · ${settings.orientation} · ${pages.length + 1} page${pages.length === 0 ? '' : 's'} · 12-column grid`}
               </div>
 
-              {settings.format === 'pdf' ? <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
+      {settings.format === 'docx' ? (
+        <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl rounded-sm`} style={{ width: previewWidth, ...EXPORT_THEME_VARS[previewTheme], background: 'var(--bg-surface)', color: 'var(--text-primary)', padding: 28, boxSizing: 'border-box', fontFamily: 'Arial, sans-serif' }}>
+          <div dangerouslySetInnerHTML={{ __html: buildWordPages() }} />
+        </section>
+      ) : <>
+      <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
                 <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
                   <p style={{ textAlign:'center', fontSize:14, color:'var(--text-secondary)', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
                 </div>
-              </section> : <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], boxSizing: 'border-box', background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}>
-                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: 'var(--bg-base)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color:'var(--text-primary)' }}>
-                  <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ width: 72, height: 72, objectFit: 'contain', marginBottom: 12 }} />
-                  <h1 style={{ fontSize: 24, margin: '12px 0 6px', color: 'var(--text-primary)' }}>{title}</h1>
-                  <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Filter applied: {formatRange(fromDate, toDate)}</p>
-                  {filters && <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0' }}>Additional filters: {filters}</p>}
-                </div>
-              </section>}
+              </section>
 
-              {settings.format === 'doc' && (
-                <>
-                  <div className="h-8" />
-                  <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...EXPORT_THEME_VARS[previewTheme], width: previewWidth, boxSizing: 'border-box', background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}>
-                    <div style={{ width: '100%', boxSizing: 'border-box', padding: `${10 * mmToPx * previewScale}px` }}>
-                      <table role="presentation" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
-                        <tbody dangerouslySetInnerHTML={{ __html: buildWordRows(pages.flatMap(page => page.rows)) }} />
-                      </table>
-                    </div>
-                  </section>
-                </>
-              )}
-
-              {settings.format === 'pdf' && pages.map((page, pageIndex) => {
+              {pages.map((page, pageIndex) => {
                 const pageHtml = page.rows.flat().map(item => item.html).join('');
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], position: 'relative', backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
                       <div
                         style={{
-                          position: 'absolute',
-                          left: `${10 * mmToPx}px`,
-                          top: `${10 * mmToPx}px`,
                           width: desktopWidth,
                           height: desktopPageHeight,
-                          padding: 0,
+                          padding: 37.795275591,
                           boxSizing: 'border-box',
                           display: 'grid',
                           gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
                           gridAutoFlow: 'row',
                           gridAutoRows: 'max-content',
                           alignItems: 'start',
-                          gap: sourceGridGap,
+                          gap: 22.6771653546,
                           transform: `scale(${renderScale})`,
                           transformOrigin: 'top left',
                           background: 'var(--bg-base)',
@@ -1028,10 +989,19 @@ export function PrintExportDialog({
                   </React.Fragment>
                 );
               })}
+      </>}
             </div>
           </main>
         </div>
       </div>
+      {exporting && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm" role="status" aria-live="polite">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+            <p className="mb-4 text-sm font-semibold text-[var(--text-primary)]">Preparing your {settings.format === 'pdf' ? 'PDF' : 'DOCX'} export</p>
+            <ProgressBar value={null} label="Rendering dashboard" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

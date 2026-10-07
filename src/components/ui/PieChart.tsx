@@ -17,55 +17,101 @@ interface PieChartProps {
   className?: string;
 }
 
-// Reusable SVG pie/donut chart — pure presentation, no external chart
-// library. Takes pre-aggregated {label, value, color} slices so any page
-// (Reports, Dashboard, etc.) can feed it its own breakdown.
+const pointOnCircle = (cx: number, cy: number, radius: number, angle: number) => {
+  const radians = (angle * Math.PI) / 180;
+  return {
+    x: Number((cx + radius * Math.cos(radians)).toFixed(3)),
+    y: Number((cy + radius * Math.sin(radians)).toFixed(3)),
+  };
+};
+
+function describeSlice(cx: number, cy: number, outerRadius: number, innerRadius: number, start: number, end: number) {
+  const span = end - start;
+
+  // SVG arc commands cannot draw a complete circle when their endpoints match.
+  // Two half-circle arcs also keep a single-slice chart reliable in PDF rasterizers.
+  if (span >= 359.999) {
+    const top = { x: cx, y: cy - outerRadius };
+    const bottom = { x: cx, y: cy + outerRadius };
+    const outer = `M ${top.x} ${top.y} A ${outerRadius} ${outerRadius} 0 1 1 ${bottom.x} ${bottom.y} A ${outerRadius} ${outerRadius} 0 1 1 ${top.x} ${top.y} Z`;
+    if (innerRadius <= 0) return outer;
+
+    const innerTop = { x: cx, y: cy - innerRadius };
+    const innerBottom = { x: cx, y: cy + innerRadius };
+    const hole = `M ${innerTop.x} ${innerTop.y} A ${innerRadius} ${innerRadius} 0 1 0 ${innerBottom.x} ${innerBottom.y} A ${innerRadius} ${innerRadius} 0 1 0 ${innerTop.x} ${innerTop.y} Z`;
+    return `${outer} ${hole}`;
+  }
+
+  const outerStart = pointOnCircle(cx, cy, outerRadius, start);
+  const outerEnd = pointOnCircle(cx, cy, outerRadius, end);
+  const largeArc = span > 180 ? 1 : 0;
+  const outerArc = `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`;
+
+  if (innerRadius <= 0) {
+    return `M ${cx} ${cy} L ${outerStart.x} ${outerStart.y} ${outerArc} Z`;
+  }
+
+  const innerEnd = pointOnCircle(cx, cy, innerRadius, end);
+  const innerStart = pointOnCircle(cx, cy, innerRadius, start);
+  const innerArc = `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`;
+  return `M ${outerStart.x} ${outerStart.y} ${outerArc} L ${innerEnd.x} ${innerEnd.y} ${innerArc} Z`;
+}
+
+// Shared SVG pie/donut chart. Slices are filled paths instead of stroked circles,
+// so their geometry stays inside the viewBox and does not depend on CSS rotation
+// or stroke clipping in browser/PDF renderers.
 export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, centerLabel, className = '' }: PieChartProps) {
-  const total = slices.reduce((sum, s) => sum + s.value, 0);
-  const radius = size / 2;
-  const strokeWidth = radius * (1 - innerRadiusRatio);
-  const circumference = 2 * Math.PI * (radius - strokeWidth / 2);
+  const chartSize = Number.isFinite(size) && size > 0 ? size : 160;
+  const safeSlices = slices.filter(slice => Number.isFinite(slice.value) && slice.value > 0);
+  const total = safeSlices.reduce((sum, slice) => sum + slice.value, 0);
+  const cx = chartSize / 2;
+  const cy = chartSize / 2;
+  // One CSS pixel of breathing room prevents antialiasing from touching the SVG edge.
+  const outerRadius = Math.max(0, chartSize / 2 - 1);
+  const innerRatio = Math.max(0, Math.min(0.95, Number.isFinite(innerRadiusRatio) ? innerRadiusRatio : 0.6));
+  const innerRadius = outerRadius * innerRatio;
 
   if (total <= 0) {
     return (
       <div
         className={`flex items-center justify-center rounded-full ${className}`}
-        style={{ width: size, height: size, background: 'var(--bg-subtle)' }}
+        style={{ width: chartSize, height: chartSize, background: 'var(--bg-subtle)' }}
       >
         <span className="text-[11px] text-[var(--text-muted)]">No data</span>
       </div>
     );
   }
 
-  let offsetAccumulated = 0;
+  let accumulated = 0;
 
   return (
-    <div className={`relative inline-flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-        {slices.filter(s => s.value > 0).map((slice, idx) => {
-          const fraction = slice.value / total;
-          const dash = fraction * circumference;
-          const gap = circumference - dash;
-          const dashoffset = -offsetAccumulated;
-          offsetAccumulated += dash;
+    <div className={`relative inline-flex items-center justify-center ${className}`} style={{ width: chartSize, height: chartSize }}>
+      <svg
+        width={chartSize}
+        height={chartSize}
+        viewBox={`0 0 ${chartSize} ${chartSize}`}
+        aria-label="Pie chart"
+        role="img"
+        style={{ display: 'block', overflow: 'visible' }}
+      >
+        {safeSlices.map((slice, index) => {
+          const start = -90 + (accumulated / total) * 360;
+          accumulated += slice.value;
+          const end = -90 + (accumulated / total) * 360;
+
           return (
-            <circle
-              key={idx}
-              cx={radius}
-              cy={radius}
-              r={radius - strokeWidth / 2}
-              fill="none"
-              stroke={slice.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${dash} ${gap}`}
-              strokeDashoffset={dashoffset}
+            <path
+              key={`${slice.label}-${index}`}
+              d={describeSlice(cx, cy, outerRadius, innerRadius, start, end)}
+              fill={slice.color}
+              fillRule="evenodd"
             >
               <title>{`${slice.label}: ${slice.value}`}</title>
-            </circle>
+            </path>
           );
         })}
       </svg>
-      {innerRadiusRatio > 0 && (
+      {innerRatio > 0 && (
         <div className="absolute inset-0 flex items-center justify-center">
           {centerLabel ?? (
             <div className="text-center">
