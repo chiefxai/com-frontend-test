@@ -368,6 +368,7 @@ export default function ContactDirectoryView({
   const handleDeleteContact = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete ${name} from your contact directory?`)) return;
     const previous = leads;
+    const previousDomainRecords = domainRecords;
     setLeads(leads.filter((l) => l.id !== id));
     if (primaryObjectKey && setDomainRecords) setDomainRecords((records) => records.filter((record) => record.id !== id));
     try {
@@ -380,7 +381,7 @@ export default function ContactDirectoryView({
       console.error('Error deleting contact:', err);
       alert('Failed to delete contact — restoring.');
       setLeads(previous);
-      if (primaryObjectKey && setDomainRecords) setDomainRecords((records) => records);
+      if (primaryObjectKey && setDomainRecords && previousDomainRecords) setDomainRecords(previousDomainRecords);
     }
   };
 
