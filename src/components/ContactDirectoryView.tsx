@@ -286,12 +286,13 @@ export default function ContactDirectoryView({
         }
         return l;
       });
-      setLeads(updatedLeads);
       if (primaryObjectKey && setDomainRecords && updatedLead) {
         setDomainRecords((records) => records.map((record) => record.id === updatedLead!.id ? {
           ...record,
           values: { ...record.values, name: formName, phone: formPhone, email: formEmail.trim(), gender: formGender.trim() || undefined, source: formSource, notes: formNotes, groupIds: formGroupIds },
         } : record));
+      } else {
+        setLeads(updatedLeads);
       }
       // Non-lending orgs (primaryObjectKey set) are Industry Objects
       // records with per-pack field names — App.tsx's own leads-sync
@@ -347,9 +348,10 @@ export default function ContactDirectoryView({
         const newLead: Lead = primaryObjectKey
           ? { ...draftLead, id: created.id }
           : created;
-        setLeads([newLead, ...leads]);
         if (primaryObjectKey && setDomainRecords) {
           setDomainRecords((records) => [{ id: newLead.id, objectKey: primaryObjectKey, stageKey: null, values: body, createdAt: newLead.createdAt }, ...records]);
+        } else {
+          setLeads([newLead, ...leads]);
         }
       } catch (err: any) {
         console.error('Error creating contact:', err);
@@ -369,8 +371,11 @@ export default function ContactDirectoryView({
     if (!confirm(`Are you sure you want to delete ${name} from your contact directory?`)) return;
     const previous = leads;
     const previousDomainRecords = domainRecords;
-    setLeads(leads.filter((l) => l.id !== id));
-    if (primaryObjectKey && setDomainRecords) setDomainRecords((records) => records.filter((record) => record.id !== id));
+    if (primaryObjectKey && setDomainRecords) {
+      setDomainRecords((records) => records.filter((record) => record.id !== id));
+    } else {
+      setLeads(leads.filter((l) => l.id !== id));
+    }
     try {
       const url = primaryObjectKey
         ? `/api/objects/${primaryObjectKey}/records/${id}`
@@ -380,8 +385,11 @@ export default function ContactDirectoryView({
     } catch (err) {
       console.error('Error deleting contact:', err);
       alert('Failed to delete contact — restoring.');
-      setLeads(previous);
-      if (primaryObjectKey && setDomainRecords && previousDomainRecords) setDomainRecords(previousDomainRecords);
+      if (primaryObjectKey && setDomainRecords && previousDomainRecords) {
+        setDomainRecords(previousDomainRecords);
+      } else {
+        setLeads(previous);
+      }
     }
   };
 
