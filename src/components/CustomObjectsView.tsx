@@ -5,6 +5,7 @@ import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import ActionMenu from './ui/ActionMenu';
+import type { IndustryProfile } from '../lib/industry';
 
 interface ObjectField {
   id: string;
@@ -146,7 +147,7 @@ function parseCsv(text: string, fields: ObjectField[]): { rows: Record<string, s
   return { rows, error: null };
 }
 
-export default function CustomObjectsView() {
+export default function CustomObjectsView({ industryProfile }: { industryProfile?: IndustryProfile }) {
   const [objects, setObjects] = useState<CustomObject[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [records, setRecords] = useState<ObjectRecord[]>([]);
@@ -167,8 +168,27 @@ export default function CustomObjectsView() {
     apiFetch('/api/objects')
       .then((r) => r.json())
       .then((list: CustomObject[]) => {
-        setObjects(list);
-        if (list.length > 0) setSelectedKey(list[0].key);
+        const configured = industryProfile?.domainModel?.objects || [];
+        const configuredByKey = new Map(configured.map((object) => [object.key, object]));
+        const merged = list.map((object) => {
+          const definition = configuredByKey.get(object.key);
+          if (!definition) return object;
+          return {
+            ...object,
+            label: definition.pluralLabel || object.label,
+            description: definition.description || object.description,
+            fields: definition.fields.map((field) => ({
+              id: field.key,
+              key: field.key,
+              label: field.label,
+              type: field.type,
+              options: field.options || [],
+              required: !!field.required,
+            })),
+          };
+        });
+        setObjects(merged);
+        if (merged.length > 0) setSelectedKey(merged[0].key);
       })
       .catch(() => setObjects([]))
       .finally(() => setLoading(false));
