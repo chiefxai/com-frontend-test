@@ -72,6 +72,16 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', `Bearer ${token}`);
+
+  // Keep the selected workspace in a request header so the same authenticated
+  // user can switch organizations without changing identity-provider state.
+  // The backend validates this ID against the user's memberships.
+  try {
+    const workspaceId = localStorage.getItem('chiefx_active_workspace_id');
+    if (workspaceId && !headers.has('X-Organization-Id')) {
+      headers.set('X-Organization-Id', workspaceId);
+    }
+  } catch { /* localStorage may be unavailable in private/restricted contexts */ }
   if (options.body && !headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
