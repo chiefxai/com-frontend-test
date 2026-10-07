@@ -170,6 +170,8 @@ export function PrintExportDialog({
 
   useOnClickOutside(dialogRef, handleOutsideClick, open);
 
+  const sourceCanvasWidth = Math.max(1, contentRef.current?.getBoundingClientRect().width || 1440);
+  const sourceGridGap = contentRef.current ? getComputedStyle(contentRef.current).gap : '24px';
 
   const [settings, setSettings] = useState<ExportSettings>({
     format: 'pdf',
@@ -211,17 +213,17 @@ export function PrintExportDialog({
       'grid-auto-flow:row',
       'grid-auto-rows:max-content',
       'align-items:stretch',
-      'gap:22.6771653546px',
-      'width:1440px',
-      'min-width:1440px',
-      'max-width:1440px',
+      `gap:${sourceGridGap}`,
+      `width:${sourceCanvasWidth}px`,
+      `min-width:${sourceCanvasWidth}px`,
+      `max-width:${sourceCanvasWidth}px`,
       'height:auto',
       'min-height:0',
       'max-height:none',
       'overflow:visible',
       'background:#fff',
       'box-sizing:border-box',
-      'padding:38px',
+      'padding:0',
     ].join(';');
     Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
 
@@ -247,7 +249,7 @@ export function PrintExportDialog({
       'position:absolute',
       'left:-100000px',
       'top:0',
-      'width:1440px',
+      `width:${sourceCanvasWidth}px`,
       'height:auto',
       'visibility:hidden',
       'pointer-events:none',
@@ -297,7 +299,7 @@ export function PrintExportDialog({
       const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
       const usableW = pageW - 20;
       const usableH = pageH - 20;
-      const desktopGridW = 1440 - (2 * 37.795275591);
+      const desktopGridW = sourceCanvasWidth;
       const desktopUsableH = (usableH / usableW) * desktopGridW;
       const rowGap = 22.6771653546;
 
@@ -331,7 +333,7 @@ export function PrintExportDialog({
       window.cancelAnimationFrame(frame);
       measurementHost.remove();
     };
-  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme, settings.contentMode]);
+  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme, settings.contentMode, sourceCanvasWidth, sourceGridGap]);
 
   const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
@@ -340,12 +342,12 @@ export function PrintExportDialog({
   const previewScale = Math.min(1, 920 / (pageW * mmToPx));
   const previewWidth = pageW * mmToPx * previewScale;
   const previewHeight = pageH * mmToPx * previewScale;
-  const desktopWidth = 1440;
-  const desktopGridWidth = desktopWidth - (2 * 37.795275591);
+  const desktopWidth = sourceCanvasWidth;
+  const desktopGridWidth = desktopWidth;
   const usableWidthPx = (pageW - 20) * mmToPx;
   const gridScale = usableWidthPx / desktopGridWidth;
   const renderScale = gridScale * previewScale;
-  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth + (2 * 37.795275591);
+  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth;
   const previewPaperStyle = {
     width: `${previewWidth}px`,
     height: `${previewHeight}px`,
@@ -362,7 +364,6 @@ export function PrintExportDialog({
   }).join('');
 
   const buildWordPages = () => {
-    const pageBreak = '<p class="chiefvoice-word-page-break" style="page-break-before:always;mso-break-type:page-break;mso-pagination:widow-orphan;margin:0 0 1px 0;padding:0;font-size:1pt;line-height:1pt">&nbsp;</p>';
     const cover = `
       <section class="chiefvoice-export-page chiefvoice-export-cover">
         <div class="chiefvoice-export-cover-inner">
@@ -372,14 +373,13 @@ export function PrintExportDialog({
           ${filters ? `<p>Additional filters: ${filters}</p>` : ''}
         </div>
       </section>`;
-    const content = pages.map(page => `
-      ${pageBreak}
-      <section class="chiefvoice-export-page" style="page-break-before:always;mso-break-type:page-break">
+    const allRows = pages.flatMap(page => page.rows);
+    const content = `
+      <section class="chiefvoice-export-page chiefvoice-export-long-list" style="width:${pageW}mm;height:auto;min-height:0;max-height:none;overflow:visible;page-break-inside:auto;mso-break-inside:auto">
         <table role="presentation" style="width:100%;table-layout:fixed;border-collapse:collapse">
-          <tbody>${buildWordRows(page.rows)}</tbody>
+          <tbody>${buildWordRows(allRows)}</tbody>
         </table>
-      </section>
-    `).join('');
+      </section>`;
     return cover + content;
   };
 
@@ -434,9 +434,11 @@ export function PrintExportDialog({
     captureSource.removeAttribute('data-chiefvoice-export-root');
     captureSource.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
       .forEach(node => node.remove());
-    // Match the 1440px measurement/preview canvas so grid widths and gaps
-    // scale into the same 10mm printable area on every device size.
-    captureSource.style.width = '1440px';
+    // Preserve the live dashboard width so responsive SVG charts keep their
+    // measured dimensions throughout capture and only scale uniformly to paper.
+    captureSource.style.width = `${sourceCanvasWidth}px`;
+    captureSource.style.minWidth = `${sourceCanvasWidth}px`;
+    captureSource.style.maxWidth = `${sourceCanvasWidth}px`;
     captureSource.style.height = 'auto';
     captureSource.style.minHeight = '0';
     captureSource.style.maxHeight = 'none';
@@ -446,8 +448,8 @@ export function PrintExportDialog({
     captureSource.style.gridTemplateColumns = 'repeat(12,minmax(0,1fr))';
     captureSource.style.gridAutoFlow = 'row';
     captureSource.style.gridAutoRows = 'max-content';
-    captureSource.style.gap = '22.6771653546px';
-    captureSource.style.padding = '37.795275591px';
+    captureSource.style.gap = sourceGridGap;
+    captureSource.style.padding = '0';
     captureSource.style.boxSizing = 'border-box';
     captureSource.querySelectorAll<HTMLElement>(':scope > *').forEach(element => {
       const span = Math.max(1, Math.min(12, Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12)));
@@ -635,7 +637,7 @@ export function PrintExportDialog({
         logging: false,
         width: cssWidth,
         height: cssHeight,
-        windowWidth: Math.max(window.innerWidth, cssWidth, 1440),
+        windowWidth: Math.max(window.innerWidth, cssWidth, sourceCanvasWidth),
         windowHeight: Math.max(window.innerHeight, cssHeight),
         scrollX: 0,
         scrollY: 0,
@@ -713,15 +715,15 @@ export function PrintExportDialog({
           Math.round((group.end - group.start) * canvasScale),
         ));
 
-        const destinationH = Math.min(
-          contentCanvasH,
-          Math.round(sourceH * (contentCanvasW / fullCanvas.width)),
-        );
+        const fitScale = Math.min(contentCanvasW / fullCanvas.width, contentCanvasH / sourceH);
+        const destinationW = Math.round(fullCanvas.width * fitScale);
+        const destinationH = Math.round(sourceH * fitScale);
+        const destinationX = pageMarginPx + Math.round((contentCanvasW - destinationW) / 2);
 
         ctx.drawImage(
           fullCanvas,
           0, sourceY, fullCanvas.width, sourceH,
-          pageMarginPx, pageMarginPx, contentCanvasW, destinationH,
+          destinationX, pageMarginPx, destinationW, destinationH,
         );
 
         images.push({
@@ -943,7 +945,7 @@ export function PrintExportDialog({
           <main className="flex-1 overflow-auto bg-slate-100 p-8">
             <div className="mx-auto" style={{ width: previewWidth }}>
               <div className="text-xs text-slate-500 mb-2">
-                {settings.paperSize} · {settings.orientation} · {pages.length + 1} page{pages.length === 0 ? '' : 's'} · 12-column grid
+                {settings.paperSize} · {settings.orientation} · {settings.format === 'doc' ? 'continuous Word list' : `${pages.length + 1} PDF page${pages.length === 0 ? '' : 's'}`} · 12-column grid
               </div>
 
               {settings.format === 'pdf' ? <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
@@ -961,31 +963,40 @@ export function PrintExportDialog({
                 </div>
               </section>}
 
-              {pages.map((page, pageIndex) => {
+              {settings.format === 'doc' && (
+                <>
+                  <div className="h-8" />
+                  <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...EXPORT_THEME_VARS[previewTheme], width: previewWidth, boxSizing: 'border-box', background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}>
+                    <div style={{ width: '100%', boxSizing: 'border-box', padding: `${10 * mmToPx * previewScale}px` }}>
+                      <table role="presentation" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                        <tbody dangerouslySetInnerHTML={{ __html: buildWordRows(pages.flatMap(page => page.rows)) }} />
+                      </table>
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {settings.format === 'pdf' && pages.map((page, pageIndex) => {
                 const pageHtml = page.rows.flat().map(item => item.html).join('');
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: settings.format === 'doc' ? 'Arial, sans-serif' : undefined }}>
-                      {settings.format === 'doc' ? (
-                        <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', boxSizing: 'border-box', padding: 10 * mmToPx, background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}>
-                          <table role="presentation" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
-                            <tbody dangerouslySetInnerHTML={{ __html: buildWordRows(page.rows) }} />
-                          </table>
-                        </div>
-                      ) : (
+                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], position: 'relative', backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
                       <div
                         style={{
+                          position: 'absolute',
+                          left: `${10 * mmToPx}px`,
+                          top: `${10 * mmToPx}px`,
                           width: desktopWidth,
                           height: desktopPageHeight,
-                          padding: 37.795275591,
+                          padding: 0,
                           boxSizing: 'border-box',
                           display: 'grid',
                           gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
                           gridAutoFlow: 'row',
                           gridAutoRows: 'max-content',
                           alignItems: 'start',
-                          gap: 22.6771653546,
+                          gap: sourceGridGap,
                           transform: `scale(${renderScale})`,
                           transformOrigin: 'top left',
                           background: 'var(--bg-base)',
@@ -993,7 +1004,6 @@ export function PrintExportDialog({
                         }}
                         dangerouslySetInnerHTML={{ __html: pageHtml }}
                       />
-                      )}
                     </section>
                   </React.Fragment>
                 );
