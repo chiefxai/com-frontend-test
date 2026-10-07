@@ -22,6 +22,7 @@ import {
   History,
   MessageCircleQuestion,
   BarChart3,
+  ChevronDown,
   ChevronRight,
   Phone,
   Clock,
