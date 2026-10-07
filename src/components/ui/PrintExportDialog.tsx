@@ -427,13 +427,14 @@ export function PrintExportDialog({
 
     // Capture an off-screen copy so the requested export theme never flashes
     // across the visible dashboard while html2canvas renders it.
-    const scrollParent = source.parentElement;
     const captureHost = document.createElement('div');
     captureHost.className = settings.theme === 'dark' ? 'dark' : '';
     captureHost.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
     const captureSource = source.cloneNode(true) as HTMLElement;
     captureSource.removeAttribute('data-chiefvoice-export-root');
-    captureSource.style.width = `${Math.max(1, source.getBoundingClientRect().width)}px`;
+    // Match the 1440px measurement/preview canvas so grid widths and gaps
+    // scale into the same 10mm printable area on every device size.
+    captureSource.style.width = '1440px';
     captureSource.style.height = 'auto';
     captureSource.style.minHeight = '0';
     captureSource.style.maxHeight = 'none';
@@ -474,7 +475,7 @@ export function PrintExportDialog({
       const rect = captureSource.getBoundingClientRect();
       const cssWidth = Math.max(1, Math.round(rect.width));
       const cssHeight = Math.max(1, Math.ceil(captureSource.scrollHeight));
-      const pageCssHeight = Math.max(1, Math.floor(cssWidth * (pdfPageH / pdfPageW)));
+      const pageCssHeight = Math.max(1, Math.floor(cssWidth * ((pdfPageH - 20) / (pdfPageW - 20))));
 
       const children = Array.from(captureSource.children)
         .filter(element => getComputedStyle(element as HTMLElement).display !== 'none') as HTMLElement[];
@@ -614,7 +615,7 @@ export function PrintExportDialog({
         logging: false,
         width: cssWidth,
         height: cssHeight,
-        windowWidth: Math.max(window.innerWidth, cssWidth),
+        windowWidth: Math.max(window.innerWidth, cssWidth, 1440),
         windowHeight: Math.max(window.innerHeight, cssHeight),
         scrollX: 0,
         scrollY: 0,
@@ -627,6 +628,9 @@ export function PrintExportDialog({
       const mmToPx = 96 / 25.4;
       const pageCanvasW = Math.ceil(pdfPageW * mmToPx * 1.5);
       const pageCanvasH = Math.ceil(pdfPageH * mmToPx * 1.5);
+      const pageMarginPx = Math.ceil(10 * mmToPx * 1.5);
+      const contentCanvasW = pageCanvasW - (2 * pageMarginPx);
+      const contentCanvasH = pageCanvasH - (2 * pageMarginPx);
       const canvasScale = fullCanvas.width / cssWidth;
 
       const images: { data: string; width: number; height: number }[] = [];
@@ -679,7 +683,7 @@ export function PrintExportDialog({
         const ctx = sliceCanvas.getContext('2d');
         if (!ctx) continue;
 
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = settings.theme === 'dark' ? '#080D1C' : '#F7F9FC';
         ctx.fillRect(0, 0, pageCanvasW, pageCanvasH);
 
         const sourceY = Math.max(0, Math.round(group.start * canvasScale));
@@ -689,14 +693,14 @@ export function PrintExportDialog({
         ));
 
         const destinationH = Math.min(
-          pageCanvasH,
-          Math.round(sourceH * (pageCanvasW / fullCanvas.width)),
+          contentCanvasH,
+          Math.round(sourceH * (contentCanvasW / fullCanvas.width)),
         );
 
         ctx.drawImage(
           fullCanvas,
           0, sourceY, fullCanvas.width, sourceH,
-          0, 0, pageCanvasW, destinationH,
+          pageMarginPx, pageMarginPx, contentCanvasW, destinationH,
         );
 
         images.push({
