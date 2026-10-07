@@ -223,6 +223,7 @@ export default function App() {
     role: string;
     organization: { id: string; name: string; workspaceName: string; industry?: string; status?: string };
   }>>([]);
+  const [multipleWorkspacesEnabled, setMultipleWorkspacesEnabled] = useState(false);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
     try { return localStorage.getItem('chiefx_active_workspace_id') || ''; } catch { return ''; }
   });
@@ -513,6 +514,7 @@ export default function App() {
         }
         if (cancelled) return;
         setAuthorization(session.authorization || null);
+        setMultipleWorkspacesEnabled(session.workspaceCapabilities?.multipleWorkspaces === true);
         setStorageScope(kcUser.id, selected ? `${selectedRow.orgId}:${selected}` : null);
         setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
         setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
@@ -931,6 +933,14 @@ export default function App() {
             activeSubTab={activeSubTab as 'numbers' | 'team' | 'billing' | 'api'}
             setActiveSubTab={setActiveSubTab}
             currentUserEmail={kcUser?.email}
+            multipleWorkspacesEnabled={multipleWorkspacesEnabled}
+            onWorkspaceCreated={async () => {
+              const response = await apiFetch('/api/auth/workspaces');
+              if (!response.ok) throw new Error('Workspace was created, but the workspace list could not be refreshed.');
+              const rows = await response.json();
+              if (!Array.isArray(rows)) throw new Error('Workspace list response was invalid.');
+              setWorkspaces(rows);
+            }}
           />
         );
       default:

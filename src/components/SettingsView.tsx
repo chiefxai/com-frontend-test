@@ -34,6 +34,7 @@ import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import DataTable, { Column } from './ui/DataTable';
+import WorkspaceManagement from './WorkspaceManagement';
 
 interface SettingsViewProps {
   virtualNumbers: VirtualNumber[];
@@ -63,6 +64,8 @@ interface SettingsViewProps {
   activeSubTab?: 'numbers' | 'team' | 'billing' | 'api';
   setActiveSubTab?: (sub: string) => void;
   currentUserEmail?: string;
+  multipleWorkspacesEnabled?: boolean;
+  onWorkspaceCreated?: () => Promise<void>;
 }
 
 interface AuditEntry {
@@ -137,6 +140,8 @@ export default function SettingsView({
   activeSubTab: activeSubTabProp,
   setActiveSubTab: setActiveSubTabProp,
   currentUserEmail,
+  multipleWorkspacesEnabled = false,
+  onWorkspaceCreated = async () => {},
 }: SettingsViewProps) {
   const { can } = useAuthorization();
   const canReadOrgMembers = can('organization.members.read');
@@ -723,6 +728,7 @@ export default function SettingsView({
           {/* Subtab: Team matrix */}
           {subTab === 'team' && (
             <div className="space-y-6">
+              <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
               {staffAddMsg && (
                 <div className={`px-4 py-2.5 rounded-lg text-xs font-medium ${staffAddMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                   {staffAddMsg.text}
