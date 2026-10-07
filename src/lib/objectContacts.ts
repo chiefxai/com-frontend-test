@@ -11,6 +11,7 @@
 // rather than assuming one fixed schema.
 
 import { Lead } from '../types';
+import { domainRecordToLegacyLead } from './industry/domainRecord';
 
 interface ObjectRecord {
   id: string;
@@ -43,26 +44,17 @@ function firstDefined(record: ObjectRecord, keys: string[]): string {
 
 export function recordToLead(record: ObjectRecord, stages: ObjectStage[]): Lead {
   const stage = stages.find((s) => s.id === record.stageId);
-  return {
-    id: record.id,
-    // Every industry pack's name-like field, across every pack currently
-    // defined (services/industryPacks.js) — "contactName" (IT Sales
-    // Leads) was missing here, so every contact for that pack displayed
-    // as "Unnamed Contact" even though the record itself saved correctly.
-    name: firstDefined(record, ['name', 'customerName', 'studentName', 'contactName']) || 'Unnamed Contact',
-    phone: firstDefined(record, ['phone', 'parentPhone']),
-    email: firstDefined(record, ['email']),
-    gender: firstDefined(record, ['gender', 'sex']),
-    amountRequested: Number(record.budget || record.orderValue || 0),
-    score: 0,
-    source: firstDefined(record, ['source', 'channel']),
-    // Real object-pack stage labels don't match this lending-era union —
-    // cast rather than force every pack's stages into New/Qualified/etc.
-    status: (stage?.label || 'New') as Lead['status'],
-    tags: Array.isArray(record.tags) ? record.tags : [],
-    createdAt: record.createdAt || new Date().toISOString(),
-    notes: firstDefined(record, ['notes', 'condition']),
-  };
+  return domainRecordToLegacyLead(
+    {
+      id: record.id,
+      objectKey: 'primary',
+      stageKey: stage?.key,
+      values: record,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    },
+    stage?.label,
+  );
 }
 
 // What DialerSimulator actually mutates on a lead (tags, notes, status via
