@@ -28,6 +28,7 @@ export function legacyAuthorization(role: string): Authorization {
       ...(!billingOnly ? ['workspace.read'] : []),
       ...(!viewer && !billingOnly ? ['workspace.write','workspace.call'] : []),
       ...(!viewer && !billingOnly ? ['workspace.share.propose'] : []),
+      ...(!viewer && !billingOnly ? ['workspace.share.copy'] : []),
       ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
       ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read'] : []),
       ...(billingOnly ? ['organization.read','billing.read'] : []),
@@ -40,6 +41,7 @@ export function permissionForRequest(path: string,method: string): string | null
   if (path === '/api/settings/workspaces') return read ? 'organization.read' : 'organization.manage';
   if (path === '/api/workspace-sharing/proposals' || /^\/api\/workspace-sharing\/proposals\/[^/]+\/review$/.test(path)) return 'workspace.settings.manage';
   if (/^\/api\/workspace-sharing\/records\/[^/]+\/proposals$/.test(path)) return 'workspace.share.propose';
+  if (/^\/api\/workspace-sharing\/records\/[^/]+\/copies$/.test(path)) return 'workspace.share.copy';
   if (/^\/api\/workspace-sharing\/records(?:\/|$)/.test(path)) return 'workspace.read';
   if (/^\/api\/workspace-sharing\/grants(?:\/|$)/.test(path)) return read ? 'workspace.read' : 'workspace.settings.manage';
   if (/^\/api\/(billing|ai-usage)(?:\/|$)/.test(path)) return 'billing.read';
