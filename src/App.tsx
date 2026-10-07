@@ -297,6 +297,9 @@ export default function App() {
   const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
     ? {
         ...industryContext.profile,
+        label: remoteIndustryConfig.label || industryContext.profile.label,
+        tagline: remoteIndustryConfig.tagline || industryContext.profile.tagline,
+        businessTypes: remoteIndustryConfig.businessTypes || industryContext.profile.businessTypes,
         labels: remoteIndustryConfig.labels,
         modules: remoteIndustryConfig.modules,
         pipeline: remoteIndustryConfig.pipeline,
