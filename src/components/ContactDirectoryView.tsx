@@ -177,10 +177,19 @@ export default function ContactDirectoryView({
       const res = await apiFetch(`/api/contact-groups/${id}`, { method: 'DELETE' });
       if (!res.ok) { alert((await res.json()).error || 'Failed to delete group'); return; }
       setContactGroups(prev => prev.filter(g => g.id !== id));
-      setLeads(prev => prev.map(l => (l.groupIds || []).includes(id)
-        ? { ...l, groupIds: (l.groupIds || []).filter(g => g !== id) }
-        : l
-      ));
+      if (primaryObjectKey && setDomainRecords) {
+        setDomainRecords((records) => records.map((record) => {
+          const groupIds = Array.isArray(record.values.groupIds) ? record.values.groupIds as string[] : [];
+          return groupIds.includes(id)
+            ? { ...record, values: { ...record.values, groupIds: groupIds.filter((groupId) => groupId !== id) } }
+            : record;
+        }));
+      } else {
+        setLeads(prev => prev.map(l => (l.groupIds || []).includes(id)
+          ? { ...l, groupIds: (l.groupIds || []).filter(g => g !== id) }
+          : l
+        ));
+      }
       if (groupFilter === id) setGroupFilter('All');
     } catch {
       alert('Network error — check your connection.');
