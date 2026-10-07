@@ -449,7 +449,7 @@ export default function Sidebar({
         )}
         </div>
         {!collapsed && (
-          <div className="mt-3 -mx-4 border-t px-4 pt-2.5" style={{ borderColor: 'var(--sidebar-border)' }}>
+          <div className="-mx-4 mt-3 border-y px-4 py-2.5" style={{ borderColor: 'var(--sidebar-border)' }}>
             <div className="truncate text-xs font-medium" style={{ color: 'var(--text-secondary)' }} title={organizationName}>
               {organizationName || 'Organization'}
             </div>
