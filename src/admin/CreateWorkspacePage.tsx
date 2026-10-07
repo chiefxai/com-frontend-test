@@ -3,18 +3,13 @@ import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
+import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 import FlagGroupPicker from '../components/ui/FlagGroupPicker';
 
-const INDUSTRIES = [
-  { value: 'lending', label: 'Lending' },
-  { value: 'real_estate', label: 'Real Estate' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'education', label: 'Education' },
-  { value: 'logistics', label: 'Logistics' },
-  { value: 'other', label: 'Other' },
-];
+const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
+  value: profile.key,
+  label: profile.label,
+}));
 
 const PLANS = ['Starter', 'Growth', 'Enterprise'];
 
