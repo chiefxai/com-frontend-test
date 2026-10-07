@@ -158,13 +158,29 @@ function createPackProfile(
   labels: IndustryProfile['labels'],
   stages: IndustryProfile['pipeline']['stages'],
 ): IndustryProfile {
+  const recordModuleLabels: Record<string, string> = {
+    real_estate: 'Property Records',
+    healthcare: 'Patient Records',
+    insurance: 'Policy & Claims',
+    education: 'Admissions',
+    ecommerce: 'Orders',
+    field_services: 'Service Jobs',
+    it_sales: 'Sales Opportunities',
+  };
   return {
     key,
     label,
     tagline,
     businessTypes: { [businessTypeKey]: { label: businessTypeLabel } },
     labels,
-    modules: [],
+    modules: [{
+      key: `${key}_records`,
+      label: recordModuleLabels[key] || `${label} Records`,
+      route: '/objects',
+      tabId: 'objects',
+      featureFlag: 'objects',
+      domainSpecific: true,
+    }],
     pipeline: { key, label: labels.pipeline.plural, stages },
     domainModel: CORE_DOMAIN_MODEL,
   };
