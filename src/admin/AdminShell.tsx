@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Building2, Users, ScrollText, Settings, Database, IndianRupee, MessageSquareText, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, ScrollText, Settings, Database, IndianRupee, MessageSquareText } from 'lucide-react';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
 import OrganizationsPage from './OrganizationsPage';
@@ -37,9 +37,10 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
     <div className="admin-shell flex h-dvh w-screen overflow-hidden overscroll-none bg-[var(--bg-base)] text-[var(--text-primary)] font-sans">
       <SidebarFrame
         collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(value => !value)}
         collapsedWidth="w-[72px]"
         expandedWidth="w-60"
-        className="admin-sidebar self-start overflow-hidden transition-all duration-200"
+        className="admin-sidebar self-start transition-all duration-200"
       >
         <div className={`sticky top-0 z-10 h-16 shrink-0 flex items-center border-b border-[var(--border)] bg-[var(--sidebar-bg)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
           <div className="h-8 w-8 shrink-0 flex items-center justify-center overflow-hidden">
@@ -68,13 +69,6 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           ))}
         </nav>
 
-        <div className="shrink-0 p-3 border-t border-[var(--border)]">
-          <button type="button" onClick={() => setCollapsed(value => !value)} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} className={`mb-1 w-full flex items-center rounded-xl text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2.5'}`}>
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4 mr-3" />}
-            {!collapsed && 'Collapse sidebar'}
-          </button>
-
-        </div>
       </SidebarFrame>
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">

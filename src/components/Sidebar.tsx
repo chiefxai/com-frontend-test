@@ -31,8 +31,6 @@ import {
   Scale,
   Globe,
   UserCheck,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { useFeatureFlags } from '../features/feature-flags/FeatureFlagContext';
@@ -426,6 +424,7 @@ export default function Sidebar({
     <SidebarFrame
       id="sidebar-container"
       collapsed={collapsed}
+      onToggleCollapse={toggleCollapsed}
       collapsedWidth="w-16"
       expandedWidth="w-64"
       className="font-sans transition-all duration-200 ease-in-out"
@@ -456,16 +455,6 @@ export default function Sidebar({
           </div>
         )}
       </div>
-
-      {/* Collapse toggle */}
-      <button
-        onClick={toggleCollapsed}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="absolute -right-3 top-16 z-20 flex items-center justify-center h-6 w-6 rounded-full border shadow-sm transition-all duration-150 hover:text-blue-600 hover:border-blue-300"
-        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-      >
-        {collapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
-      </button>
 
       {/* Navigation */}
       <nav className={`flex-1 overflow-y-auto space-y-1.5 ${collapsed ? 'px-2 py-6' : 'px-4 pt-4 pb-6'}`}>
