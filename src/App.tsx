@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch, getAuthToken, getApiBase } from './lib/api';
 import { COST_PER_MINUTE_INR_FALLBACK as COST_PER_MINUTE_INR } from './lib/pricing';
 import { loadFromStorage, saveToStorage } from './lib/storage';
-import { recordToLead, leadToRecordPatch, leadToRecordCreate } from './lib/objectContacts';
+import { recordToLead } from './lib/objectContacts';
 import { RefreshProvider } from './lib/RefreshContext';
 import { PageHeaderProvider } from './lib/PageHeaderContext';
 import PageHeaderBar from './components/ui/PageHeaderBar';
@@ -291,8 +291,8 @@ export default function App() {
       if (loaded) { setFlagsReady(true); setGrantedFlags(granted); }
     });
   }, []);
-  const syncedLeadIds = useRef(new Set<string>());
   const previousLeadsRef = useRef<Lead[]>([]);
+  const previousDomainRecordsRef = useRef<DomainRecord[]>([]);
   const [questionFlows, setQuestionFlows] = useState<QuestionFlow[]>(() =>
     loadFromStorage<QuestionFlow[]>('chiefx_question_flows', [])
   );
@@ -560,69 +560,62 @@ export default function App() {
   useEffect(() => {
     saveToStorage('chiefx_leads', leads);
     if (!hasLoaded) return;
+
     if (primaryObject) {
-      // Non-lending org — `leads` here are really Industry Objects
-      // records (see the load effect above). Patch each one back to its
-      // real record instead of /api/leads/sync, which would write into
-      // the (unused, for this org) lending leads table.
-      const prevLeads = previousLeadsRef.current;
-      leads.forEach((lead) => {
-        // Contacts added via LeadManagementView/CSV import get a
-        // client-generated "L-<n>" id (see handleAddLead) that was never
-        // a real object_records row — PATCHing that id 404s silently, so
-        // the new contact only ever lived in local/localStorage state and
-        // never actually reached the database. Create it for real first,
-        // then swap in the record's actual id so every later edit PATCHes
-        // correctly.
-        if (lead.id.startsWith('L-')) {
-          if (syncedLeadIds.current.has(lead.id)) return;
-          syncedLeadIds.current.add(lead.id);
+      // Non-lending organizations persist the canonical DomainRecord collection.
+      // Lead[] is deliberately not used as a write model anymore.
+      const previousRecords = previousDomainRecordsRef.current;
+
+      domainRecords.forEach((record) => {
+        if (record.id.startsWith('L-')) {
           apiFetch(`/api/objects/${primaryObject.key}/records`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(leadToRecordCreate(lead, primaryObject.fields))
+            body: JSON.stringify({ ...record.values, stageKey: record.stageKey || undefined }),
           })
-            .then(r => r.json())
-            .then(record => {
-              if (record?.id) {
-                syncedLeadIds.current.delete(lead.id);
-                setLeads(prev => prev.map(l => (l.id === lead.id ? { ...l, id: record.id } : l)));
+            .then((res) => res.json())
+            .then((created) => {
+              if (created?.id) {
+                setDomainRecords((records) => records.map((current) =>
+                  current.id === record.id
+                    ? { ...current, id: created.id, createdAt: created.createdAt, updatedAt: created.updatedAt }
+                    : current
+                ));
               }
             })
-            .catch(err => console.error("Error creating object record:", err));
-        } else {
-          // Only PATCH if this lead actually changed since the last sync
-          const prev = prevLeads.find(p => p.id === lead.id);
-          if (prev && JSON.stringify(prev) === JSON.stringify(lead)) return;
-          apiFetch(`/api/objects/${primaryObject.key}/records/${lead.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(leadToRecordPatch(lead, primaryObject.stages))
-          }).catch(err => console.error("Error syncing object record:", err));
+            .catch((err) => console.error("Error creating object record:", err));
+          return;
         }
-      });
-    } else {
-      // Only sync leads that are new or changed
-      const prevLeads = previousLeadsRef.current;
-      const changedLeads = leads.filter(lead => {
-        if (lead.id.startsWith('L-')) {
-          if (syncedLeadIds.current.has(lead.id)) return false;
-          syncedLeadIds.current.add(lead.id);
-          return true;
-        }
-        const prev = prevLeads.find(p => p.id === lead.id);
-        return !prev || JSON.stringify(prev) !== JSON.stringify(lead);
-      });
-      if (changedLeads.length > 0) {
-        apiFetch('/api/leads/sync', {
-          method: 'POST',
+
+        const previous = previousRecords.find((item) => item.id === record.id);
+        if (previous && JSON.stringify(previous) === JSON.stringify(record)) return;
+
+        apiFetch(`/api/objects/${primaryObject.key}/records/${record.id}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(leads)
-        }).catch(err => console.error("Error syncing leads:", err));
-      }
+          body: JSON.stringify({ ...record.values, stageKey: record.stageKey ?? null }),
+        }).catch((err) => console.error("Error syncing object record:", err));
+      });
+
+      previousDomainRecordsRef.current = domainRecords;
+      return;
+    }
+
+    // Lending remains on its existing compatibility endpoint.
+    const prevLeads = previousLeadsRef.current;
+    const changedLeads = leads.filter((lead) => {
+      const prev = prevLeads.find((item) => item.id === lead.id);
+      return !prev || JSON.stringify(prev) !== JSON.stringify(lead);
+    });
+    if (changedLeads.length > 0) {
+      apiFetch('/api/leads/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leads),
+      }).catch((err) => console.error("Error syncing leads:", err));
     }
     previousLeadsRef.current = leads;
-  }, [leads, hasLoaded, primaryObject]);
+  }, [leads, domainRecords, hasLoaded, primaryObject]);
 
   useEffect(() => { saveToStorage('chiefx_workflows', workflows); }, [workflows]);
   useDebouncedSync('/api/workflows/sync', workflows, hasLoaded);
