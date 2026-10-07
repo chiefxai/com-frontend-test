@@ -526,7 +526,20 @@ export default function ContactDirectoryView({
         const created = await res.json();
         return primaryObjectKey ? { ...lead, id: created.id } : created;
       }));
-      setLeads([...createdLeads, ...leads]);
+      if (primaryObjectKey && setDomainRecords) {
+        setDomainRecords((records) => [
+          ...createdLeads.map((lead) => ({
+            id: lead.id,
+            objectKey: primaryObjectKey,
+            stageKey: null,
+            values: lead,
+            createdAt: lead.createdAt,
+          })),
+          ...records,
+        ]);
+      } else {
+        setLeads([...createdLeads, ...leads]);
+      }
       setIsBulkModalOpen(false);
       setPastedData('');
       setParsedPreview([]);
