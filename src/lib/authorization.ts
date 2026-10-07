@@ -27,7 +27,7 @@ export function legacyAuthorization(role: string): Authorization {
     permissions: [
       ...(!billingOnly ? ['workspace.read'] : []),
       ...(!viewer && !billingOnly ? ['workspace.write','workspace.call'] : []),
-      ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.audit.read'] : []),
+      ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
       ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read'] : []),
       ...(billingOnly ? ['organization.read','billing.read'] : []),
     ] };
@@ -37,6 +37,7 @@ export function permissionForRequest(path: string,method: string): string | null
   path = path.toLowerCase().replace(/\/+$/,'');
   if (['/api/auth/me','/api/auth/roles','/api/settings/me'].includes(path)) return null;
   if (/^\/api\/(billing|ai-usage)(?:\/|$)/.test(path)) return 'billing.read';
+  if (/^\/api\/settings\/workspace\/members(?:\/|$)/.test(path)) return 'workspace.members.manage';
   if (/^\/api\/settings\/team(?:\/|$)/.test(path)) return read ? 'organization.members.read' : 'organization.members.manage';
   if (path === '/api/settings/org') return read ? 'organization.read' : 'organization.manage';
   if (path === '/api/logs-stream/ticket') return 'workspace.read';
@@ -47,7 +48,8 @@ export function permissionForRequest(path: string,method: string): string | null
 export function canAccessTab(tab: string,subTab?: string) {
   if (tab === 'settings') {
     if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
-    return can(subTab === 'billing' ? 'billing.read' : subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage');
+    return can(subTab === 'billing' ? 'billing.read' : subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage')
+      || (subTab === 'team' && can('workspace.members.manage'));
   }
   if (tab === 'company' || tab === 'agent-studio') return can('workspace.settings.manage');
   if (tab === 'audit-log') return can('workspace.audit.read');
