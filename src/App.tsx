@@ -768,7 +768,8 @@ export default function App() {
             callLogs={callLogs}
             dialerTasks={dialerTasks}
             primaryObjectKey={primaryObject?.key}
-            primaryObjectFields={primaryObject?.fields || []}\n            domainRecords={domainRecords}\n            setDomainRecords={setDomainRecords}
+            primaryObjectFields={primaryObject?.fields || []}
+            domainRecords={domainRecords}\n            setDomainRecords={setDomainRecords}
           />
         );
       case 'call-logs':
