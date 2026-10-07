@@ -150,6 +150,7 @@ export default function App() {
     knowledge:     'knowledge-base',
     enquiries:     'enquiries',
     'audit-log':   'audit-log',
+    objects:       'objects',
     loans:         'loan-lifecycle',
     company:       'company-profile',
     settings:      'administration',

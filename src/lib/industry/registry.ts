@@ -113,12 +113,12 @@ export const INDUSTRY_PROFILES: Record<string, IndustryProfile> = {
       enquiry: { singular: 'Vehicle Enquiry', plural: 'Vehicle Enquiries' },
       deal: { singular: 'Vehicle Sale', plural: 'Vehicle Sales' },
     },
+    // These automotive records are implemented in the shared Custom Objects
+    // workspace. Give that view a sidebar tab so the domain objects are
+    // reachable; it contains tabs for vehicles, test drives, quotations,
+    // bookings, and sales.
     modules: [
-      { key: 'vehicle_inventory', label: 'Vehicle Inventory', route: '/vehicles', domainSpecific: true },
-      { key: 'test_drives', label: 'Test Drives', route: '/test-drives', domainSpecific: true },
-      { key: 'quotations', label: 'Quotations', route: '/quotations', domainSpecific: true },
-      { key: 'bookings', label: 'Bookings', route: '/bookings', domainSpecific: true },
-      { key: 'vehicle_sales', label: 'Vehicle Sales', route: '/vehicle-sales', domainSpecific: true },
+      { key: 'automotive_records', label: 'Vehicle Operations', route: '/objects', tabId: 'objects', featureFlag: 'objects', domainSpecific: true },
     ],
     pipeline: {
       key: 'vehicle_sales', label: 'Vehicle Sales',

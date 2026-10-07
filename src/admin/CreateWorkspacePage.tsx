@@ -13,6 +13,12 @@ const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
 
 const PLANS = ['Starter', 'Growth', 'Enterprise'];
 
+function defaultFeatureFlagsForIndustry(industry: string): string[] {
+  return FEATURE_REGISTRY
+    .filter(feature => industry === 'lending' || feature.key !== 'loan_lifecycle')
+    .map(feature => feature.key);
+}
+
 function generateWorkspaceSlug(name: string): string {
   return name
     .trim()
@@ -72,10 +78,11 @@ export default function CreateWorkspacePage() {
     backupEmail: '',
     backupRetentionDays: '365',
   });
-  const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
+  const [selectedFlags, setSelectedFlags] = useState<string[]>(() => defaultFeatureFlagsForIndustry('lending'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const availableFeatureKeys = defaultFeatureFlagsForIndustry(form.industry);
 
   useEffect(() => {
     setForm(current => ({ ...current, workspaceName: generateWorkspaceSlug(current.name) }));
@@ -242,7 +249,15 @@ export default function CreateWorkspacePage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Industry</label>
-            <select value={form.industry} onChange={set('industry')} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+            <select
+              value={form.industry}
+              onChange={(e) => {
+                const industry = e.target.value;
+                setForm(f => ({ ...f, industry }));
+                setSelectedFlags(defaultFeatureFlagsForIndustry(industry));
+              }}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
               {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
             </select>
           </div>
@@ -335,7 +350,7 @@ export default function CreateWorkspacePage() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <FlagGroupPicker
-            availableKeys={FEATURE_REGISTRY.map(f => f.key)}
+            availableKeys={availableFeatureKeys}
             value={selectedFlags}
             onApply={setSelectedFlags}
           />
