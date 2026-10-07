@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { patchDomainRecord, removeDomainRecord, summarizeDomainRecords, upsertDomainRecord } from '../domainStore';
+import { patchDomainRecord, removeDomainRecord, summarizeDomainRecords, upsertDomainRecord, updateDomainRecordStage, updateDomainRecordValues } from '../domainStore';
 import type { DomainRecord } from '../domainRecord';
 
 const record: DomainRecord = {
@@ -36,3 +36,13 @@ describe('domain record collection utilities', () => {
     expect(removeDomainRecord([record], record.id)).toEqual([]);
   });
 });
+
+
+  it('updates stage and values through the canonical mutation helpers', () => {
+    const staged = updateDomainRecordStage([record], record.id, 'sold', { status: 'Converted' });
+    expect(staged[0].stageKey).toBe('sold');
+    expect(staged[0].values.status).toBe('Converted');
+
+    const updated = updateDomainRecordValues(staged, record.id, { source: 'Campaign' });
+    expect(updated[0].values).toMatchObject({ status: 'Converted', source: 'Campaign' });
+  });
