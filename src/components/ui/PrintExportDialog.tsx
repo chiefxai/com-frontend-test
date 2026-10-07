@@ -189,6 +189,10 @@ export function PrintExportDialog({
     }
 
     const clone = contentRef.current.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
+      .forEach(node => node.remove());
+    const liveExportChildren = Array.from(contentRef.current.children)
+      .filter(node => !node.matches('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')) as HTMLElement[];
     const sourceScrollables = contentRef.current.querySelectorAll<HTMLElement>('[data-widget-scroll]');
     const clonedScrollables = clone.querySelectorAll<HTMLElement>('[data-widget-scroll]');
     sourceScrollables.forEach((sourceElement, index) => {
@@ -202,8 +206,6 @@ export function PrintExportDialog({
         clonedElement.style.overflow = 'visible';
       }
     });
-    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
-      .forEach(node => node.remove());
     clone.removeAttribute('id');
     clone.classList.toggle('dark', settings.theme === 'dark');
     clone.setAttribute('data-theme', settings.theme);
@@ -227,15 +229,22 @@ export function PrintExportDialog({
     ].join(';');
     Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
 
-    clone.querySelectorAll(':scope > *').forEach((node) => {
+    clone.querySelectorAll(':scope > *').forEach((node, index) => {
       const element = node as HTMLElement;
+      const liveElement = liveExportChildren[index] ?? null;
       element.style.width = '100%';
       element.style.minWidth = '0';
       element.style.maxWidth = '100%';
-      element.style.height = 'auto';
-      element.style.minHeight = '0';
-      element.style.maxHeight = 'none';
-      element.style.overflow = 'visible';
+      if (settings.contentMode === 'viewport' && liveElement) {
+        element.style.height = `${liveElement.getBoundingClientRect().height}px`;
+        element.style.minHeight = `${liveElement.getBoundingClientRect().height}px`;
+        element.style.maxHeight = `${liveElement.getBoundingClientRect().height}px`;
+      } else {
+        element.style.height = 'auto';
+        element.style.minHeight = '0';
+        element.style.maxHeight = 'none';
+        element.style.overflow = 'visible';
+      }
       const lgSpan = Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12);
       element.style.gridColumn = `span ${lgSpan} / span ${lgSpan}`;
       element.dataset.exportSpan = String(lgSpan);
@@ -434,6 +443,8 @@ export function PrintExportDialog({
     captureSource.removeAttribute('data-chiefvoice-export-root');
     captureSource.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
       .forEach(node => node.remove());
+    const liveExportChildren = Array.from(source.children)
+      .filter(node => !node.matches('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')) as HTMLElement[];
     // Preserve the live dashboard width so responsive SVG charts keep their
     // measured dimensions throughout capture and only scale uniformly to paper.
     captureSource.style.width = `${sourceCanvasWidth}px`;
@@ -451,15 +462,23 @@ export function PrintExportDialog({
     captureSource.style.gap = sourceGridGap;
     captureSource.style.padding = '0';
     captureSource.style.boxSizing = 'border-box';
-    captureSource.querySelectorAll<HTMLElement>(':scope > *').forEach(element => {
+    captureSource.querySelectorAll<HTMLElement>(':scope > *').forEach((element, index) => {
+      const liveElement = liveExportChildren[index] ?? null;
       const span = Math.max(1, Math.min(12, Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12)));
       element.style.width = '100%';
       element.style.minWidth = '0';
       element.style.maxWidth = '100%';
-      element.style.height = 'auto';
-      element.style.minHeight = '0';
-      element.style.maxHeight = 'none';
-      element.style.overflow = 'visible';
+      if (settings.contentMode === 'viewport' && liveElement) {
+        const liveHeight = liveElement.getBoundingClientRect().height;
+        element.style.height = `${liveHeight}px`;
+        element.style.minHeight = `${liveHeight}px`;
+        element.style.maxHeight = `${liveHeight}px`;
+      } else {
+        element.style.height = 'auto';
+        element.style.minHeight = '0';
+        element.style.maxHeight = 'none';
+        element.style.overflow = 'visible';
+      }
       element.style.gridColumn = `span ${span} / span ${span}`;
     });
     // Keep any theme marker that lives on an app shell from overriding the
