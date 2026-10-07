@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserPlus, Phone, ArrowRightCircle, CheckCircle2, Download, Megaphone, Clock } from 'lucide-react';
 import { Lead } from '../types';
 import type { DomainRecord } from '../lib/industry/domainRecord';
+import { updateDomainRecordStage } from '../lib/industry/domainStore';
 import { domainRecordsToLeads } from '../lib/objectContacts';
 import { formatPhone } from '../lib/phone';
 import { usePipelineStages, stageLabel } from '../lib/pipelineStages';
@@ -179,10 +180,11 @@ export default function LeadsView({ leads, setLeads, dialerTasks = [], industryP
     if (lead.campaignId) return;
     setAdvancingId(lead.originalLeadId);
     if (domainRecords && setDomainRecords) {
-      setDomainRecords((records) => records.map((record) =>
-        record.id === lead.originalLeadId
-          ? { ...record, stageKey: toStage, values: { ...record.values, status: toStatus } }
-          : record
+      setDomainRecords((records) => updateDomainRecordStage(
+        records,
+        lead.originalLeadId,
+        toStage,
+        { status: toStatus },
       ));
     } else {
       setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: toStatus, pipelineStage: toStage } : l)));
