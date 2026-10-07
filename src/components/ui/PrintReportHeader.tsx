@@ -28,7 +28,7 @@ export const PRINT_PAGE_STYLE = `
     grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
     grid-auto-flow: row !important;
     grid-auto-rows: max-content !important;
-    align-items: start !important;
+    align-items: stretch !important;
     gap: 24px !important;
     width: 1440px !important;
     max-width: 1440px !important;

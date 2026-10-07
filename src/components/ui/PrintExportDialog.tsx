@@ -83,7 +83,7 @@ export function buildExportPageStyle(settings: ExportSettings): string {
       grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
       grid-auto-flow: row !important;
       grid-auto-rows: max-content !important;
-      align-items: start !important;
+      align-items: stretch !important;
       gap: 6mm !important;
       width: 100% !important;
       min-width: 0 !important;
@@ -170,7 +170,7 @@ export function PrintExportDialog({
       'grid-template-columns:repeat(12,minmax(0,1fr))',
       'grid-auto-flow:row',
       'grid-auto-rows:max-content',
-      'align-items:start',
+      'align-items:stretch',
       'gap:22.6771653546px',
       'width:1440px',
       'min-width:1440px',
@@ -351,7 +351,7 @@ export function PrintExportDialog({
       </section>
       ${pages.map(page => `
         <section class="chiefvoice-export-page" style="width:${pageW}mm;height:${pageH}mm;min-height:${pageH}mm;max-height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;background:#fff;break-after:page;page-break-after:always;">
-          <div class="chiefvoice-export-grid" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row;grid-auto-rows:max-content;align-items:start;gap:6mm;width:100%;min-width:0;box-sizing:border-box;overflow:visible;">
+          <div class="chiefvoice-export-grid" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row;grid-auto-rows:max-content;align-items:stretch;gap:6mm;width:100%;min-width:0;box-sizing:border-box;overflow:visible;">
             ${page.rows.flat().map(item => withGridSpan(item.html, item.span)).join('')}
           </div>
         </section>
