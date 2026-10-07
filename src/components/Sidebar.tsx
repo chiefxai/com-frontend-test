@@ -262,7 +262,6 @@ export default function Sidebar({
 
   const profile = industryProfile || industryContext.profile;
   const labels = profile.labels;
-  const tagline = profile.tagline;
 
   const industryModuleIcons: Record<string, React.ElementType> = {
     layers: Layers,
@@ -441,71 +440,63 @@ export default function Sidebar({
       }`}
       style={{ background: '#101A3A', borderRight: '1px solid rgba(255,255,255,0.08)', color: '#F8FAFF' }}
     >
-      {/* Brand Header */}
-      <div className={`flex items-center ${collapsed ? 'p-3 justify-center' : 'px-5 py-3.5'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+      {/* Brand and workspace header */}
+      <div className={`flex items-center gap-2 ${collapsed ? 'p-3 justify-center' : 'px-3 py-3'}`} style={{ borderBottom: '1px solid var(--border)' }}>
         <img
           src={chiefVoiceLogo}
           alt="ChiefVoice"
           className="h-9 w-9 shrink-0 object-contain"
         />
         {!collapsed && (
-          <div className="ml-3 min-w-0 flex-1 overflow-hidden">
-            <h1 className="text-[17px] font-semibold font-sans tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>
-              ChiefVoice
-            </h1>
-            <p className="text-[9px] text-[var(--text-muted)] font-sans mt-1 uppercase tracking-[0.14em]">{tagline}</p>
+          <div className="relative min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => setWorkspaceMenuOpen(v => !v)}
+              className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/5 transition-colors"
+              aria-label={`Switch workspace. Current workspace: ${organizationName}`}
+              aria-expanded={workspaceMenuOpen}
+            >
+              <Building2 className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[9px] uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Workspace</span>
+                <span className="block text-xs font-semibold truncate" style={{ color: 'var(--text-secondary)' }}>{organizationName}</span>
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} />
+            </button>
+
+            {workspaceMenuOpen && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-[100] rounded-xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                <div className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                  Your Workspaces
+                </div>
+                <div className="max-h-64 overflow-y-auto p-1">
+                  {workspaces.map((workspace) => {
+                    const active = workspace.orgId === activeWorkspaceId;
+                    return (
+                      <button
+                        key={workspace.orgId}
+                        type="button"
+                        onClick={() => { setWorkspaceMenuOpen(false); if (!active) onWorkspaceSelect(workspace.orgId); }}
+                        className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-[var(--bg-subtle)] transition-colors"
+                      >
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{workspace.organization.workspaceName}.chief.ai</span>
+                          <span className="block text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}</span>
+                        </span>
+                        {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
+                      </button>
+                    );
+                  })}
+                  {!workspaces.length && (
+                    <div className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>No workspaces found.</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Workspace switcher */}
-      {!collapsed && (
-        <div className="relative px-4 py-2.5" style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-          <button
-            type="button"
-            onClick={() => setWorkspaceMenuOpen(v => !v)}
-            className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-white/5 transition-colors"
-          >
-            <Building2 className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[9px] uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Workspace</span>
-              <span className="block text-xs font-semibold truncate" style={{ color: 'var(--text-secondary)' }}>{organizationName}</span>
-            </span>
-            <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} />
-          </button>
-
-          {workspaceMenuOpen && (
-            <div className="absolute left-4 right-4 top-full mt-1 z-[100] rounded-xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-              <div className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                Your Workspaces
-              </div>
-              <div className="max-h-64 overflow-y-auto p-1">
-                {workspaces.map((workspace) => {
-                  const active = workspace.orgId === activeWorkspaceId;
-                  return (
-                    <button
-                      key={workspace.orgId}
-                      type="button"
-                      onClick={() => { setWorkspaceMenuOpen(false); if (!active) onWorkspaceSelect(workspace.orgId); }}
-                      className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-[var(--bg-subtle)] transition-colors"
-                    >
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{workspace.organization.workspaceName}.chief.ai</span>
-                        <span className="block text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}</span>
-                      </span>
-                      {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
-                    </button>
-                  );
-                })}
-                {!workspaces.length && (
-                  <div className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>No workspaces found.</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Collapse toggle */}
       <button
