@@ -409,7 +409,7 @@ export default function App() {
                   id: String(r.id),
                   objectKey: primary.key,
                   stageKey: r.stageKey ?? primary.stages?.find((s: any) => s.id === r.stageId)?.key ?? null,
-                  values: { ...r },
+                  values: r.values && typeof r.values === 'object' ? r.values : { ...r },
                   createdAt: r.createdAt,
                   updatedAt: r.updatedAt,
                 }))
