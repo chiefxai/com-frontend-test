@@ -7,11 +7,13 @@ import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 export type ExportFormat = 'pdf' | 'doc';
 export type PaperSize = 'A4' | 'A3' | 'Letter' | 'Legal';
 export type Orientation = 'landscape' | 'portrait';
+export type ExportTheme = 'light' | 'dark';
 
 export interface ExportSettings {
   format: ExportFormat;
   paperSize: PaperSize;
   orientation: Orientation;
+  theme: ExportTheme;
 }
 
 interface PrintExportDialogProps {
@@ -154,6 +156,7 @@ export function PrintExportDialog({
     format: 'pdf',
     paperSize: 'A4',
     orientation: 'landscape',
+    theme: 'light',
   });
   const [pages, setPages] = useState<ExportPage[]>([]);
 
@@ -311,7 +314,7 @@ export function PrintExportDialog({
   }).join('');
 
   const buildWordPages = () => {
-    const pageBreak = '<p class="chiefvoice-word-page-break" style="page-break-before:always;break-before:page;mso-break-type:page-break;margin:0;height:1px;font-size:1pt;line-height:1pt">&nbsp;</p>';
+    const pageBreak = '<p class="chiefvoice-word-page-break" style="page-break-before:always;mso-break-type:page-break;mso-pagination:widow-orphan;margin:0 0 1px 0;padding:0;font-size:1pt;line-height:1pt">&nbsp;</p>';
     const cover = `
       <section class="chiefvoice-export-page chiefvoice-export-cover">
         <div class="chiefvoice-export-cover-inner">
@@ -323,7 +326,7 @@ export function PrintExportDialog({
       </section>`;
     const content = pages.map(page => `
       ${pageBreak}
-      <section class="chiefvoice-export-page">
+      <section class="chiefvoice-export-page" style="page-break-before:always;mso-break-type:page-break">
         <table role="presentation" style="width:100%;table-layout:fixed;border-collapse:collapse">
           <tbody>${buildWordRows(page.rows)}</tbody>
         </table>
@@ -372,42 +375,35 @@ export function PrintExportDialog({
     const pdfPageW = settings.orientation === 'landscape' ? paper.width : paper.height;
     const pdfPageH = settings.orientation === 'landscape' ? paper.height : paper.width;
 
-    // Capture the real, mounted dashboard instead of cloning/rebuilding it.
-    // This is important because Tailwind classes, CSS variables, SVG styles,
-    // chart styles, fonts and theme rules are all already resolved on the
-    // mounted dashboard.
+    // Capture an off-screen copy so the requested export theme never flashes
+    // across the visible dashboard while html2canvas renders it.
     const scrollParent = source.parentElement;
-    const savedRootStyle = source.getAttribute('style');
-    const savedParentStyle = scrollParent?.getAttribute('style');
-
-    const restore = () => {
-      if (savedRootStyle === null) source.removeAttribute('style');
-      else source.setAttribute('style', savedRootStyle);
-      if (scrollParent) {
-        if (savedParentStyle === null) scrollParent.removeAttribute('style');
-        else scrollParent.setAttribute('style', savedParentStyle);
-      }
-    };
+    const captureHost = document.createElement('div');
+    captureHost.className = settings.theme === 'dark' ? 'dark' : '';
+    captureHost.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
+    const captureSource = source.cloneNode(true) as HTMLElement;
+    captureSource.removeAttribute('data-chiefvoice-export-root');
+    captureSource.style.width = `${Math.max(1, source.getBoundingClientRect().width)}px`;
+    captureSource.style.height = 'auto';
+    captureSource.style.minHeight = '0';
+    captureSource.style.maxHeight = 'none';
+    captureSource.style.overflow = 'visible';
+    captureSource.style.alignContent = 'start';
+    captureHost.appendChild(captureSource);
+    document.body.appendChild(captureHost);
 
     try {
       await document.fonts.ready;
 
-      if (scrollParent) {
-        scrollParent.style.overflow = 'visible';
-        scrollParent.style.height = 'auto';
-        scrollParent.style.maxHeight = 'none';
-        scrollParent.style.minHeight = '0';
-      }
-
-      source.style.height = 'auto';
-      source.style.minHeight = '0';
-      source.style.maxHeight = 'none';
-      source.style.overflow = 'visible';
-      source.style.alignContent = 'start';
+      captureSource.style.height = 'auto';
+      captureSource.style.minHeight = '0';
+      captureSource.style.maxHeight = 'none';
+      captureSource.style.overflow = 'visible';
+      captureSource.style.alignContent = 'start';
 
       // Expand widget-local scroll areas without changing their visual
       // styling. Their normal header/body/card CSS remains untouched.
-      source.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(element => {
+      captureSource.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(element => {
         element.style.maxHeight = 'none';
         element.style.height = 'auto';
         element.style.overflow = 'visible';
@@ -416,12 +412,12 @@ export function PrintExportDialog({
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
-      const rect = source.getBoundingClientRect();
+      const rect = captureSource.getBoundingClientRect();
       const cssWidth = Math.max(1, Math.round(rect.width));
-      const cssHeight = Math.max(1, Math.ceil(source.scrollHeight));
+      const cssHeight = Math.max(1, Math.ceil(captureSource.scrollHeight));
       const pageCssHeight = Math.max(1, Math.floor(cssWidth * (pdfPageH / pdfPageW)));
 
-      const children = Array.from(source.children)
+      const children = Array.from(captureSource.children)
         .filter(element => getComputedStyle(element as HTMLElement).display !== 'none') as HTMLElement[];
 
       const rowsMap = new Map<number, HTMLElement[]>();
@@ -471,7 +467,7 @@ export function PrintExportDialog({
       }
 
       const exportKey = `chiefvoice-export-${Date.now()}`;
-      source.setAttribute('data-chiefvoice-export-root', exportKey);
+      captureSource.setAttribute('data-chiefvoice-export-root', exportKey);
 
       const inlineComputedStyles = (doc: Document) => {
         const clonedRoot = doc.querySelector(`[data-chiefvoice-export-root="${exportKey}"]`) as HTMLElement | null;
@@ -509,7 +505,7 @@ export function PrintExportDialog({
           }
         };
 
-        copy(source, clonedRoot);
+        copy(captureSource, clonedRoot);
 
         // Materialize pseudo-element content that is visually meaningful.
         const copyPseudo = (from: Element, to: Element, pseudo: '::before' | '::after') => {
@@ -541,10 +537,10 @@ export function PrintExportDialog({
           }
         };
 
-        walk(source, clonedRoot);
+        walk(captureSource, clonedRoot);
       };
 
-      const fullCanvas = await html2canvas(source, {
+      const fullCanvas = await html2canvas(captureSource, {
         backgroundColor: '#ffffff',
         scale: 1.5,
         useCORS: true,
@@ -725,8 +721,8 @@ export function PrintExportDialog({
       a.remove();
       URL.revokeObjectURL(url);
     } finally {
-      source.removeAttribute('data-chiefvoice-export-root');
-      restore();
+      captureSource.removeAttribute('data-chiefvoice-export-root');
+      captureHost.remove();
     }
   };
 
@@ -737,8 +733,9 @@ export function PrintExportDialog({
         ${collectStyles()}
         @page { size:${paper.css} ${settings.orientation}; margin:0; }
         html,body{margin:0;padding:0;background:#fff;color:#111827}
-        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden}
-        .chiefvoice-word-page-break{page-break-before:always;break-before:page;mso-break-type:page-break}
+        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;page-break-inside:avoid;mso-break-inside:avoid}
+        .chiefvoice-export-cover{page-break-after:always;mso-break-type:page-break}
+        .chiefvoice-word-page-break{page-break-before:always;mso-break-type:page-break}
         .chiefvoice-export-page table{width:100%;table-layout:fixed;border-collapse:collapse}
         .chiefvoice-export-page tr,.chiefvoice-export-page td{page-break-inside:avoid;break-inside:avoid}
         .chiefvoice-export-page > *{max-width:100%}
@@ -807,6 +804,20 @@ export function PrintExportDialog({
                 ))}
               </div>
             </div>
+
+            {settings.format === 'pdf' && (
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">PDF theme</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['light', 'dark'] as ExportTheme[]).map(theme => (
+                    <button key={theme} onClick={() => setSettings(s => ({ ...s, theme }))}
+                      className={`rounded-xl border px-3 py-2 text-xs font-semibold capitalize transition ${settings.theme === theme ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
+                      {theme}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-muted)] leading-relaxed">
               Each export page is laid out independently. Width always follows the dashboard's 12-column grid; whole rows move to the next page when the available paper height is exhausted.
