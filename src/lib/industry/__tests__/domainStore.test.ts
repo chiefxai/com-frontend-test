@@ -35,10 +35,8 @@ describe('domain record collection utilities', () => {
   it('removes records by stable id', () => {
     expect(removeDomainRecord([record], record.id)).toEqual([]);
   });
-});
 
-
-  it('updates stage and values through the canonical mutation helpers', () => {
+it('updates stage and values through the canonical mutation helpers', () => {
     const staged = updateDomainRecordStage([record], record.id, 'sold', { status: 'Converted' });
     expect(staged[0].stageKey).toBe('sold');
     expect(staged[0].values.status).toBe('Converted');
@@ -46,3 +44,4 @@ describe('domain record collection utilities', () => {
     const updated = updateDomainRecordValues(staged, record.id, { source: 'Campaign' });
     expect(updated[0].values).toMatchObject({ status: 'Converted', source: 'Campaign' });
   });
+});
