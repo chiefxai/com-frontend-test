@@ -226,117 +226,112 @@ export function PrintExportDialog({
       return;
     }
     setPreviewLoading(true);
+    const source = contentRef.current;
+    let frame = 0;
+    let refreshTimer = 0;
+    let disposed = false;
 
-    const clone = contentRef.current.cloneNode(true) as HTMLElement;
-    const sourceScrollables = contentRef.current.querySelectorAll<HTMLElement>('[data-widget-scroll]');
-    const clonedScrollables = clone.querySelectorAll<HTMLElement>('[data-widget-scroll]');
-    sourceScrollables.forEach((sourceElement, index) => {
-      const clonedElement = clonedScrollables[index];
-      if (!clonedElement) return;
-      clonedElement.scrollTop = sourceElement.scrollTop;
-      clonedElement.scrollLeft = sourceElement.scrollLeft;
-    });
-    clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
-      .forEach(node => node.remove());
-    clone.removeAttribute('id');
-    // Use the same clean capture root as PDF generation. The live class adds
-    // browser-print zoom (0.727) and was shrinking preview measurements only.
-    clone.classList.remove('chiefvoice-print-content');
-    clone.classList.toggle('dark', settings.theme === 'dark');
-    clone.setAttribute('data-theme', settings.theme);
-    Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
-    clone.style.cssText = [
-      'display:grid',
-      'grid-template-columns:repeat(12,minmax(0,1fr))',
-      'grid-auto-flow:row',
-      'grid-auto-rows:max-content',
-      'align-items:stretch',
-      'gap:22.6771653546px',
-      'width:1440px',
-      'min-width:1440px',
-      'max-width:1440px',
-      'height:auto',
-      'min-height:0',
-      'max-height:none',
-      'overflow:visible',
-      `background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'}`,
-      'box-sizing:border-box',
-      'padding:38px',
-    ].join(';');
-    Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
-
-    clone.querySelectorAll(':scope > *').forEach((node) => {
-      const element = node as HTMLElement;
-      element.style.width = '100%';
-      element.style.minWidth = '0';
-      element.style.maxWidth = '100%';
-      element.style.height = 'auto';
-      element.style.minHeight = '0';
-      element.style.maxHeight = 'none';
-      element.style.overflow = 'visible';
-      const lgSpan = Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12);
-      element.style.gridColumn = `span ${lgSpan} / span ${lgSpan}`;
-      element.dataset.exportSpan = String(lgSpan);
-      element.style.breakInside = 'avoid';
-      element.style.pageBreakInside = 'avoid';
-    });
-
-    const measurementHost = document.createElement('div');
-    measurementHost.classList.toggle('dark', settings.theme === 'dark');
-    Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.theme]);
-    measurementHost.style.cssText = [
-      'position:absolute',
-      'left:-100000px',
-      'top:0',
-      'width:1440px',
-      'height:auto',
-      'visibility:hidden',
-      'pointer-events:none',
-      'overflow:visible',
-    ].join(';');
-    Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.theme]);
-    measurementHost.appendChild(clone);
-    document.body.appendChild(measurementHost);
-
-    const run = () => {
-      clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(scrollViewport => {
-        const bounds = scrollViewport.getBoundingClientRect();
-        scrollViewport.querySelectorAll<HTMLElement>('tr').forEach(row => {
-          const rowBounds = row.getBoundingClientRect();
-          if (rowBounds.bottom <= bounds.top || rowBounds.top >= bounds.bottom) row.remove();
-        });
+    const measure = () => {
+      if (disposed || !contentRef.current) return;
+      const liveSource = contentRef.current;
+      const clone = liveSource.cloneNode(true) as HTMLElement;
+      const sourceScrollables = liveSource.querySelectorAll<HTMLElement>('[data-widget-scroll]');
+      const clonedScrollables = clone.querySelectorAll<HTMLElement>('[data-widget-scroll]');
+      sourceScrollables.forEach((sourceElement, index) => {
+        const clonedElement = clonedScrollables[index];
+        if (!clonedElement) return;
+        clonedElement.scrollTop = sourceElement.scrollTop;
+        clonedElement.scrollLeft = sourceElement.scrollLeft;
+      });
+      clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
+        .forEach(node => node.remove());
+      clone.removeAttribute('id');
+      clone.classList.remove('chiefvoice-print-content');
+      clone.classList.toggle('dark', settings.theme === 'dark');
+      clone.setAttribute('data-theme', settings.theme);
+      clone.style.cssText = [
+        'display:grid', 'grid-template-columns:repeat(12,minmax(0,1fr))', 'grid-auto-flow:row',
+        'grid-auto-rows:max-content', 'align-items:stretch', 'gap:22.6771653546px',
+        'width:1440px', 'min-width:1440px', 'max-width:1440px', 'height:auto',
+        'min-height:0', 'max-height:none', 'overflow:visible',
+        `background:${settings.theme === 'dark' ? '#080D1C' : '#F7F9FC'}`,
+        'box-sizing:border-box', 'padding:38px',
+      ].join(';');
+      Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
+      clone.querySelectorAll(':scope > *').forEach((node) => {
+        const element = node as HTMLElement;
+        element.style.width = '100%';
+        element.style.minWidth = '0';
+        element.style.maxWidth = '100%';
+        element.style.height = 'auto';
+        element.style.minHeight = '0';
+        element.style.maxHeight = 'none';
+        element.style.overflow = 'visible';
+        const lgSpan = Number(element.dataset.gridSpanLg || element.dataset.gridSpan || 12);
+        element.style.gridColumn = `span ${lgSpan} / span ${lgSpan}`;
+        element.dataset.exportSpan = String(lgSpan);
+        element.style.breakInside = 'avoid';
+        element.style.pageBreakInside = 'avoid';
       });
 
-      const children = Array.from(clone.children) as HTMLElement[];
-      const rowsMap = new Map<number, HTMLElement[]>();
-      children.forEach((element) => {
-        const top = Math.round(element.offsetTop);
-        const row = rowsMap.get(top) ?? [];
-        row.push(element);
-        rowsMap.set(top, row);
+      const measurementHost = document.createElement('div');
+      measurementHost.classList.toggle('dark', settings.theme === 'dark');
+      Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.theme]);
+      measurementHost.style.cssText = 'position:absolute;left:-100000px;top:0;width:1440px;height:auto;visibility:hidden;pointer-events:none;overflow:visible;';
+      Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.theme]);
+      measurementHost.appendChild(clone);
+      document.body.appendChild(measurementHost);
+
+      frame = window.requestAnimationFrame(() => {
+        try {
+          clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(scrollViewport => {
+            const bounds = scrollViewport.getBoundingClientRect();
+            scrollViewport.querySelectorAll<HTMLElement>('tr').forEach(row => {
+              const rowBounds = row.getBoundingClientRect();
+              if (rowBounds.bottom <= bounds.top || rowBounds.top >= bounds.bottom) row.remove();
+            });
+          });
+
+          const rowsMap = new Map<number, HTMLElement[]>();
+          Array.from(clone.children).forEach((node) => {
+            const element = node as HTMLElement;
+            const top = Math.round(element.offsetTop);
+            const row = rowsMap.get(top) ?? [];
+            row.push(element);
+            rowsMap.set(top, row);
+          });
+          const rows = Array.from(rowsMap.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([, elements]) => ({
+              height: Math.max(...elements.map(el => el.offsetHeight)),
+              items: elements.sort((a, b) => a.offsetLeft - b.offsetLeft).map(element => ({
+                html: element.outerHTML,
+                span: Math.max(1, Math.min(12, Number(element.dataset.exportSpan || 12))),
+              })),
+            }));
+
+          if (!disposed) {
+            setMeasuredRows(rows);
+            setPreviewLoading(false);
+          }
+        } finally {
+          measurementHost.remove();
+        }
       });
-
-      const rows = Array.from(rowsMap.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([, elements]) => ({
-          height: Math.max(...elements.map(el => el.offsetHeight)),
-          items: elements
-            .sort((a, b) => a.offsetLeft - b.offsetLeft)
-            .map(element => ({
-              html: element.outerHTML,
-              span: Math.max(1, Math.min(12, Number(element.dataset.exportSpan || 12))),
-            })),
-        }));
-
-      setMeasuredRows(rows);
-      setPreviewLoading(false);
-      measurementHost.remove();
     };
 
-    const frame = window.requestAnimationFrame(run);
+    const scheduleRefresh = () => {
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(measure, 120);
+    };
+    const observer = new MutationObserver(scheduleRefresh);
+    observer.observe(source, { subtree: true, childList: true, characterData: true });
+    frame = window.requestAnimationFrame(measure);
     return () => {
+      disposed = true;
+      observer.disconnect();
+      if (refreshTimer) window.clearTimeout(refreshTimer);
       window.cancelAnimationFrame(frame);
-      measurementHost.remove();
     };
   }, [open, contentRef]);
 
@@ -857,6 +852,28 @@ export function PrintExportDialog({
       .filter(([key]) => key.startsWith('--'))
       .map(([key, value]) => `${key}:${String(value)}`)
       .join(';');
+    // Word's HTML importer drops many application stylesheets and CSS
+    // variables. Resolve styles from the real browser DOM into this export
+    // snapshot, only when DOCX is requested, so the live preview stays fast.
+    const styleHost = document.createElement('div');
+    styleHost.className = settings.theme === 'dark' ? 'dark' : '';
+    styleHost.setAttribute('data-theme', settings.theme);
+    styleHost.style.cssText = `position:fixed;left:-100000px;top:0;width:1440px;visibility:hidden;pointer-events:none;${themeStyle}`;
+    styleHost.innerHTML = buildWordPages(((pageW - 20) * mmToPx) / desktopWidth, 1, (pageW - 20) * mmToPx);
+    document.body.appendChild(styleHost);
+    const inlineWordStyles = (element: Element) => {
+      const computed = window.getComputedStyle(element);
+      const style = (element as HTMLElement | SVGElement).style;
+      for (let index = 0; index < computed.length; index++) {
+        const property = computed.item(index);
+        const value = computed.getPropertyValue(property);
+        if (value) style.setProperty(property, value);
+      }
+      Array.from(element.children).forEach(inlineWordStyles);
+    };
+    inlineWordStyles(styleHost);
+    const wordContent = styleHost.innerHTML;
+    styleHost.remove();
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
         ${collectStyles()}
@@ -868,7 +885,7 @@ export function PrintExportDialog({
         .chiefvoice-word-grid td{vertical-align:top}
         .chiefvoice-word-grid img,.chiefvoice-word-grid svg,.chiefvoice-word-grid canvas{max-width:100%}
       </style></head><body><div class="${settings.theme === 'dark' ? 'dark' : ''}" data-theme="${settings.theme}" style="${themeStyle}">
-      ${buildWordPages(((pageW - 20) * mmToPx) / desktopWidth, 1, (pageW - 20) * mmToPx)}
+      ${wordContent}
       </div></body></html>`;
     const files = [
       { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="html" ContentType="text/html"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
