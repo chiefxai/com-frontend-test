@@ -111,7 +111,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
   const hasActiveFilters = Boolean(searchTerm.trim()) || sourceFilter !== 'All' || campaignFilter !== 'All';
   const clearFilters = () => { setSearchTerm(''); setSourceFilter('All'); setCampaignFilter('All'); };
 
-  const campaignRows = React.useMemo(() => campaignPipelineRows(leads, dialerTasks, opportunityStageKey, clientStageKey), [leads, dialerTasks, opportunityStageKey, clientStageKey]);
+  const campaignRows = React.useMemo(() => campaignPipelineRows(viewLeads, dialerTasks, opportunityStageKey, clientStageKey), [viewLeads, dialerTasks, opportunityStageKey, clientStageKey]);
   const ongoing = campaignRows.filter((l) => l.pipelineStage === opportunityStageKey);
   const clients = campaignRows.filter((l) => l.pipelineStage === clientStageKey);
   const activeSet = subTab === 'ongoing' ? ongoing : clients;
