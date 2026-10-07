@@ -23,6 +23,7 @@ export default function WorkspaceSharing({ enabled }: { enabled: boolean }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [sharedRows, setSharedRows] = useState<Record<string, Record<string, unknown>[]>>({});
+  const [sharedCursors, setSharedCursors] = useState<Record<string, string | null>>({});
   const activeWorkspaceId = sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id') || '';
   const currentObject = objects.find(object => object.key === objectKey);
   const targets = useMemo(() => workspaces.filter(row => row.orgId === workspaces.find(item => item.workspaceId === activeWorkspaceId)?.orgId && row.workspaceId !== activeWorkspaceId), [workspaces, activeWorkspaceId]);
@@ -72,13 +73,16 @@ export default function WorkspaceSharing({ enabled }: { enabled: boolean }) {
     } catch (error: any) { setMessage(error.message || 'Could not revoke sharing grant.'); }
     finally { setBusy(false); }
   };
-  const viewShared = async (grantId: string) => {
+  const viewShared = async (grantId: string, cursor?: string | null) => {
     setBusy(true); setMessage('');
     try {
-      const response = await apiFetch(`/api/workspace-sharing/records/${encodeURIComponent(grantId)}?limit=50`);
+      const query = new URLSearchParams({ limit: '50' });
+      if (cursor) query.set('cursor', cursor);
+      const response = await apiFetch(`/api/workspace-sharing/records/${encodeURIComponent(grantId)}?${query}`);
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not load shared records');
-      setSharedRows(current => ({ ...current, [grantId]: body.records || [] }));
+      setSharedRows(current => ({ ...current, [grantId]: cursor ? [...(current[grantId] || []), ...(body.records || [])] : (body.records || []) }));
+      setSharedCursors(current => ({ ...current, [grantId]: body.nextCursor || null }));
     } catch (error: any) { setMessage(error.message || 'Could not load shared records.'); }
     finally { setBusy(false); }
   };
@@ -98,8 +102,8 @@ export default function WorkspaceSharing({ enabled }: { enabled: boolean }) {
         <div className="flex items-end"><button type="submit" disabled={busy || !targetWorkspaceId || !objectKey || !selectedFields.length} className="inline-flex items-center gap-2 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><LockKeyhole className="h-3.5 w-3.5"/>Grant read access</button></div>
       </form>}
       <div className="mt-4 space-y-3">{grants.map(grant => <div key={grant.id} className="rounded-lg border border-[var(--border)] p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold text-[var(--text-primary)]">{grant.direction === 'outgoing' ? `Shared with ${grant.targetWorkspaceName}` : `Shared by ${grant.sourceWorkspaceName}`} · {grant.objectLabel}</p><p className="mt-1 text-[10px] text-[var(--text-muted)]">Fields: {grant.allowedFields.join(', ')} · {grant.revokedAt ? 'Revoked' : `Expires ${new Date(grant.expiresAt || '').toLocaleDateString()}`}</p></div><div className="flex gap-2">{grant.direction === 'incoming' && !grant.revokedAt && <button onClick={() => void viewShared(grant.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"><Eye className="h-3 w-3"/>View records</button>}{grant.direction === 'outgoing' && !grant.revokedAt && canManage && <button onClick={() => void revoke(grant.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-[11px] text-rose-600"><X className="h-3 w-3"/>Revoke</button>}</div></div>
-        {sharedRows[grant.id] && <div className="mt-3 overflow-x-auto"><table className="min-w-full text-left text-[11px]"><thead><tr>{grant.allowedFields.map(field => <th key={field} className="px-2 py-1 font-semibold">{field}</th>)}</tr></thead><tbody>{sharedRows[grant.id].map((row,index)=><tr key={String(row.id||index)} className="border-t border-[var(--border)]">{grant.allowedFields.map(field=><td key={field} className="max-w-48 truncate px-2 py-1">{String((row.data as any)?.[field] ?? '')}</td>)}</tr>)}</tbody></table></div>}
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold text-[var(--text-primary)]">{grant.direction === 'outgoing' ? `Shared with ${grant.targetWorkspaceName}` : `Shared by ${grant.sourceWorkspaceName}`} · {grant.objectLabel}</p><p className="mt-1 text-[10px] text-[var(--text-muted)]">Fields: {grant.allowedFields.join(', ')} · {grant.revokedAt ? 'Revoked' : Date.parse(grant.expiresAt || '') <= Date.now() ? 'Expired' : `Expires ${new Date(grant.expiresAt || '').toLocaleDateString()}`}</p></div><div className="flex gap-2">{grant.direction === 'incoming' && !grant.revokedAt && Date.parse(grant.expiresAt || '') > Date.now() && <button onClick={() => void viewShared(grant.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"><Eye className="h-3 w-3"/>View records</button>}{grant.direction === 'outgoing' && !grant.revokedAt && canManage && <button onClick={() => void revoke(grant.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-[11px] text-rose-600"><X className="h-3 w-3"/>Revoke</button>}</div></div>
+        {sharedRows[grant.id] && <div className="mt-3 overflow-x-auto"><table className="min-w-full text-left text-[11px]"><thead><tr>{grant.allowedFields.map(field => <th key={field} className="px-2 py-1 font-semibold">{field}</th>)}</tr></thead><tbody>{sharedRows[grant.id].map((row,index)=><tr key={index} className="border-t border-[var(--border)]">{grant.allowedFields.map(field=><td key={field} className="max-w-48 truncate px-2 py-1">{String((row.data as any)?.[field] ?? '')}</td>)}</tr>)}</tbody></table>{sharedCursors[grant.id] && <button onClick={() => void viewShared(grant.id,sharedCursors[grant.id])} disabled={busy} className="mt-2 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">Load more</button>}</div>}
       </div>)}{!grants.length && <p className="text-xs text-[var(--text-muted)]">No incoming or outgoing shares for this workspace.</p>}</div>
     </>}
   </Widget>;
