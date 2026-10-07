@@ -66,6 +66,7 @@ import AuditLogView from './components/AuditLogView';
 import EnquiriesView from './components/EnquiriesView';
 import NotificationBell, { AppNotification } from './components/NotificationBell';
 import { ToastProvider } from './components/ui/Toast';
+import { Building2, ChevronDown } from 'lucide-react';
 
 // Debounced sync: collapses multiple rapid state changes into one POST.
 // Without this, setting 8 state vars at load triggers 8 simultaneous syncs.
@@ -106,6 +107,7 @@ function useDebouncedSync(url: string, data: any, enabled: boolean, delay = 800)
 export default function App() {
   // Auth state comes from Keycloak — no manual isAuthenticated flag needed.
   const { user: kcUser, logout } = useAuth();
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
   // Gate the app: verify the Keycloak user has a membership in our DB.
   // 'checking' → spinner, 'ok' → show app, 'denied' → no-access screen.
@@ -948,13 +950,6 @@ export default function App() {
         industry={orgSettings.industry}
         businessType={orgSettings.businessType}
         industryProfile={effectiveIndustryProfile}
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId || orgSettings.id}
-        onWorkspaceSelect={(orgId) => {
-          localStorage.setItem('chiefx_active_workspace_id', orgId);
-          setActiveWorkspaceId(orgId);
-          window.location.reload();
-        }}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}
@@ -966,15 +961,57 @@ export default function App() {
           </div>
         )}
         {/* Global Floating Header */}
-        <header className="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between px-5 md:px-8 shrink-0 relative z-50">
-          <div className="flex items-center gap-2 min-w-0">
-              <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Workspace</span>
-              <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-[9px] text-[var(--accent)] bg-[var(--accent-subtle)] truncate">
-                {orgSettings.workspaceName}.chief.ai
-              </span>
-            </div>
-
+        <header className="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-end px-5 md:px-8 shrink-0 relative z-50">
           <div className="flex items-center space-x-3">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setWorkspaceMenuOpen(open => !open)}
+                aria-label={`Switch workspace. Current workspace: ${orgSettings.name}`}
+                aria-expanded={workspaceMenuOpen}
+                className="flex max-w-[min(18rem,55vw)] items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-left hover:bg-[var(--bg-subtle)] transition-colors"
+              >
+                <Building2 className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                <span className="min-w-0">
+                  <span className="block text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Workspace</span>
+                  <span className="block truncate text-xs font-semibold text-[var(--text-primary)]">{orgSettings.workspaceName || orgSettings.name || 'Select workspace'}</span>
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {workspaceMenuOpen && (
+                <div className="absolute right-0 top-full z-[100] mt-2 w-72 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl">
+                  <div className="border-b border-[var(--border)] px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Your Workspaces</div>
+                  <div className="max-h-64 overflow-y-auto p-1">
+                    {workspaces.map(workspace => {
+                      const active = workspace.orgId === (activeWorkspaceId || orgSettings.id);
+                      return (
+                        <button
+                          key={workspace.orgId}
+                          type="button"
+                          onClick={() => {
+                            setWorkspaceMenuOpen(false);
+                            if (!active) {
+                              localStorage.setItem('chiefx_active_workspace_id', workspace.orgId);
+                              setActiveWorkspaceId(workspace.orgId);
+                              window.location.reload();
+                            }
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-[var(--bg-subtle)] transition-colors"
+                        >
+                          <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-semibold text-[var(--text-primary)]">{workspace.organization.workspaceName}.chief.ai</span>
+                            <span className="block truncate text-[10px] text-[var(--text-muted)]">{workspace.organization.name}</span>
+                          </span>
+                          {active && <span className="text-[9px] font-bold text-[var(--accent)]">ACTIVE</span>}
+                        </button>
+                      );
+                    })}
+                    {!workspaces.length && <div className="px-3 py-3 text-xs text-[var(--text-muted)]">No workspaces found.</div>}
+                  </div>
+                </div>
+              )}
+            </div>
             <NotificationBell
               notifications={notifications}
               onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}

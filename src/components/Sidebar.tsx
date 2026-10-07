@@ -22,7 +22,6 @@ import {
   History,
   MessageCircleQuestion,
   BarChart3,
-  ChevronDown,
   ChevronRight,
   Phone,
   Clock,
@@ -48,19 +47,6 @@ interface SidebarProps {
   industry: string;
   businessType?: string;
   industryProfile?: IndustryProfile;
-  workspaces: Array<{
-    orgId: string;
-    role: string;
-    organization: {
-      id: string;
-      name: string;
-      workspaceName: string;
-      industry?: string;
-      status?: string;
-    };
-  }>;
-  activeWorkspaceId: string;
-  onWorkspaceSelect: (orgId: string) => void;
 }
 
 // Synthetic key for the "Dashboard" group's own expand/collapse + flyout
@@ -208,15 +194,10 @@ export default function Sidebar({
   industry,
   businessType,
   industryProfile,
-  workspaces,
-  activeWorkspaceId,
-  onWorkspaceSelect,
 }: SidebarProps) {
   const industryContext = useIndustry({ industry, businessType });
   const isAdmin = userRole === 'Organization Admin' || userRole === 'Super Admin';
   const { isEnabled } = useFeatureFlags();
-
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
@@ -440,60 +421,23 @@ export default function Sidebar({
       }`}
       style={{ background: '#101A3A', borderRight: '1px solid rgba(255,255,255,0.08)', color: '#F8FAFF' }}
     >
-      {/* Brand and workspace header */}
-      <div className={`flex items-center gap-2 ${collapsed ? 'p-3 justify-center' : 'px-3 py-3'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+      {/* Product brand and organization identity */}
+      <div className={`${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`} style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
         <img
           src={chiefVoiceLogo}
           alt="ChiefVoice"
-          className="h-9 w-9 shrink-0 object-contain"
+          className="h-9 w-9 shrink-0 rounded-lg object-contain"
         />
         {!collapsed && (
-          <div className="relative min-w-0 flex-1">
-            <button
-              type="button"
-              onClick={() => setWorkspaceMenuOpen(v => !v)}
-              className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/5 transition-colors"
-              aria-label={`Switch workspace. Current workspace: ${organizationName}`}
-              aria-expanded={workspaceMenuOpen}
-            >
-              <Building2 className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[9px] uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Workspace</span>
-                <span className="block text-xs font-semibold truncate" style={{ color: 'var(--text-secondary)' }}>{organizationName}</span>
-              </span>
-              <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} />
-            </button>
-
-            {workspaceMenuOpen && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-[100] rounded-xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                <div className="px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                  Your Workspaces
-                </div>
-                <div className="max-h-64 overflow-y-auto p-1">
-                  {workspaces.map((workspace) => {
-                    const active = workspace.orgId === activeWorkspaceId;
-                    return (
-                      <button
-                        key={workspace.orgId}
-                        type="button"
-                        onClick={() => { setWorkspaceMenuOpen(false); if (!active) onWorkspaceSelect(workspace.orgId); }}
-                        className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-left hover:bg-[var(--bg-subtle)] transition-colors"
-                      >
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{workspace.organization.workspaceName}.chief.ai</span>
-                          <span className="block text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}</span>
-                        </span>
-                        {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
-                      </button>
-                    );
-                  })}
-                  {!workspaces.length && (
-                    <div className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>No workspaces found.</div>
-                  )}
-                </div>
-              </div>
-            )}
+          <div className="min-w-0">
+            <div className="text-sm font-bold leading-tight tracking-wide text-white">Chief Voice</div>
+          </div>
+        )}
+        </div>
+        {!collapsed && (
+          <div className="mt-3 truncate border-t border-white/10 pt-2.5 text-xs font-medium text-slate-300" title={organizationName}>
+            {organizationName || 'Organization'}
           </div>
         )}
       </div>
