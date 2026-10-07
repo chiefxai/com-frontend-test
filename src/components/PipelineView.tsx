@@ -163,13 +163,14 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
       return;
     }
     setAdvancingId(lead.originalLeadId);
-    setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: 'Converted', pipelineStage: clientStageKey } : l)));
     if (domainRecords && setDomainRecords) {
       setDomainRecords((records) => records.map((record) =>
         record.id === lead.originalLeadId
           ? { ...record, stageKey: clientStageKey, values: { ...record.values, status: 'Converted' } }
           : record
       ));
+    } else {
+      setLeads(leads.map((l) => (l.id === lead.originalLeadId ? { ...l, status: 'Converted', pipelineStage: clientStageKey } : l)));
     }
     setSelectedLead((cur) => (cur && cur.originalLeadId === lead.originalLeadId ? { ...cur, status: 'Converted', pipelineStage: 'client' } : cur));
     setTimeout(() => setAdvancingId(null), 400);
