@@ -232,6 +232,14 @@ export default function App() {
   const [orgSettings, setOrgSettings] = useState<OrganizationSettings>(() =>
     loadFromStorage<OrganizationSettings>('chiefx_org', EMPTY_ORG_SETTINGS)
   );
+  const [workspaces, setWorkspaces] = useState<Array<{
+    orgId: string;
+    role: string;
+    organization: { id: string; name: string; workspaceName: string; industry?: string; status?: string };
+  }>>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
+    try { return localStorage.getItem('chiefx_active_workspace_id') || ''; } catch { return ''; }
+  });
   const [dialerTasks, setDialerTasks] = useState<any[]>(() =>
     loadFromStorage<any[]>('chiefx_dialer_tasks', [])
   );
@@ -471,7 +479,24 @@ export default function App() {
     setDbRole('');
     fetchUserFlags();
     setHasLoaded(false);
-    refreshData();
+
+    apiFetch('/api/auth/workspaces')
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Workspace list failed: ${res.status}`);
+        const rows = await res.json();
+        if (!Array.isArray(rows)) throw new Error('Invalid workspace list');
+        setWorkspaces(rows);
+        const stored = localStorage.getItem('chiefx_active_workspace_id');
+        const selected = rows.some((row: any) => row.orgId === stored)
+          ? stored
+          : (rows[0]?.orgId || '');
+        if (selected) {
+          localStorage.setItem('chiefx_active_workspace_id', selected);
+          setActiveWorkspaceId(selected);
+        }
+        return refreshData();
+      })
+      .catch(() => refreshData());
   // kcUser?.id, not the object — see the comment on the effect above.
   }, [kcUser?.id]);
 
@@ -922,6 +947,13 @@ export default function App() {
         industry={orgSettings.industry}
         businessType={orgSettings.businessType}
         industryProfile={effectiveIndustryProfile}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId || orgSettings.id}
+        onWorkspaceSelect={(orgId) => {
+          localStorage.setItem('chiefx_active_workspace_id', orgId);
+          setActiveWorkspaceId(orgId);
+          window.location.reload();
+        }}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}
