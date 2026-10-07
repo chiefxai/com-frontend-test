@@ -35,13 +35,6 @@ interface ObjectField {
   required?: boolean;
 }
 
-function firstDefined(record: ObjectRecord, keys: string[]): string {
-  for (const key of keys) {
-    if (record[key]) return String(record[key]);
-  }
-  return '';
-}
-
 export function recordToLead(record: ObjectRecord, stages: ObjectStage[], objectKey = 'primary'): Lead {
   const stage = stages.find((s) => s.id === record.stageId);
   return domainRecordToLegacyLead(
