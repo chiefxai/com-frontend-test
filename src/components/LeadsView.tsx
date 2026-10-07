@@ -118,7 +118,7 @@ function campaignLeadRows(leads: Lead[], dialerTasks: CampaignTask[], leadStageK
 
 export default function LeadsView({ leads, setLeads, dialerTasks = [], industryProfile, domainRecords }: LeadsViewProps) {
   const viewLeads = React.useMemo(
-    () => domainRecords?.length ? domainRecordsToLeads(domainRecords, (industryProfile?.pipeline.stages || []).map(s => ({ id: s.key, key: s.key, label: s.label }))) : leads,
+    () => domainRecords ? domainRecordsToLeads(domainRecords, (industryProfile?.pipeline.stages || []).map(s => ({ id: s.key, key: s.key, label: s.label }))) : leads,
     [domainRecords, industryProfile, leads],
   );
   const navigate = useNavigate();
