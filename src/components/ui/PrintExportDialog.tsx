@@ -235,6 +235,9 @@ export function PrintExportDialog({
     clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
       .forEach(node => node.remove());
     clone.removeAttribute('id');
+    // Use the same clean capture root as PDF generation. The live class adds
+    // browser-print zoom (0.727) and was shrinking preview measurements only.
+    clone.classList.remove('chiefvoice-print-content');
     clone.classList.toggle('dark', settings.theme === 'dark');
     clone.setAttribute('data-theme', settings.theme);
     Object.assign(clone.style, EXPORT_THEME_VARS[settings.theme]);
@@ -300,6 +303,33 @@ export function PrintExportDialog({
         });
       });
 
+      // Store the same resolved widget styles that PDF rendering uses. The
+      // preview lives outside the dashboard shell, so relying only on its
+      // Tailwind classes can lose inherited theme tokens and nested styles.
+      const inlineStyles = (element: Element) => {
+        const computed = window.getComputedStyle(element);
+        const style = (element as HTMLElement | SVGElement).style;
+        for (let index = 0; index < computed.length; index++) {
+          const property = computed.item(index);
+          const value = computed.getPropertyValue(property);
+          if (value) style.setProperty(property, value, 'important');
+        }
+        const children = Array.from(element.children);
+        children.forEach(inlineStyles);
+
+        for (const pseudo of ['::before', '::after'] as const) {
+          const pseudoStyle = window.getComputedStyle(element, pseudo);
+          const content = pseudoStyle.content;
+          if (!content || content === 'none' || content === 'normal') continue;
+          const marker = document.createElement('span');
+          marker.textContent = content.replace(/^['"]|['"]$/g, '');
+          marker.style.cssText = 'display:inline-block!important;box-sizing:border-box!important;font:inherit!important;color:inherit!important;background:inherit!important;border:inherit!important;position:static!important;';
+          if (pseudo === '::before') element.insertBefore(marker, element.firstChild);
+          else element.appendChild(marker);
+        }
+      };
+      inlineStyles(clone);
+
       const children = Array.from(clone.children) as HTMLElement[];
       const rowsMap = new Map<number, HTMLElement[]>();
       children.forEach((element) => {
@@ -329,8 +359,9 @@ export function PrintExportDialog({
       const pageH = settings.orientation === 'landscape' ? paper.height : paper.width;
       const usableW = pageW - 20;
       const usableH = pageH - 20;
-      const desktopGridW = 1440 - (2 * 37.795275591);
-      const desktopUsableH = (usableH / usableW) * desktopGridW;
+      // downloadPdf paginates the full 1440px source canvas before cropping
+      // its 10mm page margins, so preview must use that same source height.
+      const desktopUsableH = (usableH / usableW) * 1440;
       const rowGap = 22.6771653546;
 
       const result: ExportPage[] = [];
@@ -373,11 +404,11 @@ export function PrintExportDialog({
   const previewWidth = pageW * mmToPx * previewScale;
   const previewHeight = pageH * mmToPx * previewScale;
   const desktopWidth = 1440;
-  const desktopGridWidth = desktopWidth - (2 * 37.795275591);
   const usableWidthPx = (pageW - 20) * mmToPx;
-  const gridScale = usableWidthPx / desktopGridWidth;
+  // The PDF raster scales the full 1440px canvas into the page's printable
+  // width. Use that same ratio here so preview dimensions match the download.
+  const gridScale = usableWidthPx / desktopWidth;
   const renderScale = gridScale * previewScale;
-  const desktopPageHeight = ((pageH - 20) / (pageW - 20)) * desktopGridWidth + (2 * 37.795275591);
   const previewPaperStyle = {
     width: `${previewWidth}px`,
     height: `${previewHeight}px`,
@@ -1002,18 +1033,21 @@ export function PrintExportDialog({
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+                    <section className={`${previewTheme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)', color: 'var(--text-primary)', position: 'relative' }}>
                       <div
                         style={{
+                          position: 'absolute',
+                          left: 10 * mmToPx * previewScale,
+                          top: 10 * mmToPx * previewScale,
                           width: desktopWidth,
-                          height: desktopPageHeight,
-                          padding: 37.795275591,
+                          height: 'auto',
+                          padding: 0,
                           boxSizing: 'border-box',
                           display: 'grid',
                           gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
                           gridAutoFlow: 'row',
                           gridAutoRows: 'max-content',
-                          alignItems: 'start',
+                          alignItems: 'stretch',
                           gap: 22.6771653546,
                           transform: `scale(${renderScale})`,
                           transformOrigin: 'top left',
