@@ -33,6 +33,23 @@ const PAPER: Record<PaperSize, { width: number; height: number; css: string }> =
   Legal: { width: 355.6, height: 215.9, css: 'Legal' },
 };
 
+const EXPORT_THEME_VARS: Record<ExportTheme, React.CSSProperties> = {
+  light: {
+    '--bg-base': '#F7F9FC', '--bg-surface': '#FFFFFF', '--bg-subtle': '#F1F4F9',
+    '--border': '#E2E7F0', '--border-subtle': '#F1F4F9', '--text-primary': '#101A3A',
+    '--text-secondary': '#475569', '--text-muted': '#64748B', '--panel-bg': '#FFFFFF',
+    '--panel-surface': '#F1F4F9', '--panel-border': '#E2E7F0', '--panel-text': '#101A3A',
+    '--panel-muted': '#475569', colorScheme: 'light',
+  } as React.CSSProperties,
+  dark: {
+    '--bg-base': '#080D1C', '--bg-surface': '#10172A', '--bg-subtle': '#151E32',
+    '--border': '#263149', '--border-subtle': '#151E32', '--text-primary': '#F7F9FC',
+    '--text-secondary': '#A7B0C2', '--text-muted': '#71809B', '--panel-bg': '#080D1C',
+    '--panel-surface': '#10172A', '--panel-border': '#263149', '--panel-text': '#F7F9FC',
+    '--panel-muted': '#71809B', colorScheme: 'dark',
+  } as React.CSSProperties,
+};
+
 interface ExportRowItem { html: string; span: number; }
 interface ExportPage { rows: ExportRowItem[][]; }
 
@@ -170,6 +187,9 @@ export function PrintExportDialog({
     clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
       .forEach(node => node.remove());
     clone.removeAttribute('id');
+    clone.classList.toggle('dark', settings.format === 'pdf' && settings.theme === 'dark');
+    clone.setAttribute('data-theme', settings.format === 'pdf' ? settings.theme : 'light');
+    Object.assign(clone.style, EXPORT_THEME_VARS[settings.format === 'pdf' ? settings.theme : 'light']);
     clone.style.cssText = [
       'display:grid',
       'grid-template-columns:repeat(12,minmax(0,1fr))',
@@ -283,7 +303,7 @@ export function PrintExportDialog({
       window.cancelAnimationFrame(frame);
       measurementHost.remove();
     };
-  }, [open, contentRef, settings.paperSize, settings.orientation]);
+  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme]);
 
   const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
@@ -842,11 +862,11 @@ export function PrintExportDialog({
                 {settings.paperSize} · {settings.orientation} · {pages.length + 1} page{pages.length === 0 ? '' : 's'} · 12-column grid
               </div>
 
-              <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
-                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: '#f8faff', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40 }}>
+      <section className={`${settings.theme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[settings.theme], backgroundColor: 'var(--bg-base)' }}>
+                <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
                   <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
-                  <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'#111827' }}>{title}</h1>
-                  <p style={{ textAlign:'center', fontSize:14, color:'#4b5563', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
+                  <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
+                  <p style={{ textAlign:'center', fontSize:14, color:'var(--text-secondary)', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
                 </div>
               </section>
 
@@ -855,7 +875,7 @@ export function PrintExportDialog({
                 return (
                   <React.Fragment key={pageIndex}>
                     <div className="h-8" />
-                    <section className="bg-white shadow-xl overflow-hidden" style={previewPaperStyle}>
+                    <section className={`${settings.theme === 'dark' ? 'dark' : ''} shadow-xl overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[settings.theme], backgroundColor: 'var(--bg-base)' }}>
                       <div
                         style={{
                           width: desktopWidth,
@@ -870,7 +890,8 @@ export function PrintExportDialog({
                           gap: 22.6771653546,
                           transform: `scale(${renderScale})`,
                           transformOrigin: 'top left',
-                          background: '#fff',
+                          background: 'var(--bg-base)',
+                          color: 'var(--text-primary)',
                         }}
                         dangerouslySetInnerHTML={{ __html: pageHtml }}
                       />
