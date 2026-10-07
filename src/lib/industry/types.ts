@@ -38,6 +38,7 @@ export interface IndustryProfile {
 }
 
 export interface RemoteIndustryConfig {
+  schemaVersion?: number;
   industry: IndustryKey;
   businessType?: BusinessTypeKey | null;
   tagline?: string;
