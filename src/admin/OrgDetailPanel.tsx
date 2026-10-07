@@ -287,7 +287,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
           <div className="flex items-center justify-center h-64 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
           <>
-            <div className="bg-white border-b border-slate-200 p-6 sticky top-0 z-10">
+            <div className="sticky -top-5 z-30 border-b border-slate-200 p-6" style={{ background: 'var(--bg-surface)' }}>
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
