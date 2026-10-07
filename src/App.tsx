@@ -23,6 +23,7 @@ import {
 } from './types';
 import { useAuth } from './features/auth/AuthProvider';
 import { resolveIndustryContext } from './lib/industry';
+import type { DomainRecord } from './lib/industry';
 import type { RemoteIndustryConfig } from './lib/industry/types';
 
 // Placeholder shown only until the real org settings arrive from the backend.
@@ -272,6 +273,9 @@ export default function App() {
   // so the Voice Simulator (and anything else reading `leads`) has real
   // data to work with for every industry, not just lending.
   const [primaryObject, setPrimaryObject] = useState<{ key: string; stages: { id: string; key: string; label: string }[]; fields: { id: string; key: string; label: string; type: string; required?: boolean }[] } | null>(null);
+  // Canonical industry-object snapshot. `leads` remains a compatibility projection
+  // for lending-era views; new industry UI should consume these records directly.
+  const [domainRecords, setDomainRecords] = useState<DomainRecord[]>([]);
 
   const [hasLoaded, setHasLoaded] = useState<boolean>(false);
   // Server is the source of truth for industry semantics. The local registry
@@ -400,7 +404,18 @@ export default function App() {
           const primary = Array.isArray(objects) ? objects[0] : null;
           if (primary) {
             const records = await apiFetch(`/api/objects/${primary.key}/records`).then(r => r.json());
-            setLeads(Array.isArray(records) ? records.map((r: any) => recordToLead(r, primary.stages)) : []);
+            const canonicalRecords: DomainRecord[] = Array.isArray(records)
+              ? records.map((r: any) => ({
+                  id: String(r.id),
+                  objectKey: primary.key,
+                  stageKey: r.stageKey ?? primary.stages?.find((s: any) => s.id === r.stageId)?.key ?? null,
+                  values: { ...r },
+                  createdAt: r.createdAt,
+                  updatedAt: r.updatedAt,
+                }))
+              : [];
+            setDomainRecords(canonicalRecords);
+            setLeads(canonicalRecords.map((record) => recordToLead({ ...record.values, id: record.id, stageId: primary.stages?.find((s: any) => s.key === record.stageKey)?.id, createdAt: record.createdAt, updatedAt: record.updatedAt }, primary.stages, primary.key)));
             setPrimaryObject({ key: primary.key, stages: primary.stages, fields: primary.fields || [] });
           }
         } catch (err) {
@@ -408,6 +423,7 @@ export default function App() {
         }
       } else {
         setPrimaryObject(null);
+        setDomainRecords([]);
       }
     } catch (err) {
       console.warn("Failed to fetch backend data, using local fallbacks:", err);
@@ -443,7 +459,7 @@ export default function App() {
         'chiefx_feature_flags',
       ];
       CRM_KEYS.forEach(k => localStorage.removeItem(k));
-      setLeads([]); setWorkflows([]); setCallLogs([]);
+      setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
       setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
       setOrgSettings(EMPTY_ORG_SETTINGS); setDialerTasks([]); setQuestionFlows([]);
     }
