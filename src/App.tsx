@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch, getAuthToken, getApiBase } from './lib/api';
 import { COST_PER_MINUTE_INR_FALLBACK as COST_PER_MINUTE_INR } from './lib/pricing';
-import { loadFromStorage, saveToStorage } from './lib/storage';
+import { loadFromStorage, saveToStorage, setStorageScope } from './lib/storage';
 import { recordToLead } from './lib/objectContacts';
 import { RefreshProvider } from './lib/RefreshContext';
 import { PageHeaderProvider } from './lib/PageHeaderContext';
@@ -113,26 +113,6 @@ export default function App() {
   // 'checking' → spinner, 'ok' → show app, 'denied' → no-access screen.
   const [membershipStatus, setMembershipStatus] = useState<'checking' | 'ok' | 'denied'>('checking');
   const [membershipError, setMembershipError] = useState<string>('');
-  useEffect(() => {
-    if (!kcUser) { setMembershipStatus('checking'); return; }
-    setMembershipStatus('checking');
-    // Check org membership first; if denied, check platform-admin access as fallback.
-    apiFetch('/api/auth/me')
-      .then(async r => {
-        if (r.ok) { setMembershipStatus('ok'); return; }
-        // Not an org member — check if they're a platform admin
-        return apiFetch('/api/platform/whoami').then(async r2 => {
-          if (r2.ok) { setMembershipStatus('ok'); return; }
-          const body = await r.json().catch(() => ({}));
-          setMembershipError(body.error || 'Your account is not registered in this platform.');
-          setMembershipStatus('denied');
-        });
-      })
-      .catch(() => {
-        setMembershipError('Could not reach the server. Please try again later.');
-        setMembershipStatus('denied');
-      });
-  }, [kcUser?.id]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -461,6 +441,7 @@ export default function App() {
   useEffect(() => {
     if (!kcUser) return;
 
+    setStorageScope(null, null);
     // Clear all CRM localStorage when the logged-in user changes so a new
     // org admin never sees data that belonged to a previous browser session.
     const lastUserId = localStorage.getItem('chiefx_last_user_id');
@@ -480,26 +461,50 @@ export default function App() {
 
     resetUserFlags();
     setDbRole('');
-    fetchUserFlags();
     setHasLoaded(false);
+    setMembershipStatus('checking');
+    let cancelled = false;
 
     apiFetch('/api/auth/workspaces')
       .then(async (res) => {
         if (!res.ok) throw new Error(`Workspace list failed: ${res.status}`);
         const rows = await res.json();
         if (!Array.isArray(rows)) throw new Error('Invalid workspace list');
+        if (cancelled) return;
         setWorkspaces(rows);
         const stored = localStorage.getItem('chiefx_active_workspace_id');
         const selected = rows.some((row: any) => row.orgId === stored)
           ? stored
           : (rows[0]?.orgId || '');
+        if (!selected) localStorage.removeItem('chiefx_active_workspace_id');
         if (selected) {
           localStorage.setItem('chiefx_active_workspace_id', selected);
           setActiveWorkspaceId(selected);
         }
-        return refreshData();
+        // Validate selection before loading permissions or operational data.
+        // Platform operators without organizations can still enter the admin UI.
+        const identity = await apiFetch(selected ? '/api/auth/me' : '/api/platform/whoami');
+        if (!identity.ok) {
+          const body = await identity.json().catch(() => ({}));
+          throw new Error(body.error || 'No accessible workspace was found.');
+        }
+        if (cancelled) return;
+        setStorageScope(kcUser.id, selected);
+        setLeads([]); setDomainRecords([]); setWorkflows([]); setCallLogs([]);
+        setLoans([]); setVirtualNumbers([]); setTeamMembers([]);
+        setOrgSettings(EMPTY_ORG_SETTINGS); setDialerTasks([]); setQuestionFlows([]);
+        await fetchUserFlags();
+        if (cancelled) return;
+        setMembershipStatus('ok');
+        if (selected) await refreshData();
       })
-      .catch(() => refreshData());
+      .catch((error) => {
+        if (cancelled) return;
+        resetUserFlags();
+        setMembershipError(error.message || 'Could not load your workspaces. Please retry.');
+        setMembershipStatus('denied');
+      });
+    return () => { cancelled = true; setStorageScope(null, null); resetUserFlags(); };
   // kcUser?.id, not the object — see the comment on the effect above.
   }, [kcUser?.id]);
 

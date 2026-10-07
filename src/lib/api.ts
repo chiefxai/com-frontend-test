@@ -61,7 +61,18 @@ export async function createVoiceSessionWebSocketUrl(): Promise<string> {
 // ── apiFetch ─────────────────────────────────────────────────────────────────
 
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  // Snapshot the scope before token refresh: a delayed request must never be
+  // redirected into the workspace selected while it was waiting.
+  let selectedOrgId: string | null = null;
+  try { selectedOrgId = localStorage.getItem('chiefx_active_workspace_id'); } catch { /* unavailable */ }
   const token = await getSessionAuthToken();
+  try {
+    if (selectedOrgId !== localStorage.getItem('chiefx_active_workspace_id')) {
+      throw new DOMException('Workspace changed during request', 'AbortError');
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+  }
 
   // Never send authenticated API requests without a token. This is especially
   // important for /api/platform/* because the backend intentionally rejects
@@ -77,7 +88,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // user can switch organizations without changing identity-provider state.
   // The backend validates this ID against the user's memberships.
   try {
-    const workspaceId = localStorage.getItem('chiefx_active_workspace_id');
+    const workspaceId = selectedOrgId;
     if (workspaceId && !headers.has('X-Organization-Id')) {
       headers.set('X-Organization-Id', workspaceId);
     }
@@ -100,5 +111,12 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // API response (for example, an expired/invalid token or a protected
   // endpoint denial). Redirecting to Keycloak from the fetch layer can cause
   // a reload -> login -> reload loop, especially on /admin.
+  try {
+    if (selectedOrgId !== localStorage.getItem('chiefx_active_workspace_id')) {
+      throw new DOMException('Workspace changed during request', 'AbortError');
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+  }
   return res;
 }
