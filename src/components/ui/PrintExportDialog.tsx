@@ -8,12 +8,14 @@ export type ExportFormat = 'pdf' | 'doc';
 export type PaperSize = 'A4' | 'A3' | 'Letter' | 'Legal';
 export type Orientation = 'landscape' | 'portrait';
 export type ExportTheme = 'light' | 'dark';
+export type ExportContentMode = 'viewport' | 'full';
 
 export interface ExportSettings {
   format: ExportFormat;
   paperSize: PaperSize;
   orientation: Orientation;
   theme: ExportTheme;
+  contentMode: ExportContentMode;
 }
 
 interface PrintExportDialogProps {
@@ -174,6 +176,7 @@ export function PrintExportDialog({
     paperSize: 'A4',
     orientation: 'landscape',
     theme: 'light',
+    contentMode: 'viewport',
   });
   const [pages, setPages] = useState<ExportPage[]>([]);
 
@@ -184,6 +187,19 @@ export function PrintExportDialog({
     }
 
     const clone = contentRef.current.cloneNode(true) as HTMLElement;
+    const sourceScrollables = contentRef.current.querySelectorAll<HTMLElement>('[data-widget-scroll]');
+    const clonedScrollables = clone.querySelectorAll<HTMLElement>('[data-widget-scroll]');
+    sourceScrollables.forEach((sourceElement, index) => {
+      const clonedElement = clonedScrollables[index];
+      if (!clonedElement) return;
+      clonedElement.scrollTop = sourceElement.scrollTop;
+      clonedElement.scrollLeft = sourceElement.scrollLeft;
+      if (settings.contentMode === 'full') {
+        clonedElement.style.maxHeight = 'none';
+        clonedElement.style.height = 'auto';
+        clonedElement.style.overflow = 'visible';
+      }
+    });
     clone.querySelectorAll('.chiefvoice-print-header, .chiefvoice-print-filter, .chiefvoice-print-page-break')
       .forEach(node => node.remove());
     clone.removeAttribute('id');
@@ -226,6 +242,8 @@ export function PrintExportDialog({
     });
 
     const measurementHost = document.createElement('div');
+    measurementHost.classList.toggle('dark', settings.format === 'pdf' && settings.theme === 'dark');
+    Object.assign(measurementHost.style, EXPORT_THEME_VARS[settings.format === 'pdf' ? settings.theme : 'light']);
     measurementHost.style.cssText = [
       'position:absolute',
       'left:-100000px',
@@ -240,6 +258,16 @@ export function PrintExportDialog({
     document.body.appendChild(measurementHost);
 
     const run = () => {
+      if (settings.contentMode === 'viewport') {
+        clone.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(scrollViewport => {
+          const bounds = scrollViewport.getBoundingClientRect();
+          scrollViewport.querySelectorAll<HTMLElement>('tr').forEach(row => {
+            const rowBounds = row.getBoundingClientRect();
+            if (rowBounds.bottom <= bounds.top || rowBounds.top >= bounds.bottom) row.remove();
+          });
+        });
+      }
+
       const children = Array.from(clone.children) as HTMLElement[];
       const rowsMap = new Map<number, HTMLElement[]>();
       children.forEach((element) => {
@@ -303,7 +331,7 @@ export function PrintExportDialog({
       window.cancelAnimationFrame(frame);
       measurementHost.remove();
     };
-  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme]);
+  }, [open, contentRef, settings.paperSize, settings.orientation, settings.format, settings.theme, settings.contentMode]);
 
   const paper = PAPER[settings.paperSize];
   const pageW = settings.orientation === 'landscape' ? paper.width : paper.height;
@@ -426,12 +454,18 @@ export function PrintExportDialog({
       captureSource.style.overflow = 'visible';
       captureSource.style.alignContent = 'start';
 
-      // Expand widget-local scroll areas without changing their visual
-      // styling. Their normal header/body/card CSS remains untouched.
-      captureSource.querySelectorAll<HTMLElement>('[data-widget-scroll]').forEach(element => {
-        element.style.maxHeight = 'none';
-        element.style.height = 'auto';
-        element.style.overflow = 'visible';
+      const sourceScrollables = source.querySelectorAll<HTMLElement>('[data-widget-scroll]');
+      const clonedScrollables = captureSource.querySelectorAll<HTMLElement>('[data-widget-scroll]');
+      sourceScrollables.forEach((sourceElement, index) => {
+        const clonedElement = clonedScrollables[index];
+        if (!clonedElement) return;
+        clonedElement.scrollTop = sourceElement.scrollTop;
+        clonedElement.scrollLeft = sourceElement.scrollLeft;
+        if (settings.contentMode === 'full') {
+          clonedElement.style.maxHeight = 'none';
+          clonedElement.style.height = 'auto';
+          clonedElement.style.overflow = 'visible';
+        }
       });
 
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -528,6 +562,10 @@ export function PrintExportDialog({
 
           const fromChildren = Array.from(from.children);
           const toChildren = Array.from(to.children);
+          if (from instanceof HTMLElement && to instanceof HTMLElement) {
+            to.scrollTop = from.scrollTop;
+            to.scrollLeft = from.scrollLeft;
+          }
           for (let i = 0; i < Math.min(fromChildren.length, toChildren.length); i++) {
             copy(fromChildren[i], toChildren[i]);
           }
@@ -833,6 +871,24 @@ export function PrintExportDialog({
               </div>
             </div>
 
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Widget content</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  ['viewport', 'Current view'],
+                  ['full', 'Full content'],
+                ] as [ExportContentMode, string][]).map(([contentMode, label]) => (
+                  <button key={contentMode} onClick={() => setSettings(s => ({ ...s, contentMode }))}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${settings.contentMode === contentMode ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-[var(--border)] text-[var(--text-secondary)]'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                Current view exports only the rows visible in each scrollable widget. Scroll the widget before opening export to choose which rows appear.
+              </p>
+            </div>
+
             {settings.format === 'pdf' && (
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">PDF theme</p>
@@ -848,7 +904,9 @@ export function PrintExportDialog({
             )}
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-muted)] leading-relaxed">
-              Each export page is laid out independently. Width always follows the dashboard's 12-column grid; whole rows move to the next page when the available paper height is exhausted.
+              {settings.contentMode === 'viewport'
+                ? 'The preview and export use each widget’s current scroll position and visible height.'
+                : 'Scrollable widgets expand to include all rows. Dashboard rows move to the next page when paper height is exhausted.'}
             </div>
 
             <button onClick={() => settings.format === 'pdf' ? void downloadPdf() : downloadDoc()}
