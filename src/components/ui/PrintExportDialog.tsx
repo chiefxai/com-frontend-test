@@ -311,8 +311,9 @@ export function PrintExportDialog({
   }).join('');
 
   const buildWordPages = () => {
+    const pageBreak = '<p class="chiefvoice-word-page-break" style="page-break-before:always;break-before:page;mso-break-type:page-break;margin:0;height:1px;font-size:1pt;line-height:1pt">&nbsp;</p>';
     const cover = `
-      <section class="chiefvoice-export-page chiefvoice-export-cover" style="page-break-after:always">
+      <section class="chiefvoice-export-page chiefvoice-export-cover">
         <div class="chiefvoice-export-cover-inner">
           <img src="${chiefVoiceLogo}" alt="ChiefVoice">
           <h1>${title}</h1>
@@ -320,8 +321,9 @@ export function PrintExportDialog({
           ${filters ? `<p>Additional filters: ${filters}</p>` : ''}
         </div>
       </section>`;
-    const content = pages.map((page, index) => `
-      <section class="chiefvoice-export-page" style="page-break-after:${index === pages.length - 1 ? 'auto' : 'always'}">
+    const content = pages.map(page => `
+      ${pageBreak}
+      <section class="chiefvoice-export-page">
         <table role="presentation" style="width:100%;table-layout:fixed;border-collapse:collapse">
           <tbody>${buildWordRows(page.rows)}</tbody>
         </table>
@@ -735,8 +737,8 @@ export function PrintExportDialog({
         ${collectStyles()}
         @page { size:${paper.css} ${settings.orientation}; margin:0; }
         html,body{margin:0;padding:0;background:#fff;color:#111827}
-        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;page-break-after:always;break-after:page;overflow:hidden}
-        .chiefvoice-export-page:last-child{page-break-after:auto;break-after:auto}
+        .chiefvoice-export-page{width:${pageW}mm;height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden}
+        .chiefvoice-word-page-break{page-break-before:always;break-before:page;mso-break-type:page-break}
         .chiefvoice-export-page table{width:100%;table-layout:fixed;border-collapse:collapse}
         .chiefvoice-export-page tr,.chiefvoice-export-page td{page-break-inside:avoid;break-inside:avoid}
         .chiefvoice-export-page > *{max-width:100%}
