@@ -392,9 +392,9 @@ export function PrintExportDialog({
   const buildWordPages = (dashboardScale: number, headerScale: number, contentWidth: number) => {
     const rows = pages.flatMap(page => page.rows);
     return `<main class="chiefvoice-word-document">
-      <header class="chiefvoice-word-header" style="width:${contentWidth}px;zoom:${headerScale};margin:0 auto 12px;box-sizing:border-box;padding:12px 0 16px;border-bottom:1px solid var(--border);text-align:center;page-break-after:avoid;font-family:Arial,sans-serif">
-        <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="display:block;width:88px;height:88px;object-fit:contain;margin:0 auto 14px">
-        <h1 style="font-size:28px;line-height:1.2;margin:0 0 8px;color:var(--text-primary)">${title}</h1><p style="font-size:14px;color:var(--text-secondary);margin:0">Filter applied: ${formatRange(fromDate, toDate)}</p>${filters ? `<p style="font-size:14px;color:var(--text-secondary);margin:4px 0 0">Additional filters: ${filters}</p>` : ''}
+      <header class="chiefvoice-word-header" style="width:${contentWidth}px;zoom:${headerScale};margin:0 auto 16px;box-sizing:border-box;padding:20px 0 24px;border-bottom:1px solid var(--border);text-align:center;page-break-after:avoid;font-family:Arial,sans-serif">
+        <img src="${chiefVoiceLogo}" alt="ChiefVoice" style="display:block;width:104px;height:104px;object-fit:contain;margin:0 auto 18px">
+        <h1 style="font-size:30px;line-height:1.2;margin:0 0 10px;color:var(--text-primary)">${title}</h1><p style="font-size:14px;color:var(--text-secondary);margin:0">Filter applied: ${formatRange(fromDate, toDate)}</p>${filters ? `<p style="font-size:14px;color:var(--text-secondary);margin:6px 0 0">Additional filters: ${filters}</p>` : ''}
       </header>
       <div class="chiefvoice-word-dashboard" style="width:1440px;zoom:${dashboardScale};margin:0 auto;background:var(--bg-base);color:var(--text-primary);padding:37.795px;box-sizing:border-box">
         <table role="presentation" class="chiefvoice-word-grid" style="width:100%;table-layout:fixed;border-collapse:collapse"><tbody>${buildWordRows(rows)}</tbody></table>
@@ -861,6 +861,14 @@ export function PrintExportDialog({
     styleHost.style.cssText = `position:fixed;left:-100000px;top:0;width:1440px;visibility:hidden;pointer-events:none;${themeStyle}`;
     styleHost.innerHTML = buildWordPages(((pageW - 20) * mmToPx) / desktopWidth, 1, (pageW - 20) * mmToPx);
     document.body.appendChild(styleHost);
+    // Theme utility selectors are rooted at <html>. Match the requested
+    // export theme while resolving the detached export styles, then restore
+    // the app theme before yielding control to the browser.
+    const root = document.documentElement;
+    const hadDarkRoot = root.classList.contains('dark');
+    const originalRootTheme = root.getAttribute('data-theme');
+    root.classList.toggle('dark', settings.theme === 'dark');
+    root.setAttribute('data-theme', settings.theme);
     const inlineWordStyles = (element: Element) => {
       const computed = window.getComputedStyle(element);
       const style = (element as HTMLElement | SVGElement).style;
@@ -871,8 +879,15 @@ export function PrintExportDialog({
       }
       Array.from(element.children).forEach(inlineWordStyles);
     };
-    inlineWordStyles(styleHost);
-    const wordContent = styleHost.innerHTML;
+    let wordContent: string;
+    try {
+      inlineWordStyles(styleHost);
+      wordContent = styleHost.innerHTML;
+    } finally {
+      root.classList.toggle('dark', hadDarkRoot);
+      if (originalRootTheme === null) root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', originalRootTheme);
+    }
     styleHost.remove();
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
       <style>
