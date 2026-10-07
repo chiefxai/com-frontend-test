@@ -458,24 +458,64 @@ export function PrintExportDialog({
     // path rebuilt a second off-screen dashboard, so its CSS/theme resolution
     // could diverge from the preview. The progress overlay is a sibling and is
     // not part of these page nodes.
-    for (const page of previewPages) {
-      const rendered = await html2canvas(page, {
-        backgroundColor: background,
-        scale: captureScale,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        width: page.clientWidth,
-        height: page.clientHeight,
-        windowWidth: Math.max(window.innerWidth, page.clientWidth),
-        windowHeight: Math.max(window.innerHeight, page.clientHeight),
-        scrollX: 0,
-        scrollY: 0,
-        imageSmoothing: true,
-        imageSmoothingQuality: 'high',
-        foreignObjectRendering: false,
-        normalizeDom: false,
-      });
+    for (const [index, page] of previewPages.entries()) {
+      const captureKey = `preview-page-${index}-${Date.now()}`;
+      page.dataset.exportCaptureKey = captureKey;
+      let rendered: HTMLCanvasElement;
+      try {
+        rendered = await html2canvas(page, {
+          backgroundColor: background,
+          scale: captureScale,
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          width: page.clientWidth,
+          height: page.clientHeight,
+          windowWidth: Math.max(window.innerWidth, page.clientWidth),
+          windowHeight: Math.max(window.innerHeight, page.clientHeight),
+          scrollX: 0,
+          scrollY: 0,
+          imageSmoothing: true,
+          imageSmoothingQuality: 'high',
+          foreignObjectRendering: false,
+          normalizeDom: false,
+          onclone: (doc) => {
+            // html2canvas may drop application-level utility styles while it
+            // clones the document. Freeze computed styles on this page only,
+            // after setting the requested theme in the cloned document.
+            doc.documentElement.classList.toggle('dark', settings.theme === 'dark');
+            doc.documentElement.setAttribute('data-theme', settings.theme);
+            doc.body.classList.toggle('dark', settings.theme === 'dark');
+            const clonedPage = doc.querySelector(`[data-export-capture-key="${captureKey}"]`);
+            if (!clonedPage) return;
+
+            const copyStyles = (source: Element, target: Element) => {
+              // Resolve from the live preview node. html2canvas's cloned
+              // document can lose utility stylesheets, which collapses flex
+              // and grid text (the overlap visible in the supplied PDF).
+              const computed = window.getComputedStyle(source);
+              const targetStyle = (target as HTMLElement | SVGElement).style;
+              for (let propertyIndex = 0; propertyIndex < computed.length; propertyIndex++) {
+                const property = computed.item(propertyIndex);
+                const value = computed.getPropertyValue(property);
+                if (value) targetStyle.setProperty(property, value, 'important');
+              }
+              if (source instanceof HTMLElement && target instanceof HTMLElement) {
+                target.scrollTop = source.scrollTop;
+                target.scrollLeft = source.scrollLeft;
+              }
+              const sourceChildren = Array.from(source.children);
+              const targetChildren = Array.from(target.children);
+              for (let childIndex = 0; childIndex < Math.min(sourceChildren.length, targetChildren.length); childIndex++) {
+                copyStyles(sourceChildren[childIndex], targetChildren[childIndex]);
+              }
+            };
+            copyStyles(page, clonedPage);
+          },
+        });
+      } finally {
+        delete page.dataset.exportCaptureKey;
+      }
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width = pageCanvasW;
       pageCanvas.height = pageCanvasH;
