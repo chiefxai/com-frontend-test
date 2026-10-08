@@ -46,9 +46,9 @@ export default function SettingsPage() {
   if (loading) return <div className="flex items-center justify-center py-16 text-[var(--text-muted)]"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading features…</div>;
 
   const renderFlags = (items: FeatureFlag[]) => (
-    <div className="divide-y divide-[var(--border)]">
+    <div className="grid gap-3 md:grid-cols-2">
       {items.map(flag => (
-        <div key={flag.key} className="flex items-center justify-between gap-4 rounded-xl px-3 py-4 transition-colors hover:bg-[var(--bg-subtle)]">
+        <div key={flag.key} className="flex min-h-[110px] items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 transition-colors hover:brightness-95">
           <div className="min-w-0 pr-4">
             <div className="flex items-center gap-2 flex-wrap">
               <div className="text-sm font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)]">{flag.label}</div>
@@ -81,7 +81,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]"><Users2 className="h-4 w-4" /> Groups</div>
           <button type="button" onClick={() => setGroupDraft({ key: '', label: '', description: '', featureKeys: [] })} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5" /> New group</button>
         </div>
-        <div className="space-y-2">
+        <div className="grid gap-3 md:grid-cols-2">
           {groups.map(group => (
             <div key={group.key} className="flex items-center justify-between rounded-2xl border border-[var(--border)] dark:border-[var(--border)] px-3 py-3">
               <div><div className="text-sm font-medium text-[var(--text-primary)] dark:text-[var(--text-primary)]">{group.label}</div><div className="text-xs text-[var(--text-muted)]">{group.description || 'No description'} · {group.featureKeys.length} features</div></div>
