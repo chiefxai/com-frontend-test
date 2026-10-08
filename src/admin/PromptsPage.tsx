@@ -288,8 +288,8 @@ export default function PromptsPage() {
       )}
 
       <Widget title="Voice agent master prompts" subtitle="These are the two platform-level templates used when generating voice-agent prompts. Existing agents keep their saved prompt until updated.">
-        <div className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl lg:flex-row">
-          <div className="lg:w-60 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2">
+        <div className="flex min-h-[620px] flex-col overflow-hidden rounded-2xl lg:flex-row">
+          <div className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2">
             {data.voice.map(p => (
               <button key={p.callType} onClick={() => selectVoice(p.callType)}
                 className={`w-full text-left px-3 py-3 rounded-xl text-sm font-medium mb-1 ${activeVoice === p.callType ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
@@ -300,7 +300,7 @@ export default function PromptsPage() {
               </button>
             ))}
           </div>
-          <div className="flex-1 p-5">
+          <div className="min-w-0 flex-1 p-6>
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <div className="text-sm font-semibold text-[var(--text-primary)]">Voice prompt · {activeVoice}</div>
@@ -310,7 +310,7 @@ export default function PromptsPage() {
                 <RotateCcw className="h-3.5 w-3.5" /> Reset
               </button>
             </div>
-            <textarea value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)} className="w-full h-[390px] resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30" />
+            <textarea value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)} className="w-full min-h-[460px] resize-y rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30" />
             <div className="flex items-center justify-end gap-3 mt-3">
               {saved === 'voice' && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3.5 w-3.5" /> Saved</span>}
               <button onClick={saveVoice} disabled={saving === 'voice'} className="flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
@@ -324,7 +324,7 @@ export default function PromptsPage() {
 
 
       <Widget title="Language & dialect prompts" subtitle="Manage language and dialect guidance from the admin panel. New languages and dialects are stored in the platform settings, so Agent Studio can support them without a code deployment.">
-        <div className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl lg:flex-row">
+        <div className="flex min-h-[620px] flex-col overflow-hidden rounded-2xl lg:flex-row">
           <div className="lg:w-56 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2">
             <div className="flex items-center justify-between px-2 py-1 mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Languages</span>
@@ -383,7 +383,7 @@ export default function PromptsPage() {
       </Widget>
 
       <Widget title="System / post-call agent prompts" subtitle="Global defaults for the built-in agents that analyze completed calls. Organization-level overrides still take precedence.">
-        <div className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl lg:flex-row">
+        <div className="flex min-h-[620px] flex-col overflow-hidden rounded-2xl lg:flex-row">
           <div className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2 max-h-[540px] overflow-y-auto">
             {data.system.map(p => (
               <button key={p.id} onClick={() => selectSystem(p.id)}
@@ -394,7 +394,7 @@ export default function PromptsPage() {
               </button>
             ))}
           </div>
-          <div className="flex-1 p-5">
+          <div className="min-w-0 flex-1 p-6>
             {currentSystem && <>
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div>
@@ -406,7 +406,7 @@ export default function PromptsPage() {
                 </button>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)] mb-3"><Sparkles className="h-3.5 w-3.5" /> Runs: {currentSystem.runsOn}</div>
-              <textarea value={systemDraft} onChange={e => setSystemDraft(e.target.value)} className="w-full h-[390px] resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <textarea value={systemDraft} onChange={e => setSystemDraft(e.target.value)} className="w-full min-h-[460px] resize-y rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <div className="flex items-center justify-end gap-3 mt-3">
                 {saved === 'system' && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3.5 w-3.5" /> Saved</span>}
                 <button onClick={saveSystem} disabled={saving === 'system'} className="flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
