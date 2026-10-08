@@ -2095,16 +2095,33 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         <div className="lg:hidden mb-3 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2"><span className="text-xs font-semibold text-[var(--text-primary)]">Campaign workspace</span><button type="button" onClick={() => setIsCampaignNavigatorOpen(true)} className="h-8 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--text-secondary)]">Campaigns</button></div>
         <Widget colSpan={12} showHeader={false} className="!col-span-12 h-full min-h-0 border-0 shadow-none overflow-hidden" bodyClassName="h-full">
           {!selectedTask ? (
-            <EmptyState
-              icon={FileSpreadsheet}
-              heading="No outbound campaigns yet"
-              message="Create a campaign to dial contacts with a call script and track results per run."
-              action={
+            <div className="flex h-full min-h-0 flex-col gap-4">
+              <div className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="flex items-center gap-2 text-lg font-bold uppercase tracking-widest text-[var(--text-primary)]">
+                    <Megaphone className="h-5 w-5 shrink-0 text-blue-600" />
+                    <span>Outbound campaigns</span>
+                  </h3>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">
+                    Create campaigns, manage dialing queues, and review call outcomes.
+                  </p>
+                </div>
                 <Button variant="primary" size="sm" icon={Plus} onClick={() => setShowAssignTask(true)}>
                   New outbound campaign
                 </Button>
-              }
-            />
+              </div>
+              <div className="flex min-h-[360px] flex-1 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-6 py-10">
+                <div className="flex max-w-sm flex-col items-center text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--bg-subtle)]">
+                    <Megaphone className="h-6 w-6 text-[var(--text-muted)]" />
+                  </div>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">No outbound campaigns yet</p>
+                  <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                    Create a campaign to dial contacts with a call script and track results per run.
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : (
           <div className="flex flex-col h-full gap-4">
             <div className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)]/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
