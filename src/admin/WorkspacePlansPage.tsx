@@ -1,6 +1,7 @@
 import React from 'react';
-import { Archive, Plus, RefreshCw, Save, Layers3, Pencil, X } from 'lucide-react';
+import { Plus, Save, Pencil, X } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
@@ -15,6 +16,7 @@ const blankPlan = (): WorkspacePlan => ({
 });
 
 export default function WorkspacePlansPage() {
+  const headerCtx = usePageHeaderContext();
   const [plans, setPlans] = React.useState<WorkspacePlan[]>([]);
   const [existingIds, setExistingIds] = React.useState<Set<string>>(new Set());
   const [version, setVersion] = React.useState(0);
@@ -39,7 +41,7 @@ export default function WorkspacePlansPage() {
 
   React.useEffect(() => { void load(); }, [load]);
 
-  const beginAdd = () => { setDraft(blankPlan()); setEditingIndex(-1); setError(''); setMessage(''); };
+  const beginAdd = React.useCallback(() => { setDraft(blankPlan()); setEditingIndex(-1); setError(''); setMessage(''); }, []);
   const beginEdit = (index: number) => {
     const plan = plans[index];
     setDraft({ ...plan, pricing: { ...plan.pricing } });
@@ -69,22 +71,19 @@ export default function WorkspacePlansPage() {
     finally { setSaving(false); }
   };
 
+  React.useEffect(() => {
+    if (!headerCtx) return;
+    headerCtx.setHeader({
+      title: <span className="flex items-center gap-2"><span className="text-[10px] font-medium text-[var(--text-muted)]">Admin /</span> Workspace Plans</span>,
+      action: <button type="button" onClick={beginAdd} disabled={loading || saving || editingIndex !== null} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Add plan</button>,
+    });
+  }, [headerCtx?.setHeader, beginAdd, loading, saving, editingIndex]);
+
   const money = (amount: number | null) => amount == null ? 'Not set' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
   const fieldClass = 'mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30';
   const labelClass = 'block text-xs font-semibold text-[var(--text-secondary)]';
 
-  return <div className="mx-auto max-w-6xl space-y-6 text-[var(--text-primary)]">
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]"><Layers3 className="h-4 w-4" /> Billing configuration</div>
-        <h2 className="text-xl font-semibold tracking-tight">Workspace plans & pricing</h2>
-        <p className="mt-1 max-w-3xl text-sm text-[var(--text-muted)]">Manage the workspace plans offered to new organizations. Existing organizations retain their saved pricing.</p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => void load()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"><RefreshCw className="h-4 w-4" /> Reload</button>
-        <button type="button" onClick={beginAdd} disabled={loading || saving || editingIndex !== null} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Add new plan</button>
-      </div>
-    </div>
+  return <div className="mx-auto max-w-6xl space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
     {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
     {loading ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-muted)]">Loading plans…</div> : (
@@ -102,13 +101,13 @@ export default function WorkspacePlansPage() {
             <p className="mt-1 text-xs text-[var(--text-secondary)]">{MODES.find(mode => mode.value === plan.defaultMode)?.label}</p>
           </div>
           <dl className="my-4 space-y-3 text-xs">
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Included workspaces</dt><dd className="font-semibold">{plan.pricing.includedWorkspaces}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Extra workspace / month</dt><dd className="font-semibold">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Extra industry / month</dt><dd className="font-semibold">{money(plan.pricing.additionalIndustryMonthlyInr)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Workspaces included</dt><dd className="font-semibold">{plan.pricing.includedWorkspaces}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Additional workspace</dt><dd className="font-semibold">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Additional industry</dt><dd className="font-semibold">{money(plan.pricing.additionalIndustryMonthlyInr)}</dd></div>
           </dl>
           <button type="button" onClick={() => beginEdit(index)} disabled={editingIndex !== null || saving} className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold hover:bg-[var(--bg-subtle)] disabled:opacity-50"><Pencil className="h-4 w-4" /> Edit plan</button>
         </section>)}
-        {!plans.length && <div className="col-span-full rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)] p-10 text-center text-sm text-[var(--text-muted)]">No plans configured. Select “Add new plan” to get started.</div>}
+        {!plans.length && <div className="col-span-full rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)] p-10 text-center text-sm text-[var(--text-muted)]">No workspace plans yet.</div>}
       </div>
     )}
 
@@ -116,12 +115,12 @@ export default function WorkspacePlansPage() {
       <div className="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget && !saving) cancelEdit(); }}>
         <div role="dialog" aria-modal="true" aria-labelledby="workspace-plan-form-title" className="flex max-h-[min(90vh,850px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl">
           <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-            <div><h3 id="workspace-plan-form-title" className="text-lg font-semibold">{editingIndex === -1 ? 'Create workspace plan' : 'Edit workspace plan'}</h3><p className="mt-1 text-xs text-[var(--text-muted)]">Configure workspace access and monthly pricing.</p></div>
+            <div><h3 id="workspace-plan-form-title" className="text-lg font-semibold">{editingIndex === -1 ? 'Create workspace plan' : 'Edit workspace plan'}</h3></div>
             <button type="button" onClick={cancelEdit} disabled={saving} aria-label="Close plan form" className="rounded-lg p-2 hover:bg-[var(--bg-subtle)] disabled:opacity-50"><X className="h-5 w-5" /></button>
           </div>
           <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="grid gap-4 overflow-y-auto p-6 sm:grid-cols-2">
             <label className={labelClass}>Plan name<input required value={draft.name} onChange={event => updateDraft({ name: event.target.value })} className={fieldClass} /></label>
-            <label className={labelClass}>Stable plan ID<input required value={draft.id} onChange={event => updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })} disabled={existingIds.has(draft.id)} placeholder="e.g. scale" className={fieldClass + ' disabled:opacity-60'} /><span className="mt-1 block text-[10px] font-normal text-[var(--text-muted)]">Existing IDs cannot be changed.</span></label>
+            <label className={labelClass}>Stable plan ID<input required value={draft.id} onChange={event => updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })} disabled={existingIds.has(draft.id)} placeholder="e.g. scale" className={fieldClass + ' disabled:opacity-60'} /></label>
             <label className={labelClass + ' sm:col-span-2'}>Default workspace structure<select value={draft.defaultMode} onChange={event => { const mode = event.target.value as WorkspaceMode; updateDraft({ defaultMode: mode, pricing: { ...draft.pricing, includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces } }); }} className={fieldClass}>{MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select></label>
             <label className={labelClass}>Organization / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.baseMonthlyInr ?? ''} onChange={event => updatePricing('baseMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
             <label className={labelClass}>Additional workspace / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.extraWorkspaceMonthlyInr ?? ''} onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
