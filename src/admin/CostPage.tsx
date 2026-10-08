@@ -236,7 +236,7 @@ function ProviderSection({
 }) {
   return (
     <Widget colSpan={12} title={title} subtitle={description} icon={Icon} accent="#f59e0b" padding="md">
-      <div className="divide-y divide-[var(--border)]">
+      <div className="space-y-3">
         {providers.map((p) => (
           <ProviderRow
             key={p.key}
@@ -270,8 +270,8 @@ function ProviderRow({
   onSave: (provider: CostProvider) => void;
 }) {
   return (
-    <div className="py-4 flex items-end gap-3 flex-wrap">
-      <div className="min-w-0">
+    <div className="my-3 flex flex-wrap items-end gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] p-5">
+      <div className="min-w-[160px] flex-1">
         <p className="text-sm font-semibold text-slate-800 dark:text-[var(--text-primary)]">{p.label}</p>
         <p className="text-[10px] text-[var(--text-muted)] dark:text-[var(--text-muted)] font-mono">{p.key}</p>
       </div>
@@ -283,7 +283,7 @@ function ProviderRow({
               type="number" min="0" step="0.01"
               value={p.rateAmount ?? 0}
               onChange={(e) => onChange(p.key, { rateAmount: Number(e.target.value) })}
-              className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-32 bg-[var(--bg-surface)] dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </Field>
           <Field label="Per">
@@ -316,7 +316,7 @@ function ProviderRow({
                   type="number" min="0" step="0.0001"
                   value={p.timeRateAmount ?? 0}
                   onChange={(e) => onChange(p.key, { timeRateAmount: Number(e.target.value) })}
-                  className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-32 bg-[var(--bg-surface)] dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </Field>
               <Field label="Per">
@@ -337,7 +337,7 @@ function ProviderRow({
                   type="number" min="0" step="0.0001"
                   value={p.ratePer1kTokens ?? 0}
                   onChange={(e) => onChange(p.key, { ratePer1kTokens: Number(e.target.value) })}
-                  className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-32 bg-[var(--bg-surface)] dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </Field>
               <Field label="Per">
@@ -359,7 +359,7 @@ function ProviderRow({
           type="number" min="0" max="100" step="0.01"
           value={p.taxPercent ?? 0}
           onChange={(e) => onChange(p.key, { taxPercent: Number(e.target.value) })}
-          className="w-20 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+          className="w-24 bg-[var(--bg-surface)] dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
         />
       </Field>
 
