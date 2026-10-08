@@ -8,6 +8,7 @@ import Modal from '../components/ui/Modal';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FlagGroupPicker from '../components/ui/FlagGroupPicker';
 import OrgBillingConsole from './OrgBillingConsole';
+import OrganizationWorkspaceSetup from './OrganizationWorkspaceSetup';
 
 export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: string; onClose: () => void; onChanged: () => void }) {
   const [detail, setDetail] = useState<OrgDetail | null>(null);
@@ -399,6 +400,8 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                   <div className="text-[10px] text-slate-400 uppercase">Campaigns</div>
                 </div>
               </div>
+
+              <OrganizationWorkspaceSetup key={orgId} orgId={orgId} />
 
               <div className="bg-white border border-slate-200 rounded-2xl p-5">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Billing</h4>

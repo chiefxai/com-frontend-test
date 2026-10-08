@@ -180,6 +180,7 @@ export default function SettingsView({
   const [aiUsageSessions, setAiUsageSessions] = useState<AiUsageSession[]>([]);
   const [loadingAiUsage, setLoadingAiUsage] = useState(false);
   const [workspaceBilling, setWorkspaceBilling] = useState<{ workspaceId: string; workspaceName: string; monthlyBudgetInr: number | null; periodSpendInr: number; aiMinutesUsed: number; aiSpendInr: number; phoneSpendInr: number; remainingBudgetInr: number | null; budgetPeriod: { label: string } } | null>(null);
+  const [organizationPricing,setOrganizationPricing]=useState<{totalMonthlyInr:number;workspaceCount:number;additionalIndustries:number}|null>(null);
   const [workspaceBudgetDraft, setWorkspaceBudgetDraft] = useState('');
   const [savingWorkspaceBudget, setSavingWorkspaceBudget] = useState(false);
   const [workspaceBudgetError, setWorkspaceBudgetError] = useState('');
@@ -196,6 +197,7 @@ export default function SettingsView({
         setAiUsageByAdmin(Array.isArray(byAdmin?.rows) ? byAdmin.rows : []);
         setAiUsageSessions(Array.isArray(sessions?.rows) ? sessions.rows : []);
         setWorkspaceBilling(billing?.workspaceBilling || null);
+        setOrganizationPricing(billing?.organizationPricing || null);
         setWorkspaceBudgetDraft(billing?.workspaceBilling?.monthlyBudgetInr == null ? '' : String(billing.workspaceBilling.monthlyBudgetInr));
       })
       .finally(() => setLoadingAiUsage(false));
@@ -1053,6 +1055,10 @@ export default function SettingsView({
           {/* Subtab: Billing info */}
           {subTab === 'billing' && (
             <div className="space-y-6">
+              {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
+                <p className="text-lg font-semibold">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
+                <p className="mt-2 text-xs text-slate-500">{organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s). Usage charges and applicable taxes are additional. This is the configured fixed monthly price.</p>
+              </Widget>}
               {workspaceBilling && (
                 <Widget
                   title={`${workspaceBilling.workspaceName} spend this period`}

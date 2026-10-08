@@ -156,7 +156,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // Keep checking the organization when the server provides it, but do not
   // reject the list just because an older proxy/backend omits workspace scope
   // acknowledgement headers for this org-level response.
-  const organizationWorkspaceCollection = path === '/api/settings/workspaces';
+  const organizationWorkspaceCollection = ['/api/settings/workspaces','/api/settings/workspace-policy'].includes(path);
   if (res.ok && !discovery && selectedOrgId && selectedWorkspaceId) {
     const acknowledgedOrg = res.headers.get('X-Organization-Id');
     const acknowledgedWorkspace = res.headers.get('X-Workspace-Id');

@@ -38,6 +38,7 @@ export function permissionForRequest(path: string,method: string): string | null
   const read = ['GET','HEAD','OPTIONS'].includes(method);
   path = path.toLowerCase().replace(/\/+$/,'');
   if (['/api/auth/me','/api/auth/roles','/api/settings/me'].includes(path)) return null;
+  if (path === '/api/settings/workspace-policy') return 'organization.read';
   if (path === '/api/settings/workspaces') return read ? 'organization.read' : 'organization.manage';
   if (path === '/api/workspace-sharing/proposals' || /^\/api\/workspace-sharing\/proposals\/[^/]+\/review$/.test(path)) return 'workspace.settings.manage';
   if (/^\/api\/workspace-sharing\/records\/[^/]+\/proposals$/.test(path)) return 'workspace.share.propose';

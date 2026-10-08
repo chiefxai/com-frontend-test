@@ -5,6 +5,8 @@ import { apiFetch } from '../lib/api';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 import FlagGroupPicker from '../components/ui/FlagGroupPicker';
+import WorkspacePolicyEditor from '../components/WorkspacePolicyEditor';
+import { emptyWorkspacePolicy, serializedPolicy } from '../lib/workspacePolicy';
 
 const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
   value: profile.key,
@@ -78,19 +80,18 @@ export default function CreateWorkspacePage() {
     backupEmail: '',
     backupRetentionDays: '365',
   });
+  const [workspacePolicy, setWorkspacePolicy] = useState(emptyWorkspacePolicy);
+  const [firstBranchName, setFirstBranchName] = useState('');
+  const [initialWorkspaces, setInitialWorkspaces] = useState<{name:string;industry:string;branchName:string}[]>([]);
   const [selectedFlags, setSelectedFlags] = useState<string[]>(() => defaultFeatureFlagsForIndustry('lending'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const availableFeatureKeys = defaultFeatureFlagsForIndustry(form.industry);
+  const availableFeatureKeys = defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':form.industry);
 
   useEffect(() => {
     setForm(current => ({ ...current, workspaceName: generateWorkspaceSlug(current.name) }));
   }, [form.name]);
-
-  const toggleFlag = (key: string) => {
-    setSelectedFlags(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
-  };
 
   const set = (field: keyof CreateOrgForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
@@ -138,6 +139,9 @@ export default function CreateWorkspacePage() {
           workspaceName: form.workspaceName,
           industry: form.industry,
           subscriptionPlan: form.subscriptionPlan,
+          workspacePolicy: serializedPolicy(workspacePolicy),
+          firstBranchName: firstBranchName.trim() || null,
+          initialWorkspaces: workspacePolicy.mode==='single' ? [] : initialWorkspaces.map(branch=>({...branch,industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})),
           adminEmail: form.adminEmail,
           adminName: form.adminName,
           featureFlags: selectedFlags,
@@ -173,8 +177,8 @@ export default function CreateWorkspacePage() {
         return;
       }
       navigate('/admin/organizations');
-    } catch {
-      setError('Could not reach the server');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not reach the server');
     } finally {
       setLoading(false);
     }
@@ -189,14 +193,14 @@ export default function CreateWorkspacePage() {
       )}
       {error && (
         <div className="mb-4 bg-rose-50 border border-rose-200 rounded-lg px-4 py-2 text-sm text-rose-600">
-          Google Cloud project configuration failed: {error}
+          {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-slate-800">Workspace Identity</h2>
+            <h2 className="text-sm font-semibold text-slate-800">Organization Identity</h2>
             <p className="mt-1 text-[11px] text-slate-500">Set the organization name and let the workspace slug generate automatically.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -254,7 +258,7 @@ export default function CreateWorkspacePage() {
               onChange={(e) => {
                 const industry = e.target.value;
                 setForm(f => ({ ...f, industry }));
-                setSelectedFlags(defaultFeatureFlagsForIndustry(industry));
+                setSelectedFlags(defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':industry));
               }}
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
@@ -268,6 +272,23 @@ export default function CreateWorkspacePage() {
             </select>
           </div>
         </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800">Workspace structure and pricing</h2>
+          <WorkspacePolicyEditor value={workspacePolicy} onChange={value=>{setWorkspacePolicy(value);if(value.mode!==workspacePolicy.mode)setSelectedFlags(defaultFeatureFlagsForIndustry(value.mode==='mixed_industry'?'lending':form.industry));}} primaryIndustry={form.industry} workspaces={[{industry:form.industry},...(workspacePolicy.mode==='single'?[]:initialWorkspaces.map(branch=>({industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})))]} />
+          <label className="block text-xs text-slate-500">First workspace / branch name
+            <input maxLength={120} value={firstBranchName} onChange={event=>setFirstBranchName(event.target.value)} placeholder="Head office" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+          </label>
+          {workspacePolicy.mode!=='single' && <div className="space-y-3">
+            {initialWorkspaces.map((branch,index)=><div key={index} className="grid gap-2 sm:grid-cols-3">
+              <input aria-label={`Workspace ${index+2} name`} required maxLength={120} placeholder="Branch workspace name" value={branch.name} onChange={event=>setInitialWorkspaces(rows=>rows.map((row,i)=>i===index?{...row,name:event.target.value}:row))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+              {workspacePolicy.mode==='mixed_industry'?<select aria-label={`Workspace ${index+2} industry`} value={branch.industry} onChange={event=>setInitialWorkspaces(rows=>rows.map((row,i)=>i===index?{...row,industry:event.target.value}:row))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">{INDUSTRIES.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select>:<span className="p-2 text-sm text-slate-500">{INDUSTRIES.find(option=>option.value===form.industry)?.label}</span>}
+              <button type="button" onClick={()=>setInitialWorkspaces(rows=>rows.filter((_,i)=>i!==index))} className="text-sm text-rose-600">Remove workspace</button>
+            </div>)}
+            <button type="button" onClick={()=>setInitialWorkspaces(rows=>[...rows,{name:'',industry:form.industry,branchName:''}])} className="text-sm font-semibold text-amber-700">+ Add initial workspace</button>
+            <p className="text-xs text-slate-500">The initial organization administrator receives access to every initial workspace. More branches can be added later.</p>
+          </div>}
+        </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3">

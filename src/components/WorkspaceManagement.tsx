@@ -4,7 +4,7 @@ import { apiFetch } from '../lib/api';
 import { useAuthorization } from '../lib/authorization';
 import Widget from './ui/Widget';
 
-interface IndustryOption { key: string; label: string }
+interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
 
 export default function WorkspaceManagement({
@@ -17,7 +17,8 @@ export default function WorkspaceManagement({
   const { can } = useAuthorization();
   const canManage = can('organization.manage');
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
-  const [industries, setIndustries] = useState<IndustryOption[]>([]);
+  const [setup, setSetup] = useState<WorkspaceSetup | null>(null);
+  const [acceptedPrice, setAcceptedPrice] = useState(false);
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
   const [branchName, setBranchName] = useState('');
@@ -34,15 +35,16 @@ export default function WorkspaceManagement({
         if (!response.ok) throw new Error(body.error || 'Could not load workspaces');
         return body as WorkspaceRow[];
       }),
-      apiFetch('/api/auth/industries').then(async response => {
-        if (!response.ok) throw new Error('Could not load industries');
-        return response.json() as Promise<IndustryOption[]>;
+      apiFetch('/api/settings/workspace-policy').then(async response => {
+        const body=await response.json();
+        if (!response.ok) throw new Error(body.error || 'Could not load workspace policy');
+        return body as WorkspaceSetup;
       }),
     ]).then(([rows, options]) => {
       if (cancelled) return;
       setWorkspaces(Array.isArray(rows) ? rows : []);
-      setIndustries(Array.isArray(options) ? options : []);
-      setIndustry(current => current || options[0]?.key || '');
+      setSetup(options);
+      setIndustry(options.policy.primaryIndustry);
     }).catch(error => {
       if (!cancelled) setMessage({ type: 'error', text: error.message || 'Could not load workspace setup.' });
     }).finally(() => { if (!cancelled) setLoading(false); });
@@ -54,29 +56,36 @@ export default function WorkspaceManagement({
 
   const createWorkspace = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!acceptedPrice || !setup?.addBranchQuote) return;
     setSaving(true);
     setMessage(null);
     try {
       const response = await apiFetch('/api/settings/workspaces', {
         method: 'POST',
-        body: JSON.stringify({ name: name.trim(), industry, branchName: branchName.trim() || null }),
+        body: JSON.stringify({ name: name.trim(), industry, branchName: branchName.trim() || null, pricingAcceptanceToken:setup.addBranchQuote.token }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not create workspace');
       setWorkspaces(current => [...current, body as WorkspaceRow]);
       setName('');
       setBranchName('');
+      setAcceptedPrice(false);
+      const policyResponse=await apiFetch('/api/settings/workspace-policy');
+      if (policyResponse.ok) setSetup(await policyResponse.json());
       setMessage({ type: 'success', text: 'Workspace created and assigned to you as Workspace Admin.' });
       await onWorkspaceCreated();
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Could not create workspace.' });
+      setAcceptedPrice(false);
+      const refreshed=await apiFetch('/api/settings/workspace-policy').catch(()=>null);
+      if(refreshed?.ok) { const value=await refreshed.json(); setSetup(value); setWorkspaces(value.workspaces); }
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Widget title="Organization Workspaces" subtitle="Create separate workspaces for teams, industries, or branches. Data stays isolated by workspace." icon={Building2} accent="#0891b2" padding="md">
+    <Widget title="Organization Workspaces" subtitle="Create isolated branch workspaces using your organization’s primary industry." icon={Building2} accent="#0891b2" padding="md">
       {message && <div role="status" className={`mb-4 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{message.text}</div>}
       <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {workspaces.map(workspace => (
@@ -94,16 +103,19 @@ export default function WorkspaceManagement({
         </label>
         <label className="space-y-1 text-xs font-medium text-[var(--text-secondary)]">
           Industry
-          <select required value={industry} onChange={event => setIndustry(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-            {industries.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
-          </select>
+          <input readOnly value={industry.replaceAll('_', ' ')} className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
         </label>
         <label className="space-y-1 text-xs font-medium text-[var(--text-secondary)]">
           Branch (optional)
           <input maxLength={160} value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="Mumbai" className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
         </label>
-        <div className="md:col-span-3">
-          <button type="submit" disabled={saving || loading || !industries.length || !name.trim()} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50">
+        <div className="md:col-span-3 space-y-3">
+          <p className="text-xs text-[var(--text-muted)]">Different industries are provisioned by a platform administrator.</p>
+          {setup?.addBranchQuote ? <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            <input type="checkbox" checked={acceptedPrice} onChange={event=>setAcceptedPrice(event.target.checked)} />
+            <span>{setup.addBranchQuote.upgradesToMultipleBranches ? 'Upgrade to multiple branches. ' : ''}I accept a fixed organization price of ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}/month after adding this workspace (current: ₹{setup.currentQuote?.totalMonthlyInr.toFixed(2)}). Usage charges and applicable taxes are additional.</span>
+          </label> : <p className="text-xs text-amber-700">Ask a platform administrator to configure branch pricing before adding another workspace.</p>}
+          <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !acceptedPrice || !name.trim()} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             Create workspace
           </button>
