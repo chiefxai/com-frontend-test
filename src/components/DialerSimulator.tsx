@@ -2016,7 +2016,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                           key={task.id}
                           className={`group relative w-full rounded-xl border transition-all duration-150 ${
                             isActive
-                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-sm'
+                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-sm ring-1 ring-[var(--accent)]/20'
                               : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--accent)]/50 hover:bg-[var(--bg-subtle)]'
                           }`}
                         >
@@ -2028,21 +2028,20 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                               setSelectedTaskId(task.id);
                               setPlayingTapeId(null);
                             }}
-                            className="block w-full rounded-xl px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                            className="block w-full rounded-xl px-3.5 py-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                           >
                             <div className="flex items-start gap-2.5">
                               <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusDot}`} aria-hidden="true" />
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <span className="min-w-0 break-words text-[12px] font-semibold leading-4 text-[var(--text-primary)]">{task.name}</span>
-                                  <ChevronRight className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
+                                <div className="pr-9">
+                                  <span className="block min-w-0 break-words text-[13px] font-semibold leading-[1.4] text-[var(--text-primary)]">{task.name}</span>
                                 </div>
                                 {showScript && <p className="mt-1 truncate text-[10px] text-[var(--text-muted)]">{scriptName}</p>}
-                                <div className="mt-2.5 flex items-center justify-between gap-2">
+                                <div className="mt-3 flex items-center justify-between gap-2">
                                   <span className="text-[10px] font-medium text-[var(--text-secondary)]">{completed} of {total} dialed</span>
                                   <span className="text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{percent}%</span>
                                 </div>
-                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]" role="progressbar" aria-label="Campaign dial progress" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={Math.max(total, 1)}>
+                                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]" role="progressbar" aria-label="Campaign dial progress" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={Math.max(total, 1)}>
                                   <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${percent}%` }} />
                                 </div>
                                 <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -2065,11 +2064,11 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                                 event.stopPropagation();
                                 openDeleteTask(task);
                               }}
-                              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-600 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-rose-500/10"
+                              className="absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 shadow-sm transition-colors hover:border-rose-400 hover:bg-rose-100 hover:text-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/50"
                               aria-label={`Delete campaign task ${task.name}`}
                               title="Delete campaign task"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           )}
                         </div>
