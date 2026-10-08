@@ -2065,7 +2065,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                                 event.stopPropagation();
                                 openDeleteTask(task);
                               }}
-                              className="absolute bottom-2 right-2 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-rose-50 hover:text-rose-600 focus-visible:flex group-hover:flex dark:hover:bg-rose-500/10"
+                              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-surface)] text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-600 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-rose-500/10"
                               aria-label={`Delete campaign task ${task.name}`}
                               title="Delete campaign task"
                             >
