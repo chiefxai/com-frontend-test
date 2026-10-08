@@ -1024,7 +1024,9 @@ export default function App() {
             trigger={(
               <span className="flex h-10 max-w-[min(20rem,60vw)] items-center gap-2 rounded-lg border px-3 text-left transition-colors hover:bg-[var(--bg-subtle)]" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}>
                 <Building2 className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
-                <span className="min-w-0 truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{orgSettings.name || 'Workspaces'}</span>
+                <span className="min-w-0 truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {workspaces.find(row => (row.workspaceId || row.orgId) === (activeWorkspaceId || orgSettings.id))?.workspace?.name || orgSettings.workspaceName || orgSettings.name || 'Workspaces'}
+                </span>
                 <ChevronDown className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
               </span>
             )}
