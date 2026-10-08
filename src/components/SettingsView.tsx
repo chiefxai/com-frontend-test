@@ -179,19 +179,45 @@ export default function SettingsView({
   const [aiUsageByAdmin, setAiUsageByAdmin] = useState<{ adminId: string; sessionCount: number; totalTokens: number; totalCost: number }[]>([]);
   const [aiUsageSessions, setAiUsageSessions] = useState<AiUsageSession[]>([]);
   const [loadingAiUsage, setLoadingAiUsage] = useState(false);
+  const [workspaceBilling, setWorkspaceBilling] = useState<{ workspaceId: string; workspaceName: string; monthlyBudgetInr: number | null; periodSpendInr: number; aiMinutesUsed: number; aiSpendInr: number; phoneSpendInr: number; remainingBudgetInr: number | null; budgetPeriod: { label: string } } | null>(null);
+  const [workspaceBudgetDraft, setWorkspaceBudgetDraft] = useState('');
+  const [savingWorkspaceBudget, setSavingWorkspaceBudget] = useState(false);
+  const [workspaceBudgetError, setWorkspaceBudgetError] = useState('');
   const loadAiUsage = () => {
     setLoadingAiUsage(true);
     Promise.all([
       apiFetch('/api/ai-usage/summary').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       apiFetch('/api/ai-usage/by-admin').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       apiFetch('/api/ai-usage?page=1&limit=20').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      apiFetch('/api/billing/console').then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
-      .then(([summary, byAdmin, sessions]) => {
+      .then(([summary, byAdmin, sessions, billing]) => {
         setAiUsageSummary(summary);
         setAiUsageByAdmin(Array.isArray(byAdmin?.rows) ? byAdmin.rows : []);
         setAiUsageSessions(Array.isArray(sessions?.rows) ? sessions.rows : []);
+        setWorkspaceBilling(billing?.workspaceBilling || null);
+        setWorkspaceBudgetDraft(billing?.workspaceBilling?.monthlyBudgetInr == null ? '' : String(billing.workspaceBilling.monthlyBudgetInr));
       })
       .finally(() => setLoadingAiUsage(false));
+  };
+  const saveWorkspaceBudget = async () => {
+    setSavingWorkspaceBudget(true);
+    setWorkspaceBudgetError('');
+    try {
+      const monthlyBudgetInr = workspaceBudgetDraft.trim() === '' ? null : Number(workspaceBudgetDraft);
+      if (monthlyBudgetInr !== null && (!Number.isFinite(monthlyBudgetInr) || monthlyBudgetInr < 0)) {
+        throw new Error('Enter a non-negative INR amount, or leave it blank to remove the cap.');
+      }
+      const response = await apiFetch('/api/billing/workspace-budget', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monthlyBudgetInr }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not save the workspace budget.');
+      loadAiUsage();
+    } catch (error) {
+      setWorkspaceBudgetError(error instanceof Error ? error.message : 'Could not save the workspace budget.');
+    } finally { setSavingWorkspaceBudget(false); }
   };
   useEffect(() => {
     if (subTab === 'billing') loadAiUsage();
@@ -1027,6 +1053,49 @@ export default function SettingsView({
           {/* Subtab: Billing info */}
           {subTab === 'billing' && (
             <div className="space-y-6">
+              {workspaceBilling && (
+                <Widget
+                  title={`${workspaceBilling.workspaceName} spend this period`}
+                  subtitle={`${workspaceBilling.budgetPeriod?.label || 'Current billing period'} · Organization invoice and wallet remain shared`}
+                  icon={CreditCard}
+                  accent="#f59e0b"
+                  padding="md"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Workspace spend</span>
+                      <strong className="text-md text-slate-800 font-mono">{formatInr(workspaceBilling.periodSpendInr)}</strong>
+                    </div>
+                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Monthly cap</span>
+                      <strong className="text-md text-slate-800 font-mono">{workspaceBilling.monthlyBudgetInr == null ? 'No cap' : formatInr(workspaceBilling.monthlyBudgetInr)}</strong>
+                    </div>
+                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Cap remaining</span>
+                      <strong className="text-md text-slate-800 font-mono">{workspaceBilling.remainingBudgetInr == null ? '—' : formatInr(workspaceBilling.remainingBudgetInr)}</strong>
+                    </div>
+                  </div>
+                  {can('workspace.settings.manage') && (
+                    <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
+                      <label className="flex-1 text-xs text-slate-500">
+                        Monthly workspace cap (INR)
+                        <input
+                          type="number" min="0" step="0.01" value={workspaceBudgetDraft}
+                          onChange={(event) => setWorkspaceBudgetDraft(event.target.value)}
+                          placeholder="Leave blank for no cap"
+                          className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 font-mono text-sm text-slate-700"
+                        />
+                      </label>
+                      <button onClick={saveWorkspaceBudget} disabled={savingWorkspaceBudget} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                        {savingWorkspaceBudget ? 'Saving…' : 'Save cap'}
+                      </button>
+                    </div>
+                  )}
+                  {workspaceBudgetError && <p className="mt-2 text-xs text-rose-600">{workspaceBudgetError}</p>}
+                  <p className="mt-3 text-[10px] text-slate-400">Spend is attributed to this workspace. New Vobiz outbound calls stop when the cap is reached; active calls can finish and may take the final spend slightly over the cap. The organization wallet remains shared.</p>
+                </Widget>
+              )}
+
               {orgSettings.billingMethod === 'recharge_based' && (
                 <Widget title="Available Balance" subtitle="Recharge wallet balance available for calls" icon={DollarSign} accent="#10b981" padding="md">
                   {(() => {
@@ -1054,11 +1123,11 @@ export default function SettingsView({
                 <div className="grid grid-cols-3 gap-4 pt-2">
                   <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Minutes Consumed</span>
-                    <strong className="text-md text-slate-800 font-mono">{orgSettings.aiMinutesUsed.toFixed(2)}</strong>
+                    <strong className="text-md text-slate-800 font-mono">{(workspaceBilling?.aiMinutesUsed ?? orgSettings.aiMinutesUsed).toFixed(2)}</strong>
                   </div>
                   <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">AI Voice Cost (₹{costPerMinuteInr}/min)</span>
-                    <strong className="text-md text-slate-800 font-mono">{formatInr(orgSettings.aiMinutesUsed * costPerMinuteInr)}</strong>
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">AI spend this period</span>
+                    <strong className="text-md text-slate-800 font-mono">{formatInr(workspaceBilling?.aiSpendInr ?? (orgSettings.aiMinutesUsed * costPerMinuteInr))}</strong>
                   </div>
                   <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
@@ -1066,7 +1135,7 @@ export default function SettingsView({
                         ? `${callProviderRate.label} ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${callProviderRate.rateAmount}/${callProviderRate.rateUnit}${callProviderRate.taxPercent ? ` +${callProviderRate.taxPercent}% tax` : ''})`
                         : `Phone ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${phoneCostPerMinute}/min)`}
                     </span>
-                    <strong className="text-md text-slate-800 font-mono">{formatCurrency(orgSettings.phoneCharges)}</strong>
+                    <strong className="text-md text-slate-800 font-mono">{formatCurrency(workspaceBilling?.phoneSpendInr ?? orgSettings.phoneCharges)}</strong>
                   </div>
                 </div>
                 {!phoneChargesBillable && (
