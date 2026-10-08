@@ -40,12 +40,12 @@ export default function OrganizationWorkspaceSetup({orgId}:{orgId:string}) {
   const next=monthlyPreview(policy,setup.policy.primaryIndustry,[...setup.workspaces,{industry:policy.mode==='mixed_industry'?branch.industry:setup.policy.primaryIndustry}]);
   return <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
     <h4 className="text-sm font-semibold text-slate-800">Workspace structure and pricing</h4>
-    <p className="text-xs text-slate-500">Primary industry: {setup.policy.primaryIndustry.replaceAll('_',' ')}. Prices are monthly INR amounts on the shared organization invoice.</p>
+    <p className="text-xs text-slate-500">Primary industry: {setup.policy.primaryIndustry.replaceAll('_',' ')}. This organization keeps the plan price snapshot from creation; platform plan defaults are managed in Admin → Plans &amp; Pricing.</p>
     <ul className="space-y-1 text-xs text-slate-600">{setup.workspaces.map(workspace=><li key={workspace.id}>{workspace.name} · {workspace.industry.replaceAll('_',' ')}</li>)}</ul>
     {message && <p role="status" className="text-xs text-amber-700">{message}</p>}
     <form onSubmit={save} className="space-y-3">
-      <WorkspacePolicyEditor value={policy} onChange={value=>{setPolicy(value);if(value.mode!==policy.mode)setBranch(current=>({...current,industry:setup.policy.primaryIndustry}));}} primaryIndustry={setup.policy.primaryIndustry} workspaces={setup.workspaces} />
-      <button disabled={busy} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Save setup and pricing</button>
+      <WorkspacePolicyEditor value={policy} onChange={value=>{setPolicy(value);if(value.mode!==policy.mode)setBranch(current=>({...current,industry:setup.policy.primaryIndustry}));}} primaryIndustry={setup.policy.primaryIndustry} workspaces={setup.workspaces} showPricingFields={false} />
+      <button disabled={busy} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Save workspace setup</button>
     </form>
     <form onSubmit={create} className="space-y-3 border-t border-slate-200 pt-4">
       <p className="text-xs text-slate-500">Save setup and pricing before adding a workspace. Different industries require mixed-industry mode.</p>

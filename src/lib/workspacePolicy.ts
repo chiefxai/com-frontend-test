@@ -1,4 +1,12 @@
 export type WorkspaceMode = 'single' | 'same_industry' | 'mixed_industry';
+export interface WorkspacePlan {
+  id: string;
+  name: string;
+  active: boolean;
+  defaultMode: WorkspaceMode;
+  pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; extraWorkspaceMonthlyInr: number | null; additionalIndustryMonthlyInr: number | null };
+}
+export interface WorkspacePlanCatalog { version: number; plans: WorkspacePlan[] }
 export interface WorkspacePolicyDraft {
   mode: WorkspaceMode;
   pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; extraWorkspaceMonthlyInr: number | null; additionalIndustryMonthlyInr: number | null };
@@ -10,13 +18,15 @@ export const workspaceModes: {value: WorkspaceMode; label: string; description: 
   { value:'mixed_industry', label:'Multiple workspaces · different industries', description:'Platform admins can add different industries. Organization admins can add branches in the primary industry only.' },
 ];
 export function serializedPolicy(draft: WorkspacePolicyDraft) {
-  const pricing = { ...draft.pricing, additionalIndustryMonthlyInr: draft.mode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0 };
+  const pricing = { ...draft.pricing, includedWorkspaces: draft.mode === 'single' ? 1 : draft.pricing.includedWorkspaces,
+    additionalIndustryMonthlyInr: draft.mode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0 };
   if (Object.values(pricing).some(value => value === null || !Number.isFinite(value) || value < 0)) throw new Error('Set the monthly prices, entering 0 for any included service.');
   return { mode:draft.mode, pricing };
 }
 export function monthlyPreview(draft: WorkspacePolicyDraft, primaryIndustry: string, workspaces: {industry:string}[]) {
   const p = draft.pricing;
   if (p.baseMonthlyInr === null || p.extraWorkspaceMonthlyInr === null || (draft.mode === 'mixed_industry' && p.additionalIndustryMonthlyInr === null)) return null;
-  return p.baseMonthlyInr + Math.max(0,workspaces.length-p.includedWorkspaces)*p.extraWorkspaceMonthlyInr
+  const included = draft.mode === 'single' ? 1 : p.includedWorkspaces;
+  return p.baseMonthlyInr + Math.max(0,workspaces.length-included)*p.extraWorkspaceMonthlyInr
     + new Set(workspaces.map(w=>w.industry).filter(i=>i!==primaryIndustry)).size*(p.additionalIndustryMonthlyInr || 0);
 }

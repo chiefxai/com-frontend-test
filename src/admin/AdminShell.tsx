@@ -9,6 +9,7 @@ import ActivityPage from './ActivityPage';
 import SettingsPage from './SettingsPage';
 import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
+import WorkspacePlansPage from './WorkspacePlansPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
 import PageHeaderBar from '../components/ui/PageHeaderBar';
@@ -22,6 +23,7 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'users',          label: 'Users',              icon: Users },
   { path: 'activity',       label: 'Activity',           icon: ScrollText },
   { path: 'cost',           label: 'Cost & Pricing',     icon: IndianRupee },
+  { path: 'workspace-plans', label: 'Workspace Plans',   icon: Building2 },
   { path: 'settings',       label: 'Features',           icon: Settings },
   { path: 'data-retention', label: 'Data Retention',      icon: Database },
   { path: 'prompts',        label: 'Prompts',             icon: MessageSquareText },
@@ -91,6 +93,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           <Route path="users"         element={<PageWrap title="Users" section="Users"><UsersPage /></PageWrap>} />
           <Route path="activity"      element={<PageWrap title="Activity" section="Activity"><ActivityPage /></PageWrap>} />
           <Route path="cost"          element={<PageWrap title="Cost & Pricing" section="Cost & Pricing"><CostPage /></PageWrap>} />
+          <Route path="workspace-plans" element={<PageWrap title="Workspace Plans" section="Workspace Plans"><WorkspacePlansPage /></PageWrap>} />
           <Route path="settings"      element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
           <Route path="data-retention" element={<PageWrap title="Data Retention" section="Data Retention"><DataRetentionPage /></PageWrap>} />
           <Route path="prompts"       element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />

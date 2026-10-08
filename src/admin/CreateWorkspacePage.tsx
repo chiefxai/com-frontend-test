@@ -6,14 +6,12 @@ import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 import FlagGroupPicker from '../components/ui/FlagGroupPicker';
 import WorkspacePolicyEditor from '../components/WorkspacePolicyEditor';
-import { emptyWorkspacePolicy, serializedPolicy } from '../lib/workspacePolicy';
+import { emptyWorkspacePolicy, serializedPolicy, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 
 const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
   value: profile.key,
   label: profile.label,
 }));
-
-const PLANS = ['Starter', 'Growth', 'Enterprise'];
 
 function defaultFeatureFlagsForIndustry(industry: string): string[] {
   return FEATURE_REGISTRY
@@ -81,6 +79,9 @@ export default function CreateWorkspacePage() {
     backupRetentionDays: '365',
   });
   const [workspacePolicy, setWorkspacePolicy] = useState(emptyWorkspacePolicy);
+  const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
+  const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
+  const [loadingWorkspacePlans, setLoadingWorkspacePlans] = useState(true);
   const [firstBranchName, setFirstBranchName] = useState('');
   const [initialWorkspaces, setInitialWorkspaces] = useState<{name:string;industry:string;branchName:string}[]>([]);
   const [selectedFlags, setSelectedFlags] = useState<string[]>(() => defaultFeatureFlagsForIndustry('lending'));
@@ -88,6 +89,28 @@ export default function CreateWorkspacePage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const availableFeatureKeys = defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':form.industry);
+  const selectedWorkspacePlan = workspacePlans.find(plan => plan.id === form.subscriptionPlan && plan.active) || null;
+
+  useEffect(() => {
+    let active = true;
+    apiFetch('/api/platform/billing/workspace-plans')
+      .then(async response => {
+        const body = await response.json().catch(() => ({})) as WorkspacePlanCatalog;
+        if (!response.ok) throw new Error((body as any)?.error || 'Could not load workspace plan defaults.');
+        if (!active) return;
+        const plans = Array.isArray(body.plans) ? body.plans.filter(plan => plan.active) : [];
+        setWorkspacePlans(plans);
+        setWorkspacePlanVersion(body.version);
+        const first = plans.find(plan => plan.id === 'starter') || plans[0];
+        if (first) {
+          setForm(current => ({ ...current, subscriptionPlan: first.id }));
+          setWorkspacePolicy({ mode: first.defaultMode, pricing: { ...first.pricing } });
+        }
+      })
+      .catch(error => { if (active) setError(error instanceof Error ? error.message : 'Could not load workspace plan defaults.'); })
+      .finally(() => { if (active) setLoadingWorkspacePlans(false); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     setForm(current => ({ ...current, workspaceName: generateWorkspaceSlug(current.name) }));
@@ -99,6 +122,14 @@ export default function CreateWorkspacePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!selectedWorkspacePlan) {
+      setError('Choose an active workspace plan in the plan settings before creating an organization.');
+      return;
+    }
+    if (selectedWorkspacePlan.pricing.baseMonthlyInr == null || selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr == null || selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr == null) {
+      setError('Configure all monthly prices for this plan in Admin → Workspace Plans before creating an organization. Enter 0 for any price that does not apply.');
+      return;
+    }
     setLoading(true);
     try {
       if (!form.gcpCredentialsJson.trim()) {
@@ -139,7 +170,9 @@ export default function CreateWorkspacePage() {
           workspaceName: form.workspaceName,
           industry: form.industry,
           subscriptionPlan: form.subscriptionPlan,
-          workspacePolicy: serializedPolicy(workspacePolicy),
+          workspacePlanId: form.subscriptionPlan,
+          workspacePlanVersion,
+          workspacePolicy: { ...serializedPolicy(workspacePolicy), planId: selectedWorkspacePlan?.id, planVersion: workspacePlanVersion },
           firstBranchName: firstBranchName.trim() || null,
           initialWorkspaces: workspacePolicy.mode==='single' ? [] : initialWorkspaces.map(branch=>({...branch,industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})),
           adminEmail: form.adminEmail,
@@ -267,15 +300,26 @@ export default function CreateWorkspacePage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Plan</label>
-            <select value={form.subscriptionPlan} onChange={set('subscriptionPlan')} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
-              {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+            <select value={form.subscriptionPlan} onChange={event=>{
+              const plan=workspacePlans.find(item=>item.id===event.target.value);
+              setForm(current=>({...current,subscriptionPlan:event.target.value}));
+              if(plan)setWorkspacePolicy({mode:plan.defaultMode,pricing:{...plan.pricing}});
+            }} disabled={loadingWorkspacePlans || !workspacePlans.length} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:bg-slate-100">
+              {workspacePlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
             </select>
           </div>
         </div>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-          <h2 className="text-sm font-semibold text-slate-800">Workspace structure and pricing</h2>
-          <WorkspacePolicyEditor value={workspacePolicy} onChange={value=>{setWorkspacePolicy(value);if(value.mode!==workspacePolicy.mode)setSelectedFlags(defaultFeatureFlagsForIndustry(value.mode==='mixed_industry'?'lending':form.industry));}} primaryIndustry={form.industry} workspaces={[{industry:form.industry},...(workspacePolicy.mode==='single'?[]:initialWorkspaces.map(branch=>({industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})))]} />
+          <h2 className="text-sm font-semibold text-slate-800">Workspace structure and plan pricing</h2>
+          {loadingWorkspacePlans && <p className="text-xs text-slate-500">Loading plan defaults…</p>}
+          {selectedWorkspacePlan && <div className="rounded-xl border border-cyan-100 bg-cyan-50/60 p-3 text-xs text-slate-600">
+            <p className="font-semibold text-slate-800">{selectedWorkspacePlan.name} default pricing</p>
+            <p className="mt-1">Organization plan: ₹{selectedWorkspacePlan.pricing.baseMonthlyInr?.toFixed(2) ?? 'Not configured'} / month · Each additional workspace: ₹{selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr?.toFixed(2) ?? 'Not configured'} / month</p>
+            {workspacePolicy.mode==='mixed_industry' && <p>Additional distinct industry: ₹{selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr?.toFixed(2) ?? 'Not configured'} / month</p>}
+            <p className="mt-1 text-[10px] text-slate-500">Plan defaults are managed separately in Admin → Plans &amp; Pricing. This organization receives a pricing snapshot when created.</p>
+          </div>}
+          <WorkspacePolicyEditor value={workspacePolicy} onChange={value=>{setWorkspacePolicy(value);if(value.mode!==workspacePolicy.mode)setSelectedFlags(defaultFeatureFlagsForIndustry(value.mode==='mixed_industry'?'lending':form.industry));}} primaryIndustry={form.industry} workspaces={[{industry:form.industry},...(workspacePolicy.mode==='single'?[]:initialWorkspaces.map(branch=>({industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})))]} showPricingFields={false} />
           <label className="block text-xs text-slate-500">First workspace / branch name
             <input maxLength={120} value={firstBranchName} onChange={event=>setFirstBranchName(event.target.value)} placeholder="Head office" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
           </label>
