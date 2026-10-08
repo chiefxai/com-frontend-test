@@ -73,13 +73,6 @@ export default function CommonDropdown({
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close); };
   }, [open, closeOnOutsideClick]);
 
-  useEffect(() => {
-    if (!open || !closeOnSelect || !panelRef.current) return;
-    const close = () => setOpen(false);
-    panelRef.current.addEventListener('click', close);
-    return () => panelRef.current?.removeEventListener('click', close);
-  }, [open, closeOnSelect]);
-
   return (
     <div ref={rootRef} className={`relative inline-flex ${className}`}>
       <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open}
@@ -88,6 +81,7 @@ export default function CommonDropdown({
       </button>
       {open && (
         <div ref={panelRef} role="menu"
+          onClick={() => { if (closeOnSelect) setOpen(false); }}
           className={`z-[100] overflow-auto rounded-xl border shadow-xl ${contentClassName}`}
           style={{
             position: 'fixed',
