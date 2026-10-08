@@ -1066,7 +1066,7 @@ export default function App() {
                     <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{workspace.workspace?.name || workspace.organization.workspaceName}</span>
-                      <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}{unavailable ? ' · Unavailable' : ''}</span>
+                      {unavailable && <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>Unavailable</span>}
                       {industryLabel && <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{industryLabel}</span>}
                     </span>
                     {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
