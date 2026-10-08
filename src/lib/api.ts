@@ -151,12 +151,19 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // Check the server's acknowledged scope before exposing response data.
   // Identity/platform discovery intentionally has no operational scope.
   const discovery = path === '/api/auth/workspaces' || path.startsWith('/api/platform/');
+  // This settings endpoint manages the organization's workspace collection,
+  // so its response is intentionally independent of the active workspace.
+  // Keep checking the organization when the server provides it, but do not
+  // reject the list just because an older proxy/backend omits workspace scope
+  // acknowledgement headers for this org-level response.
+  const organizationWorkspaceCollection = path === '/api/settings/workspaces';
   if (res.ok && !discovery && selectedOrgId && selectedWorkspaceId) {
     const acknowledgedOrg = res.headers.get('X-Organization-Id');
     const acknowledgedWorkspace = res.headers.get('X-Workspace-Id');
-    if ((acknowledgedOrg && acknowledgedOrg !== selectedOrgId) ||
-        (acknowledgedWorkspace && acknowledgedWorkspace !== selectedWorkspaceId) ||
-        (selectedWorkspaceId !== selectedOrgId && (!acknowledgedOrg || !acknowledgedWorkspace))) {
+    const organizationMismatch = acknowledgedOrg && acknowledgedOrg !== selectedOrgId;
+    const workspaceMismatch = !organizationWorkspaceCollection && acknowledgedWorkspace && acknowledgedWorkspace !== selectedWorkspaceId;
+    const missingWorkspaceConfirmation = !organizationWorkspaceCollection && selectedWorkspaceId !== selectedOrgId && (!acknowledgedOrg || !acknowledgedWorkspace);
+    if (organizationMismatch || workspaceMismatch || missingWorkspaceConfirmation) {
       throw new Error('The server did not confirm the selected workspace');
     }
   }
