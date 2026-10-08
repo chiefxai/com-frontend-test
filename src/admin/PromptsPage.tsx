@@ -275,26 +275,26 @@ export default function PromptsPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading prompts…</div>;
+    return <div className="flex items-center justify-center py-20 text-[var(--text-muted)]"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading prompts…</div>;
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {error && (
-        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+        <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       <Widget title="Voice agent master prompts" subtitle="These are the two platform-level templates used when generating voice-agent prompts. Existing agents keep their saved prompt until updated.">
-        <div className="flex flex-col lg:flex-row min-h-[540px]">
-          <div className="lg:w-52 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[var(--border)] p-2">
+        <div className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl lg:flex-row">
+          <div className="lg:w-60 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2">
             {data.voice.map(p => (
               <button key={p.callType} onClick={() => selectVoice(p.callType)}
                 className={`w-full text-left px-3 py-3 rounded-xl text-sm font-medium mb-1 ${activeVoice === p.callType ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
                 <div className="flex items-center gap-2"><Volume2 className="h-4 w-4" /> {p.callType}</div>
-                <div className={`text-[10px] mt-1 ${activeVoice === p.callType ? 'text-slate-300' : 'text-slate-400'}`}>
+                <div className={`text-[10px] mt-1 ${activeVoice === p.callType ? 'text-slate-300' : 'text-[var(--text-muted)]'}`}>
                   {p.isCustomized ? 'Customized' : 'Default template'}
                 </div>
               </button>
@@ -303,14 +303,14 @@ export default function PromptsPage() {
           <div className="flex-1 p-5">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
-                <div className="text-sm font-semibold text-slate-800">Voice prompt · {activeVoice}</div>
-                <div className="text-[11px] text-slate-400">Keep the required <code>{'{{...}}'}</code> placeholders intact.</div>
+                <div className="text-sm font-semibold text-[var(--text-primary)]">Voice prompt · {activeVoice}</div>
+                <div className="text-[11px] text-[var(--text-muted)]">Keep the required <code>{'{{...}}'}</code> placeholders intact.</div>
               </div>
-              <button onClick={resetVoice} disabled={saving === 'voice'} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-50">
+              <button onClick={resetVoice} disabled={saving === 'voice'} className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-50">
                 <RotateCcw className="h-3.5 w-3.5" /> Reset
               </button>
             </div>
-            <textarea value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)} className="w-full h-[390px] resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono leading-5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400" />
+            <textarea value={voiceDraft} onChange={e => setVoiceDraft(e.target.value)} className="w-full h-[390px] resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30" />
             <div className="flex items-center justify-end gap-3 mt-3">
               {saved === 'voice' && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3.5 w-3.5" /> Saved</span>}
               <button onClick={saveVoice} disabled={saving === 'voice'} className="flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
@@ -324,10 +324,10 @@ export default function PromptsPage() {
 
 
       <Widget title="Language & dialect prompts" subtitle="Manage language and dialect guidance from the admin panel. New languages and dialects are stored in the platform settings, so Agent Studio can support them without a code deployment.">
-        <div className="flex flex-col lg:flex-row min-h-[540px]">
-          <div className="lg:w-56 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[var(--border)] p-2">
+        <div className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl lg:flex-row">
+          <div className="lg:w-56 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2">
             <div className="flex items-center justify-between px-2 py-1 mb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Languages</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Languages</span>
               <button onClick={addLanguage} className="text-[11px] font-semibold text-amber-600 hover:text-amber-700">+ Add</button>
             </div>
             {catalog.languages.map(lang => (
@@ -337,59 +337,59 @@ export default function PromptsPage() {
               </button>
             ))}
           </div>
-          <div className="flex-1 p-5 space-y-5">
+          <div className="flex-1 p-5 space-y-6">
             {currentLanguage ? <>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <div className="text-sm font-semibold text-slate-800 dark:text-[var(--text-primary)]">Language prompt · {activeLanguage}</div>
-                    <div className="text-[11px] text-slate-400">Use {'{{language}}'} when the language name should be inserted dynamically.</div>
+                    <div className="text-sm font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]">Language prompt · {activeLanguage}</div>
+                    <div className="text-[11px] text-[var(--text-muted)]">Use {'{{language}}'} when the language name should be inserted dynamically.</div>
                   </div>
                   <button onClick={saveLanguage} disabled={savingLanguage} className="flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-xl disabled:opacity-50">
                     {savingLanguage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save language
                   </button>
                 </div>
-                <textarea value={languageDraft} onChange={e => setLanguageDraft(e.target.value)} className="w-full h-28 resize-none rounded-xl border border-slate-200 dark:border-[var(--border)] bg-slate-50 dark:bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-slate-700 dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                <textarea value={languageDraft} onChange={e => setLanguageDraft(e.target.value)} className="w-full h-28 resize-none rounded-2xl border border-[var(--border)] dark:border-[var(--border)] bg-[var(--bg-subtle)] dark:bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30" />
               </div>
 
-              <div className="border-t border-slate-200 dark:border-[var(--border)] pt-4">
+              <div className="border-t border-[var(--border)] dark:border-[var(--border)] pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <div className="text-sm font-semibold text-slate-800 dark:text-[var(--text-primary)]">Dialect prompt</div>
-                    <div className="text-[11px] text-slate-400">Speech, vocabulary, regional rules and examples for the selected dialect.</div>
+                    <div className="text-sm font-semibold text-[var(--text-primary)] dark:text-[var(--text-primary)]">Dialect prompt</div>
+                    <div className="text-[11px] text-[var(--text-muted)]">Speech, vocabulary, regional rules and examples for the selected dialect.</div>
                   </div>
                   <button onClick={addDialect} className="text-[11px] font-semibold text-amber-600 hover:text-amber-700">+ Add dialect</button>
                 </div>
-                <select value={activeDialect} onChange={e => selectDialect(e.target.value)} className="w-full mb-2 rounded-xl border border-slate-200 dark:border-[var(--border)] bg-white dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-slate-700 dark:text-[var(--text-primary)]">
+                <select value={activeDialect} onChange={e => selectDialect(e.target.value)} className="w-full mb-2 rounded-2xl border border-[var(--border)] dark:border-[var(--border)] bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-primary)] dark:text-[var(--text-primary)]">
                   {!activeDialect && <option value="">No dialect configured</option>}
                   {(catalog.dialectsByLanguage[activeLanguage] || []).map(d => <option key={d.dialect} value={d.dialect}>{d.dialect}</option>)}
                 </select>
                 {currentDialect ? <>
-                  <textarea value={dialectDraft} onChange={e => setDialectDraft(e.target.value)} className="w-full h-36 resize-none rounded-xl border border-slate-200 dark:border-[var(--border)] bg-slate-50 dark:bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-slate-700 dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                  <textarea value={dialectDraft} onChange={e => setDialectDraft(e.target.value)} className="w-full h-36 resize-none rounded-2xl border border-[var(--border)] dark:border-[var(--border)] bg-[var(--bg-subtle)] dark:bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                   <div className="mt-3">
-                    <div className="text-[11px] font-semibold text-slate-500 mb-1">Natural phrasing examples · one per line</div>
-                    <textarea value={examplesDraft} onChange={e => setExamplesDraft(e.target.value)} className="w-full h-24 resize-none rounded-xl border border-slate-200 dark:border-[var(--border)] bg-slate-50 dark:bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-slate-700 dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    <div className="text-[11px] font-semibold text-[var(--text-muted)] mb-1">Natural phrasing examples · one per line</div>
+                    <textarea value={examplesDraft} onChange={e => setExamplesDraft(e.target.value)} className="w-full h-24 resize-none rounded-2xl border border-[var(--border)] dark:border-[var(--border)] bg-[var(--bg-subtle)] dark:bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] dark:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                   </div>
                   <div className="flex justify-end mt-3">
                     <button onClick={saveDialect} disabled={savingDialect} className="flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
                       {savingDialect ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save dialect
                     </button>
                   </div>
-                </> : <div className="rounded-xl border border-dashed border-slate-200 dark:border-[var(--border)] p-8 text-center text-xs text-slate-400">Add a dialect to configure dialect-specific speech guidance.</div>}
+                </> : <div className="rounded-2xl border border-dashed border-[var(--border)] dark:border-[var(--border)] p-8 text-center text-xs text-[var(--text-muted)]">Add a dialect to configure dialect-specific speech guidance.</div>}
               </div>
-            </> : <div className="p-10 text-center text-xs text-slate-400">No languages configured.</div>}
+            </> : <div className="p-10 text-center text-xs text-[var(--text-muted)]">No languages configured.</div>}
           </div>
         </div>
       </Widget>
 
       <Widget title="System / post-call agent prompts" subtitle="Global defaults for the built-in agents that analyze completed calls. Organization-level overrides still take precedence.">
-        <div className="flex flex-col lg:flex-row min-h-[540px]">
-          <div className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-[var(--border)] p-2 max-h-[540px] overflow-y-auto">
+        <div className="flex min-h-[560px] flex-col overflow-hidden rounded-2xl lg:flex-row">
+          <div className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border)] dark:border-[var(--border)] p-2 max-h-[540px] overflow-y-auto">
             {data.system.map(p => (
               <button key={p.id} onClick={() => selectSystem(p.id)}
                 className={`w-full text-left px-3 py-3 rounded-xl mb-1 ${activeSystem === p.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
                 <div className="flex items-center gap-2 text-sm font-medium"><Cpu className="h-4 w-4" /> {p.name}</div>
-                <div className={`text-[10px] mt-1 ${activeSystem === p.id ? 'text-slate-300' : 'text-slate-400'}`}>{p.model}</div>
+                <div className={`text-[10px] mt-1 ${activeSystem === p.id ? 'text-slate-300' : 'text-[var(--text-muted)]'}`}>{p.model}</div>
                 {p.isCustomized && <span className={`inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeSystem === p.id ? 'bg-slate-700 text-white' : 'bg-amber-100 text-amber-700'}`}>CUSTOMIZED</span>}
               </button>
             ))}
@@ -398,15 +398,15 @@ export default function PromptsPage() {
             {currentSystem && <>
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div>
-                  <div className="text-sm font-semibold text-slate-800">{currentSystem.name}</div>
-                  <div className="text-[11px] text-slate-400">{currentSystem.description}</div>
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">{currentSystem.name}</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">{currentSystem.description}</div>
                 </div>
-                <button onClick={resetSystem} disabled={saving === 'system'} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 disabled:opacity-50">
+                <button onClick={resetSystem} disabled={saving === 'system'} className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-50">
                   <RotateCcw className="h-3.5 w-3.5" /> Reset
                 </button>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-slate-400 mb-3"><Sparkles className="h-3.5 w-3.5" /> Runs: {currentSystem.runsOn}</div>
-              <textarea value={systemDraft} onChange={e => setSystemDraft(e.target.value)} className="w-full h-[390px] resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono leading-5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)] mb-3"><Sparkles className="h-3.5 w-3.5" /> Runs: {currentSystem.runsOn}</div>
+              <textarea value={systemDraft} onChange={e => setSystemDraft(e.target.value)} className="w-full h-[390px] resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-mono leading-5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <div className="flex items-center justify-end gap-3 mt-3">
                 {saved === 'system' && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3.5 w-3.5" /> Saved</span>}
                 <button onClick={saveSystem} disabled={saving === 'system'} className="flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
@@ -418,7 +418,7 @@ export default function PromptsPage() {
         </div>
       </Widget>
 
-      <div className="text-[10px] text-slate-400">
+      <div className="text-[10px] text-[var(--text-muted)]">
         <ChevronDown className="inline h-3 w-3 mr-1" /> Platform prompt changes are audited server-side. Validate placeholders before saving.
       </div>
     </div>
