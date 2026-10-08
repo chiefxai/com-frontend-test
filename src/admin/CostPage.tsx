@@ -124,7 +124,7 @@ export default function CostPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>;
+    return <div className="flex items-center justify-center py-16 text-[var(--text-muted)]"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>;
   }
 
   const filteredArchive = archive.filter((row) => {
@@ -158,7 +158,7 @@ export default function CostPage() {
   const costPerMinuteInr = primaryCallProvider ? perMinuteRate(primaryCallProvider) : 0;
 
   return (
-    <div className="grid grid-cols-12 gap-4">
+    <div className="grid grid-cols-12 gap-5">
       {error && (
         <div className="col-span-12 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-xl px-4 py-3">{error}</div>
       )}
@@ -236,7 +236,7 @@ function ProviderSection({
 }) {
   return (
     <Widget colSpan={12} title={title} subtitle={description} icon={Icon} accent="#f59e0b" padding="md">
-      <div className="divide-y divide-slate-100 dark:divide-[var(--border)]">
+      <div className="divide-y divide-[var(--border)]">
         {providers.map((p) => (
           <ProviderRow
             key={p.key}
@@ -250,7 +250,7 @@ function ProviderSection({
         ))}
 
         {providers.length === 0 && (
-          <div className="py-8 text-center text-slate-400 dark:text-[var(--text-muted)] text-xs">
+          <div className="py-8 text-center text-[var(--text-muted)] dark:text-[var(--text-muted)] text-xs">
             No {kind === 'call' ? 'call' : 'AI'} providers are integrated in code yet.
           </div>
         )}
@@ -273,7 +273,7 @@ function ProviderRow({
     <div className="py-4 flex items-end gap-3 flex-wrap">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-800 dark:text-[var(--text-primary)]">{p.label}</p>
-        <p className="text-[10px] text-slate-400 dark:text-[var(--text-muted)] font-mono">{p.key}</p>
+        <p className="text-[10px] text-[var(--text-muted)] dark:text-[var(--text-muted)] font-mono">{p.key}</p>
       </div>
 
       {kind === 'call' ? (
@@ -283,14 +283,14 @@ function ProviderRow({
               type="number" min="0" step="0.01"
               value={p.rateAmount ?? 0}
               onChange={(e) => onChange(p.key, { rateAmount: Number(e.target.value) })}
-              className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </Field>
           <Field label="Per">
             <select
               value={p.rateUnit ?? 'minute'}
               onChange={(e) => onChange(p.key, { rateUnit: e.target.value as 'minute' | 'hour' })}
-              className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               <option value="minute">Minute</option>
               <option value="hour">Hour</option>
@@ -303,7 +303,7 @@ function ProviderRow({
             <select
               value={p.pricingMode ?? 'token'}
               onChange={(e) => onChange(p.key, { pricingMode: e.target.value as 'token' | 'time' })}
-              className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               <option value="token">Token based</option>
               <option value="time">Time based</option>
@@ -316,14 +316,14 @@ function ProviderRow({
                   type="number" min="0" step="0.0001"
                   value={p.timeRateAmount ?? 0}
                   onChange={(e) => onChange(p.key, { timeRateAmount: Number(e.target.value) })}
-                  className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </Field>
               <Field label="Per">
                 <select
                   value={p.timeUnit ?? 'minute'}
                   onChange={(e) => onChange(p.key, { timeUnit: e.target.value as 'minute' | 'second' })}
-                  className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 >
                   <option value="minute">Minute</option>
                   <option value="second">Second</option>
@@ -337,14 +337,14 @@ function ProviderRow({
                   type="number" min="0" step="0.0001"
                   value={p.ratePer1kTokens ?? 0}
                   onChange={(e) => onChange(p.key, { ratePer1kTokens: Number(e.target.value) })}
-                  className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-28 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </Field>
               <Field label="Per">
                 <select
                   value={p.tokenUnit ?? 1000}
                   onChange={(e) => onChange(p.key, { tokenUnit: Number(e.target.value) })}
-                  className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 >
                   {TOKEN_UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -359,7 +359,7 @@ function ProviderRow({
           type="number" min="0" max="100" step="0.01"
           value={p.taxPercent ?? 0}
           onChange={(e) => onChange(p.key, { taxPercent: Number(e.target.value) })}
-          className="w-20 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+          className="w-20 bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
         />
       </Field>
 
@@ -367,7 +367,7 @@ function ProviderRow({
         <select
           value={p.active ? '1' : '0'}
           onChange={(e) => onChange(p.key, { active: e.target.value === '1' })}
-          className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-slate-200 dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+          className="bg-slate-50 dark:bg-[var(--bg-subtle)] border border-[var(--border)] dark:border-[var(--border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
         >
           <option value="1">Active</option>
           <option value="0">Inactive</option>
@@ -380,7 +380,7 @@ function ProviderRow({
           type="button"
           onClick={() => onSave(p)}
           disabled={savingKey === p.key}
-          className="flex items-center gap-1.5 bg-slate-900 text-white text-xs font-medium px-3 py-2 rounded-xl hover:bg-slate-800 disabled:opacity-50"
+          className="flex items-center gap-1.5 bg-[var(--accent)] text-white text-xs font-medium px-3 py-2 rounded-xl hover:bg-slate-800 disabled:opacity-50"
         >
           {savingKey === p.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           Save
@@ -393,7 +393,7 @@ function ProviderRow({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[10px] font-bold text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</label>
+      <label className="block text-[10px] font-bold text-[var(--text-muted)] dark:text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</label>
       {children}
     </div>
   );
