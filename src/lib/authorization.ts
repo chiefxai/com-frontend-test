@@ -24,14 +24,14 @@ export function legacyAuthorization(role: string): Authorization {
   const viewer = ['Viewer','Customer'].includes(role);
   const billingOnly = role === 'Billing Admin';
   return { organizationRole: role,workspaceRole: billingOnly ? null : admin ? 'Workspace Admin' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
-    permissions: [
+    permissions: ['notifications.read',
       ...(!billingOnly ? ['workspace.read'] : []),
       ...(!viewer && !billingOnly ? ['workspace.write','workspace.call'] : []),
       ...(!viewer && !billingOnly ? ['workspace.share.propose'] : []),
       ...(!viewer && !billingOnly ? ['workspace.share.copy'] : []),
       ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
-      ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read'] : []),
-      ...(billingOnly ? ['organization.read','billing.read'] : []),
+      ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read','billing.organization.read','billing.payment.submit','billing.contacts.manage','billing.notifications.manage','billing.credit.allocate','billing.allocation_rules.manage','billing.postpaid.manage'] : []),
+      ...(billingOnly ? ['organization.read','billing.read','billing.organization.read'] : []),
     ] };
 }
 export function permissionForRequest(path: string,method: string): string | null {
@@ -45,6 +45,15 @@ export function permissionForRequest(path: string,method: string): string | null
   if (/^\/api\/workspace-sharing\/records\/[^/]+\/copies$/.test(path)) return 'workspace.share.copy';
   if (/^\/api\/workspace-sharing\/records(?:\/|$)/.test(path)) return 'workspace.read';
   if (/^\/api\/workspace-sharing\/grants(?:\/|$)/.test(path)) return read ? 'workspace.read' : 'workspace.settings.manage';
+  if (/^\/api\/notifications(?:\/|$)/.test(path)) return 'notifications.read';
+  if (/^\/api\/billing\/workspaces\/[^/]+\/(?:overview|usage|ledger)$/.test(path) && read) return 'billing.workspace.read';
+  if (/^\/api\/billing\/payments(?:\/|$)/.test(path) && !read) return 'billing.payment.submit';
+  if (/^\/api\/billing\/contacts(?:\/|$)/.test(path) && !read) return 'billing.contacts.manage';
+  if (path === '/api/billing/notification-policy' && !read) return 'billing.notifications.manage';
+  if (/^\/api\/billing\/allocation-rules(?:\/|$)/.test(path) && !read) return 'billing.allocation_rules.manage';
+  if (/^\/api\/billing\/(?:allocations|transfers)(?:\/|$)/.test(path) && !read) return 'billing.credit.allocate';
+  if (/^\/api\/billing\/postpaid-policy(?:\/|$)/.test(path) && !read) return 'billing.postpaid.manage';
+  if (/^\/api\/billing\/(?:overview|subscription|payments|invoices|contacts|notification-policy|allocations|transfers|allocation-rules)(?:\/|$)/.test(path)) return 'billing.organization.read';
   if (/^\/api\/(billing|ai-usage)(?:\/|$)/.test(path)) return 'billing.read';
   if (/^\/api\/settings\/workspace\/members(?:\/|$)/.test(path)) return 'workspace.members.manage';
   if (/^\/api\/settings\/team(?:\/|$)/.test(path)) return read ? 'organization.members.read' : 'organization.members.manage';
@@ -57,7 +66,7 @@ export function permissionForRequest(path: string,method: string): string | null
 export function canAccessTab(tab: string,subTab?: string) {
   if (tab === 'settings') {
     if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
-    return can(subTab === 'billing' ? 'billing.read' : subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage')
+    return (subTab === 'billing' ? can('billing.read') || can('billing.organization.read') || can('billing.workspace.read') : can(subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage'))
       || (subTab === 'team' && can('workspace.members.manage'));
   }
   if (tab === 'company' || tab === 'agent-studio') return can('workspace.settings.manage');

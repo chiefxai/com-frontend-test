@@ -156,13 +156,19 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // Keep checking the organization when the server provides it, but do not
   // reject the list just because an older proxy/backend omits workspace scope
   // acknowledgement headers for this org-level response.
-  const organizationWorkspaceCollection = ['/api/settings/workspaces','/api/settings/workspace-policy'].includes(path);
+  const organizationScopedBillingPaths = [
+    '/api/billing/overview', '/api/billing/subscription', '/api/billing/payments',
+    '/api/billing/invoices', '/api/billing/contacts', '/api/billing/notification-policy',
+    '/api/billing/allocations', '/api/billing/transfers', '/api/billing/allocation-rules',
+  ];
+  const organizationResource = ['/api/settings/workspaces','/api/settings/workspace-policy'].includes(path)
+    || organizationScopedBillingPaths.some((base) => path === base || path.startsWith(`${base}/`));
   if (res.ok && !discovery && selectedOrgId && selectedWorkspaceId) {
     const acknowledgedOrg = res.headers.get('X-Organization-Id');
     const acknowledgedWorkspace = res.headers.get('X-Workspace-Id');
     const organizationMismatch = acknowledgedOrg && acknowledgedOrg !== selectedOrgId;
-    const workspaceMismatch = !organizationWorkspaceCollection && acknowledgedWorkspace && acknowledgedWorkspace !== selectedWorkspaceId;
-    const missingWorkspaceConfirmation = !organizationWorkspaceCollection && selectedWorkspaceId !== selectedOrgId && (!acknowledgedOrg || !acknowledgedWorkspace);
+    const workspaceMismatch = !organizationResource && acknowledgedWorkspace && acknowledgedWorkspace !== selectedWorkspaceId;
+    const missingWorkspaceConfirmation = !organizationResource && selectedWorkspaceId !== selectedOrgId && (!acknowledgedOrg || !acknowledgedWorkspace);
     if (organizationMismatch || workspaceMismatch || missingWorkspaceConfirmation) {
       throw new Error('The server did not confirm the selected workspace');
     }
