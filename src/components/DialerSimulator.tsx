@@ -2006,79 +2006,73 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         : effectiveStatus === 'In Progress'
                         ? 'bg-blue-500 animate-pulse'
                         : 'bg-slate-400';
+                      const dateLabel = new Date(runAt).toLocaleDateString(undefined, {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      });
+                      const showScript = scriptName !== 'No script' && scriptName.trim().toLowerCase() !== task.name.trim().toLowerCase();
 
                       return (
-                        <Tooltip
-                          key={task.id}
-                          side="right"
-                          className="w-full flex"
-                          label={`${task.name} · Run ${runDateTime} · ${completed}/${total} completed · ${percent}% · ${effectiveStatus}`}
-                        >
                         <div
-                          className={`w-full rounded-xl border transition-all p-3 group ${
+                          key={task.id}
+                          className={`group relative w-full rounded-xl border transition-all duration-150 ${
                             isActive
-                              ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 shadow-sm'
-                              : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)]'
+                              ? 'border-[var(--accent)] bg-[var(--accent-subtle)] shadow-sm'
+                              : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--accent)]/50 hover:bg-[var(--bg-subtle)]'
                           }`}
                         >
                           <button
                             type="button"
+                            aria-current={isActive ? 'page' : undefined}
+                            aria-label={`${task.name}, ${completed} of ${total} dialed, ${effectiveStatus}`}
                             onClick={() => {
                               setSelectedTaskId(task.id);
                               setPlayingTapeId(null);
-                                                          }}
-                            className="w-full text-left"
+                            }}
+                            className="block w-full rounded-xl px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                           >
-                          <div className="flex items-start gap-2.5">
-                            <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${statusDot}`} />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs font-bold text-[var(--text-primary)] truncate">{task.name}</p>
-                                <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform ${isActive ? 'text-blue-600 translate-x-0.5' : 'text-[var(--text-muted)] opacity-0 group-hover:opacity-100'}`} />
+                            <div className="flex items-start gap-2.5">
+                              <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusDot}`} aria-hidden="true" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="min-w-0 break-words text-[12px] font-semibold leading-4 text-[var(--text-primary)]">{task.name}</span>
+                                  <ChevronRight className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
+                                </div>
+                                {showScript && <p className="mt-1 truncate text-[10px] text-[var(--text-muted)]">{scriptName}</p>}
+                                <div className="mt-2.5 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-medium text-[var(--text-secondary)]">{completed} of {total} dialed</span>
+                                  <span className="text-[10px] font-semibold tabular-nums text-[var(--text-primary)]">{percent}%</span>
+                                </div>
+                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]" role="progressbar" aria-label="Campaign dial progress" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={Math.max(total, 1)}>
+                                  <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${percent}%` }} />
+                                </div>
+                                <div className="mt-2.5 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-[var(--text-muted)]">{dateLabel}{pending > 0 ? ` · ${pending} pending` : ''}</span>
+                                  <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${
+                                    effectiveStatus === 'Completed'
+                                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                      : effectiveStatus === 'In Progress'
+                                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                      : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'
+                                  }`}>{effectiveStatus}</span>
+                                </div>
                               </div>
-                              <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{scriptName}</p>
-                              <div className="flex items-center gap-2 mt-2 text-[9px] text-[var(--text-muted)]">
-                                <span>{completed}/{total} dialed</span>
-                                <span>•</span>
-                                <span>{pending} pending</span>
-                                <span className="ml-auto font-medium">{percent}%</span>
-                              </div>
-                              <div className="h-1 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mt-1.5">
-                                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${percent}%` }} />
-                              </div>
-                              <div className="flex items-center justify-between gap-2 mt-2">
-                                <span className="text-[9px] text-[var(--text-muted)] truncate">
-                                  {new Date(task.workflowRunMetadata?.runAt || task.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                                </span>
-                                <span className={`text-[9px] font-semibold ${
-                                  effectiveStatus === 'Completed' ? 'text-emerald-600 dark:text-emerald-400'
-                                  : effectiveStatus === 'In Progress' ? 'text-blue-600 dark:text-blue-400'
-                                  : 'text-[var(--text-muted)]'
-                                }`}>
-                                  {effectiveStatus}
-                                </span>
-                              </div>
-                            </div>
                             </div>
                           </button>
                           {isOrganizationAdmin && (
-                            <div className="flex justify-end mt-1">
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openDeleteTask(task);
-                                }}
-                                className="h-7 w-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-                                aria-label={`Delete campaign task ${task.name}`}
-                                title="Delete campaign task"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openDeleteTask(task);
+                              }}
+                              className="absolute bottom-2 right-2 hidden h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-rose-50 hover:text-rose-600 focus-visible:flex group-hover:flex dark:hover:bg-rose-500/10"
+                              aria-label={`Delete campaign task ${task.name}`}
+                              title="Delete campaign task"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           )}
                         </div>
-                        </Tooltip>
                       );
                     })}
 
