@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Save, Pencil, X } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
+import AwsCreateLayout from '../components/ui/AwsCreateLayout';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
@@ -11,8 +12,8 @@ const MODES: { value: WorkspaceMode; label: string }[] = [
 ];
 
 const blankPlan = (): WorkspacePlan => ({
-  id: '', name: 'New plan', active: true, defaultMode: 'single',
-  pricing: { baseMonthlyInr: null, includedWorkspaces: 1, extraWorkspaceMonthlyInr: null, additionalIndustryMonthlyInr: 0 },
+  id: '', name: '', active: true, defaultMode: 'single',
+  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, extraWorkspaceMonthlyInr: 0, additionalIndustryMonthlyInr: 0 },
 });
 
 export default function WorkspacePlansPage() {
@@ -56,8 +57,8 @@ export default function WorkspacePlansPage() {
     setError(''); setMessage('');
     if (!draft || editingIndex === null) return;
     const nextPlans = editingIndex === -1 ? [...plans, draft] : plans.map((plan, index) => index === editingIndex ? draft : plan);
-    const missing = nextPlans.find(plan => !plan.id.trim() || !plan.name.trim() || plan.pricing.baseMonthlyInr == null || plan.pricing.extraWorkspaceMonthlyInr == null || plan.pricing.additionalIndustryMonthlyInr == null);
-    if (missing) { setError(`Complete the plan ID, name, and all monthly prices for “${missing.name || 'New plan'}”. Enter 0 when a price does not apply.`); return; }
+    const missing = !draft.id.trim() || !draft.name.trim() || draft.pricing.baseMonthlyInr == null || draft.pricing.extraWorkspaceMonthlyInr == null || draft.pricing.additionalIndustryMonthlyInr == null;
+    if (missing) { setError('Enter a plan name, ID and valid monthly prices.'); return; }
     setSaving(true);
     try {
       const response = await apiFetch('/api/platform/billing/workspace-plans', {
@@ -75,7 +76,7 @@ export default function WorkspacePlansPage() {
     if (!headerCtx) return;
     headerCtx.setHeader({
       title: <span className="flex items-center gap-2"><span className="text-[10px] font-medium text-[var(--text-muted)]">Admin /</span> Workspace Plans</span>,
-      action: <button type="button" onClick={beginAdd} disabled={loading || saving || editingIndex !== null} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Add plan</button>,
+      action: editingIndex !== null ? undefined : <button type="button" onClick={beginAdd} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Add plan</button>,
     });
   }, [headerCtx?.setHeader, beginAdd, loading, saving, editingIndex]);
 
@@ -86,7 +87,7 @@ export default function WorkspacePlansPage() {
   return <div className="mx-auto max-w-6xl space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
     {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
-    {loading ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-muted)]">Loading plans…</div> : (
+    {!draft && (loading ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-muted)]">Loading plans…</div> : (
       <div className="grid gap-4 md:grid-cols-2">
         {plans.map((plan, index) => <section key={plan.id || index} className="flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
@@ -109,16 +110,16 @@ export default function WorkspacePlansPage() {
         </section>)}
         {!plans.length && <div className="col-span-full rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)] p-10 text-center text-sm text-[var(--text-muted)]">No workspace plans yet.</div>}
       </div>
-    )}
+    ))}
 
     {draft && editingIndex !== null && (
-      <div className="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget && !saving) cancelEdit(); }}>
-        <div role="dialog" aria-modal="true" aria-labelledby="workspace-plan-form-title" className="flex max-h-[min(90vh,850px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl">
+      <AwsCreateLayout breadcrumb="Workspace Plans" title={editingIndex === -1 ? "Create plan" : "Edit plan"} description="" steps={[]} activeStep={0}>
+        <section className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
           <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
             <div><h3 id="workspace-plan-form-title" className="text-lg font-semibold">{editingIndex === -1 ? 'Create workspace plan' : 'Edit workspace plan'}</h3></div>
             <button type="button" onClick={cancelEdit} disabled={saving} aria-label="Close plan form" className="rounded-lg p-2 hover:bg-[var(--bg-subtle)] disabled:opacity-50"><X className="h-5 w-5" /></button>
           </div>
-          <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="grid gap-4 overflow-y-auto p-6 sm:grid-cols-2">
+          <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="grid gap-5 p-6 sm:grid-cols-2">
             <label className={labelClass}>Plan name<input required value={draft.name} onChange={event => updateDraft({ name: event.target.value })} className={fieldClass} /></label>
             <label className={labelClass}>Stable plan ID<input required value={draft.id} onChange={event => updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })} disabled={existingIds.has(draft.id)} placeholder="e.g. scale" className={fieldClass + ' disabled:opacity-60'} /></label>
             <label className={labelClass + ' sm:col-span-2'}>Default workspace structure<select value={draft.defaultMode} onChange={event => { const mode = event.target.value as WorkspaceMode; updateDraft({ defaultMode: mode, pricing: { ...draft.pricing, includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces } }); }} className={fieldClass}>{MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select></label>
@@ -132,8 +133,8 @@ export default function WorkspacePlansPage() {
             <button type="button" onClick={cancelEdit} disabled={saving} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--bg-subtle)]">Cancel</button>
             <button type="submit" form="workspace-plan-form" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4" />{saving ? 'Saving…' : editingIndex === -1 ? 'Create plan' : 'Save changes'}</button>
           </div>
-        </div>
-      </div>
+        </section>
+      </AwsCreateLayout>
     )}
   </div>;
 }
