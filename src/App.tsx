@@ -1043,6 +1043,8 @@ export default function App() {
                 const workspaceId = workspace.workspaceId || workspace.orgId;
                 const active = workspaceId === (activeWorkspaceId || orgSettings.id);
                 const unavailable = workspace.organization.status === 'Suspended' || (workspace.workspace?.status && workspace.workspace.status !== 'Active');
+                const industry = workspace.workspace?.industry || workspace.organization.industry;
+                const industryLabel = industry?.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
                 return (
                   <button
                     key={workspaceId}
@@ -1065,6 +1067,7 @@ export default function App() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{workspace.workspace?.name || workspace.organization.workspaceName}</span>
                       <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{workspace.organization.name}{unavailable ? ' · Unavailable' : ''}</span>
+                      {industryLabel && <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{industryLabel}</span>}
                     </span>
                     {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
                   </button>
