@@ -1868,20 +1868,21 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         {/* Unified simulator workspace: campaign navigator + active campaign */}
         <aside className={`h-full min-h-0 transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
           {isSimulatorNavigatorCollapsed ? (
-            <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
+            <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm py-3 gap-3">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]" aria-hidden="true">NAV</span>
               <button
                 type="button"
                 onClick={() => setIsSimulatorNavigatorCollapsed(false)}
-                className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-blue-400 transition-colors"
+                className="h-11 w-11 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] transition-colors"
                 aria-label="Expand campaigns"
                 title="Expand campaigns"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
 
-              <div className="w-8 border-t border-[var(--border)] my-1" />
+              <div className="w-8 border-t border-[var(--border)]" />
 
-              <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2">
+              <div className="flex flex-col items-center gap-2 overflow-y-auto min-h-0 w-full px-1.5 pb-2">
                 {tasks.map((task) => {
                   const active = task.id === selectedTaskId;
 
@@ -1910,7 +1911,8 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         type="button"
                         onClick={() => setSelectedTaskId(task.id)}
                         aria-label={`${task.name}, ${runDateTime}, ${completed} of ${total} completed`}
-                        className={`relative h-10 w-10 rounded-xl border-2 flex items-center justify-center transition-colors ${
+                        aria-current={active ? 'page' : undefined}
+                        className={`relative h-11 w-11 rounded-xl border-2 flex flex-col gap-0.5 items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
                           active
                             ? `${statusBorder} bg-blue-50 dark:bg-blue-950/40 shadow-sm`
                             : `${statusBorder} bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]`
@@ -1919,6 +1921,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         <span className="text-[9px] font-bold tabular-nums text-[var(--text-primary)]">
                           {completed}/{total}
                         </span>
+                        <span className="text-[8px] font-medium text-[var(--text-muted)]">calls</span>
                       </button>
                     </Tooltip>
                   );
@@ -1950,7 +1953,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                     <button
                       type="button"
                       onClick={() => setIsSimulatorNavigatorCollapsed(true)}
-                      className="hidden lg:flex h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      className="hidden lg:flex h-9 w-9 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors"
                       aria-label="Collapse campaigns"
                       title="Collapse campaigns"
                     >
@@ -2405,28 +2408,31 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           {/* Unified inbound workspace: receiving numbers + call history */}
           <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
             {isSimulatorNavigatorCollapsed ? (
-              <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 py-3 gap-2">
+              <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm py-3 gap-3">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]" aria-hidden="true">NAV</span>
                 <button
                   type="button"
                   onClick={() => setIsSimulatorNavigatorCollapsed(false)}
-                  className="h-9 w-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-blue-400 transition-colors"
+                  className="h-11 w-11 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] transition-colors"
                   aria-label="Expand inbound numbers"
                   title="Expand inbound numbers"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
 
-                <div className="w-8 border-t border-[var(--border)] my-1" />
+                <div className="w-8 border-t border-[var(--border)]" />
 
-                <div className="flex flex-col items-center gap-2 overflow-y-auto w-full px-2">
+                <div className="flex flex-col items-center gap-2 overflow-y-auto min-h-0 w-full px-1.5 pb-2">
                   {activeVirtualNumbers.map((vNum) => (
                     <button
                       key={vNum.id}
                       type="button"
                       title={`${vNum.friendlyName || 'Inbound number'} · ${vNum.number}`}
-                      className="relative h-10 w-10 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 flex items-center justify-center transition-all"
+                      aria-label={`${vNum.friendlyName || 'Inbound number'}: ${vNum.number}, ${vNum.incomingCallCount} calls`}
+                      className="relative h-11 w-11 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] flex flex-col gap-1 items-center justify-center transition-all"
                     >
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      <PhoneIncoming className="h-4 w-4 text-[var(--text-secondary)]" />
+                      <span className="max-w-full px-1 truncate text-[9px] font-semibold text-[var(--text-primary)]">{vNum.number.slice(-4)}</span>
                     </button>
                   ))}
                   {activeVirtualNumbers.length === 0 && (
@@ -2455,7 +2461,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                     <button
                       type="button"
                       onClick={() => setIsSimulatorNavigatorCollapsed(true)}
-                      className="hidden lg:flex h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                      className="hidden lg:flex h-9 w-9 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors"
                       aria-label="Collapse inbound numbers"
                       title="Collapse inbound numbers"
                     >
