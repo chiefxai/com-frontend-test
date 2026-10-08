@@ -9,7 +9,6 @@ import {
   CheckCircle,
   FileText,
   Clock,
-  Shield,
   Activity,
   UserPlus,
   DollarSign,
@@ -324,17 +323,18 @@ export default function SettingsView({
   const currentOwnerMember = teamMembers.find(member => member.role === 'Owner'
     && currentUserEmail && member.email.toLowerCase() === currentUserEmail.toLowerCase());
 
+  const loadWorkspaceMembers = React.useCallback(async () => {
+    const response = await apiFetch('/api/settings/workspace/members');
+    const data = await response.json().catch(() => []);
+    if (!response.ok) throw new Error(data.error || 'Could not load workspace role assignments');
+    setWorkspaceMembers(Array.isArray(data) ? data : []);
+    setWorkspaceMembersError('');
+  }, []);
+
   useEffect(() => {
-    if (subTab !== 'team') return;
-    apiFetch('/api/settings/workspace/members')
-      .then(async response => {
-        const data = await response.json().catch(() => []);
-        if (!response.ok) throw new Error(data.error || 'Could not load workspace role assignments');
-        setWorkspaceMembers(Array.isArray(data) ? data : []);
-        setWorkspaceMembersError('');
-      })
-      .catch(error => setWorkspaceMembersError(error.message || 'Could not load workspace role assignments'));
-  }, [subTab]);
+    if (subTab !== 'team' || !canManageWorkspaceMembers) return;
+    loadWorkspaceMembers().catch(error => setWorkspaceMembersError(error.message || 'Could not load workspace role assignments'));
+  }, [subTab, canManageWorkspaceMembers, loadWorkspaceMembers]);
 
   const updateWorkspaceMemberRole = async (member: WorkspaceMemberAssignment, role: string) => {
     setSavingWorkspaceMember(member.memberId);
@@ -461,6 +461,7 @@ export default function SettingsView({
         return;
       }
       setTeamMembers((prev) => [...prev, data]);
+      if (canManageWorkspaceMembers) await loadWorkspaceMembers().catch(() => {});
       setNewStaffName('');
       setNewStaffEmail('');
       setNewStaffPhone('');
@@ -739,11 +740,11 @@ export default function SettingsView({
                 </div>
               )}
 
-              {/* Team list */}
-              {canReadOrgMembers && (
+              {/* Organization membership and current-workspace access in one matrix. */}
+              {(canReadOrgMembers || canManageWorkspaceMembers) && (
               <Widget
                 title="Team Matrix"
-                subtitle="All team members and their access levels."
+                subtitle="Organization membership and access to the selected workspace."
                 icon={Users}
                 accent="#6366f1"
                 padding="none"
@@ -752,7 +753,17 @@ export default function SettingsView({
                   {canManageOrgMembers && <IconButton icon={Plus} label="Add Member" onClick={() => setShowAddStaff(true)} />}
                 </div>}
               >
+                {workspaceMembersError && canManageWorkspaceMembers && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{workspaceMembersError}</div>}
                 {(() => {
+                  const matrixMembers: TeamMember[] = canReadOrgMembers ? teamMembers : workspaceMembers.map(member => ({
+                    id: member.memberId,
+                    name: member.name || '',
+                    email: member.email || '',
+                    role: member.organizationRole as UserRole,
+                    status: member.memberStatus.toLowerCase() === 'inactive' ? 'Inactive' : 'Active',
+                    performanceScore: 0,
+                    assignedLeadsCount: 0,
+                  }));
                   const columns: Column<TeamMember>[] = [
                     {
                       key: 'member',
@@ -834,13 +845,41 @@ export default function SettingsView({
                       },
                     },
                   ];
+                  if (!canReadOrgMembers) columns.splice(2);
+                  if (canManageWorkspaceMembers) columns.splice(canReadOrgMembers ? 2 : columns.length, 0, {
+                    key: 'workspaceRole',
+                    header: 'Workspace Role',
+                    cell: member => {
+                      const assignment = workspaceMembers.find(row => row.memberId === member.id);
+                      if (!assignment) return <span className="text-xs text-slate-400">No workspace access</span>;
+                      const assigned = assignment.assignmentStatus === 'Active';
+                      return (
+                        <div className="flex min-w-48 items-center gap-2">
+                          <select
+                            aria-label={`Workspace role for ${member.name || member.email || member.id}`}
+                            value={assigned ? assignment.workspaceRole || '' : ''}
+                            disabled={assignment.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.id}
+                            onChange={event => updateWorkspaceMemberRole(assignment, event.target.value)}
+                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-50"
+                          >
+                            <option value="">No workspace access</option>
+                            <option value="Workspace Admin">Workspace Admin</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Member">Member</option>
+                            <option value="Viewer">Viewer</option>
+                          </select>
+                          {savingWorkspaceMember === member.id && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-600" />}
+                        </div>
+                      );
+                    },
+                  });
                   return (
                     <DataTable
                       bare
                       resizable
                       paginated
                       columns={columns}
-                      rows={teamMembers}
+                      rows={matrixMembers}
                       rowKey={(member) => member.id}
                       isRowExpanded={(member) => editFlagsFor === member.id}
                       renderExpandedRow={(member) => (
@@ -902,49 +941,6 @@ export default function SettingsView({
                     />
                   );
                 })()}
-              </Widget>
-              )}
-
-              {canManageWorkspaceMembers && (
-              <Widget
-                title="Workspace Role Assignments"
-                subtitle="Choose who can use this workspace and their workspace-level role. Organization roles remain separate."
-                icon={Shield}
-                accent="#0ea5e9"
-                padding="none"
-              >
-                {workspaceMembersError && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{workspaceMembersError}</div>}
-                <div className="divide-y divide-[var(--border)]">
-                  {workspaceMembers.map(member => {
-                    const assigned = member.assignmentStatus === 'Active';
-                    return (
-                      <div key={member.memberId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{member.name || member.email || member.memberId}</p>
-                          <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{member.email || 'No email'} · Organization: {member.organizationRole} · {member.memberStatus}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-medium ${assigned ? 'text-emerald-600' : 'text-slate-400'}`}>{assigned ? 'Assigned' : 'Not assigned'}</span>
-                          <select
-                            aria-label={`Workspace role for ${member.name || member.email || member.memberId}`}
-                            value={assigned ? member.workspaceRole || '' : ''}
-                            disabled={member.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.memberId}
-                            onChange={event => updateWorkspaceMemberRole(member, event.target.value)}
-                            className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-50"
-                          >
-                            <option value="">No workspace access</option>
-                            <option value="Workspace Admin">Workspace Admin</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Member">Member</option>
-                            <option value="Viewer">Viewer</option>
-                          </select>
-                          {savingWorkspaceMember === member.memberId && <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {!workspaceMembers.length && !workspaceMembersError && <p className="px-4 py-5 text-xs text-[var(--text-muted)]">No organization members found.</p>}
-                </div>
               </Widget>
               )}
 
