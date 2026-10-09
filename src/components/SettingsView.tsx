@@ -1484,178 +1484,93 @@ export default function SettingsView({
           {/* Organization-level billing and credit ledger, followed by workspace usage. */}
           {subTab === 'billing' && (
             <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
-              {billingPanel === 'dashboard' && <Widget title="Billing overview" icon={CreditCard} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setBillingPanel('plan')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View plan</button><button type="button" onClick={() => setBillingPanel('usage')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View usage</button></div>}>
+              {billingUsageError && <div role="alert" className="col-span-12 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                Billing usage could not be loaded: {billingUsageError}
+                <button type="button" onClick={() => void loadBillingUsage()} className="ml-2 font-semibold underline">Retry</button>
+              </div>}
+              {billingPanel === 'dashboard' && <Widget title="Billing summary" icon={CreditCard} accent="#0891b2" padding="md"
+                action={<div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setBillingPanel('usage')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Call usage</button>
+                  <button type="button" onClick={() => setBillingPanel('plan')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Subscription</button>
+                </div>}>
                 <div className="grid grid-cols-12 gap-4 pt-2">
-                  <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} label="Monthly subscription" value={organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : 'Not available'} sub={organizationPricing ? `${organizationPricing.workspaceCount} workspaces · ${organizationPricing.additionalIndustries} additional industry packs` : 'Plan details unavailable.'} />
-                  <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} label="Workspace spend this period" value={workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : 'Not available'} sub={workspaceBilling?.workspaceName || 'Current workspace'} />
+                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Monthly subscription"
+                    value={organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : '—'}
+                    sub={organizationPricing ? `${organizationPricing.workspaceCount} workspaces` : 'Fixed plan price'} />
+                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Usage this period"
+                    value={workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : '—'}
+                    sub="Recorded organization call costs" />
+                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Call time"
+                    value={formatCallTime(workspaceBilling?.aiMinutesUsed)}
+                    sub={workspaceBilling?.budgetPeriod?.label || 'Current billing period'} />
                 </div>
+                {billingUsageLoading && <p role="status" className="mt-3 text-xs text-[var(--text-muted)]">Updating billing totals…</p>}
               </Widget>}
               <OrganizationTopUp canSubmit={can('billing.payment.submit')} view={billingPanel} onNavigate={setBillingPanel} />
-              {billingPanel === 'plan' && <>
-              {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
-                <p className="text-lg font-semibold">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
-                <p className="mt-2 text-xs text-slate-500">{organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s). Usage charges and applicable taxes are additional. This is the configured fixed monthly price.</p>
-              </Widget>}
-              </>}
-              {billingPanel === 'usage' && <>
-              {workspaceBilling && (
-                <Widget
-                  title={`${workspaceBilling.workspaceName} spend this period`}
-                  subtitle={`${workspaceBilling.budgetPeriod?.label || 'Current billing period'} · Organization invoice and wallet remain shared`}
-                  icon={CreditCard}
-                  accent="#f59e0b"
-                  padding="md"
-                >
-                  <div className="grid grid-cols-12 gap-4 pt-2">
-                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Workspace spend" value={formatInr(workspaceBilling.periodSpendInr)} />
-                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Monthly cap" value={workspaceBilling.monthlyBudgetInr == null ? 'No cap' : formatInr(workspaceBilling.monthlyBudgetInr)} />
-                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Cap remaining" value={workspaceBilling.remainingBudgetInr == null ? '—' : formatInr(workspaceBilling.remainingBudgetInr)} />
-                  </div>
-                  {can('workspace.settings.manage') && (
-                    <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
-                      <label className="flex-1 text-xs text-slate-500">
-                        Monthly workspace cap (INR)
-                        <input
-                          type="number" min="0" step="0.01" value={workspaceBudgetDraft}
-                          onChange={(event) => setWorkspaceBudgetDraft(event.target.value)}
-                          placeholder="Leave blank for no cap"
-                          className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 font-mono text-sm text-slate-700"
-                        />
-                      </label>
-                      <button onClick={saveWorkspaceBudget} disabled={savingWorkspaceBudget} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                        {savingWorkspaceBudget ? 'Saving…' : 'Save cap'}
-                      </button>
-                    </div>
-                  )}
-                  {workspaceBudgetError && <p className="mt-2 text-xs text-rose-600">{workspaceBudgetError}</p>}
-                  <p className="mt-3 text-[10px] text-slate-400">Spend is attributed to this workspace. New Vobiz outbound calls stop when the cap is reached; active calls can finish and may take the final spend slightly over the cap. The organization wallet remains shared.</p>
-                </Widget>
-              )}
-
-              {orgSettings.billingMethod === 'recharge_based' && (
-                <Widget title="Available Balance" subtitle="Recharge wallet balance available for calls" icon={DollarSign} accent="#10b981" padding="md">
-                  {(() => {
-                    const balance = Number(orgSettings.rechargeBalanceInr ?? 0);
-                    const reserved = Number(orgSettings.rechargeReservedInr ?? 0);
-                    const available = Math.max(0, balance - reserved);
-                    return (
-                      <KpiCard label="Available balance" value={`₹${available.toFixed(2)}`} sub={reserved > 0 ? 'Reserved for active calls' : 'Ready to use'} icon={DollarSign} iconBg="#d1fae5" iconColor="#047857" />
-                    );
-                  })()}
-                </Widget>
-              )}
-
-              <Widget title="AI Voice Usage This Period" icon={CreditCard} accent="#10b981" padding="md">
-                <div className="grid grid-cols-12 gap-4 pt-2">
-                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Minutes Consumed" value={(workspaceBilling?.aiMinutesUsed ?? orgSettings.aiMinutesUsed).toFixed(2)} />
-                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="AI spend this period" value={formatInr(workspaceBilling?.aiSpendInr ?? (orgSettings.aiMinutesUsed * costPerMinuteInr))} />
-                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label={callProviderRate ? `${callProviderRate.label} ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${callProviderRate.rateAmount}/${callProviderRate.rateUnit}${callProviderRate.taxPercent ? ` +${callProviderRate.taxPercent}% tax` : ''})` : `Phone ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${phoneCostPerMinute}/min)`} value={formatCurrency(workspaceBilling?.phoneSpendInr ?? orgSettings.phoneCharges)} />
-                </div>
-                {!phoneChargesBillable && (
-                  <p className="text-[10px] text-slate-400 mt-3">
-                    You're using your own {callProviderRate?.label || 'Vobiz'} account for calls, so this figure is an estimate for your own
-                    reference only — it isn't billed to you by the platform.
+              {billingPanel === 'plan' && organizationPricing && (
+                <Widget title="Organization subscription" icon={CreditCard} accent="#0891b2" padding="md">
+                  <p className="text-lg font-semibold text-[var(--text-primary)]">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">
+                    {organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s).
+                    Usage charges and applicable taxes are additional.
                   </p>
-                )}
-              </Widget>
-
-              {aiTokenCost && (
-                <Widget title="AI Token Cost This Period" icon={CreditCard} accent="#6366f1" padding="md">
-                  <div className="grid grid-cols-12 gap-4 pt-2">
-                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Tokens Used" value={(aiTokenUsage?.totalTokens ?? 0).toLocaleString()} />
-                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label={aiTokenCurrentRate ? `${aiTokenCurrentRate.label} Rate (₹${aiTokenCurrentRate.ratePer1kTokens}/${aiTokenCurrentRate.tokenUnit.toLocaleString()} tokens)` : 'Rate before tax'} value={formatInr(aiTokenCost.baseCost)} />
-                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label={`Total ${aiTokenCurrentRate?.taxPercent ? '(incl. tax)' : ''}`} value={formatInr(aiTokenCost.totalCost)} />
-                  </div>
-                  {aiTokenCost.pricedSessionCount < aiTokenCost.sessionCount && (
-                    <p className="text-[10px] text-amber-600 mt-3">
-                      {aiTokenCost.sessionCount - aiTokenCost.pricedSessionCount} of {aiTokenCost.sessionCount} sessions this period predate an AI rate being set on the platform Cost page, and aren't included above.
-                    </p>
-                  )}
                 </Widget>
               )}
-
-              {/* Gemini Live model usage & cost — see
-                  docs/ai-usage-tracking.md. Every figure here is an
-                  application-level ESTIMATE computed from token counts
-                  and this app's own pricing config, NOT the authoritative
-                  Google Cloud invoice amount. */}
-              <Widget
-                title="Gemini AI Model Usage & Cost"
-                subtitle="Estimated — computed from token usage, not your Google Cloud invoice"
-                icon={Activity}
-                accent="#6366f1"
-                padding="md"
-                action={
-                  <button
-                    onClick={loadAiUsage}
-                    disabled={loadingAiUsage}
-                    className="text-[10px] font-mono text-slate-400 hover:text-slate-600 disabled:opacity-50 cursor-pointer"
-                  >
-                    {loadingAiUsage ? 'Loading…' : 'Refresh'}
-                  </button>
-                }
-              >
-                <div className="grid grid-cols-12 gap-4 pt-2">
-                  <KpiCard colSpan={3} label="Sessions" value={aiUsageSummary?.sessionCount ?? 0} />
-                  <KpiCard colSpan={3} label="Total Tokens" value={(aiUsageSummary?.totalTokens ?? 0).toLocaleString()} />
-                  <KpiCard colSpan={3} label={`Est. Cost (${currencySymbol()})`} value={formatCurrency(convertToDisplayCurrency(aiUsageSummary?.totalCost ?? 0, aiUsageSummary?.currency || 'USD'), { decimals: 4 })} />
-                  <KpiCard colSpan={3} label="Failed Sessions" value={aiUsageSummary?.failedCount ?? 0} />
-                </div>
-
-                {aiUsageByAdmin.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Cost by Admin</p>
-                    <div className="space-y-1.5">
-                      {aiUsageByAdmin.map((row) => (
-                        <div key={row.adminId} className="flex items-center justify-between text-xs bg-[var(--bg-base)] rounded-lg px-3 py-2">
-                          {/* adminId is the authenticated user's id, not an
-                              email — no reliable id-to-email lookup is
-                              available here, so shown as-is rather than
-                              guessing at a name. */}
-                          <span className="font-mono text-slate-600" title={row.adminId || undefined}>{row.adminId ? `${row.adminId.slice(0, 8)}…` : 'Unknown'}</span>
-                          <span className="text-slate-400">{row.sessionCount} sessions · {row.totalTokens.toLocaleString()} tokens</span>
-                          <span className="font-mono font-bold text-slate-700">
-                            {formatCurrency(convertToDisplayCurrency(row.totalCost, aiUsageSummary?.currency || 'USD'), { decimals: 4 })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              {billingPanel === 'usage' && <>
+                <Widget title="Call & Post-call Usage" subtitle={`${workspaceBilling?.budgetPeriod?.label || 'Current billing period'} · Organization-wide recorded usage`}
+                  icon={Phone} accent="#0891b2" padding="md">
+                  <div className="grid grid-cols-12 gap-4 pt-2">
+                    <KpiCard colSpan={3} span={{ xs: 12, sm: 6, lg: 3 }} label="Calls"
+                      value={billingCallCount ?? '—'} sub="Recorded calls in period" />
+                    <KpiCard colSpan={3} span={{ xs: 12, sm: 6, lg: 3 }} label="Call time"
+                      value={formatCallTime(workspaceBilling?.aiMinutesUsed)} sub="Total conversation duration" />
+                    <KpiCard colSpan={3} span={{ xs: 12, sm: 6, lg: 3 }} label="AI call + post-call"
+                      value={workspaceBilling ? formatInr(workspaceBilling.aiSpendInr) : '—'}
+                      sub="Combined voice and post-call processing" />
+                    <KpiCard colSpan={3} span={{ xs: 12, sm: 6, lg: 3 }} label={phoneChargesBillable ? 'Phone charges' : 'Phone cost (estimate)'}
+                      value={workspaceBilling ? formatInr(workspaceBilling.phoneSpendInr) : '—'}
+                      sub={phoneChargesBillable ? 'Recorded provider charges' : 'Own provider account; not billed by platform'} />
                   </div>
-                )}
-
-                <div className="mt-5">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Recent Sessions</p>
-                  {aiUsageSessions.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400 text-xs bg-[var(--bg-base)] rounded-[9px]">
-                      {loadingAiUsage ? 'Loading…' : 'No Gemini Live sessions tracked yet.'}
-                    </div>
-                  ) : (
-                    <DataTable
-                      bare
-                      resizable
-                      columns={[
-                        { key: 'provider', header: 'Provider', cell: (s: AiUsageSession) => <span className="font-mono text-xs text-slate-600 capitalize">{s.provider}</span> },
-                        { key: 'model', header: 'Model', cell: (s: AiUsageSession) => <span className="font-mono text-[10px] text-slate-500">{s.model}</span> },
-                        {
-                          key: 'status', header: 'Status', cell: (s: AiUsageSession) => (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                              s.status === 'completed' ? 'bg-emerald-100 text-emerald-700'
-                                : s.status === 'failed' ? 'bg-rose-100 text-rose-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}>{s.status}</span>
-                          )
-                        },
-                        { key: 'tokens', header: 'Tokens (in/out)', align: 'right', cell: (s: AiUsageSession) => <span className="font-mono text-xs text-slate-600">{s.inputTokens.toLocaleString()} / {s.outputTokens.toLocaleString()}</span> },
-                        { key: 'cost', header: 'Est. Cost', align: 'right', cell: (s: AiUsageSession) => <span className="font-mono text-xs font-bold text-slate-700">{formatCurrency(convertToDisplayCurrency(s.totalCost, s.currency || 'USD'), { decimals: 4 })}</span> },
-                        { key: 'duration', header: 'Duration', align: 'right', cell: (s: AiUsageSession) => <span className="font-mono text-xs text-slate-500">{s.durationSeconds != null ? `${Math.round(s.durationSeconds)}s` : '—'}</span> },
-                        { key: 'started', header: 'Started', align: 'right', cell: (s: AiUsageSession) => <span className="text-[9px] text-slate-400 font-mono">{new Date(s.sessionStartedAt).toLocaleString()}</span> },
-                      ]}
-                      rows={aiUsageSessions}
-                      rowKey={(s) => s.id}
-                    />
-                  )}
-                </div>
-              </Widget>
+                  <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+                    AI call and post-call costs are combined into one figure. Provider costs are separate and are already included in total recorded usage spend.
+                  </p>
+                  {billingUsageLoading && <p role="status" className="mt-2 text-xs text-[var(--text-muted)]">Updating usage…</p>}
+                </Widget>
+                <Widget title="Spending & Limits" subtitle="Organization billing totals and selected workspace limit" icon={CreditCard} accent="#f59e0b" padding="md">
+                  <div className="grid grid-cols-12 gap-4 pt-2">
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Total recorded spend"
+                      value={workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : '—'} sub="Calls, post-call AI and phone costs" />
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Workspace monthly cap"
+                      value={!workspaceBilling ? '—' : workspaceBilling.monthlyBudgetInr == null ? 'No cap' : formatInr(workspaceBilling.monthlyBudgetInr)}
+                      sub={workspaceBilling?.workspaceName || 'Selected workspace'} />
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Cap remaining (reported)"
+                      value={workspaceBilling?.remainingBudgetInr == null ? '—' : formatInr(workspaceBilling.remainingBudgetInr)}
+                      sub="Based on the billing console" />
+                    {orgSettings.billingMethod === 'recharge_based' && <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }}
+                      label="Available call balance"
+                      value={formatInr(Math.max(0, Number(orgSettings.rechargeBalanceInr ?? 0) - Number(orgSettings.rechargeReservedInr ?? 0)))}
+                      sub="Less reservations for active calls" />}
+                  </div>
+                  {can('workspace.settings.manage') && workspaceBilling && <div className="mt-4 flex flex-col items-stretch gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-end">
+                    <label className="flex-1 text-xs text-[var(--text-secondary)]">
+                      Monthly workspace cap (INR)
+                      <input type="number" min="0" step="0.01" value={workspaceBudgetDraft}
+                        onChange={event => setWorkspaceBudgetDraft(event.target.value)}
+                        placeholder="Leave blank for no cap"
+                        className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 font-mono text-sm text-[var(--text-primary)]" />
+                    </label>
+                    <button type="button" onClick={() => void saveWorkspaceBudget()} disabled={savingWorkspaceBudget}
+                      className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                      {savingWorkspaceBudget ? 'Saving…' : 'Save cap'}
+                    </button>
+                  </div>}
+                  {workspaceBudgetError && <p role="alert" className="mt-2 text-xs text-rose-600">{workspaceBudgetError}</p>}
+                  <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+                    Spend totals from the current billing API cover the organization; the cap belongs to the selected workspace.
+                    Outbound calls stop when the workspace cap is reached, but active calls may finish slightly over the cap.
+                    The organization wallet remains shared.
+                  </p>
+                </Widget>
               </>}
             </div>
           )}
