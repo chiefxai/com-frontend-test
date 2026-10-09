@@ -66,7 +66,7 @@ import KnowledgeBaseView from './components/KnowledgeBaseView';
 import AuditLogView from './components/AuditLogView';
 import EnquiriesView from './components/EnquiriesView';
 import NotificationBell, { AppNotification } from './components/NotificationBell';
-import { ToastProvider } from './components/ui/Toast';
+
 import { Building2, ChevronDown } from 'lucide-react';
 import CommonDropdown from './components/ui/CommonDropdown';
 
@@ -997,7 +997,7 @@ export default function App() {
   }
 
   return (
-    <ToastProvider>
+    <>
       <div className="grid grid-cols-[auto_1fr] h-screen w-screen overflow-hidden bg-slate-50/50 dark:bg-[var(--bg)]">
       {/* Sidebar Rail */}
       <Sidebar
@@ -1115,6 +1115,6 @@ export default function App() {
         </div>
       </main>
       </div>
-    </ToastProvider>
+    </>
   );
 }
