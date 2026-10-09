@@ -52,8 +52,7 @@ export default function PaymentReviewsPage() {
     try {
       const { url } = await platformPaymentReceipt(selected.orgId, selected.id);
       // Opens a short-lived private signed URL. It is never persisted in app state.
-      const opened = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!opened) setError('Your browser blocked the receipt tab. Allow pop-ups and retry.');
+      window.open(url, '_blank', 'noopener,noreferrer');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to open receipt.');
     }
