@@ -31,7 +31,7 @@ export function legacyAuthorization(role: string): Authorization {
       ...(!viewer && !billingOnly ? ['workspace.share.copy'] : []),
       ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
       ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read','billing.organization.read','billing.payment.submit','billing.contacts.manage','billing.notifications.manage','billing.credit.allocate','billing.allocation_rules.manage','billing.postpaid.manage'] : []),
-      ...(billingOnly ? ['organization.read','billing.read','billing.organization.read'] : []),
+      ...(billingOnly ? ['organization.read','billing.read','billing.organization.read','billing.payment.submit'] : []),
     ] };
 }
 export function permissionForRequest(path: string,method: string): string | null {
@@ -47,6 +47,7 @@ export function permissionForRequest(path: string,method: string): string | null
   if (/^\/api\/workspace-sharing\/grants(?:\/|$)/.test(path)) return read ? 'workspace.read' : 'workspace.settings.manage';
   if (/^\/api\/notifications(?:\/|$)/.test(path)) return 'notifications.read';
   if (/^\/api\/billing\/workspaces\/[^/]+\/(?:overview|usage|ledger)$/.test(path) && read) return 'billing.workspace.read';
+  if (path === '/api/billing/topup-quotes' && !read) return 'billing.payment.submit';
   if (/^\/api\/billing\/payments(?:\/|$)/.test(path) && !read) return 'billing.payment.submit';
   if (/^\/api\/billing\/contacts(?:\/|$)/.test(path) && !read) return 'billing.contacts.manage';
   if (path === '/api/billing/notification-policy' && !read) return 'billing.notifications.manage';
