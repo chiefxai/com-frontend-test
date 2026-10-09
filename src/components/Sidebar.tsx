@@ -92,6 +92,7 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
     subItems: [
       { id: 'numbers',  label: 'Virtual Numbers', icon: Phone },
       { id: 'team',     label: 'Staff & Teams',   icon: Users },
+      { id: 'workspaces', label: 'Organization Workspaces', icon: Building2 },
       { id: 'billing',  label: 'Billing & Usage', icon: CreditCard },
     ],
   },
