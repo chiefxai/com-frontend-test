@@ -198,15 +198,18 @@ export default function CostPage() {
         subtitle="Final cost snapshot taken right before each org was deleted — the org, its call data, and its live counters are gone, but the cost/billing record is kept permanently."
         icon={Archive}
         accent="#b45309"
-        scrollable
-        padding="md"
+        padding="none"
       >
+        <div className="p-4 pb-0">
         <FilterBar
           search={{ value: archiveQuery, onChange: setArchiveQuery, placeholder: 'Search deleted organizations…' }}
           resultCount={{ filtered: filteredArchive.length, total: archive.length, label: 'archived organizations' }}
         />
-        <div className="mt-3">
+        </div>
+        <div className="mt-3 min-w-0">
           <DataTable
+            bare
+            resizable
             columns={archiveColumns}
             rows={filteredArchive}
             rowKey={(row) => row.id}
