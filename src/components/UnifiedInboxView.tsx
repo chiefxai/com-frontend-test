@@ -263,14 +263,14 @@ export default function UnifiedInboxView() {
 
   return (
     <PageShell title="Unified Inbox" subtitle="WhatsApp and Instagram conversations in one place."
-      layout="fill" onRefresh={() => { void loadAll(); }}
+      layout="fill" onRefresh={loadAll}
       action={canManageChannels ? <Button type="button" icon={Settings} variant="secondary" size="sm"
         onClick={() => setShowSettings(true)}>Channels</Button> : undefined}>
       {loadError && <div role="alert" className="m-3 mb-0 flex shrink-0 flex-wrap items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
         <span>{loadError}</span>
         <Button type="button" size="xs" variant="secondary" onClick={() => { void loadAll(); }}>Retry</Button>
       </div>}
-      {!loading && connectedMessagingChannels.length === 0 && <div className="mx-3 mt-3 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs text-[var(--text-secondary)]">
+      {!loading && !loadError && connectedMessagingChannels.length === 0 && <div className="mx-3 mt-3 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs text-[var(--text-secondary)]">
         {canManageChannels
           ? 'No messaging channels connected. Use Channels above to connect WhatsApp or Instagram.'
           : 'No messaging channels connected. Ask a workspace administrator to connect one.'}
