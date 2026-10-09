@@ -30,6 +30,7 @@ export default function DataRetentionPage() {
   const [catalog, setCatalog] = useState<RetentionPolicyCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [backendNeedsUpdate, setBackendNeedsUpdate] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<RetentionTemplate | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -40,12 +41,33 @@ export default function DataRetentionPage() {
     setError('');
     try {
       const response = await apiFetch('/api/platform/data-retention/policies');
+      if (response.status === 404) {
+        const legacyResponse = await apiFetch('/api/platform/data-retention/defaults');
+        const defaults = await legacyResponse.json().catch(() => null);
+        if (!legacyResponse.ok || !defaults || typeof defaults !== 'object') {
+          throw new Error('Could not load platform retention defaults.');
+        }
+        setCatalog({
+          version: 0,
+          defaultPolicyId: 'platform-default',
+          policies: [{
+            id: 'platform-default',
+            name: 'Platform default',
+            description: 'Legacy retention defaults. Multiple policy templates require the backend update.',
+            retention: { ...DEFAULT_RETENTION, ...defaults },
+            backup: { ...DEFAULT_BACKUP },
+          }],
+        });
+        setBackendNeedsUpdate(true);
+        return;
+      }
       const data = await response.json().catch(() => null) as RetentionPolicyCatalog & { error?: string } | null;
       if (!response.ok) throw new Error(data?.error || 'Could not load retention and backup policies.');
       if (!data || !Array.isArray(data.policies) || !data.defaultPolicyId) {
         throw new Error('Platform returned an invalid policy catalog.');
       }
       setCatalog(data);
+      setBackendNeedsUpdate(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load policies.');
     } finally {
@@ -56,7 +78,7 @@ export default function DataRetentionPage() {
   useEffect(() => { void reload(); }, [reload]);
 
   const addPolicy = useCallback(() => {
-    if (!catalog || busy) return;
+    if (!catalog || busy || backendNeedsUpdate) return;
     const current = catalog.policies.find(row => row.id === catalog.defaultPolicyId);
     setEditingId(null);
     setMakeDefault(false);
@@ -68,19 +90,19 @@ export default function DataRetentionPage() {
       backup: { ...(current?.backup || DEFAULT_BACKUP) },
     });
     setError('');
-  }, [catalog, busy]);
+  }, [catalog, busy, backendNeedsUpdate]);
 
   useEffect(() => {
     if (!header) return;
     header.setHeader({
       title: 'Data Retention & Backup',
       action: <IconButton icon={Plus} label="Create retention and backup policy"
-        disabled={loading || busy || !catalog} onClick={addPolicy} />,
+        disabled={loading || busy || !catalog || backendNeedsUpdate} onClick={addPolicy} />,
     });
   }, [header?.setHeader, addPolicy, loading, busy, catalog]);
 
   const editPolicy = (policy: RetentionTemplate) => {
-    if (busy) return;
+    if (busy || backendNeedsUpdate) return;
     setEditingId(policy.id);
     setMakeDefault(policy.id === catalog?.defaultPolicyId);
     setDraft({ ...policy, retention: { ...policy.retention }, backup: { ...policy.backup } });
@@ -95,7 +117,7 @@ export default function DataRetentionPage() {
       ? { ...current, retention: { ...current.retention, [key]: value } } : current);
 
   const persist = async (policies: RetentionTemplate[], defaultPolicyId: string, success: string) => {
-    if (!catalog || busy) return false;
+    if (!catalog || busy || backendNeedsUpdate) return false;
     setBusy(true);
     setError('');
     try {
@@ -167,6 +189,12 @@ export default function DataRetentionPage() {
         One policy is the default. New organizations receive a snapshot of the chosen settings;
         existing organization configurations do not change when a template is edited.
       </p>
+      {backendNeedsUpdate && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          The platform backend has not yet been updated with policy catalog support. Existing defaults are shown read-only;
+          deploy the updated backend service to create and manage reusable retention and backup policies.
+        </p>
+      )}
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
           <span>{error}</span>
@@ -224,14 +252,14 @@ export default function DataRetentionPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
                     <Button type="button" size="sm" variant="secondary" icon={Pencil}
-                      disabled={busy} onClick={() => editPolicy(policy)}>Edit</Button>
+                      disabled={busy || backendNeedsUpdate} onClick={() => editPolicy(policy)}>Edit</Button>
                     {!isDefault && (
                       <>
                         <Button type="button" size="sm" variant="ghost" icon={CheckCircle2}
-                          disabled={busy} onClick={() => void setDefault(policy)}>Set default</Button>
+                          disabled={busy || backendNeedsUpdate} onClick={() => void setDefault(policy)}>Set default</Button>
                         <Button type="button" size="sm" variant="ghost" icon={Trash2}
                           className="ml-auto text-rose-600 dark:text-rose-400"
-                          disabled={busy} onClick={() => void deletePolicy(policy)}>Delete</Button>
+                          disabled={busy || backendNeedsUpdate} onClick={() => void deletePolicy(policy)}>Delete</Button>
                       </>
                     )}
                   </div>

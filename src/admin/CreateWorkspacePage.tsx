@@ -7,7 +7,7 @@ import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 import FeatureAccessSelector from '../components/ui/FeatureAccessSelector';
 import WorkspacePolicyEditor from '../components/WorkspacePolicyEditor';
 import { emptyWorkspacePolicy, serializedPolicy, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
-import { readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
+import { DEFAULT_BACKUP, DEFAULT_RETENTION, readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
 
 const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
   value: profile.key,
@@ -75,6 +75,7 @@ export default function CreateWorkspacePage() {
   const [selectedRetentionPolicyId, setSelectedRetentionPolicyId] = useState('');
   const [loadingRetentionPolicies, setLoadingRetentionPolicies] = useState(true);
   const [retentionLoadError, setRetentionLoadError] = useState('');
+  const [legacyRetentionFallback, setLegacyRetentionFallback] = useState(false);
   const [firstBranchName, setFirstBranchName] = useState('');
   const [initialWorkspaces, setInitialWorkspaces] = useState<{name:string;industry:string;branchName:string}[]>([]);
   const [selectedFlags, setSelectedFlags] = useState<string[]>(() => defaultFeatureFlagsForIndustry('lending'));
@@ -109,17 +110,45 @@ export default function CreateWorkspacePage() {
   useEffect(() => {
     let active = true;
     setLoadingRetentionPolicies(true);
-    apiFetch('/api/platform/data-retention/policies')
-      .then(async response => {
-        const body = await response.json().catch(() => null) as RetentionPolicyCatalog & { error?: string } | null;
-        if (!response.ok) throw new Error(body?.error || 'Could not load data retention and backup policies.');
-        if (!body || !Array.isArray(body.policies) || !body.policies.length || !body.defaultPolicyId)
-          throw new Error('No valid retention and backup policies are configured.');
+    (async () => {
+      const response = await apiFetch('/api/platform/data-retention/policies');
+      if (response.status === 404) {
+        // The backend VM may be on an earlier release during deployment.
+        // Keep organization creation working with its legacy platform default.
+        const fallback = await apiFetch('/api/platform/data-retention/defaults');
+        const defaults = await fallback.json().catch(() => null);
+        if (!fallback.ok || !defaults || typeof defaults !== 'object') {
+          throw new Error('Could not load platform retention defaults.');
+        }
+        const legacy: RetentionPolicyCatalog = {
+          version: 0,
+          defaultPolicyId: 'platform-default',
+          policies: [{
+            id: 'platform-default',
+            name: 'Platform default',
+            description: 'Existing platform retention settings. Policy templates require the updated backend.',
+            retention: { ...DEFAULT_RETENTION, ...defaults },
+            backup: { ...DEFAULT_BACKUP },
+          }],
+        };
         if (!active) return;
-        setRetentionCatalog(body);
-        setSelectedRetentionPolicyId(body.defaultPolicyId);
+        setRetentionCatalog(legacy);
+        setSelectedRetentionPolicyId(legacy.defaultPolicyId);
+        setLegacyRetentionFallback(true);
         setRetentionLoadError('');
-      })
+        return;
+      }
+      const body = await response.json().catch(() => null) as RetentionPolicyCatalog & { error?: string } | null;
+      if (!response.ok) throw new Error(body?.error || 'Could not load data retention and backup policies.');
+      if (!body || !Array.isArray(body.policies) || !body.policies.length || !body.defaultPolicyId) {
+        throw new Error('No valid retention and backup policies are configured.');
+      }
+      if (!active) return;
+      setRetentionCatalog(body);
+      setSelectedRetentionPolicyId(body.defaultPolicyId);
+      setLegacyRetentionFallback(false);
+      setRetentionLoadError('');
+    })()
       .catch(error => {
         if (active) setRetentionLoadError(error instanceof Error ? error.message : 'Could not load retention policies.');
       })
@@ -212,8 +241,16 @@ export default function CreateWorkspacePage() {
           billingMethod: form.billingMethod,
           chargeScope: form.chargeScope,
           initialRechargeAmountInr: form.billingMethod === 'recharge_based' ? Number(form.initialRechargeAmountInr || 0) : 0,
-          retentionPolicyId: selectedRetentionPolicy.id,
-          retentionPolicyVersion: retentionCatalog?.version,
+          ...(legacyRetentionFallback
+            ? {
+                dataRetentionMode: 'default',
+                dataRetentionOverrides: {},
+                backup: { ...DEFAULT_BACKUP, email: '' },
+              }
+            : {
+                retentionPolicyId: selectedRetentionPolicy.id,
+                retentionPolicyVersion: retentionCatalog?.version,
+              }),
         }),
       });
       if (!res.ok) {
@@ -458,6 +495,11 @@ export default function CreateWorkspacePage() {
             </p>
           ) : (
             <>
+              {legacyRetentionFallback && (
+                <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                  Using the existing platform default. Named retention and backup templates become available when the backend service is updated.
+                </p>
+              )}
               <label className="block max-w-lg text-xs font-semibold text-[var(--text-secondary)]">
                 Policy to apply *
                 <select required value={selectedRetentionPolicyId} disabled={loading}
