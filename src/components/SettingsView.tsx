@@ -147,6 +147,7 @@ export default function SettingsView({
   onWorkspaceCreated = async () => {},
 }: SettingsViewProps) {
   const { can } = useAuthorization();
+  const canReadOrganization = can('organization.read');
   const canReadOrgMembers = can('organization.members.read');
   const canManageOrgMembers = can('organization.members.manage');
   const canManageWorkspaceMembers = can('workspace.members.manage');
@@ -200,9 +201,9 @@ export default function SettingsView({
 
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   React.useEffect(() => {
-    if (!['numbers', 'workspaces'].includes(subTab) || workspacePanel !== 'numbers' || !can('organization.read')) return;
+    if (!['numbers', 'workspaces'].includes(subTab) || workspacePanel !== 'numbers' || !canReadOrganization) return;
     void loadOrganizationNumbers().catch(error => setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'));
-  }, [subTab, workspacePanel, can, loadOrganizationNumbers]);
+  }, [subTab, workspacePanel, canReadOrganization, loadOrganizationNumbers]);
 
   const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
     _setInternalSubTab(v);
