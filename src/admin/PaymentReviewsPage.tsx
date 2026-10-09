@@ -4,6 +4,7 @@ import {
   type PlatformPaymentReview, type PaymentDecision,
 } from '../lib/billing/platformDecision';
 import { newBillingIdempotencyKey } from '../lib/billing/client';
+import DataTable, { type Column } from '../components/ui/DataTable';
 
 const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) => {
   const digits = BigInt(amount.units);
@@ -122,26 +123,27 @@ export default function PaymentReviewsPage() {
     </div>
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     {success && <p role="status" className="text-sm text-emerald-700">{success}</p>}
-    <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-[var(--bg-subtle)]"><tr>
-          <th className="p-3">Organization</th><th className="p-3">Reference</th>
-          <th className="p-3">Purpose</th><th className="p-3">Expected amount</th>
-          <th className="p-3">Status</th><th className="p-3">Submitted</th><th className="p-3">Action</th>
-        </tr></thead>
-        <tbody>
-          {rows.map(row => <tr key={row.id} className="border-t border-[var(--border)]">
-            <td className="p-3">{row.orgId}</td><td className="p-3">{row.paymentReference || '—'}</td>
-            <td className="p-3">{paymentPurpose(row.purpose)}</td><td className="p-3">{formatAmount(row.expectedAmount)}</td>
-            <td className="p-3">{row.status}</td><td className="p-3">{new Date(row.submittedAt).toLocaleString()}</td>
-            <td className="p-3"><button type="button" onClick={() => choose(row)}
-              className="underline underline-offset-2">Review</button></td>
-          </tr>)}
-        </tbody>
-      </table>
-      {!rows.length && !loading && <p className="p-5 text-sm text-[var(--text-muted)]">No matching payments.</p>}
-    </div>
-    {loading && <p className="text-sm">Loading payments…</p>}
+    <DataTable<PlatformPaymentReview>
+      resizable
+      paginated
+      loading={loading && rows.length === 0}
+      emptyMessage="No matching payments."
+      columns={[
+        { key: 'organization', header: 'Organization', cell: row => <span className="font-mono text-xs">{row.orgId}</span> },
+        { key: 'reference', header: 'Reference', cell: row => row.paymentReference || '—' },
+        { key: 'purpose', header: 'Purpose', cell: row => paymentPurpose(row.purpose) },
+        { key: 'expected', header: 'Expected amount', cell: row => <span className="font-semibold">{formatAmount(row.expectedAmount)}</span>, align: 'right' },
+        { key: 'status', header: 'Status', cell: row => row.status },
+        { key: 'submitted', header: 'Submitted', cell: row => <span className="whitespace-nowrap text-xs">{new Date(row.submittedAt).toLocaleString()}</span> },
+        { key: 'action', header: 'Action', cell: row =>
+          <button type="button" onClick={() => choose(row)} aria-label={`Review payment ${row.paymentReference || row.id}`}
+            className="text-[var(--accent)] underline underline-offset-2">Review</button> },
+      ] satisfies Column<PlatformPaymentReview>[]}
+      rows={rows}
+      rowKey={row => row.id}
+      rowClassName={row => selected?.id === row.id ? 'bg-[var(--bg-subtle)]' : ''}
+    />
+    {loading && rows.length > 0 && <p role="status" className="text-xs text-[var(--text-muted)]">Loading more payment reviews…</p>}
     {cursor && <button type="button" disabled={loading} onClick={() => void load(cursor, true)}
       className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">Load more</button>}
     {selected && <div className="space-y-4 rounded-xl border border-[var(--border)] p-5">
