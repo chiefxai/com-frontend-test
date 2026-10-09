@@ -13,7 +13,7 @@ const MODES: { value: WorkspaceMode; label: string }[] = [
 
 const blankPlan = (): WorkspacePlan => ({
   id: '', name: '', active: true, defaultMode: 'single',
-  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, extraWorkspaceMonthlyInr: 0, additionalIndustryMonthlyInr: 0 },
+  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, extraWorkspaceMonthlyInr: 0, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
 });
 
 export default function WorkspacePlansPage() {
@@ -58,7 +58,7 @@ export default function WorkspacePlansPage() {
     setError(''); setMessage('');
     if (!draft || editingIndex === null) return;
     const nextPlans = editingIndex === -1 ? [...plans, draft] : plans.map((plan, index) => index === editingIndex ? draft : plan);
-    const missing = !draft.id.trim() || !draft.name.trim() || draft.pricing.baseMonthlyInr == null || draft.pricing.extraWorkspaceMonthlyInr == null || draft.pricing.additionalIndustryMonthlyInr == null;
+    const missing = !draft.id.trim() || !draft.name.trim() || draft.pricing.baseMonthlyInr == null || draft.pricing.extraWorkspaceMonthlyInr == null || draft.pricing.additionalIndustryMonthlyInr == null || !Number.isFinite(draft.pricing.monthlySubscriptionCreditsInr ?? 0) || (draft.pricing.monthlySubscriptionCreditsInr ?? 0) < 0;
     if (missing) { setError('Enter a plan name, ID and valid monthly prices.'); return; }
     setSaving(true);
     try {
@@ -105,6 +105,7 @@ export default function WorkspacePlansPage() {
           <dl className="my-4 space-y-3 text-xs">
             <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Workspaces included</dt><dd className="font-semibold">{plan.pricing.includedWorkspaces}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Additional workspace</dt><dd className="font-semibold">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Monthly subscription credits</dt><dd className="font-semibold">{money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Additional industry</dt><dd className="font-semibold">{money(plan.pricing.additionalIndustryMonthlyInr)}</dd></div>
           </dl>
           <button type="button" onClick={() => beginEdit(index)} disabled={editingIndex !== null || saving} className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold hover:bg-[var(--bg-subtle)] disabled:opacity-50"><Pencil className="h-4 w-4" /> Edit plan</button>
@@ -135,6 +136,7 @@ export default function WorkspacePlansPage() {
             <label className={labelClass}>Additional workspace / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.extraWorkspaceMonthlyInr ?? ''} onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
             {draft.defaultMode !== 'single' && <label className={labelClass}>Included workspaces<input required type="number" min="1" max="1000" step="1" value={draft.pricing.includedWorkspaces} onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} className={fieldClass} /></label>}
             <label className={labelClass}>Additional industry / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.additionalIndustryMonthlyInr ?? ''} onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
+            <label className={labelClass}>Monthly subscription credits (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.monthlySubscriptionCreditsInr ?? 0} onChange={event => updatePricing("monthlySubscriptionCreditsInr", Number(event.target.value))} className={fieldClass} /><span className="mt-1 block font-normal text-[var(--text-muted)]">Organization-level entitlement per paid billing cycle. Allocation and issuance are implemented separately.</span></label>
             <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2"><input type="checkbox" checked={draft.active} onChange={event => updateDraft({ active: event.target.checked })} className="h-4 w-4 accent-[var(--accent)]" /> Active plan (available for new organizations)</label>
             </div>
           </form>
