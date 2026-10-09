@@ -3,11 +3,13 @@ import { Check, Eye, Loader2, LockKeyhole, Pencil, Share2, X } from 'lucide-reac
 import { apiFetch } from '../lib/api';
 import { useAuthorization } from '../lib/authorization';
 import Widget from './ui/Widget';
+import DataTable, { type Column } from './ui/DataTable';
 
 interface Field { key: string; label: string; type?: string; required?: boolean }
 interface ShareObject { id: string; key: string; label: string; fields: Field[] }
 interface Workspace { workspaceId: string; orgId: string; workspace?: { id: string; name: string }; organization?: { name: string } }
 interface Grant { id: string; sourceWorkspaceId: string; sourceWorkspaceName: string; targetWorkspaceId: string; targetWorkspaceName: string; objectKey: string; objectLabel: string; allowedFields: string[]; expiresAt: string | null; revokedAt: string | null; direction: 'incoming' | 'outgoing' }
+type SharedRecordRow = Record<string, any> & { _rowIndex: number };
 interface Proposal { id: string; objectLabel: string; recordId: string; patch: Record<string, unknown>; previousData: Record<string, unknown> | null; status: string; proposerName: string | null; targetWorkspaceName: string; createdAt: string }
 
 export default function WorkspaceSharing({ enabled }: { enabled: boolean }) {
@@ -154,7 +156,80 @@ export default function WorkspaceSharing({ enabled }: { enabled: boolean }) {
       <div className="mt-4 space-y-3">{grants.map(grant => { const targetObject=objects.find(object=>object.key===copyTargets[grant.id]); return <div key={grant.id} className="rounded-lg border border-[var(--border)] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold text-[var(--text-primary)]">{grant.direction === 'outgoing' ? `Shared with ${grant.targetWorkspaceName}` : `Shared by ${grant.sourceWorkspaceName}`} · {grant.objectLabel}</p><p className="mt-1 text-[10px] text-[var(--text-muted)]">Fields: {grant.allowedFields.join(', ')} · {grant.revokedAt ? 'Revoked' : Date.parse(grant.expiresAt || '') <= Date.now() ? 'Expired' : `Expires ${new Date(grant.expiresAt || '').toLocaleDateString()}`}</p></div><div className="flex gap-2">{grant.direction === 'incoming' && !grant.revokedAt && Date.parse(grant.expiresAt || '') > Date.now() && <button onClick={() => void viewShared(grant.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"><Eye className="h-3 w-3"/>View records</button>}{grant.direction === 'outgoing' && !grant.revokedAt && canManage && <button onClick={() => void revoke(grant.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-[11px] text-rose-600"><X className="h-3 w-3"/>Revoke</button>}</div></div>
         {grant.direction==='incoming'&&canCopy&&sharedRows[grant.id]&&<div className="mt-3 grid gap-2 border-t border-[var(--border)] pt-3 md:grid-cols-2"><label className="space-y-1 text-[11px] text-[var(--text-secondary)]">Copy into object<select value={copyTargets[grant.id]||''} onChange={event=>{const key=event.target.value;setCopyTargets(current=>({...current,[grant.id]:key}));const selected=objects.find(object=>object.key===key);setCopyMappings(current=>({...current,[grant.id]:Object.fromEntries(grant.allowedFields.map(field=>[field,selected?.fields.some(target=>target.key===field)?field:'']))}));}} className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1.5"><option value="">Choose target object</option>{objects.map(object=><option key={object.id} value={object.key}>{object.label}</option>)}</select></label>{targetObject&&<fieldset className="space-y-1"><legend className="text-[11px] font-medium text-[var(--text-secondary)]">Map shared fields to target fields (optional fields can be skipped)</legend>{grant.allowedFields.map(field=><label key={field} className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)]">{field}<span>→</span><select value={copyMappings[grant.id]?.[field]||''} onChange={event=>setCopyMappings(current=>({...current,[grant.id]:{...(current[grant.id]||{}),[field]:event.target.value}}))} className="min-w-0 flex-1 rounded border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1"><option value="">Skip</option>{targetObject.fields.map(target=><option key={target.key} value={target.key}>{target.label}</option>)}</select></label>)}</fieldset>}</div>}
-        {sharedRows[grant.id] && <div className="mt-3 overflow-x-auto"><table className="min-w-full text-left text-[11px]"><thead><tr>{grant.allowedFields.map(field => <th key={field} className="px-2 py-1 font-semibold">{field}</th>)}{(canPropose||canCopy)&&<th className="px-2 py-1">Actions</th>}</tr></thead><tbody>{sharedRows[grant.id].map((row,index)=>{const ref=String(row.recordRef||'');const editing=editingRecordRef===ref;return <tr key={ref||index} className="border-t border-[var(--border)]">{grant.allowedFields.map(field=><td key={field} className="max-w-48 truncate px-2 py-1">{editing?<input aria-label={`Proposed ${field}`} value={String(proposalDrafts[ref]?.[field]??'')} onChange={event=>setProposalDrafts(current=>({...current,[ref]:{...(current[ref]||row.data),[field]:event.target.value}}))} className="w-full rounded border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1"/>:String((row.data as any)?.[field]??'')}</td>)}{(canPropose||canCopy)&&<td className="whitespace-nowrap px-2 py-1">{canPropose&&(editing?<><button onClick={()=>void submitProposal(grant,row)} disabled={busy} className="mr-1 inline-flex items-center gap-1 rounded border border-emerald-200 px-2 py-1 text-emerald-700"><Check className="h-3 w-3"/>Send</button><button onClick={()=>setEditingRecordRef(null)} className="rounded border border-[var(--border)] px-2 py-1">Cancel</button></>:<button onClick={()=>{setEditingRecordRef(ref);setProposalDrafts(current=>({...current,[ref]:{...(row.data||{})}}));}} className="mr-1 inline-flex items-center gap-1 rounded border border-[var(--border)] px-2 py-1 text-[var(--text-secondary)]"><Pencil className="h-3 w-3"/>Propose edit</button>)}{canCopy&&(copiedRefs[ref]?<span className="text-emerald-700">{copiedRefs[ref]==='already_copied'?'Already copied':'Copied'}</span>:<button onClick={()=>void copyRecord(grant,row)} disabled={busy||!copyTargets[grant.id]} className="rounded border border-violet-200 px-2 py-1 text-violet-700 disabled:opacity-50">Copy to workspace</button>)}</td>}</tr>})}</tbody></table>{sharedCursors[grant.id] && <button onClick={() => void viewShared(grant.id,sharedCursors[grant.id])} disabled={busy} className="mt-2 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-secondary)]">Load more</button>}</div>}
+        {sharedRows[grant.id] && <div className="mt-3 space-y-3">
+          <DataTable<SharedRecordRow>
+            bare
+            resizable
+            paginated
+            emptyMessage="No shared records found."
+            columns={[
+              ...grant.allowedFields.map((field): Column<SharedRecordRow> => ({
+                key: field,
+                header: field,
+                cell: row => {
+                  const ref = String(row.recordRef || '');
+                  const editing = editingRecordRef === ref;
+                  return editing
+                    ? <input
+                        aria-label={`Proposed ${field}`}
+                        value={String(proposalDrafts[ref]?.[field] ?? '')}
+                        onChange={event => setProposalDrafts(current => ({
+                          ...current,
+                          [ref]: { ...(current[ref] || row.data), [field]: event.target.value },
+                        }))}
+                        className="w-full min-w-0 rounded border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1 text-xs"
+                      />
+                    : <span className="block truncate text-xs" title={String(row.data?.[field] ?? '')}>
+                        {String(row.data?.[field] ?? '')}
+                      </span>;
+                },
+              })),
+              ...((canPropose || canCopy) ? [{
+                key: 'actions',
+                header: 'Actions',
+                cell: (row: SharedRecordRow) => {
+                  const ref = String(row.recordRef || '');
+                  const editing = editingRecordRef === ref;
+                  return <div className="flex flex-wrap items-center gap-1.5">
+                    {canPropose && (editing ? <>
+                      <button type="button" onClick={() => void submitProposal(grant, row)} disabled={busy}
+                        className="inline-flex items-center gap-1 rounded border border-emerald-200 px-2 py-1 text-xs text-emerald-700 disabled:opacity-50">
+                        <Check className="h-3 w-3" /> Send
+                      </button>
+                      <button type="button" onClick={() => setEditingRecordRef(null)}
+                        className="rounded border border-[var(--border)] px-2 py-1 text-xs">
+                        Cancel
+                      </button>
+                    </> : <button type="button"
+                      onClick={() => {
+                        setEditingRecordRef(ref);
+                        setProposalDrafts(current => ({ ...current, [ref]: { ...(row.data || {}) } }));
+                      }}
+                      className="inline-flex items-center gap-1 rounded border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)]">
+                      <Pencil className="h-3 w-3" /> Propose edit
+                    </button>)}
+                    {canCopy && (copiedRefs[ref]
+                      ? <span className="text-xs text-emerald-700">
+                          {copiedRefs[ref] === 'already_copied' ? 'Already copied' : 'Copied'}
+                        </span>
+                      : <button type="button" onClick={() => void copyRecord(grant, row)}
+                          disabled={busy || !copyTargets[grant.id]}
+                          className="rounded border border-violet-200 px-2 py-1 text-xs text-violet-700 disabled:opacity-50">
+                          Copy to workspace
+                        </button>)}
+                  </div>;
+                },
+              } satisfies Column<SharedRecordRow>] : []),
+            ]}
+            rows={sharedRows[grant.id].map((row, index) => ({ ...row, _rowIndex: index }))}
+            rowKey={row => `${grant.id}:${String(row.recordRef || row._rowIndex)}`}
+          />
+          {sharedCursors[grant.id] && <button type="button"
+            onClick={() => void viewShared(grant.id, sharedCursors[grant.id])} disabled={busy}
+            className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] disabled:opacity-50">
+            Load more
+          </button>}
+        </div>}
       </div>; })}{!grants.length && <p className="text-xs text-[var(--text-muted)]">No incoming or outgoing shares for this workspace.</p>}</div>
       {canManage && <div className="mt-5 border-t border-[var(--border)] pt-4"><h3 className="mb-3 text-xs font-semibold text-[var(--text-primary)]">Edit proposals for this workspace</h3>{proposals.map(proposal=><div key={proposal.id} className="mb-2 rounded-lg border border-[var(--border)] p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-[var(--text-primary)]">{proposal.objectLabel} · {proposal.targetWorkspaceName}</p><p className="mt-1 text-[10px] text-[var(--text-muted)]">{proposal.proposerName||'Workspace member'} · {new Date(proposal.createdAt).toLocaleString()} · {proposal.status}</p><p className="mt-2 text-[11px] text-[var(--text-secondary)]">{Object.entries(proposal.patch).map(([key,value])=>`${key}: ${String(value)}`).join(' · ')}</p></div>{proposal.status==='pending'&&<div className="flex gap-2"><button onClick={()=>void reviewProposal(proposal.id,'approved')} disabled={busy} className="rounded-md bg-emerald-700 px-2.5 py-1.5 text-[11px] font-semibold text-white">Approve</button><button onClick={()=>void reviewProposal(proposal.id,'rejected')} disabled={busy} className="rounded-md border border-rose-200 px-2.5 py-1.5 text-[11px] text-rose-600">Reject</button></div>}</div></div>)}{!proposals.length&&<p className="text-xs text-[var(--text-muted)]">No edit proposals yet.</p>}</div>}
     </>}
