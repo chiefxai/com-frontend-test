@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface ToastItem {
   id: number;
@@ -10,7 +10,7 @@ interface ToastItem {
 }
 
 interface ToastContextValue {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (message: string, type?: ToastType, duration?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -19,6 +19,7 @@ const TOAST_STYLE: Record<ToastType, { icon: React.ElementType; iconColor: strin
   success: { icon: CheckCircle2, iconColor: '#059669', accent: '#059669' },
   error:   { icon: AlertTriangle, iconColor: '#e11d48', accent: '#e11d48' },
   info:    { icon: Info,          iconColor: '#2563eb', accent: '#2563eb' },
+  warning: { icon: AlertTriangle, iconColor: '#d97706', accent: '#d97706' },
 };
 
 const AUTO_DISMISS_MS = 6000;
@@ -31,10 +32,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+  const showToast = useCallback((message: string, type: ToastType = 'info', duration = AUTO_DISMISS_MS) => {
     const id = ++idRef.current;
     setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
+    setTimeout(() => dismiss(id), Math.max(0, duration));
   }, [dismiss]);
 
   return (
