@@ -159,47 +159,33 @@ export default function SettingsView({
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
-  const canManageOrganization = can('organization.manage');
+  // Workspace feature grants are read-only here: they are combined with
+  // each staff member's organization grants and workspace-specific role.
   const [workspaceFeatureRows, setWorkspaceFeatureRows] = useState<{id:string;name:string;configured:boolean;enabledFeatures:string[]}[]>([]);
   const [workspaceFeatureAllowed, setWorkspaceFeatureAllowed] = useState<string[]>([]);
-  const [workspaceFeatureId, setWorkspaceFeatureId] = useState('');
-  const [workspaceFeatureDraft, setWorkspaceFeatureDraft] = useState<string[]>([]);
+  const [workspaceFeatureLoading, setWorkspaceFeatureLoading] = useState(false);
   const [workspaceFeatureError, setWorkspaceFeatureError] = useState('');
-  const [workspaceFeatureSaving, setWorkspaceFeatureSaving] = useState(false);
   const loadWorkspaceFeatures = React.useCallback(async () => {
-    const response = await apiFetch('/api/settings/organization/workspace-features');
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'Could not load workspace features.');
-    const rows = Array.isArray(data.workspaces) ? data.workspaces : [];
-    setWorkspaceFeatureRows(rows);
-    setWorkspaceFeatureAllowed(Array.isArray(data.availableFeatures) ? data.availableFeatures : []);
-    setWorkspaceFeatureId(previous => {
-      const selected = rows.find((row: {id:string}) => row.id === previous) || rows[0];
-      if (selected) setWorkspaceFeatureDraft(selected.enabledFeatures || []);
-      return selected?.id || '';
-    });
-    setWorkspaceFeatureError('');
+    setWorkspaceFeatureLoading(true);
+    try {
+      const response = await apiFetch('/api/settings/organization/workspace-features');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not load workspace features.');
+      setWorkspaceFeatureRows(Array.isArray(data.workspaces) ? data.workspaces : []);
+      setWorkspaceFeatureAllowed(Array.isArray(data.availableFeatures) ? data.availableFeatures : []);
+      setWorkspaceFeatureError('');
+    } catch (error) {
+      setWorkspaceFeatureRows([]);
+      setWorkspaceFeatureAllowed([]);
+      setWorkspaceFeatureError(error instanceof Error ? error.message : 'Could not load workspace features.');
+    } finally {
+      setWorkspaceFeatureLoading(false);
+    }
   }, []);
   React.useEffect(() => {
-    if (subTab !== 'team' || !canReadOrgMembers) return;
-    void loadWorkspaceFeatures().catch(error => setWorkspaceFeatureError(error.message || 'Could not load workspace features.'));
-  }, [subTab, canReadOrgMembers, loadWorkspaceFeatures]);
-  const saveWorkspaceFeatures = async () => {
-    if (!workspaceFeatureId) return;
-    setWorkspaceFeatureSaving(true); setWorkspaceFeatureError('');
-    try {
-      const response = await apiFetch(`/api/settings/organization/workspace-features/${encodeURIComponent(workspaceFeatureId)}`, {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({enabledFeatures:workspaceFeatureDraft}),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Could not save workspace feature access.');
-      setWorkspaceFeatureRows(current => current.map(row => row.id === workspaceFeatureId
-        ? {...row,configured:true,enabledFeatures:workspaceFeatureDraft} : row));
-      setWorkspaceFeatureError('Workspace feature access saved.');
-    } catch(error) { setWorkspaceFeatureError(error instanceof Error ? error.message : 'Could not save workspace features.'); }
-    finally { setWorkspaceFeatureSaving(false); }
-  };
+    if (subTab !== 'team' || !canReadOrgMembers || !canReadOrganization) return;
+    void loadWorkspaceFeatures();
+  }, [subTab, canReadOrgMembers, canReadOrganization, loadWorkspaceFeatures]);
 
   const [organizationNumbers, setOrganizationNumbers] = useState<VirtualNumber[] | null>(null);
   const [organizationNumbersError, setOrganizationNumbersError] = useState('');
@@ -985,7 +971,9 @@ export default function SettingsView({
                       header: 'Enlisted Representative',
                       cell: (member) => (
                         <div>
-                          <p className="font-semibold text-slate-800 dark:text-[var(--text-primary)]">{member.name}</p>
+                          <button type="button" onClick={() => { setAccessMember(member); setOrgAccessError(''); void loadWorkspaceFeatures(); }}
+                            className="text-left font-semibold text-[var(--accent)] hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                            aria-label={`View workspace and feature access for ${member.name || member.email}`}>{member.name || member.email}</button>
                           <p className="text-[10px] text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{member.email}</p>
                           {member.phone && (
                             <p className="text-[10px] text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{member.phone}</p>
@@ -1065,7 +1053,7 @@ export default function SettingsView({
                     header: 'Workspace Access',
                     cell: member => <div className="flex min-w-40 items-center gap-2">
                       <span className="text-xs text-[var(--text-secondary)]">{assignedWorkspaces(member.id).length} workspace(s)</span>
-                      {canManageOrgMembers && <button type="button" onClick={() => { setAccessMember(member); setOrgAccessError(''); }} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Manage Access</button>}
+                      {canManageOrgMembers && <button type="button" onClick={() => { setAccessMember(member); setOrgAccessError(''); void loadWorkspaceFeatures(); }} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Manage Access</button>}
                     </div>,
                   });
                   if (!canReadOrgMembers) columns.splice(2);
@@ -1167,59 +1155,60 @@ export default function SettingsView({
               </Widget>
               )}
 
-                {canReadOrganization && <Widget title="Workspace Feature Access" subtitle="Limit features independently for each branch or workspace." icon={Flag} accent="#6366f1" padding="md">
-                  {workspaceFeatureError && <p role="status" className="mb-3 text-xs text-[var(--text-secondary)]">{workspaceFeatureError}</p>}
-                  {!workspaceFeatureRows.length ? <p className="text-xs text-[var(--text-muted)]">No workspace feature assignments available.</p> : <>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Workspace
-                      <select aria-label="Select workspace for feature access" value={workspaceFeatureId}
-                        onChange={event => {
-                          const selected = workspaceFeatureRows.find(row => row.id === event.target.value);
-                          setWorkspaceFeatureId(event.target.value);
-                          setWorkspaceFeatureDraft(selected?.enabledFeatures || []);
-                        }}
-                        className="mt-2 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                        {workspaceFeatureRows.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
-                      </select>
-                    </label>
-                    <div className="mt-4">
-                      <FlagGroupPicker key={workspaceFeatureId} availableKeys={workspaceFeatureAllowed} value={workspaceFeatureDraft}
-                        label="Enabled workspace features" description="Only features granted to the organization can be selected."
-                        onApply={setWorkspaceFeatureDraft} compact />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {workspaceFeatureDraft.length} of {workspaceFeatureAllowed.length} organization features selected.
-                        {workspaceFeatureRows.find(row => row.id === workspaceFeatureId)?.configured
-                          ? ' Unselected features are blocked in this workspace.'
-                          : ' Not yet configured; current access remains unchanged until saved.'}
-                      </p>
-                      {canManageOrganization && <button type="button" onClick={() => void saveWorkspaceFeatures()}
-                        disabled={workspaceFeatureSaving} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                        {workspaceFeatureSaving ? 'Saving…' : 'Save workspace access'}
-                      </button>}
-                    </div>
-                  </>}
-                </Widget>}
+
 
               {/* Add Member overlay modal */}
-              {accessMember && <Modal open onClose={() => setAccessMember(null)} title={`Workspace Access — ${accessMember.name || accessMember.email}`} subtitle="Grant a different role in each organization workspace." maxWidth="max-w-lg">
+              {accessMember && <Modal open onClose={() => setAccessMember(null)} title={`Staff Access — ${accessMember.name || accessMember.email}`} subtitle="Workspace memberships, roles, and effective feature grants." maxWidth="max-w-2xl">
                 <div className="space-y-3">
                   {orgAccessError && <p role="alert" className="text-xs text-rose-700">{orgAccessError}</p>}
+                  {workspaceFeatureError && <p role="alert" className="text-xs text-rose-700">Feature access unavailable: {workspaceFeatureError}</p>}
                   {!orgWorkspaces.length && <p className="text-xs text-[var(--text-muted)]">No organization workspaces available.</p>}
                   {orgWorkspaces.map(workspace => {
                     const assignment = orgAssignments[workspace.id]?.find(row => row.memberId === accessMember.id);
-                    const active = assignment?.assignmentStatus === 'Active';
-                    return <div key={workspace.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] p-3">
-                      <div><p className="text-xs font-semibold text-[var(--text-primary)]">{workspace.name}</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">{active ? 'Access granted' : 'No access'}</p></div>
-                      <select aria-label={`Workspace role in ${workspace.name}`} value={active ? assignment?.workspaceRole || '' : ''}
-                        disabled={!canManageOrgMembers || accessSaving === workspace.id || accessMember.status !== 'Active'}
-                        onChange={event => void updateOrgAccess(accessMember.id, workspace.id, event.target.value)}
-                        className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2.5 py-2 text-xs text-[var(--text-primary)] disabled:opacity-50">
-                        <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
-                      </select>
+                    const active = assignment?.assignmentStatus === 'Active' && accessMember.status === 'Active';
+                    const role = active ? assignment?.workspaceRole || '' : '';
+                    const policy = workspaceFeatureRows.find(row => row.id === workspace.id);
+                    const orgKeys = new Set(workspaceFeatureAllowed);
+                    const workspaceKeys = new Set(policy?.enabledFeatures || []);
+                    const eligible = policy
+                      ? workspaceFeatureAllowed.filter(key => workspaceKeys.has(key))
+                      : [];
+                    const workspaceAdmin = role === 'Workspace Admin';
+                    const individualKeys = new Set(accessMember.featureFlags || []);
+                    const features = active && policy
+                      ? eligible.filter(key => orgKeys.has(key) && (workspaceAdmin || individualKeys.has(key)))
+                      : [];
+                    return <div key={workspace.id} className="space-y-3 rounded-xl border border-[var(--border)] p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-[var(--text-primary)]">{workspace.name}</p>
+                          <p className="mt-1 text-[11px] text-[var(--text-muted)]">{active ? `Active access · ${role}` : 'No active access'}</p>
+                        </div>
+                        <select aria-label={`Workspace role in ${workspace.name}`} value={active ? role : ''}
+                          disabled={!canManageOrgMembers || accessSaving === workspace.id || accessMember.status !== 'Active'}
+                          onChange={event => void updateOrgAccess(accessMember.id, workspace.id, event.target.value)}
+                          className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2.5 py-2 text-xs text-[var(--text-primary)] disabled:opacity-50">
+                          <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
+                        </select>
+                      </div>
+                      {active && <div className="border-t border-[var(--border)] pt-3">
+                        <p className="mb-2 text-[11px] font-semibold text-[var(--text-secondary)]">Available features ({features.length})</p>
+                        {workspaceFeatureLoading
+                          ? <p className="text-xs text-[var(--text-muted)]">Loading feature grants…</p>
+                          : !policy
+                            ? <p className="text-xs text-[var(--text-muted)]">Feature grants unavailable. No permissions are assumed.</p>
+                            : features.length
+                              ? <div className="flex flex-wrap gap-1.5">{features.map(key => {
+                                  const feature = FEATURE_REGISTRY.find(item => item.key === key);
+                                  return <span key={key} className="rounded-md border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-primary)]">{feature?.label || key}</span>;
+                                })}</div>
+                              : <p className="text-xs text-[var(--text-muted)]">No product features granted in this workspace.</p>}
+                        {policy && !policy.configured && <p className="mt-2 text-[11px] text-[var(--text-muted)]">Legacy workspace: no explicit workspace feature restrictions are configured. Role and individual permissions still apply.</p>}
+                        {role === 'Viewer' && <p className="mt-2 text-[11px] text-[var(--text-muted)]">Viewer access is read-only.</p>}
+                      </div>}
                     </div>;
                   })}
-                  <p className="text-[11px] text-[var(--text-muted)]">Changes are saved immediately. The backend prevents removal of a workspace's last administrator.</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">Feature access reflects organization grants, workspace feature policies, and staff grants. Changes to workspace roles save immediately; the backend protects the last workspace administrator.</p>
                 </div>
               </Modal>}
               {showOwnerTransfer && (
