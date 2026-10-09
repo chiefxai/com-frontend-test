@@ -1,8 +1,15 @@
 import React from 'react';
-import { Plus, Save, Pencil } from 'lucide-react';
+import { Building2, CreditCard, Pencil, Plus, Save, ShieldCheck, Wallet } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
+import Widget from '../components/ui/Widget';
+import DataTable, { type Column } from '../components/ui/DataTable';
+import FilterBar from '../components/ui/FilterBar';
+import Badge from '../components/ui/Badge';
+import KpiCard from '../components/ui/KpiCard';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
   { value: 'single', label: 'One workspace only' },
@@ -14,6 +21,19 @@ const blankPlan = (): WorkspacePlan => ({
   id: '', name: '', active: true, defaultMode: 'single',
   pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, extraWorkspaceMonthlyInr: 0, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
 });
+
+const money = (amount: number | null | undefined) =>
+  amount == null ? 'Not set' : new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', maximumFractionDigits: 2,
+  }).format(amount);
+
+const fieldClass = 'mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-[var(--bg-subtle)] disabled:opacity-60';
+const labelClass = 'block min-w-0 text-xs font-semibold text-[var(--text-secondary)]';
+const helpClass = 'mt-1.5 block text-[11px] font-normal leading-relaxed text-[var(--text-muted)]';
+
+function validAmount(value: number | null | undefined) {
+  return value != null && Number.isFinite(value) && value >= 0;
+}
 
 export default function WorkspacePlansPage() {
   const headerCtx = usePageHeaderContext();
@@ -27,189 +47,351 @@ export default function WorkspacePlansPage() {
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [draft, setDraft] = React.useState<WorkspacePlan | null>(null);
   const [idTouched, setIdTouched] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'archived'>('all');
 
   const load = React.useCallback(async () => {
-    setLoading(true); setError(''); setMessage('');
+    setLoading(true);
+    setError('');
     try {
       const response = await apiFetch('/api/platform/billing/workspace-plans');
       const body = await response.json().catch(() => ({})) as WorkspacePlanCatalog & { error?: string };
-      if (!response.ok) throw new Error(body.error || 'Could not load workspace plans.');
-      setEditingIndex(null); setDraft(null);
-      setPlans(body.plans || []); setExistingIds(new Set((body.plans || []).map(plan => plan.id))); setVersion(body.version || 0);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load workspace plans.'); }
-    finally { setLoading(false); }
+      if (!response.ok) throw new Error(body.error || 'Could not load subscription plans.');
+      const nextPlans = Array.isArray(body.plans) ? body.plans : [];
+      setPlans(nextPlans);
+      setExistingIds(new Set(nextPlans.map(plan => plan.id)));
+      setVersion(body.version || 0);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not load subscription plans.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
 
-  const beginAdd = React.useCallback(() => { setDraft(blankPlan()); setIdTouched(false); setEditingIndex(-1); setError(''); setMessage(''); }, []);
-  const beginEdit = (index: number) => {
-    const plan = plans[index];
-    setDraft({ ...plan, pricing: { ...plan.pricing } }); setIdTouched(true);
-    setEditingIndex(index); setError(''); setMessage('');
+  const beginAdd = React.useCallback(() => {
+    setDraft(blankPlan());
+    setIdTouched(false);
+    setEditingIndex(-1);
+    setError('');
+    setMessage('');
+  }, []);
+
+  const beginEdit = (plan: WorkspacePlan) => {
+    const index = plans.findIndex(item => item.id === plan.id);
+    if (index < 0) return;
+    setDraft({ ...plan, pricing: { ...plan.pricing } });
+    setIdTouched(true);
+    setEditingIndex(index);
+    setError('');
+    setMessage('');
   };
-  const cancelEdit = () => { setDraft(null); setEditingIndex(null); setError(''); };
-  const updateDraft = (change: Partial<WorkspacePlan>) => setDraft(current => current ? { ...current, ...change } : current);
+
+  const cancelEdit = React.useCallback(() => {
+    setDraft(null);
+    setEditingIndex(null);
+    setError('');
+  }, []);
+
+  const updateDraft = (change: Partial<WorkspacePlan>) =>
+    setDraft(current => current ? { ...current, ...change } : current);
+
   const updatePricing = (key: keyof WorkspacePlan['pricing'], value: number | null) =>
     setDraft(current => current ? { ...current, pricing: { ...current.pricing, [key]: value } } : current);
 
   const save = async () => {
-    setError(''); setMessage('');
-    if (!draft || editingIndex === null) return;
-    const planToSave = { ...draft, pricing: {
-      ...draft.pricing,
-      includedWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.includedWorkspaces,
-      extraWorkspaceMonthlyInr: draft.defaultMode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
-      additionalIndustryMonthlyInr: draft.defaultMode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0,
-    } };
-    const nextPlans = editingIndex === -1 ? [...plans, planToSave] : plans.map((plan, index) => index === editingIndex ? planToSave : plan);
-    const missing = !draft.id.trim() || !draft.name.trim() || planToSave.pricing.baseMonthlyInr == null || planToSave.pricing.extraWorkspaceMonthlyInr == null || planToSave.pricing.additionalIndustryMonthlyInr == null || !Number.isFinite(planToSave.pricing.monthlySubscriptionCreditsInr ?? 0) || (planToSave.pricing.monthlySubscriptionCreditsInr ?? 0) < 0;
-    if (missing) { setError('Enter a plan name, code, and valid monthly fees and credits.'); return; }
+    if (!draft || editingIndex === null || saving) return;
+    setError('');
+    setMessage('');
+    const planToSave: WorkspacePlan = {
+      ...draft,
+      id: draft.id.trim(),
+      name: draft.name.trim(),
+      pricing: {
+        ...draft.pricing,
+        includedWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.includedWorkspaces,
+        extraWorkspaceMonthlyInr: draft.defaultMode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
+        additionalIndustryMonthlyInr: draft.defaultMode === 'mixed_industry'
+          ? draft.pricing.additionalIndustryMonthlyInr : 0,
+      },
+    };
+
+    if (!planToSave.id || !planToSave.name) {
+      setError('Enter both a plan name and a plan code.');
+      return;
+    }
+    if (editingIndex === -1 && existingIds.has(planToSave.id)) {
+      setError('This plan code already exists. Choose a unique code.');
+      return;
+    }
+    if (!validAmount(planToSave.pricing.baseMonthlyInr)
+      || !validAmount(planToSave.pricing.extraWorkspaceMonthlyInr)
+      || !validAmount(planToSave.pricing.additionalIndustryMonthlyInr)
+      || !validAmount(planToSave.pricing.monthlySubscriptionCreditsInr ?? 0)
+      || !Number.isInteger(planToSave.pricing.includedWorkspaces)
+      || planToSave.pricing.includedWorkspaces < 1
+      || planToSave.pricing.includedWorkspaces > 1000) {
+      setError('Enter valid non-negative monthly fees and credits, and 1–1,000 included workspaces.');
+      return;
+    }
+
+    const nextPlans = editingIndex === -1
+      ? [...plans, planToSave]
+      : plans.map((plan, index) => index === editingIndex ? planToSave : plan);
     setSaving(true);
     try {
       const response = await apiFetch('/api/platform/billing/workspace-plans', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ expectedVersion: version, plans: nextPlans }),
       });
-      const body = await response.json().catch(() => ({})) as WorkspacePlanCatalog & { error?: string; code?: string };
-      if (!response.ok) throw new Error(body.error || (response.status === 409 ? 'Plan settings changed. Reload and try again.' : 'Could not save workspace plans.'));
-      setPlans(body.plans || []); setExistingIds(new Set((body.plans || []).map(plan => plan.id))); setVersion(body.version || version + 1); setMessage('Plan saved. New organizations can select this plan.'); setDraft(null); setEditingIndex(null);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save workspace plans.'); }
-    finally { setSaving(false); }
+      const body = await response.json().catch(() => ({})) as WorkspacePlanCatalog & { error?: string };
+      if (!response.ok) throw new Error(body.error || (response.status === 409
+        ? 'Plan settings changed elsewhere. Reload and try again.'
+        : 'Could not save the subscription plan.'));
+      const savedPlans = Array.isArray(body.plans) ? body.plans : [];
+      setPlans(savedPlans);
+      setExistingIds(new Set(savedPlans.map(plan => plan.id)));
+      setVersion(body.version || version + 1);
+      setMessage(editingIndex === -1 ? 'Subscription plan created successfully.' : 'Subscription plan updated successfully.');
+      setDraft(null);
+      setEditingIndex(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save the subscription plan.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   React.useEffect(() => {
     if (!headerCtx) return;
     headerCtx.setHeader({
-      title: <span className="flex items-center gap-2 min-w-0">
+      title: <span className="flex min-w-0 items-center gap-2">
         <span className="text-[10px] font-medium text-[var(--text-muted)]">Admin</span>
         <span className="text-[var(--border)]">/</span>
         {editingIndex !== null ? <>
-          <button type="button" onClick={cancelEdit} disabled={saving}
-            className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50">
+          <button type="button" disabled={saving} onClick={cancelEdit}
+            className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-50">
             Subscription Plans
           </button>
           <span className="text-[var(--border)]">/</span>
           <span className="truncate">{editingIndex === -1 ? 'Create Plan' : 'Edit Plan'}</span>
         </> : <span className="truncate">Subscription Plans</span>}
       </span>,
-      action: editingIndex !== null ? undefined : <button type="button" onClick={beginAdd} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Create plan</button>,
+      action: editingIndex === null
+        ? <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />
+        : undefined,
     });
-  }, [headerCtx?.setHeader, beginAdd, loading, saving, editingIndex]);
+  }, [headerCtx?.setHeader, beginAdd, cancelEdit, editingIndex, loading, saving]);
 
-  const money = (amount: number | null) => amount == null ? 'Not set' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
-  const fieldClass = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500';
-  const labelClass = 'block text-xs font-medium text-slate-500';
+  const filteredPlans = React.useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return plans.filter(plan => {
+      if (statusFilter === 'active' && !plan.active) return false;
+      if (statusFilter === 'archived' && plan.active) return false;
+      return !term || (plan.name + ' ' + plan.id + ' ' + plan.defaultMode).toLowerCase().includes(term);
+    });
+  }, [plans, query, statusFilter]);
 
-  return <div className="mx-auto w-full max-w-5xl space-y-5 text-[var(--text-primary)]">
-    {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-    {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
-    {!draft && (loading ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-muted)]">Loading plans…</div> : (
-      <div className="grid gap-4 md:grid-cols-2">
-        {plans.map((plan, index) => <section key={plan.id || index} className="flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="truncate text-base font-semibold">{plan.name}</h3>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">ID: {plan.id}</p>
-            </div>
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${plan.active ? 'bg-emerald-500/10 text-emerald-600' : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>{plan.active ? 'Active' : 'Archived'}</span>
+  const activeCount = plans.filter(plan => plan.active).length;
+  const activeFees = plans
+    .filter(plan => plan.active && validAmount(plan.pricing.baseMonthlyInr))
+    .map(plan => Number(plan.pricing.baseMonthlyInr));
+  const startingFee = activeFees.length ? money(Math.min(...activeFees)) : '—';
+  const columns: Column<WorkspacePlan>[] = [
+    { key: 'name', header: 'Subscription plan', width: '260px', cell: plan =>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{plan.name}</p>
+        <p className="truncate font-mono text-[11px] text-[var(--text-muted)]">{plan.id}</p>
+      </div> },
+    { key: 'status', header: 'Status', width: '120px', cell: plan =>
+      <Badge color={plan.active ? 'green' : 'slate'}>{plan.active ? 'Active' : 'Archived'}</Badge> },
+    { key: 'monthly', header: 'Monthly fee', width: '170px', align: 'right', cell: plan =>
+      <span className="font-semibold text-[var(--text-primary)]">{money(plan.pricing.baseMonthlyInr)}</span> },
+    { key: 'workspaces', header: 'Workspace access', width: '260px', cell: plan =>
+      <div className="min-w-0">
+        <p className="truncate text-xs text-[var(--text-secondary)]">
+          {MODES.find(mode => mode.value === plan.defaultMode)?.label || plan.defaultMode}
+        </p>
+        <p className="text-[11px] text-[var(--text-muted)]">
+          {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces} included
+        </p>
+      </div> },
+    { key: 'credits', header: 'Monthly usage credits', width: '180px', align: 'right', cell: plan =>
+      money(plan.pricing.monthlySubscriptionCreditsInr ?? 0) },
+    { key: 'action', header: 'Action', width: '120px', cell: plan =>
+      <Button type="button" size="xs" variant="secondary" icon={Pencil} disabled={saving}
+        onClick={() => beginEdit(plan)}>Edit plan</Button> },
+  ];
+
+  return <div className="w-full min-w-0 space-y-5 text-[var(--text-primary)]">
+    {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+      <span>{error}</span>
+      {!draft && <Button size="xs" type="button" onClick={() => void load()}>Retry</Button>}
+    </div>}
+    {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">{message}</div>}
+
+    {editingIndex === null ? (
+      <>
+        <div className="grid grid-cols-12 gap-4">
+          <KpiCard colSpan={3} label="Total plans" value={loading ? '—' : plans.length} icon={CreditCard} />
+          <KpiCard colSpan={3} label="Active plans" value={loading ? '—' : activeCount} icon={ShieldCheck} />
+          <KpiCard colSpan={3} label="Archived plans" value={loading ? '—' : plans.length - activeCount} icon={Building2} />
+          <KpiCard colSpan={3} label="Starting monthly fee" value={loading ? '—' : startingFee} icon={Wallet} />
+        </div>
+
+        <Widget title="Subscription plan catalog" subtitle="Review plan pricing and workspace allowances."
+          icon={CreditCard} accent="#2563eb" padding="none"
+          action={<Button type="button" size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>Refresh</Button>}>
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+            <FilterBar
+              search={{ value: query, onChange: setQuery, placeholder: 'Search plans by name or code…' }}
+              selects={[{
+                key: 'status', label: 'Status', value: statusFilter,
+                onChange: value => setStatusFilter(value as typeof statusFilter),
+                options: [
+                  { label: 'All statuses', value: 'all' },
+                  { label: 'Active', value: 'active' },
+                  { label: 'Archived', value: 'archived' },
+                ],
+              }]}
+              onClear={() => { setQuery(''); setStatusFilter('all'); }}
+              hasActiveFilters={Boolean(query.trim() || statusFilter !== 'all')}
+              resultCount={{ filtered: filteredPlans.length, total: plans.length, label: 'plans' }}
+              actions={<IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />}
+            />
           </div>
-          <div className="mt-5 border-b border-[var(--border)] pb-4">
-            <p className="text-2xl font-semibold tracking-tight">{money(plan.pricing.baseMonthlyInr)}<span className="ml-1 text-xs font-normal text-[var(--text-muted)]">/ month</span></p>
-            <p className="mt-1 text-xs text-[var(--text-secondary)]">{MODES.find(mode => mode.value === plan.defaultMode)?.label}</p>
+          <DataTable
+            bare resizable paginated defaultPageSize={25}
+            columns={columns} rows={filteredPlans} rowKey={plan => plan.id}
+            loading={loading}
+            emptyMessage={query || statusFilter !== 'all'
+              ? 'No subscription plans match the filters.'
+              : 'No subscription plans configured yet.'}
+          />
+        </Widget>
+      </>
+    ) : draft ? (
+      <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }}
+        className="grid grid-cols-12 gap-4 md:gap-5">
+        <Widget colSpan={12} title="Plan identity"
+          subtitle="Give this plan a recognizable name and a stable internal code."
+          icon={CreditCard} padding="md">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className={labelClass}>Subscription plan name
+              <input className={fieldClass} required maxLength={120} disabled={saving}
+                autoFocus={editingIndex === -1}
+                value={draft.name}
+                onChange={event => {
+                  const name = event.target.value;
+                  updateDraft({
+                    name,
+                    ...(editingIndex === -1 && !idTouched
+                      ? { id: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) }
+                      : {}),
+                  });
+                }} placeholder="e.g. Growth" />
+            </label>
+            <label className={labelClass}>Plan code
+              <input className={fieldClass} required disabled={saving || editingIndex !== -1}
+                maxLength={64} value={draft.id}
+                onChange={event => {
+                  setIdTouched(true);
+                  updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') });
+                }} placeholder="e.g. growth-plan" />
+              <span className={helpClass}>Generated from the name for new plans. Existing plan codes cannot be changed.</span>
+            </label>
           </div>
-          <dl className="my-4 space-y-3 text-xs">
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Included workspaces</dt><dd className="font-semibold">{plan.pricing.includedWorkspaces}</dd></div>
-            {plan.defaultMode !== 'single' && <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Extra workspace / month</dt><dd className="font-semibold">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd></div>}
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Included usage credits / month</dt><dd className="font-semibold">{money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}</dd></div>
-            {plan.defaultMode === 'mixed_industry' && <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Extra industry / month</dt><dd className="font-semibold">{money(plan.pricing.additionalIndustryMonthlyInr)}</dd></div>}
-          </dl>
-          <button type="button" onClick={() => beginEdit(index)} disabled={editingIndex !== null || saving} className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold hover:bg-[var(--bg-subtle)] disabled:opacity-50"><Pencil className="h-4 w-4" /> Edit plan</button>
-        </section>)}
-        {!plans.length && <div className="col-span-full rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)] p-10 text-center text-sm text-[var(--text-muted)]">No workspace plans yet.</div>}
-      </div>
-    ))}
+        </Widget>
 
-    {draft && editingIndex !== null && (
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="space-y-5">
-        <div className="space-y-5">
-          <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-5">
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 id="workspace-plan-form-title" className="text-sm font-semibold text-slate-800">Subscription plan details</h2>
-                <p className="mt-1 text-[11px] text-slate-500">Choose a name customers will recognize. The plan code is used internally.</p>
-              </div>
-            <div className="grid gap-4 md:grid-cols-2">
-            <label className={labelClass}>Subscription plan name<input required value={draft.name} onChange={event => { const name = event.target.value; updateDraft({ name, ...(editingIndex === -1 && !idTouched ? { id: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) } : {}) }); }} className={fieldClass} /></label>
-            <label className={labelClass}>Plan code (auto-generated)<input required value={draft.id} onChange={event => { setIdTouched(true); updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') }); }} disabled={existingIds.has(draft.id)} placeholder="e.g. growth-plan" className={fieldClass + ' disabled:opacity-60'} /></label>
-            </div>
-            </section>
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-sm font-semibold text-slate-800">Monthly subscription & included credits</h2>
-                <p className="mt-1 text-[11px] text-slate-500">The subscription fee is what an organization pays. Included usage credits are a separate allowance, not a discount on that fee.</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className={labelClass}>Monthly subscription fee (₹)
-                  <input required type="number" min="0" step="0.01" value={draft.pricing.baseMonthlyInr ?? ''} onChange={event => updatePricing('baseMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} />
-                  <span className="mt-1 block text-[11px] font-normal text-slate-500">Base monthly charge before extra workspaces or industries.</span>
-                </label>
-                <label className={labelClass}>Usage credits included each month (₹)
-                  <input required type="number" min="0" step="0.01" value={draft.pricing.monthlySubscriptionCreditsInr ?? 0} onChange={event => updatePricing('monthlySubscriptionCreditsInr', Number(event.target.value))} className={fieldClass} />
-                  <span className="mt-1 block text-[11px] font-normal text-slate-500">Usage allowance issued separately when the paid subscription cycle is fulfilled.</span>
-                </label>
-              </div>
-            </section>
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-sm font-semibold text-slate-800">Workspaces & extra monthly charges</h2>
-                <p className="mt-1 text-[11px] text-slate-500">Choose what the plan permits and the additional monthly prices that apply beyond its included allowances.</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className={labelClass + ' md:col-span-2'}>Which workspace setup does this plan allow?
-                  <select value={draft.defaultMode} onChange={event => {
-                    const mode = event.target.value as WorkspaceMode;
-                    updateDraft({ defaultMode: mode, pricing: {
+        <Widget colSpan={12} title="Monthly subscription and credits"
+          subtitle="Usage credits are allocated separately; they do not reduce the subscription fee."
+          icon={Wallet} accent="#0891b2" padding="md">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className={labelClass}>Monthly subscription fee (₹)
+              <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
+                value={draft.pricing.baseMonthlyInr ?? ''}
+                onChange={event => updatePricing('baseMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
+              <span className={helpClass}>Base monthly fee before optional workspace or industry charges.</span>
+            </label>
+            <label className={labelClass}>Monthly usage credits (₹)
+              <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
+                value={draft.pricing.monthlySubscriptionCreditsInr ?? 0}
+                onChange={event => updatePricing('monthlySubscriptionCreditsInr', Number(event.target.value))} />
+              <span className={helpClass}>Credits issued when the paid subscription cycle is fulfilled.</span>
+            </label>
+          </div>
+        </Widget>
+
+        <Widget colSpan={12} title="Workspace allowances and add-ons"
+          subtitle="Choose allowed workspace structures and their additional monthly charges."
+          icon={Building2} accent="#7c3aed" padding="md">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className={labelClass + ' md:col-span-2'}>Workspace setup
+              <select className={fieldClass} value={draft.defaultMode} disabled={saving}
+                onChange={event => {
+                  const mode = event.target.value as WorkspaceMode;
+                  updateDraft({
+                    defaultMode: mode,
+                    pricing: {
                       ...draft.pricing,
                       includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces,
                       extraWorkspaceMonthlyInr: mode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
                       additionalIndustryMonthlyInr: mode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0,
-                    } });
-                  }} className={fieldClass}>{MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select>
-                  <span className="mt-1 block text-[11px] font-normal text-slate-500">One workspace, multiple locations in one industry, or workspaces across different industries.</span>
-                </label>
-                {draft.defaultMode !== 'single' && <>
-                  <label className={labelClass}>Workspaces included in the subscription
-                    <input required type="number" min="1" max="1000" step="1" value={draft.pricing.includedWorkspaces} onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} className={fieldClass} />
-                    <span className="mt-1 block text-[11px] font-normal text-slate-500">These workspaces do not incur an extra workspace fee.</span>
-                  </label>
-                  <label className={labelClass}>Monthly fee per extra workspace (₹)
-                    <input required type="number" min="0" step="0.01" value={draft.pricing.extraWorkspaceMonthlyInr ?? ''} onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} />
-                    <span className="mt-1 block text-[11px] font-normal text-slate-500">Charged for each workspace beyond the included number.</span>
-                  </label>
-                </>}
-                {draft.defaultMode === 'mixed_industry' && <label className={labelClass + ' md:col-span-2'}>Monthly fee per additional industry (₹)
-                  <input required type="number" min="0" step="0.01" value={draft.pricing.additionalIndustryMonthlyInr ?? ''} onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} />
-                  <span className="mt-1 block text-[11px] font-normal text-slate-500">Charged once per distinct industry beyond the primary industry, not once per workspace.</span>
-                </label>}
-              </div>
-            </section>
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-800">Plan availability</h2>
-              <label className="mt-3 flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input type="checkbox" checked={draft.active} onChange={event => updateDraft({ active: event.target.checked })} className="h-4 w-4 accent-amber-500" />
-                Allow new organizations to select this plan
+                    },
+                  });
+                }}>
+                {MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
+              </select>
+            </label>
+            {draft.defaultMode !== 'single' && <>
+              <label className={labelClass}>Included workspaces
+                <input className={fieldClass} type="number" required min="1" max="1000" step="1" disabled={saving}
+                  value={draft.pricing.includedWorkspaces}
+                  onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} />
+                <span className={helpClass}>Extra workspace fees start after this allowance.</span>
               </label>
-            </section>
-          </form>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <button type="button" onClick={cancelEdit} disabled={saving} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700">Cancel</button>
-            <button type="submit" form="workspace-plan-form" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-60"><Save className="h-4 w-4" />{saving ? 'Saving…' : editingIndex === -1 ? 'Create plan' : 'Save changes'}</button>
+              <label className={labelClass}>Monthly fee per extra workspace (₹)
+                <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
+                  value={draft.pricing.extraWorkspaceMonthlyInr ?? ''}
+                  onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
+              </label>
+            </>}
+            {draft.defaultMode === 'mixed_industry' && <label className={labelClass + ' md:col-span-2'}>Monthly fee per additional industry (₹)
+              <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
+                value={draft.pricing.additionalIndustryMonthlyInr ?? ''}
+                onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
+              <span className={helpClass}>Charged per additional distinct industry, not per workspace.</span>
+            </label>}
+          </div>
+        </Widget>
+
+        <Widget colSpan={12} title="Availability" subtitle="Control whether new organizations can select this plan."
+          icon={ShieldCheck} accent="#059669" padding="md">
+          <label className="inline-flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-xs font-medium text-[var(--text-secondary)]">
+            <input type="checkbox" checked={draft.active} disabled={saving}
+              onChange={event => updateDraft({ active: event.target.checked })}
+              className="h-4 w-4 accent-[var(--accent)]" />
+            Available to new organizations
+          </label>
+        </Widget>
+
+        <div className="col-span-12 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">
+              {draft.name || 'New plan'} · {money(draft.pricing.baseMonthlyInr)} / month
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Review the details before saving.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="secondary" disabled={saving} onClick={cancelEdit}>Cancel</Button>
+            <Button type="submit" variant="primary" icon={Save} loading={saving}>
+              {editingIndex === -1 ? 'Create plan' : 'Save changes'}
+            </Button>
           </div>
         </div>
-      </div>
-      </div>
-    )}
+      </form>
+    ) : null}
   </div>;
 }

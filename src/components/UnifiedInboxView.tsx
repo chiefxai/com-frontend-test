@@ -5,6 +5,7 @@ import { useAuthorization } from '../lib/authorization';
 import type { Channel, Conversation, ChatMessage } from '../lib/inbox';
 import PageShell from './ui/PageShell';
 import Button from './ui/Button';
+import IconButton from './ui/IconButton';
 import Modal from './ui/Modal';
 import Badge from './ui/Badge';
 import Widget from './ui/Widget';
@@ -266,8 +267,8 @@ export default function UnifiedInboxView() {
   return (
     <PageShell title="Unified Inbox" subtitle="WhatsApp and Instagram conversations in one place."
       layout="fill" onRefresh={loadAll}
-      action={canManageChannels ? <Button type="button" icon={Settings} variant="secondary" size="sm"
-        onClick={() => setShowSettings(true)}>Channels</Button> : undefined}>
+      action={canManageChannels ? <IconButton icon={Settings} label="Connect messaging channels"
+        onClick={() => setShowSettings(true)} /> : undefined}>
       {loadError && <div role="alert" className="m-3 mb-0 flex shrink-0 flex-wrap items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
         <span>{loadError}</span>
         <Button type="button" size="xs" variant="secondary" onClick={() => { void loadAll(); }}>Retry</Button>
@@ -278,21 +279,23 @@ export default function UnifiedInboxView() {
           : 'No messaging channels connected. Ask a workspace administrator to connect one.'}
       </div>}
       <div className="flex min-h-0 flex-1 gap-3 p-0 md:p-1">
-        <Widget responsive={false} showHeader={false} padding="none" bodyOverflow="hidden"
-          className={(selectedId ? 'hidden md:flex' : 'flex') + ' min-h-0 min-w-0 md:!w-[320px] md:!flex-none xl:!w-[360px]'}
+        {/* Match the Outbound Campaigns portfolio/inspector Widget layout. */}
+        <Widget responsive={false} title="Conversation portfolio"
+          subtitle="Select a contact to open their messages."
+          icon={Inbox} accent="#2563eb"
+          action={<span className="whitespace-nowrap text-[11px] text-[var(--text-muted)]">
+            {filteredConversations.length} of {conversations.length}
+          </span>}
+          padding="none" bodyOverflow="hidden"
+          className={(selectedId ? 'hidden md:flex' : 'flex') + ' min-h-0 min-w-0 md:!w-[320px] md:!flex-none xl:!w-[380px]'}
           bodyClassName="flex min-h-0 flex-col">
           <div className="shrink-0 border-b border-[var(--border)] p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Conversations</h2>
-              <span className="text-xs text-[var(--text-muted)]">{conversations.length}</span>
-            </div>
             <FilterBar
               search={{ value: search, onChange: setSearch, placeholder: 'Search contacts…' }}
               selects={[{ key: 'channel', label: 'Channel', value: channelFilter, onChange: value => setChannelFilter(value as typeof channelFilter),
                 options: [{ label: 'All channels', value: 'all' }, { label: 'WhatsApp', value: 'whatsapp' }, { label: 'Instagram', value: 'instagram' }] }]}
               hasActiveFilters={Boolean(search.trim() || channelFilter !== 'all')}
               onClear={() => { setSearch(''); setChannelFilter('all'); }}
-              resultCount={{ filtered: filteredConversations.length, total: conversations.length, label: 'chats' }}
             />
           </div>
           <nav aria-label="Conversations" className="min-h-0 flex-1 overflow-y-auto">
@@ -310,7 +313,9 @@ export default function UnifiedInboxView() {
                     const active = selectedId === conversation.id;
                     return <button type="button" key={conversation.id} onClick={() => setSelectedId(conversation.id)}
                       aria-current={active ? 'true' : undefined}
-                      className={(active ? 'bg-[var(--bg-subtle)] border-l-[var(--accent)]' : 'border-l-transparent hover:bg-[var(--bg-subtle)]') +
+                      className={(active
+                        ? 'bg-blue-50 border-l-blue-500 dark:bg-blue-500/[0.08] dark:border-l-blue-400'
+                        : 'border-l-transparent hover:bg-[var(--bg-subtle)]') +
                         ' flex w-full items-start gap-3 border-b border-b-[var(--border-subtle)] border-l-[3px] px-4 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]'}>
                       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
                         <ChannelIcon type={conversation.channelType} className="h-4 w-4" />
@@ -331,7 +336,10 @@ export default function UnifiedInboxView() {
           </nav>
         </Widget>
 
-        <Widget responsive={false} showHeader={false} padding="none" bodyOverflow="hidden"
+        <Widget responsive={false} title="Conversation inspector"
+          subtitle="Message history, replies, and AI insights."
+          icon={MessageCircle} accent="#7c3aed"
+          padding="none" bodyOverflow="hidden"
           className={(selectedId ? 'flex' : 'hidden md:flex') + ' min-h-0 min-w-0 flex-1'}
           bodyClassName="flex min-h-0 flex-col">
           {!selectedConversation

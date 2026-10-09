@@ -119,6 +119,7 @@ function GroupFlyout({
   group,
   activeTab,
   activeSubTab,
+  activeItemId,
   anchorRect,
   onSelect,
   onClose,
@@ -126,6 +127,8 @@ function GroupFlyout({
   group: SidebarGroup;
   activeTab: string;
   activeSubTab: string;
+  /** Flat sub-route active in a synthetic group such as Dashboard. */
+  activeItemId?: string;
   anchorRect: DOMRect;
   onSelect: (subId: string) => void;
   onClose: () => void;
@@ -140,8 +143,8 @@ function GroupFlyout({
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
-  const isGroupActive = activeTab === group.tabId;
-  const top = Math.min(anchorRect.top, window.innerHeight - (group.subItems.length * 44 + 56));
+  const isGroupActive = activeItemId !== undefined || activeTab === group.tabId;
+  const top = Math.max(8, Math.min(anchorRect.top, window.innerHeight - (group.subItems.length * 44 + 56)));
 
   return (
     <div
@@ -162,7 +165,7 @@ function GroupFlyout({
       </div>
       {group.subItems.map((sub) => {
         const SubIcon = sub.icon;
-        const isActive = isGroupActive && activeSubTab === sub.id;
+        const isActive = activeItemId !== undefined ? activeItemId === sub.id : isGroupActive && activeSubTab === sub.id;
         return (
           <button
             key={sub.id}
@@ -172,7 +175,7 @@ function GroupFlyout({
                 ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
                 : 'hover:bg-[var(--bg-subtle)]'
             }`}
-            style={isActive ? {} : { color: 'rgba(248,250,255,0.72)' }}
+            style={isActive ? { color: 'var(--accent)' } : { color: 'var(--text-secondary)' }}
           >
             <SubIcon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[var(--accent)]' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} />
             {sub.label}
@@ -459,8 +462,14 @@ export default function Sidebar({
       {/* Navigation */}
       <nav className={`flex-1 overflow-y-auto space-y-1.5 ${collapsed ? 'px-2 py-6' : 'px-4 pt-4 pb-6'}`}>
 
-        {/* Dashboard group — Executive Desk + Reports, collapsible like Company Profile / Administration */}
+        {/* Dashboard uses the SAME collapsed group flyout as Campaign. */}
         {dashboardSubItems.length > 0 && (() => {
+          const dashboardGroup: SidebarGroup = {
+            tabId: DASHBOARD_GROUP_KEY,
+            label: 'Dashboard',
+            icon: LayoutDashboard,
+            subItems: dashboardSubItems,
+          };
           const isGroupActive = activeTab === 'dashboard' || activeTab === 'reports';
           const isExpanded = expandedGroups.has(DASHBOARD_GROUP_KEY) && !collapsed;
           const ChevronIcon = isExpanded ? ChevronDown : ChevronRight;
@@ -469,12 +478,11 @@ export default function Sidebar({
           const groupBtn = (
             <button
               id="nav-dashboard-group"
-              onClick={(e) => {
-                toggleGroup(DASHBOARD_GROUP_KEY, e.currentTarget);
-                setActiveTab('dashboard');
-                setFlyoutGroup(null);
-                setFlyoutRect(null);
-              }}
+              type="button"
+              aria-label="Dashboard"
+              aria-expanded={flyoutOpen || isExpanded}
+              aria-haspopup={collapsed ? 'menu' : undefined}
+              onClick={event => toggleGroup(DASHBOARD_GROUP_KEY, event.currentTarget)}
               className={navBtnCls(isGroupActive)}
               style={navBtnStyle(isGroupActive)}
             >
@@ -482,7 +490,8 @@ export default function Sidebar({
               {!collapsed && (
                 <>
                   <span className="flex-1 text-left truncate min-w-0">Dashboard</span>
-                  <ChevronIcon className="h-3.5 w-3.5 shrink-0" style={{ color: isGroupActive ? '#ffffff99' : 'var(--text-muted)' }} />
+                  <ChevronIcon className="h-3.5 w-3.5 shrink-0"
+                    style={{ color: isGroupActive ? '#ffffff99' : 'var(--text-muted)' }} />
                 </>
               )}
             </button>
@@ -493,50 +502,39 @@ export default function Sidebar({
               {collapsed ? <CollapsedTooltip label="Dashboard">{groupBtn}</CollapsedTooltip> : groupBtn}
 
               {flyoutOpen && flyoutRect && (
-                <div
-                  className="fixed z-[9999] rounded-xl shadow-2xl py-2"
-                  style={{
-                    top: Math.min(flyoutRect.top, window.innerHeight - (dashboardSubItems.length * 44 + 56)),
-                    left: flyoutRect.right + 8,
-                    minWidth: 200,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
+                <GroupFlyout
+                  group={dashboardGroup}
+                  activeTab={activeTab}
+                  activeSubTab={activeSubTab}
+                  activeItemId={activeTab}
+                  anchorRect={flyoutRect}
+                  onSelect={id => {
+                    setActiveTab(id);
+                    setFlyoutGroup(null);
+                    setFlyoutRect(null);
                   }}
-                >
-                  <div className="px-4 py-2 mb-1" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Dashboard</span>
-                  </div>
-                  {dashboardSubItems.map((sub) => {
-                    const SubIcon = sub.icon;
-                    const isActive = activeTab === sub.id;
-                    return (
-                      <button
-                        key={sub.id}
-                        onClick={() => { setActiveTab(sub.id); setFlyoutGroup(null); setFlyoutRect(null); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                          isActive ? 'bg-[var(--accent-subtle)] text-[var(--accent)]' : 'hover:bg-[var(--bg-subtle)]'
-                        }`}
-                        style={isActive ? {} : { color: 'var(--text-secondary)' }}
-                      >
-                        <SubIcon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : ''}`} style={isActive ? {} : { color: 'var(--text-muted)' }} />
-                        {sub.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                  onClose={() => {
+                    setFlyoutGroup(null);
+                    setFlyoutRect(null);
+                  }}
+                />
               )}
 
               {isExpanded && (
                 <div className="mt-1.5 space-y-1.5">
-                  {dashboardSubItems.map((sub) => {
+                  {dashboardSubItems.map(sub => {
                     const SubIcon = sub.icon;
                     const isActive = activeTab === sub.id;
                     return (
                       <button
+                        type="button"
                         key={sub.id}
-                        id={`nav-dashboard-group-${sub.id}`}
-                        onClick={() => { setActiveTab(sub.id); setFlyoutGroup(null); }}
+                        id={'nav-dashboard-group-' + sub.id}
+                        onClick={() => {
+                          setActiveTab(sub.id);
+                          setFlyoutGroup(null);
+                          setFlyoutRect(null);
+                        }}
                         className={subBtnCls(isActive)}
                         style={subBtnStyle(isActive)}
                       >
