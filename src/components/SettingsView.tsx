@@ -10,7 +10,6 @@ import {
   CheckCircle,
   FileText,
   Clock,
-  Activity,
   UserPlus,
   DollarSign,
   Briefcase,
@@ -25,7 +24,7 @@ import { apiFetch, getApiBase } from '../lib/api';
 import { useAuthorization } from '../lib/authorization';
 import { useRefresh } from '../lib/RefreshContext';
 import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../types';
-import { COST_PER_MINUTE_INR_FALLBACK, formatInr, formatCurrency, currencySymbol, convertToDisplayCurrency } from '../lib/pricing';
+import { COST_PER_MINUTE_INR_FALLBACK, formatInr } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FlagGroupPicker from './ui/FlagGroupPicker';
 import IconButton from './ui/IconButton';
@@ -95,25 +94,14 @@ interface WorkspaceMemberAssignment {
   roleSource: string | null;
 }
 
-// One row per Gemini Live session — see crm-backend-demo's
-// src/ai/geminiUsageTracker.js / GET /api/ai-usage. Cost figures are
-// application-level ESTIMATES, not the Google Cloud invoice.
-interface AiUsageSession {
-  id: string;
-  callId: string;
-  sessionId: string | null;
-  adminId: string | null;
-  provider: string;
-  model: string;
-  status: 'in_progress' | 'completed' | 'failed';
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  totalCost: number;
-  currency: string;
-  durationSeconds: number | null;
-  sessionStartedAt: string;
-  errorMessage: string | null;
+/** Format billing-period call duration without showing misleading decimal hours. */
+function formatCallTime(minutes: number | null | undefined): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';
+  const seconds = Math.max(0, Math.round(minutes * 60));
+  if (seconds < 60) return `${seconds}s`;
+  const hours = Math.floor(seconds / 3600);
+  const restMinutes = Math.floor((seconds % 3600) / 60);
+  return hours ? `${hours}h ${restMinutes}m` : `${Math.round(seconds / 60)}m`;
 }
 
 function ProviderBadge({ provider }: { provider: string }) {
@@ -264,37 +252,42 @@ export default function SettingsView({
     if (subTab === 'api') loadAuditLogs();
   }, [subTab]);
 
-  // Gemini Live usage/cost tracking (crm-backend-demo's
-  // src/ai/geminiUsageTracker.js — see docs/ai-usage-tracking.md). Every
-  // figure here is an application-level ESTIMATE computed from token
-  // counts, never the authoritative Google Cloud invoice — labeled as
-  // such wherever it's shown below.
-  const [aiUsageSummary, setAiUsageSummary] = useState<{ sessionCount: number; callCount: number; totalInputTokens: number; totalOutputTokens: number; totalTokens: number; totalCost: number; failedCount: number; currency: string } | null>(null);
-  const [aiUsageByAdmin, setAiUsageByAdmin] = useState<{ adminId: string; sessionCount: number; totalTokens: number; totalCost: number }[]>([]);
-  const [aiUsageSessions, setAiUsageSessions] = useState<AiUsageSession[]>([]);
-  const [loadingAiUsage, setLoadingAiUsage] = useState(false);
+  // These period totals come from the billing ledger, not from token
+  // estimates or the most recent page of AI model sessions.
   const [workspaceBilling, setWorkspaceBilling] = useState<{ workspaceId: string; workspaceName: string; monthlyBudgetInr: number | null; periodSpendInr: number; aiMinutesUsed: number; aiSpendInr: number; phoneSpendInr: number; remainingBudgetInr: number | null; budgetPeriod: { label: string } } | null>(null);
-  const [organizationPricing,setOrganizationPricing]=useState<{totalMonthlyInr:number;workspaceCount:number;additionalIndustries:number}|null>(null);
+  const [organizationPricing, setOrganizationPricing] = useState<{totalMonthlyInr:number;workspaceCount:number;additionalIndustries:number}|null>(null);
+  const [billingCallCount, setBillingCallCount] = useState<number | null>(null);
+  const [billingUsageLoading, setBillingUsageLoading] = useState(false);
+  const [billingUsageError, setBillingUsageError] = useState('');
   const [workspaceBudgetDraft, setWorkspaceBudgetDraft] = useState('');
   const [savingWorkspaceBudget, setSavingWorkspaceBudget] = useState(false);
   const [workspaceBudgetError, setWorkspaceBudgetError] = useState('');
-  const loadAiUsage = () => {
-    setLoadingAiUsage(true);
-    Promise.all([
-      apiFetch('/api/ai-usage/summary').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      apiFetch('/api/ai-usage/by-admin').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      apiFetch('/api/ai-usage?page=1&limit=20').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      apiFetch('/api/billing/console').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ])
-      .then(([summary, byAdmin, sessions, billing]) => {
-        setAiUsageSummary(summary);
-        setAiUsageByAdmin(Array.isArray(byAdmin?.rows) ? byAdmin.rows : []);
-        setAiUsageSessions(Array.isArray(sessions?.rows) ? sessions.rows : []);
-        setWorkspaceBilling(billing?.workspaceBilling || null);
-        setOrganizationPricing(billing?.organizationPricing || null);
-        setWorkspaceBudgetDraft(billing?.workspaceBilling?.monthlyBudgetInr == null ? '' : String(billing.workspaceBilling.monthlyBudgetInr));
-      })
-      .finally(() => setLoadingAiUsage(false));
+  const loadBillingUsage = async () => {
+    setBillingUsageLoading(true);
+    try {
+      const response = await apiFetch('/api/billing/console');
+      const billing = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(billing.error || 'Unable to load billing usage.');
+      const usage = billing.workspaceBilling || null;
+      setWorkspaceBilling(usage);
+      setOrganizationPricing(billing.organizationPricing || null);
+      const reportedCalls = billing.overview?.totalCalls;
+      const providerRows = billing.phoneBilling?.providers;
+      setBillingCallCount(typeof reportedCalls === 'number' && Number.isFinite(reportedCalls)
+        ? reportedCalls
+        : Array.isArray(providerRows)
+          ? providerRows.reduce((count: number, row: { calls?: number }) => count + (Number(row.calls) || 0), 0)
+          : null);
+      setWorkspaceBudgetDraft(usage?.monthlyBudgetInr == null ? '' : String(usage.monthlyBudgetInr));
+      setBillingUsageError('');
+    } catch (error) {
+      setWorkspaceBilling(null);
+      setOrganizationPricing(null);
+      setBillingCallCount(null);
+      setBillingUsageError(error instanceof Error ? error.message : 'Unable to load billing usage.');
+    } finally {
+      setBillingUsageLoading(false);
+    }
   };
   const saveWorkspaceBudget = async () => {
     setSavingWorkspaceBudget(true);
@@ -310,13 +303,13 @@ export default function SettingsView({
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Could not save the workspace budget.');
-      loadAiUsage();
+      void loadBillingUsage();
     } catch (error) {
       setWorkspaceBudgetError(error instanceof Error ? error.message : 'Could not save the workspace budget.');
     } finally { setSavingWorkspaceBudget(false); }
   };
   useEffect(() => {
-    if (subTab === 'billing') loadAiUsage();
+    if (subTab === 'billing') void loadBillingUsage();
   }, [subTab]);
 
 
@@ -734,6 +727,7 @@ export default function SettingsView({
 
   const globalRefresh = useRefresh();
   const handlePageRefresh = () => {
+    if (subTab === 'billing') void loadBillingUsage();
     if (subTab === 'numbers' || subTab === 'workspaces') loadChannels();
     else if (subTab === 'api') loadAuditLogs();
     globalRefresh?.();
