@@ -47,6 +47,8 @@ export default function UsersPage() {
         />
         <div className="mt-3">
           <DataTable
+        resizable
+            resizable
             columns={columns}
             rows={filtered}
             rowKey={(u) => u.id}
