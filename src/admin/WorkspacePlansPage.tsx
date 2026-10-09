@@ -1,14 +1,12 @@
 import React from 'react';
-import { Building2, CreditCard, Pencil, Plus, Save, ShieldCheck, Wallet, Layers3, ArrowUpRight } from 'lucide-react';
+import { Building2, CreditCard, Pencil, Plus, Save, Wallet, Layers3, ArrowUpRight } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 import Widget from '../components/ui/Widget';
 import { Card, CardHeader } from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
-import FilterBar from '../components/ui/FilterBar';
 import Badge from '../components/ui/Badge';
-import KpiCard from '../components/ui/KpiCard';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import { useToast } from '../components/ui/Toast';
@@ -49,8 +47,6 @@ export default function WorkspacePlansPage() {
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [draft, setDraft] = React.useState<WorkspacePlan | null>(null);
   const [idTouched, setIdTouched] = React.useState(false);
-  const [query, setQuery] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'archived'>('all');
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -184,21 +180,6 @@ export default function WorkspacePlansPage() {
     });
   }, [headerCtx?.setHeader, beginAdd, cancelEdit, editingIndex, loading, saving]);
 
-  const filteredPlans = React.useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return plans.filter(plan => {
-      if (statusFilter === 'active' && !plan.active) return false;
-      if (statusFilter === 'archived' && plan.active) return false;
-      return !term || (plan.name + ' ' + plan.id + ' ' + plan.defaultMode).toLowerCase().includes(term);
-    });
-  }, [plans, query, statusFilter]);
-
-  const activeCount = plans.filter(plan => plan.active).length;
-  const activeFees = plans
-    .filter(plan => plan.active && validAmount(plan.pricing.baseMonthlyInr))
-    .map(plan => Number(plan.pricing.baseMonthlyInr));
-  const startingFee = activeFees.length ? money(Math.min(...activeFees)) : '—';
-
   return <div className="w-full min-w-0 space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
       <span>{error}</span>
@@ -206,133 +187,89 @@ export default function WorkspacePlansPage() {
     </div>}
 
     {editingIndex === null ? (
-      <>
-        <div className="grid grid-cols-12 gap-4">
-          <KpiCard colSpan={3} label="Total plans" value={loading ? '—' : plans.length} icon={CreditCard} />
-          <KpiCard colSpan={3} label="Active plans" value={loading ? '—' : activeCount} icon={ShieldCheck} />
-          <KpiCard colSpan={3} label="Archived plans" value={loading ? '—' : plans.length - activeCount} icon={Building2} />
-          <KpiCard colSpan={3} label="Starting monthly fee" value={loading ? '—' : startingFee} icon={Wallet} />
-        </div>
-
-        <section aria-label="Subscription plan catalog" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Subscription plan catalog</h2>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">
-                Manage monthly pricing, credits and workspace allowances.
+      loading ? (
+        <div role="status" className="py-8 text-sm text-[var(--text-muted)]">Loading subscription plans…</div>
+      ) : plans.length === 0 ? (
+        <EmptyState
+          icon={CreditCard}
+          heading="No subscription plans yet"
+          message="Use the plus icon in the page header to create your first plan."
+        />
+      ) : (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {plans.map(plan => (
+        <Card key={plan.id} padding="none" hover
+          className="group relative flex min-w-0 flex-col overflow-hidden transition-colors hover:border-blue-300 dark:hover:border-blue-600">
+          <div aria-hidden="true"
+            className="h-1 w-full shrink-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+          <div className="flex flex-1 flex-col gap-4 p-5">
+            <CardHeader
+              title={plan.name}
+              subtitle={<span className="font-mono text-[11px]">{plan.id}</span>}
+              icon={CreditCard}
+              accent={plan.active ? '#2563eb' : '#64748b'}
+              border={false}
+              action={<Badge color={plan.active ? 'green' : 'slate'}>
+                {plan.active ? 'Active' : 'Archived'}
+              </Badge>}
+            />
+            <div className="border-b border-[var(--border)] pb-4">
+              <div className="flex flex-wrap items-baseline gap-1">
+                <span className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+                  {money(plan.pricing.baseMonthlyInr)}
+                </span>
+                <span className="text-xs text-[var(--text-muted)]">/ month</span>
+              </div>
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                <Layers3 className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
+                {MODES.find(mode => mode.value === plan.defaultMode)?.label || plan.defaultMode}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>Refresh</Button>
-              <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />
+            <dl className="space-y-3 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Included workspaces</dt>
+                <dd className="font-semibold text-[var(--text-primary)]">
+                  {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces}
+                </dd>
+              </div>
+              {plan.defaultMode !== 'single' && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[var(--text-muted)]">Extra workspace / month</dt>
+                  <dd className="font-semibold text-[var(--text-primary)]">
+                    {money(plan.pricing.extraWorkspaceMonthlyInr)}
+                  </dd>
+                </div>
+              )}
+              {plan.defaultMode === 'mixed_industry' && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[var(--text-muted)]">Extra industry / month</dt>
+                  <dd className="font-semibold text-[var(--text-primary)]">
+                    {money(plan.pricing.additionalIndustryMonthlyInr)}
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--bg-subtle)] px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                  Monthly usage credits
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">
+                  {money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}
+                </p>
+              </div>
+              <Wallet className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
             </div>
+            <Button type="button" size="sm" variant="secondary" icon={Pencil}
+              iconRight={ArrowUpRight} className="w-full justify-center"
+              disabled={saving} onClick={() => beginEdit(plan)}>
+              Edit plan
+            </Button>
           </div>
-          <FilterBar
-            search={{ value: query, onChange: setQuery, placeholder: 'Search plans by name or code…' }}
-            selects={[{
-              key: 'status', label: 'Status', value: statusFilter,
-              onChange: value => setStatusFilter(value as typeof statusFilter),
-              options: [
-                { label: 'All statuses', value: 'all' },
-                { label: 'Active', value: 'active' },
-                { label: 'Archived', value: 'archived' },
-              ],
-            }]}
-            onClear={() => { setQuery(''); setStatusFilter('all'); }}
-            hasActiveFilters={Boolean(query.trim() || statusFilter !== 'all')}
-            resultCount={{ filtered: filteredPlans.length, total: plans.length, label: 'plans' }}
-          />
-          {loading ? (
-            <div role="status" className="p-6 text-sm text-[var(--text-muted)]">Loading subscription plans…</div>
-          ) : filteredPlans.length === 0 ? (
-            <EmptyState
-              icon={CreditCard}
-              heading={plans.length ? 'No plans match your filters' : 'No subscription plans yet'}
-              message={plans.length
-                ? 'Try another search or status filter.'
-                : 'Create a subscription plan to make it available for new organizations.'}
-              action={plans.length
-                ? <Button type="button" size="sm" variant="secondary"
-                    onClick={() => { setQuery(''); setStatusFilter('all'); }}>Clear filters</Button>
-                : <Button type="button" size="sm" variant="primary" icon={Plus} onClick={beginAdd}>Create plan</Button>}
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredPlans.map(plan => (
-                <Card key={plan.id} padding="none" hover
-                  className="group relative flex min-w-0 flex-col overflow-hidden transition-colors hover:border-blue-300 dark:hover:border-blue-600">
-                  <div aria-hidden="true"
-                    className="h-1 w-full shrink-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
-                  <div className="flex flex-1 flex-col gap-4 p-5">
-                    <CardHeader
-                      title={plan.name}
-                      subtitle={<span className="font-mono text-[11px]">{plan.id}</span>}
-                      icon={CreditCard}
-                      accent={plan.active ? '#2563eb' : '#64748b'}
-                      border={false}
-                      action={<Badge color={plan.active ? 'green' : 'slate'}>
-                        {plan.active ? 'Active' : 'Archived'}
-                      </Badge>}
-                    />
-                    <div className="border-b border-[var(--border)] pb-4">
-                      <div className="flex flex-wrap items-baseline gap-1">
-                        <span className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                          {money(plan.pricing.baseMonthlyInr)}
-                        </span>
-                        <span className="text-xs text-[var(--text-muted)]">/ month</span>
-                      </div>
-                      <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                        <Layers3 className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
-                        {MODES.find(mode => mode.value === plan.defaultMode)?.label || plan.defaultMode}
-                      </p>
-                    </div>
-                    <dl className="space-y-3 text-xs">
-                      <div className="flex items-center justify-between gap-3">
-                        <dt className="text-[var(--text-muted)]">Included workspaces</dt>
-                        <dd className="font-semibold text-[var(--text-primary)]">
-                          {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces}
-                        </dd>
-                      </div>
-                      {plan.defaultMode !== 'single' && (
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="text-[var(--text-muted)]">Extra workspace / month</dt>
-                          <dd className="font-semibold text-[var(--text-primary)]">
-                            {money(plan.pricing.extraWorkspaceMonthlyInr)}
-                          </dd>
-                        </div>
-                      )}
-                      {plan.defaultMode === 'mixed_industry' && (
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="text-[var(--text-muted)]">Extra industry / month</dt>
-                          <dd className="font-semibold text-[var(--text-primary)]">
-                            {money(plan.pricing.additionalIndustryMonthlyInr)}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                    <div className="mt-auto flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--bg-subtle)] px-3 py-2.5">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
-                          Monthly usage credits
-                        </p>
-                        <p className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">
-                          {money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}
-                        </p>
-                      </div>
-                      <Wallet className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
-                    </div>
-                    <Button type="button" size="sm" variant="secondary" icon={Pencil}
-                      iconRight={ArrowUpRight} className="w-full justify-center"
-                      disabled={saving} onClick={() => beginEdit(plan)}>
-                      Edit plan
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </section>
-      </>
+        </Card>
+      ))}
+    </div>
+      )
     ) : draft ? (
       <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }}
         className="grid grid-cols-12 gap-4 md:gap-5">
