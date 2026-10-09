@@ -611,7 +611,8 @@ export default function SettingsView({
                 <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
-              {workspacePanel === 'numbers' && <Widget
+              {workspacePanel === 'numbers' && <>
+              <Widget
                 title="Virtual Numbers"
                 subtitle="Connected phone numbers and calling providers."
                 icon={Hash}
@@ -793,7 +794,7 @@ export default function SettingsView({
                   </div>
                 </Modal>
               )}
-              }
+              </>}
             </div>
           )}
 
