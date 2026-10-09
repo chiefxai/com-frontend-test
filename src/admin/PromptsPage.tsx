@@ -394,7 +394,7 @@ export default function PromptsPage() {
               </button>
             ))}
           </div>
-          <div className="min-w-0 flex-1 p-6>
+          <div className="min-w-0 flex-1 p-6">
             {currentSystem && <>
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div>
