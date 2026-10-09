@@ -6,6 +6,7 @@ import OrgDetailPanel from './OrgDetailPanel';
 import { formatInr } from '../lib/pricing';
 import IconButton from '../components/ui/IconButton';
 import DataTable, { Column } from '../components/ui/DataTable';
+import Widget from '../components/ui/Widget';
 import FilterBar from '../components/ui/FilterBar';
 import { useNavigate } from 'react-router-dom';
 
@@ -209,42 +210,30 @@ export default function OrganizationsPage() {
 
   return (
     <div className="space-y-4">
-      <FilterBar
-        search={{
-          value: query,
-          onChange: setQuery,
-          placeholder: 'Search organizations…',
-        }}
-        resultCount={{
-          filtered: filtered.length,
-          total: orgs.length,
-          label: 'organizations',
-        }}
-        actions={
-          <IconButton
-            icon={Plus}
-            label="Create Workspace"
-            onClick={() => navigate('/admin/organizations/create')}
-            className="!bg-amber-500 hover:!bg-amber-400"
+      <Widget showHeader={false} padding="none">
+        <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <FilterBar
+            search={{ value: query, onChange: setQuery, placeholder: 'Search organizations…' }}
+            hasActiveFilters={Boolean(query.trim())}
+            onClear={() => setQuery('')}
+            resultCount={{ filtered: filtered.length, total: orgs.length, label: 'organizations' }}
+            actions={<IconButton icon={Plus} label="Create Workspace"
+              onClick={() => navigate('/admin/organizations/create')} />}
           />
-        }
-      />
-
-      <DataTable
-        resizable
-        columns={columns}
-        rows={filtered}
-        rowKey={(o) => o.id}
-        loading={loading}
-        emptyMessage={
-          query
-            ? `No organizations match "${query}"`
-            : 'No workspaces yet. Create one above.'
-        }
-        onRowClick={(o) => setSelectedOrgId(o.id)}
-        paginated
-        defaultPageSize={25}
-      />
+        </div>
+        <DataTable
+          bare
+          resizable
+          columns={columns}
+          rows={filtered}
+          rowKey={row => row.id}
+          loading={loading}
+          emptyMessage={query ? 'No organizations match your search.' : 'No workspaces yet. Create one above.'}
+          onRowClick={row => setSelectedOrgId(row.id)}
+          paginated
+          defaultPageSize={25}
+        />
+      </Widget>
 
       {selectedOrgId && (
         <OrgDetailPanel
