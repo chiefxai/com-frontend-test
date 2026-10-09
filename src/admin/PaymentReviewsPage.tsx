@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import {
   decidePlatformPayment, listPlatformPaymentReviews, platformPaymentReceipt,
   type PlatformPaymentReview, type PaymentDecision,
 } from '../lib/billing/platformDecision';
 import { newBillingIdempotencyKey } from '../lib/billing/client';
 import DataTable, { type Column } from '../components/ui/DataTable';
+import Widget from '../components/ui/Widget';
+import FilterBar from '../components/ui/FilterBar';
+import Button from '../components/ui/Button';
 
 const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) => {
   const digits = BigInt(amount.units);
@@ -106,24 +110,24 @@ export default function PaymentReviewsPage() {
   };
 
   return <section className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-[var(--text-secondary)]">
-        Verify external payment evidence before approving. Approval can fund subscriptions or credits.
-      </p>
-      <div className="flex items-center gap-3">
-        <select aria-label="Payment status" value={status}
-          onChange={event => { setStatus(event.target.value as typeof status); setSelected(null); }}
-          className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm">
-          <option value="pending_verification">Pending verification</option>
-          <option value="all">All payments</option>
-        </select>
-        <button type="button" onClick={() => void load()} disabled={loading}
-          className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">Refresh</button>
+    {error && <p role="alert" className="rounded-lg border border-rose-200 p-3 text-xs text-rose-700">{error}</p>}
+    {success && <p role="status" className="rounded-lg border border-emerald-200 p-3 text-xs text-emerald-700">{success}</p>}
+    <Widget showHeader={false} padding="none">
+      <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+        <FilterBar
+          selects={[{ key: 'status', label: 'Payment status', value: status,
+            onChange: value => { setStatus(value as typeof status); setSelected(null); },
+            options: [
+              { label: 'Pending verification', value: 'pending_verification' },
+              { label: 'All payments', value: 'all' },
+            ] }]}
+          resultCount={{ filtered: rows.length, total: rows.length, label: 'payments loaded' }}
+          actions={<Button type="button" size="sm" variant="secondary" icon={RefreshCw}
+            disabled={loading} onClick={() => void load()}>Refresh</Button>}
+        />
       </div>
-    </div>
-    {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-    {success && <p role="status" className="text-sm text-emerald-700">{success}</p>}
     <DataTable<PlatformPaymentReview>
+      bare
       resizable
       paginated
       loading={loading && rows.length === 0}
@@ -143,6 +147,7 @@ export default function PaymentReviewsPage() {
       rowKey={row => row.id}
       rowClassName={row => selected?.id === row.id ? 'bg-[var(--bg-subtle)]' : ''}
     />
+    </Widget>
     {loading && rows.length > 0 && <p role="status" className="text-xs text-[var(--text-muted)]">Loading more payment reviews…</p>}
     {cursor && <button type="button" disabled={loading} onClick={() => void load(cursor, true)}
       className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">Load more</button>}
