@@ -5,9 +5,9 @@ import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
-  { value: 'single', label: 'Single workspace' },
-  { value: 'same_industry', label: 'Multiple branches · same industry' },
-  { value: 'mixed_industry', label: 'Multiple workspaces · multiple industries' },
+  { value: 'single', label: 'One workspace only' },
+  { value: 'same_industry', label: 'Multiple workspaces in one industry' },
+  { value: 'mixed_industry', label: 'Multiple workspaces across industries' },
 ];
 
 const blankPlan = (): WorkspacePlan => ({
@@ -56,9 +56,15 @@ export default function WorkspacePlansPage() {
   const save = async () => {
     setError(''); setMessage('');
     if (!draft || editingIndex === null) return;
-    const nextPlans = editingIndex === -1 ? [...plans, draft] : plans.map((plan, index) => index === editingIndex ? draft : plan);
-    const missing = !draft.id.trim() || !draft.name.trim() || draft.pricing.baseMonthlyInr == null || draft.pricing.extraWorkspaceMonthlyInr == null || draft.pricing.additionalIndustryMonthlyInr == null || !Number.isFinite(draft.pricing.monthlySubscriptionCreditsInr ?? 0) || (draft.pricing.monthlySubscriptionCreditsInr ?? 0) < 0;
-    if (missing) { setError('Enter a plan name, ID and valid monthly prices.'); return; }
+    const planToSave = { ...draft, pricing: {
+      ...draft.pricing,
+      includedWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.includedWorkspaces,
+      extraWorkspaceMonthlyInr: draft.defaultMode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
+      additionalIndustryMonthlyInr: draft.defaultMode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0,
+    } };
+    const nextPlans = editingIndex === -1 ? [...plans, planToSave] : plans.map((plan, index) => index === editingIndex ? planToSave : plan);
+    const missing = !draft.id.trim() || !draft.name.trim() || planToSave.pricing.baseMonthlyInr == null || planToSave.pricing.extraWorkspaceMonthlyInr == null || planToSave.pricing.additionalIndustryMonthlyInr == null || !Number.isFinite(planToSave.pricing.monthlySubscriptionCreditsInr ?? 0) || (planToSave.pricing.monthlySubscriptionCreditsInr ?? 0) < 0;
+    if (missing) { setError('Enter a plan name, code, and valid monthly fees and credits.'); return; }
     setSaving(true);
     try {
       const response = await apiFetch('/api/platform/billing/workspace-plans', {
@@ -67,7 +73,7 @@ export default function WorkspacePlansPage() {
       });
       const body = await response.json().catch(() => ({})) as WorkspacePlanCatalog & { error?: string; code?: string };
       if (!response.ok) throw new Error(body.error || (response.status === 409 ? 'Plan settings changed. Reload and try again.' : 'Could not save workspace plans.'));
-      setPlans(body.plans || []); setExistingIds(new Set((body.plans || []).map(plan => plan.id))); setVersion(body.version || version + 1); setMessage('Plan saved. New organizations will use these prices.'); setDraft(null); setEditingIndex(null);
+      setPlans(body.plans || []); setExistingIds(new Set((body.plans || []).map(plan => plan.id))); setVersion(body.version || version + 1); setMessage('Plan saved. New organizations can select this plan.'); setDraft(null); setEditingIndex(null);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save workspace plans.'); }
     finally { setSaving(false); }
   };
@@ -75,8 +81,8 @@ export default function WorkspacePlansPage() {
   React.useEffect(() => {
     if (!headerCtx) return;
     headerCtx.setHeader({
-      title: <span className="flex items-center gap-2"><span className="text-[10px] font-medium text-[var(--text-muted)]">Admin /</span> Workspace Plans</span>,
-      action: editingIndex !== null ? undefined : <button type="button" onClick={beginAdd} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Add plan</button>,
+      title: <span className="flex items-center gap-2"><span className="text-[10px] font-medium text-[var(--text-muted)]">Admin /</span> Subscription Plans</span>,
+      action: editingIndex !== null ? undefined : <button type="button" onClick={beginAdd} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Create plan</button>,
     });
   }, [headerCtx?.setHeader, beginAdd, loading, saving, editingIndex]);
 
@@ -102,10 +108,10 @@ export default function WorkspacePlansPage() {
             <p className="mt-1 text-xs text-[var(--text-secondary)]">{MODES.find(mode => mode.value === plan.defaultMode)?.label}</p>
           </div>
           <dl className="my-4 space-y-3 text-xs">
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Workspaces included</dt><dd className="font-semibold">{plan.pricing.includedWorkspaces}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Additional workspace</dt><dd className="font-semibold">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Monthly subscription credits</dt><dd className="font-semibold">{money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Additional industry</dt><dd className="font-semibold">{money(plan.pricing.additionalIndustryMonthlyInr)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Included workspaces</dt><dd className="font-semibold">{plan.pricing.includedWorkspaces}</dd></div>
+            {plan.defaultMode !== 'single' && <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Extra workspace / month</dt><dd className="font-semibold">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd></div>}
+            <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Included usage credits / month</dt><dd className="font-semibold">{money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}</dd></div>
+            {plan.defaultMode === 'mixed_industry' && <div className="flex justify-between gap-3"><dt className="text-[var(--text-muted)]">Extra industry / month</dt><dd className="font-semibold">{money(plan.pricing.additionalIndustryMonthlyInr)}</dd></div>}
           </dl>
           <button type="button" onClick={() => beginEdit(index)} disabled={editingIndex !== null || saving} className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold hover:bg-[var(--bg-subtle)] disabled:opacity-50"><Pencil className="h-4 w-4" /> Edit plan</button>
         </section>)}
@@ -116,33 +122,75 @@ export default function WorkspacePlansPage() {
     {draft && editingIndex !== null && (
       <div className="w-full max-w-5xl">
         <div className="space-y-5">
-        <button type="button" onClick={cancelEdit} className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800"><ArrowLeft className="h-4 w-4" /> Back to plans</button>
+        <button type="button" onClick={cancelEdit} className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800"><ArrowLeft className="h-4 w-4" /> Back to subscription plans</button>
         <div className="space-y-5">
           <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-5">
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4">
-                <h2 id="workspace-plan-form-title" className="text-sm font-semibold text-slate-800">Plan identity</h2>
-                <p className="mt-1 text-[11px] text-slate-500">Give this plan a name and a stable identifier.</p>
+                <h2 id="workspace-plan-form-title" className="text-sm font-semibold text-slate-800">Subscription plan details</h2>
+                <p className="mt-1 text-[11px] text-slate-500">Choose a name customers will recognize. The plan code is used internally.</p>
               </div>
             <div className="grid gap-4 md:grid-cols-2">
-            <label className={labelClass}>Plan name<input required value={draft.name} onChange={event => { const name = event.target.value; updateDraft({ name, ...(editingIndex === -1 && !idTouched ? { id: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) } : {}) }); }} className={fieldClass} /></label>
-            <label className={labelClass}>Stable plan ID<input required value={draft.id} onChange={event => { setIdTouched(true); updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') }); }} disabled={existingIds.has(draft.id)} placeholder="e.g. scale" className={fieldClass + ' disabled:opacity-60'} /></label>
+            <label className={labelClass}>Subscription plan name<input required value={draft.name} onChange={event => { const name = event.target.value; updateDraft({ name, ...(editingIndex === -1 && !idTouched ? { id: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) } : {}) }); }} className={fieldClass} /></label>
+            <label className={labelClass}>Plan code (auto-generated)<input required value={draft.id} onChange={event => { setIdTouched(true); updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') }); }} disabled={existingIds.has(draft.id)} placeholder="e.g. growth-plan" className={fieldClass + ' disabled:opacity-60'} /></label>
             </div>
             </section>
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-sm font-semibold text-slate-800">Workspace access & pricing</h2>
-                <p className="mt-1 text-[11px] text-slate-500">Configure workspace structure, monthly prices and subscription credits.</p>
+                <h2 className="text-sm font-semibold text-slate-800">Monthly subscription & included credits</h2>
+                <p className="mt-1 text-[11px] text-slate-500">The subscription fee is what an organization pays. Included usage credits are a separate allowance, not a discount on that fee.</p>
               </div>
-            <div className="grid gap-4 md:grid-cols-2">
-            <label className={labelClass + ' sm:col-span-2'}>Default workspace structure<select value={draft.defaultMode} onChange={event => { const mode = event.target.value as WorkspaceMode; updateDraft({ defaultMode: mode, pricing: { ...draft.pricing, includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces } }); }} className={fieldClass}>{MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select></label>
-            <label className={labelClass}>Organization / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.baseMonthlyInr ?? ''} onChange={event => updatePricing('baseMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
-            <label className={labelClass}>Additional workspace / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.extraWorkspaceMonthlyInr ?? ''} onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
-            {draft.defaultMode !== 'single' && <label className={labelClass}>Included workspaces<input required type="number" min="1" max="1000" step="1" value={draft.pricing.includedWorkspaces} onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} className={fieldClass} /></label>}
-            <label className={labelClass}>Additional industry / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.additionalIndustryMonthlyInr ?? ''} onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
-            <label className={labelClass}>Monthly subscription credits (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.monthlySubscriptionCreditsInr ?? 0} onChange={event => updatePricing("monthlySubscriptionCreditsInr", Number(event.target.value))} className={fieldClass} /><span className="mt-1 block font-normal text-[var(--text-muted)]">Organization-level entitlement per paid billing cycle. Allocation and issuance are implemented separately.</span></label>
-            <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2"><input type="checkbox" checked={draft.active} onChange={event => updateDraft({ active: event.target.checked })} className="h-4 w-4 accent-[var(--accent)]" /> Active plan (available for new organizations)</label>
-            </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className={labelClass}>Monthly subscription fee (₹)
+                  <input required type="number" min="0" step="0.01" value={draft.pricing.baseMonthlyInr ?? ''} onChange={event => updatePricing('baseMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} />
+                  <span className="mt-1 block text-[11px] font-normal text-slate-500">Base monthly charge before extra workspaces or industries.</span>
+                </label>
+                <label className={labelClass}>Usage credits included each month (₹)
+                  <input required type="number" min="0" step="0.01" value={draft.pricing.monthlySubscriptionCreditsInr ?? 0} onChange={event => updatePricing('monthlySubscriptionCreditsInr', Number(event.target.value))} className={fieldClass} />
+                  <span className="mt-1 block text-[11px] font-normal text-slate-500">Usage allowance issued separately when the paid subscription cycle is fulfilled.</span>
+                </label>
+              </div>
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-slate-800">Workspaces & extra monthly charges</h2>
+                <p className="mt-1 text-[11px] text-slate-500">Choose what the plan permits and the additional monthly prices that apply beyond its included allowances.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className={labelClass + ' md:col-span-2'}>Which workspace setup does this plan allow?
+                  <select value={draft.defaultMode} onChange={event => {
+                    const mode = event.target.value as WorkspaceMode;
+                    updateDraft({ defaultMode: mode, pricing: {
+                      ...draft.pricing,
+                      includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces,
+                      extraWorkspaceMonthlyInr: mode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
+                      additionalIndustryMonthlyInr: mode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0,
+                    } });
+                  }} className={fieldClass}>{MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select>
+                  <span className="mt-1 block text-[11px] font-normal text-slate-500">One workspace, multiple locations in one industry, or workspaces across different industries.</span>
+                </label>
+                {draft.defaultMode !== 'single' && <>
+                  <label className={labelClass}>Workspaces included in the subscription
+                    <input required type="number" min="1" max="1000" step="1" value={draft.pricing.includedWorkspaces} onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} className={fieldClass} />
+                    <span className="mt-1 block text-[11px] font-normal text-slate-500">These workspaces do not incur an extra workspace fee.</span>
+                  </label>
+                  <label className={labelClass}>Monthly fee per extra workspace (₹)
+                    <input required type="number" min="0" step="0.01" value={draft.pricing.extraWorkspaceMonthlyInr ?? ''} onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} />
+                    <span className="mt-1 block text-[11px] font-normal text-slate-500">Charged for each workspace beyond the included number.</span>
+                  </label>
+                </>}
+                {draft.defaultMode === 'mixed_industry' && <label className={labelClass + ' md:col-span-2'}>Monthly fee per additional industry (₹)
+                  <input required type="number" min="0" step="0.01" value={draft.pricing.additionalIndustryMonthlyInr ?? ''} onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} />
+                  <span className="mt-1 block text-[11px] font-normal text-slate-500">Charged once per distinct industry beyond the primary industry, not once per workspace.</span>
+                </label>}
+              </div>
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">Plan availability</h2>
+              <label className="mt-3 flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input type="checkbox" checked={draft.active} onChange={event => updateDraft({ active: event.target.checked })} className="h-4 w-4 accent-amber-500" />
+                Allow new organizations to select this plan
+              </label>
             </section>
           </form>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
