@@ -41,6 +41,7 @@ export function permissionForRequest(path: string,method: string): string | null
   if (path === '/api/settings/workspace-policy') return 'organization.read';
   if (path === '/api/settings/workspaces') return read ? 'organization.read' : 'organization.manage';
   if (/^\/api\/settings\/organization\/workspace-access(?:\/|$)/.test(path)) return read ? 'organization.members.read' : 'organization.members.manage';
+  if (path === '/api/settings/organization/numbers') return 'organization.read';
   if (path === '/api/workspace-sharing/proposals' || /^\/api\/workspace-sharing\/proposals\/[^/]+\/review$/.test(path)) return 'workspace.settings.manage';
   if (/^\/api\/workspace-sharing\/records\/[^/]+\/proposals$/.test(path)) return 'workspace.share.propose';
   if (/^\/api\/workspace-sharing\/records\/[^/]+\/copies$/.test(path)) return 'workspace.share.copy';
