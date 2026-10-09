@@ -123,7 +123,6 @@ export default function WorkspaceManagement({
           ] as Column<WorkspaceRow>[]}
           rows={workspaces.filter(workspace => !search.trim() || `${workspace.name} ${workspace.branchName || ''} ${workspace.industry}`.toLowerCase().includes(search.toLowerCase().trim()))}
           rowKey={workspace => workspace.id}
-          onRowClick={onSelectWorkspace}
         />
       </div>
       {canManage && (
