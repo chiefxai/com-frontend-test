@@ -12,10 +12,12 @@ export default function ManualCreditTransfer({ orgId }: { orgId: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [retry, setRetry] = useState<{ execute: () => Promise<unknown> } | null>(null);
-  const edit = (setter: (value: string) => void, value: string) => { setter(value); setRetry(null); setMessage(''); };
+  const [submitted, setSubmitted] = useState(false);
+  const edit = (setter: (value: string) => void, value: string) => { setter(value); setRetry(null); setSubmitted(false); setMessage(''); };
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (submitted) { setMessage('This transfer was already submitted. Change the fields to start a new transfer.'); return; }
     if (!grantId.trim() || !workspaceId.trim() || !/^[1-9][0-9]*$/.test(units)
       || !/^[A-Z][A-Z0-9._:-]{0,31}$/.test(asset)
       || !/^(?:0|[1-9][0-9]*)$/.test(scale) || Number(scale) > 18
@@ -35,6 +37,7 @@ export default function ManualCreditTransfer({ orgId }: { orgId: string }) {
     try {
       await operation.execute();
       setRetry(null);
+      setSubmitted(true);
       setMessage('Credit transfer recorded. Refresh the ledger to see the new balance.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Transfer failed. Retry the same operation or refresh the ledger.');
@@ -57,6 +60,6 @@ export default function ManualCreditTransfer({ orgId }: { orgId: string }) {
       )}
     </div>
     {message && <p role="status" className="text-xs">{message}</p>}
-    <button type="submit" disabled={busy} className="rounded bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? 'Transferring…' : retry ? 'Retry transfer' : 'Transfer credits'}</button>
+    <button type="submit" disabled={busy || submitted} className="rounded bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? 'Transferring…' : retry ? 'Retry transfer' : 'Transfer credits'}</button>
   </form>;
 }
