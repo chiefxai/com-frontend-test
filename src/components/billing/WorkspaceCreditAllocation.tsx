@@ -35,7 +35,7 @@ export default function WorkspaceCreditAllocation() {
     if (rules.some(rule => rule.kind === 'percentage' && (!Number.isSafeInteger(rule.basisPoints) || (rule.basisPoints || 0) < 0 || (rule.basisPoints || 0) > 10000))) {
       setError('Enter a valid percentage between 0 and 100.'); return;
     }
-    if (rules.some(rule => rule.kind === 'fixed' && (!rule.amount || rule.amount.asset !== 'CREDIT' || rule.amount.scale !== 0 || !/^\\d+$/.test(rule.amount.units) || BigInt(rule.amount.units) < 0n))) {
+    if (rules.some(rule => rule.kind === 'fixed' && (!rule.amount || rule.amount.asset !== 'CREDIT' || rule.amount.scale !== 0 || !/^\d+$/.test(rule.amount.units) || BigInt(rule.amount.units) < 0n))) {
       setError('Enter a non-negative fixed credit amount.'); return;
     }
     const cleanRules = rules.map(rule => rule.kind === 'fixed'
