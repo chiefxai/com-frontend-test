@@ -69,6 +69,11 @@ interface DashboardViewProps {
   costPerMinuteInr?: number;
 }
 
+// Keep every analytical Executive Desk widget at a uniform height, regardless
+// of empty states or the number of campaign/agent rows. Longer data scrolls
+// inside the card so adjacent widgets always align.
+const EXECUTIVE_WIDGET_HEIGHT = 'min-h-[400px] sm:min-h-[420px]';
+
 // ── CALL STATUS (connectivity) vs. CALL OUTCOME (business result) ──────
 // Kept deliberately separate, per spec: a call can be "Completed" (someone
 // picked up, wasn't a machine) while still not being a real conversation
@@ -483,7 +488,7 @@ export default function DashboardView({
       />
 
       {/* ── Widget Row 1: Call Outcomes | Inbound vs Outbound ── */}
-      <Widget span={{ xs: 12, sm: 6, lg: 6 }} title="Call Outcomes" subtitle="Distribution of call outcomes this period." icon={PieChartIcon} accent="#059669" padding="md" hover>
+      <Widget span={{ xs: 12, sm: 6, lg: 6 }} className={EXECUTIVE_WIDGET_HEIGHT} title="Call Outcomes" subtitle="Distribution of call outcomes this period." icon={PieChartIcon} accent="#059669" padding="md" hover>
         {callOutcomes.length > 0 ? (
           <div className="flex flex-col items-center gap-4 mt-1">
             <PieChart slices={callOutcomes} size={150} />
@@ -502,7 +507,7 @@ export default function DashboardView({
         ) : <EmptyState heading="No calls in this period" />}
       </Widget>
 
-      <Widget span={{ xs: 12, sm: 6, lg: 6 }} title="Inbound vs Outbound Calls" subtitle="Call volume over time, by direction." icon={PhoneOutgoing} accent="#2563eb" padding="md" hover bodyOverflow="hidden">
+      <Widget span={{ xs: 12, sm: 6, lg: 6 }} className={EXECUTIVE_WIDGET_HEIGHT} title="Inbound vs Outbound Calls" subtitle="Call volume over time, by direction." icon={PhoneOutgoing} accent="#2563eb" padding="md" hover bodyOverflow="hidden">
         <div className="h-56 sm:h-60 md:h-64 w-full mt-1">
           {inboundOutboundOverTime.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -521,7 +526,7 @@ export default function DashboardView({
       </Widget>
 
       {/* ── Widget Row 1b: Sentiment Breakdown | Scheduled Callbacks ── */}
-      <Widget span={{ xs: 12, sm: 6, lg: 6 }} title="Sentiment Breakdown" subtitle="How calls actually felt to the caller, this period." icon={Smile} accent="#059669" padding="md" hover>
+      <Widget span={{ xs: 12, sm: 6, lg: 6 }} className={EXECUTIVE_WIDGET_HEIGHT} title="Sentiment Breakdown" subtitle="How calls actually felt to the caller, this period." icon={Smile} accent="#059669" padding="md" hover>
         {sentimentBreakdown.length > 0 ? (
           <div className="flex flex-col items-center gap-4 mt-1">
             <PieChart slices={sentimentBreakdown} size={150} />
@@ -540,7 +545,7 @@ export default function DashboardView({
         ) : <EmptyState heading="No calls in this period" />}
       </Widget>
 
-      <Widget span={{ xs: 12, sm: 6, lg: 6 }} title="Scheduled Callbacks" subtitle="Upcoming automatic redials — busy callers and no-answers." icon={CalendarClock} accent="#2563eb" padding="none" hover scrollable maxBodyHeight="min(280px, 42vh)">
+      <Widget span={{ xs: 12, sm: 6, lg: 6 }} className={EXECUTIVE_WIDGET_HEIGHT} title="Scheduled Callbacks" subtitle="Upcoming automatic redials — busy callers and no-answers." icon={CalendarClock} accent="#2563eb" padding="none" hover scrollable maxBodyHeight="100%">
         {upcomingCallbacks.length > 0 ? (
           <div className="divide-y divide-slate-100">
             {upcomingCallbacks.map(cb => (
@@ -567,7 +572,7 @@ export default function DashboardView({
       </Widget>
 
       {/* ── Widget Row 2: Calls & Outcomes Over Time | Campaign Performance ── */}
-      <Widget span={{ xs: 12, sm: 6, lg: 6 }} title="Calls & Outcomes Over Time" subtitle="Is more call activity producing more successful outcomes?" icon={Activity} accent="#2563eb" padding="md" hover bodyOverflow="hidden">
+      <Widget span={{ xs: 12, sm: 6, lg: 6 }} className={EXECUTIVE_WIDGET_HEIGHT} title="Calls & Outcomes Over Time" subtitle="Is more call activity producing more successful outcomes?" icon={Activity} accent="#2563eb" padding="md" hover bodyOverflow="hidden">
         <div className="h-64 w-full mt-1">
           {callsAndOutcomesOverTime.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -588,6 +593,7 @@ export default function DashboardView({
       <Widget
         colSpan={6}
         title="Campaign Performance"
+        className={EXECUTIVE_WIDGET_HEIGHT}
         subtitle="Compare campaigns by a metric of your choice."
         icon={BarChart3}
         accent="#7c3aed"
@@ -605,9 +611,10 @@ export default function DashboardView({
           </select>
         }
       >
-        <div className="w-full mt-1" style={{ height: Math.max(150, campaignPerformance.length * 32) }}>
+        <div className="h-64 w-full min-w-0 overflow-y-auto overflow-x-hidden mt-1">
           {campaignPerformance.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full min-w-0" style={{ height: Math.max(256, campaignPerformance.length * 32) }}>
+              <ResponsiveContainer width="100%" height="100%">
               <BarChart data={campaignPerformance} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} unit={campaignMetric === 'successRate' ? '%' : undefined} />
@@ -615,7 +622,8 @@ export default function DashboardView({
                 <RechartsTooltip {...CHART_TOOLTIP} />
                 <Bar dataKey={campaignMetric} name={METRIC_LABEL[campaignMetric]} fill="#7c3aed" radius={[0, 3, 3, 0]} barSize={16} />
               </BarChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           ) : <EmptyState heading="No campaign calls in this period" message="Run a dialing task from Campaign to see performance here." />}
         </div>
       </Widget>
@@ -624,6 +632,7 @@ export default function DashboardView({
       <Widget
         colSpan={6}
         title="Agent Performance"
+        className={EXECUTIVE_WIDGET_HEIGHT}
         subtitle="Compare AI calling agents by a metric of your choice."
         icon={Users}
         accent="#2563eb"
@@ -641,9 +650,10 @@ export default function DashboardView({
           </select>
         }
       >
-        <div className="w-full mt-1" style={{ height: Math.min(260, Math.max(130, agentPerformance.length * 26)) }}>
+        <div className="h-64 w-full min-w-0 overflow-y-auto overflow-x-hidden mt-1">
           {agentPerformance.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full min-w-0" style={{ height: Math.max(256, agentPerformance.length * 32) }}>
+              <ResponsiveContainer width="100%" height="100%">
               <BarChart data={agentPerformance} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} unit={agentMetric === 'successRate' ? '%' : undefined} />
@@ -651,12 +661,13 @@ export default function DashboardView({
                 <RechartsTooltip {...CHART_TOOLTIP} />
                 <Bar dataKey={agentMetric} name={METRIC_LABEL[agentMetric]} fill="#2563eb" radius={[0, 3, 3, 0]} barSize={16} />
               </BarChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           ) : <EmptyState heading="No campaign calls in this period" message="Run a dialing task from Campaign to see agent performance here." />}
         </div>
       </Widget>
 
-      <Widget span={{ xs: 12, sm: 6, lg: 6 }} title="Recent Calls" icon={History} accent="#64748b" padding="none" hover scrollable maxBodyHeight="280px">
+      <Widget span={{ xs: 12, sm: 6, lg: 6 }} className={EXECUTIVE_WIDGET_HEIGHT} title="Recent Calls" icon={History} accent="#64748b" padding="none" hover scrollable maxBodyHeight="100%">
         {(() => {
           const columns: Column<CallLog>[] = [
             { key: 'id', header: 'Call ID', cell: (c) => <span className="font-mono text-[10px] text-slate-400">{c.id.slice(0, 8)}</span> },
