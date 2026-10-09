@@ -114,17 +114,17 @@ export default function OrganizationTopUp() {
             className="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
         </label>
         <label className="block text-xs font-medium text-slate-600">Bank / UPI transaction reference
-          <input required value={reference} onChange={e => { setReference(e.target.value); setError(''); }}
+          <input required value={reference} onChange={e => { setReference(e.target.value); setPaymentKey(newBillingIdempotencyKey()); setError(''); }}
             placeholder="UTR or payment reference"
             className="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
         </label>
       </div>
       <label className="block text-xs font-medium text-slate-600">Payment receipt (PDF, JPG, PNG or WEBP; max 10 MB)
         <input required type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-          onChange={e => { setProof(e.target.files?.[0] || null); setError(''); }} className="mt-1 block w-full text-xs" />
+          onChange={e => { setProof(e.target.files?.[0] || null); setPaymentKey(newBillingIdempotencyKey()); setError(''); }} className="mt-1 block w-full text-xs" />
       </label>
       <label className="block text-xs font-medium text-slate-600">Note (optional)
-        <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={2000} rows={2}
+        <textarea value={note} onChange={e => { setNote(e.target.value); setPaymentKey(newBillingIdempotencyKey()); }} maxLength={2000} rows={2}
           className="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" />
       </label>
       {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
