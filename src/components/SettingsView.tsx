@@ -169,7 +169,7 @@ export default function SettingsView({
     (!numberWorkspace || (numberWorkspace === '__unknown__' ? !numberWorkspaceId(number) : numberWorkspaceId(number) === numberWorkspace)));
   const exportFilteredNumbers = () => {
     const csvField = (value: unknown) => {
-      const content = String(value ?? '').replace(/^[\s]*[=+\-@]/, "'  const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');");
+      const content = String(value ?? '').replace(/^[\s]*[=+\-@]/, match => "'" + match);
       return `"${content.replace(/"/g, '""')}"`;
     };
     const rows = [['Number','Label','Provider','Status','Workspace','Incoming Calls','Outgoing Calls'],
@@ -400,7 +400,7 @@ export default function SettingsView({
     setOrgAccessError('');
   }, []);
   React.useEffect(() => {
-    if (subTab !== 'team' || !canReadOrgMembers) return;
+    if (!['team','numbers','workspaces'].includes(subTab) || !canReadOrgMembers) return;
     void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Unable to load workspace access.'));
   }, [subTab, canReadOrgMembers, loadOrganizationAccess]);
   const updateOrgAccess = async (memberId: string, workspaceId: string, role: string) => {
