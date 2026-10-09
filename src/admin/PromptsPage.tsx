@@ -300,7 +300,7 @@ export default function PromptsPage() {
               </button>
             ))}
           </div>
-          <div className="min-w-0 flex-1 p-6>
+          <div className="min-w-0 flex-1 p-6">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <div className="text-sm font-semibold text-[var(--text-primary)]">Voice prompt · {activeVoice}</div>
