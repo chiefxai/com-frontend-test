@@ -613,7 +613,7 @@ export default function SettingsView({
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {workspacePanel === 'numbers' && <Widget
                 title="Virtual Numbers"
-                subtitle="Telephone lines connected to this organization's AI calling infrastructure."
+                subtitle="Connected phone numbers and calling providers."
                 icon={Hash}
                 accent="#6366f1"
                 padding="none"
@@ -793,6 +793,7 @@ export default function SettingsView({
                   </div>
                 </Modal>
               )}
+              }
             </div>
           )}
 
@@ -1107,7 +1108,6 @@ export default function SettingsView({
               </div>}
               <OrganizationTopUp canSubmit={can('billing.payment.submit')} view={billingPanel} onNavigate={setBillingPanel} />
               {billingPanel === 'plan' && <>
-                <div className="border-t border-[var(--border)] pt-4"><h2 className="text-base font-semibold text-[var(--text-primary)]">Subscription & plan pricing</h2></div>
               {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
                 <p className="text-lg font-semibold">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
                 <p className="mt-2 text-xs text-slate-500">{organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s). Usage charges and applicable taxes are additional. This is the configured fixed monthly price.</p>
