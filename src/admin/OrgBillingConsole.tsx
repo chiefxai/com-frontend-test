@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatInr } from '../lib/pricing';
+import DataTable, { type Column } from '../components/ui/DataTable';
 
 type BillingConsole = {
   services: { mode: string; aiEnabled: boolean; phoneEnabled: boolean; chargeScope: string };
@@ -36,6 +37,9 @@ type BillingConsole = {
     referenceId?: string;
   }>;
 };
+
+type CallUsageRow = NonNullable<BillingConsole['usageAndCost']>[number];
+type LedgerRow = NonNullable<BillingConsole['ledger']>[number] & { _rowIndex: number };
 
 export default function OrgBillingConsole({ orgId, onRecharge }: { orgId: string; onRecharge?: () => void }) {
   const [data, setData] = useState<BillingConsole | null>(null);
@@ -153,63 +157,47 @@ export default function OrgBillingConsole({ orgId, onRecharge }: { orgId: string
       )}
 
       {tab === 'usage' && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-slate-400 border-b">
-                <th className="py-2 pr-2">Date</th>
-                <th className="py-2 pr-2">Call</th>
-                <th className="py-2 pr-2">Duration</th>
-                {data.services.phoneEnabled && <th className="py-2 pr-2">Provider</th>}
-                {data.services.aiEnabled && <th className="py-2 pr-2">AI</th>}
-                {data.services.phoneEnabled && <th className="py-2 pr-2">Phone</th>}
-                <th className="py-2">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.usageAndCost || []).map((row) => (
-                <tr key={row.callId} className="border-b border-slate-50">
-                  <td className="py-2 pr-2 whitespace-nowrap">{new Date(row.createdAt).toLocaleString()}</td>
-                  <td className="py-2 pr-2 font-mono text-[10px]">{row.callId}</td>
-                  <td className="py-2 pr-2">{row.durationSeconds}s</td>
-                  {data.services.phoneEnabled && <td className="py-2 pr-2">{row.telephonyProvider || '—'}</td>}
-                  {data.services.aiEnabled && <td className="py-2 pr-2">{formatInr(row.aiCostInr || 0)}</td>}
-                  {data.services.phoneEnabled && <td className="py-2 pr-2">{formatInr(row.providerCostInr || 0)}</td>}
-                  <td className="py-2 font-semibold">{formatInr(row.totalCostInr || 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!data.usageAndCost?.length && <p className="text-xs text-slate-400 py-6 text-center">No call billing records yet.</p>}
-        </div>
+        <DataTable<CallUsageRow>
+          resizable
+          paginated
+          bare
+          emptyMessage="No call billing records yet."
+          columns={[
+            { key: 'date', header: 'Date', cell: row => <span className="whitespace-nowrap text-xs">{new Date(row.createdAt).toLocaleString()}</span> },
+            { key: 'call', header: 'Call', cell: row => <span className="font-mono text-xs" title={row.callId}>{row.callId}</span> },
+            { key: 'duration', header: 'Duration', cell: row => <span className="whitespace-nowrap text-xs">{row.durationSeconds}s</span> },
+            ...(data.services.phoneEnabled ? [
+              { key: 'provider', header: 'Provider', cell: (row: CallUsageRow) => row.telephonyProvider || '—' },
+            ] : []),
+            ...(data.services.aiEnabled ? [
+              { key: 'ai', header: 'AI', align: 'right' as const, cell: (row: CallUsageRow) => formatInr(row.aiCostInr || 0) },
+            ] : []),
+            ...(data.services.phoneEnabled ? [
+              { key: 'phone', header: 'Phone', align: 'right' as const, cell: (row: CallUsageRow) => formatInr(row.providerCostInr || 0) },
+            ] : []),
+            { key: 'total', header: 'Total', align: 'right', cell: row => <span className="font-semibold">{formatInr(row.totalCostInr || 0)}</span> },
+          ] satisfies Column<CallUsageRow>[]}
+          rows={data.usageAndCost || []}
+          rowKey={row => row.callId}
+        />
       )}
 
       {tab === 'ledger' && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-left text-slate-400 border-b">
-                <th className="py-2 pr-2">Date</th>
-                <th className="py-2 pr-2">Type</th>
-                <th className="py-2 pr-2">Amount</th>
-                <th className="py-2 pr-2">Balance after</th>
-                <th className="py-2">Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.ledger || []).map((row, i) => (
-                <tr key={`${row.createdAt}-${i}`} className="border-b border-slate-50">
-                  <td className="py-2 pr-2 whitespace-nowrap">{new Date(row.createdAt).toLocaleString()}</td>
-                  <td className="py-2 pr-2">{row.type}</td>
-                  <td className="py-2 pr-2">{formatInr(row.amountInr)}</td>
-                  <td className="py-2 pr-2">{row.balanceAfterInr != null ? formatInr(row.balanceAfterInr) : '—'}</td>
-                  <td className="py-2">{row.description || row.referenceId || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!data.ledger?.length && <p className="text-xs text-slate-400 py-6 text-center">No ledger entries yet.</p>}
-        </div>
+        <DataTable<LedgerRow>
+          resizable
+          paginated
+          bare
+          emptyMessage="No ledger entries yet."
+          columns={[
+            { key: 'date', header: 'Date', cell: row => <span className="whitespace-nowrap text-xs">{new Date(row.createdAt).toLocaleString()}</span> },
+            { key: 'type', header: 'Type', cell: row => row.type },
+            { key: 'amount', header: 'Amount', align: 'right', cell: row => formatInr(row.amountInr) },
+            { key: 'balance', header: 'Balance after', align: 'right', cell: row => row.balanceAfterInr != null ? formatInr(row.balanceAfterInr) : '—' },
+            { key: 'description', header: 'Description', cell: row => row.description || row.referenceId || '—' },
+          ] satisfies Column<LedgerRow>[]}
+          rows={(data.ledger || []).map((entry, index) => ({ ...entry, _rowIndex: index }))}
+          rowKey={row => String(row._rowIndex)}
+        />
       )}
 
       {tab === 'config' && (
