@@ -243,7 +243,7 @@ export default function SettingsView({
     apiFetch('/api/channels').then((r) => r.json()).then((list) => setConnectedChannels(Array.isArray(list) ? list : [])).catch(() => {});
   };
   useEffect(() => {
-    if (subTab === 'numbers') loadChannels();
+    if (subTab === 'numbers' || subTab === 'workspaces') loadChannels();
   }, [subTab]);
 
   // Adds/updates the virtual-number entry for a just-connected number so it
@@ -553,7 +553,7 @@ export default function SettingsView({
 
   const globalRefresh = useRefresh();
   const handlePageRefresh = () => {
-    if (subTab === 'numbers') loadChannels();
+    if (subTab === 'numbers' || subTab === 'workspaces') loadChannels();
     else if (subTab === 'api') loadAuditLogs();
     globalRefresh?.();
   };
@@ -561,7 +561,7 @@ export default function SettingsView({
   return (
     <PageShell
       title={<BreadcrumbTitle group="Administration" page={
-        subTab === 'numbers' ? 'Virtual Numbers'
+        (subTab === 'numbers' || subTab === 'workspaces') ? 'Workspaces & Numbers'
         : subTab === 'team' ? 'Staff & Teams'
         : subTab === 'workspaces' ? 'Organization Workspaces'
         : subTab === 'billing' ? 'Billing & Usage'
@@ -572,9 +572,11 @@ export default function SettingsView({
     >
       <div className="col-span-12 space-y-6">
 
-          {/* Subtab: Virtual numbers */}
-          {subTab === 'numbers' && (
+          {/* Combined organization workspaces and virtual numbers. */}
+          {(subTab === 'numbers' || subTab === 'workspaces') && (
             <div className="space-y-6">
+              <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
+              <WorkspaceSharing enabled={workspaceSharingEnabled} />
               <Widget
                 title="Virtual Numbers"
                 subtitle="Telephone lines connected to this organization's AI calling infrastructure."
@@ -757,14 +759,6 @@ export default function SettingsView({
                   </div>
                 </Modal>
               )}
-            </div>
-          )}
-
-          {/* Separate organization workspace management page. */}
-          {subTab === 'workspaces' && (
-            <div className="space-y-6">
-              <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
-              <WorkspaceSharing enabled={workspaceSharingEnabled} />
             </div>
           )}
 
