@@ -1314,6 +1314,8 @@ export default function SettingsView({
                       </p>
                     )}
                     <FeatureAccessSelector
+                      label="Feature Access"
+                      description="Grant individual modules or use a feature group preset. Organization and workspace policies still limit effective access."
                       availableKeys={orgAllowedFlags}
                       value={editFlagsValue}
                       onChange={setEditFlagsValue}
@@ -1440,6 +1442,8 @@ export default function SettingsView({
                         </div>
 
                         <FeatureAccessSelector
+                          label="Feature Access"
+                          description="Choose the CRM modules this team member should be able to use. Grants cannot exceed the organization's enabled features."
                           availableKeys={orgAllowedFlags}
                           value={newStaffFeatures}
                           onChange={setNewStaffFeatures}

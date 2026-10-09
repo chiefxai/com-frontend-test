@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
-import FlagGroupPicker from '../components/ui/FlagGroupPicker';
+import FeatureAccessSelector from '../components/ui/FeatureAccessSelector';
 import WorkspacePolicyEditor from '../components/WorkspacePolicyEditor';
 import { emptyWorkspacePolicy, serializedPolicy, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 
@@ -413,13 +413,14 @@ export default function CreateWorkspacePage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <FlagGroupPicker
-            availableKeys={availableFeatureKeys}
-            value={selectedFlags}
-            onApply={setSelectedFlags}
-          />
-        </section>
+        <FeatureAccessSelector
+          label="Feature Access"
+          description="Choose the CRM modules this organization can use. Staff access can be refined later from Administration → Staff & Teams."
+          availableKeys={availableFeatureKeys}
+          value={selectedFlags}
+          onChange={setSelectedFlags}
+          disabled={loading}
+        />
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3">

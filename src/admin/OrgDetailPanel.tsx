@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, AlertTriangle, ToggleLeft, ToggleRight, Hash, Plus, X, Cloud, Database, Archive } from 'lucide-react';
+import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, AlertTriangle, ToggleLeft, Hash, Plus, X, Cloud, Database, Archive } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { OrgDetail } from './types';
 import { callCostInr, formatInr } from '../lib/pricing';
 import SlideOver from '../components/ui/SlideOver';
 import Modal from '../components/ui/Modal';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
-import FlagGroupPicker from '../components/ui/FlagGroupPicker';
+import FeatureAccessSelector from '../components/ui/FeatureAccessSelector';
 import OrgBillingConsole from './OrgBillingConsole';
 import OrganizationWorkspaceSetup from './OrganizationWorkspaceSetup';
 
@@ -22,6 +22,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   const deleteInputRef = useRef<HTMLInputElement>(null);
   const [enabledFlags, setEnabledFlags] = useState<string[]>([]);
   const [flagsBusy, setFlagsBusy] = useState(false);
+  const [flagSaveError, setFlagSaveError] = useState('');
 
   // Virtual numbers
   const [numbers, setNumbers] = useState<any[]>([]);
@@ -139,46 +140,32 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   };
 
   const loadFlags = () => {
+    setFlagSaveError('');
     apiFetch(`/api/platform/organizations/${orgId}/features`)
       .then((r) => r.json())
       .then((d) => d?.featureFlags && setEnabledFlags(d.featureFlags))
       .catch(() => {});
   };
 
-  const toggleFlag = async (key: string) => {
-    const prev = enabledFlags;
-    const updated = enabledFlags.includes(key)
-      ? enabledFlags.filter((k) => k !== key)
-      : [...enabledFlags, key];
-    setEnabledFlags(updated);
-    setFlagsBusy(true);
-    try {
-      await apiFetch(`/api/platform/organizations/${orgId}/features`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ featureFlags: updated }),
-      });
-    } catch {
-      setEnabledFlags(prev);
-    } finally {
-      setFlagsBusy(false);
-    }
-  };
-
-  // Applies a flag group as a full replacement of this org's granted flags
-  // — same persist-with-revert pattern as toggleFlag, just for the whole set.
+  // Persist changes from the shared feature selector and restore on failure.
   const applyFlagGroup = async (keys: string[]) => {
-    const prev = enabledFlags;
+    if (flagsBusy) return;
+    const previous = enabledFlags;
     setEnabledFlags(keys);
     setFlagsBusy(true);
+    setFlagSaveError('');
     try {
-      await apiFetch(`/api/platform/organizations/${orgId}/features`, {
+      const response = await apiFetch(`/api/platform/organizations/${orgId}/features`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ featureFlags: keys }),
       });
-    } catch {
-      setEnabledFlags(prev);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Could not save organization feature access.');
+      setEnabledFlags(Array.isArray(body.featureFlags) ? body.featureFlags : keys);
+    } catch (cause) {
+      setEnabledFlags(previous);
+      setFlagSaveError(cause instanceof Error ? cause.message : 'Could not save organization feature access.');
     } finally {
       setFlagsBusy(false);
     }
@@ -667,22 +654,24 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                  <ToggleRight className="h-3.5 w-3.5" /> Feature Access
-                  {flagsBusy && <Loader2 className="h-3 w-3 animate-spin ml-1 text-slate-400" />}
-                </h4>
-                <p className="text-[10px] text-slate-400 mb-3">
-                  Choose a complete group or individual features independently. Changes are saved automatically.
-                </p>
-                <FlagGroupPicker
-                  availableKeys={FEATURE_REGISTRY.map((f) => f.key)}
-                  value={enabledFlags}
-                  onApply={applyFlagGroup}
-                  className="w-full"
+              <div className="space-y-2">
+                {flagSaveError && (
+                  <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+                    {flagSaveError}
+                  </p>
+                )}
+                <FeatureAccessSelector
                   label="Feature Access"
-                  description="Choose a complete group or individual features independently."
+                  description="Set the modules this organization can use. Staff access can be restricted separately in Organization Administration."
+                  availableKeys={FEATURE_REGISTRY.map(feature => feature.key)}
+                  value={enabledFlags}
+                  onChange={keys => { void applyFlagGroup(keys); }}
+                  disabled={flagsBusy}
                 />
+                <p role="status" className="flex items-center gap-2 px-1 text-[11px] text-[var(--text-muted)]">
+                  {flagsBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {flagsBusy ? 'Saving feature access…' : 'Changes save automatically.'}
+                </p>
               </div>
             </div>
           </>
