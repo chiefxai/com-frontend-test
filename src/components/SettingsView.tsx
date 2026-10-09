@@ -1001,11 +1001,26 @@ export default function SettingsView({
                 const features = workspaceFeatureRows.find(row => row.id === selectedId);
                 const entitled = new Set(workspaceFeatureAllowed);
                 const permittedByWorkspace = features?.enabledFeatures || [];
-                return <SlideOver open onClose={() => { setSelectedWorkspaceDetails(null); setSelectedNumberDetails(null); }}
-                  title={selectedNumberDetails ? `Virtual Number · ${selectedNumberDetails.number}` : `Workspace · ${workspace?.name || 'Details'}`}
+                return <SlideOver open onClose={closeDetails}
+                  title={<span className="flex items-center gap-2">{detailHistory.length > 0 && <IconButton icon={ArrowLeft} label="Back to previous details" variant="secondary" onClick={backDetails} />}
+                    {selectedNumberDetails ? `Virtual Number · ${selectedNumberDetails.number}` : `Workspace · ${workspace?.name || 'Details'}`}</span>}
                   subtitle="Workspace membership and access details"
                   maxWidth="max-w-2xl">
                   <div className="space-y-4">
+                    {selectedWorkspaceDetails && <div role="tablist" aria-label="Workspace details" className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-3">
+                      {(['overview','members','numbers'] as const).map(tab =>
+                        <button key={tab} type="button" role="tab" aria-selected={workspaceDetailsTab === tab} onClick={() => setWorkspaceDetailsTab(tab)}
+                          className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition-colors ${workspaceDetailsTab === tab ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{tab === 'numbers' ? 'Phone Numbers' : tab}</button>)}
+                    </div>}
+                    {selectedWorkspaceDetails && workspaceDetailsTab === 'overview' && <Widget title="Workspace Overview" icon={Briefcase} padding="md">
+                      <dl className="grid grid-cols-2 gap-4 text-xs">
+                        <div><dt className="text-[var(--text-muted)]">Status</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{workspace?.status || 'Unknown'}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Branch</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedWorkspaceDetails.branchName || '—'}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Active members</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{canReadOrgMembers ? assignments.length : 'Restricted'}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Phone numbers</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{organizationNumbers ? visibleNumbers.filter(num => numberWorkspaceId(num) === selectedId).length : 'Unavailable'}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Enabled features</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{features ? features.enabledFeatures.length : 'Unavailable'}</dd></div>
+                      </dl>
+                    </Widget>}
                     {selectedNumberDetails && <Widget title="Number Details" padding="md">
                       <dl className="grid grid-cols-2 gap-3 text-xs">
                         <div><dt className="text-[var(--text-muted)]">Number</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.number}</dd></div>
@@ -1016,12 +1031,14 @@ export default function SettingsView({
                         <div><dt className="text-[var(--text-muted)]">Outgoing calls</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.outgoingCallCount}</dd></div>
                       </dl>
                     </Widget>}
-                    <Widget title={workspace ? workspace.name : 'Workspace association'} padding="md" icon={Briefcase}>
+                    {selectedNumberDetails && <Widget title={workspace ? workspace.name : 'Workspace association'} padding="md" icon={Briefcase}>
                       {workspace
                         ? <p className="text-xs text-[var(--text-secondary)]">{workspace.status} workspace · {assignments.length} active member(s)</p>
                         : <p className="text-xs text-[var(--text-muted)]">No known workspace association. Membership cannot be inferred from this number.</p>}
-                    </Widget>
-                    {workspace && <Widget title="Workspace Members" subtitle={selectedNumberDetails ? 'Users with workspace access, not necessarily assigned directly to this number.' : 'Users with active workspace access.'} icon={Users} padding="md">
+                      {workspace && <button type="button" onClick={() => openWorkspaceDetails(workspace)}
+                        className="mt-3 text-xs font-semibold text-[var(--accent)] hover:underline">View workspace →</button>}
+                    </Widget>}
+                    {workspace && (selectedNumberDetails || workspaceDetailsTab === 'members') && <Widget title="Workspace Members" subtitle={selectedNumberDetails ? 'Users with workspace access, not necessarily assigned directly to this number.' : 'Users with active workspace access.'} icon={Users} padding="md">
                       {!canReadOrgMembers
                         ? <p className="text-xs text-[var(--text-muted)]">Organization member-read permission is required to view this list.</p>
                         : orgAccessError
@@ -1037,7 +1054,10 @@ export default function SettingsView({
                                   : null;
                                 return <div key={member.memberId} className="space-y-2 py-3">
                                   <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--text-primary)]">{member.name || member.email || member.memberId}</p><p className="truncate text-[11px] text-[var(--text-muted)]">{member.email}</p></div>
+                                    <div className="min-w-0">{memberRecord
+                                      ? <button type="button" className="truncate text-left text-xs font-semibold text-[var(--accent)] hover:underline"
+                                          onClick={() => openMemberDetails(memberRecord)}>{member.name || member.email || member.memberId}</button>
+                                      : <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{member.name || member.email || member.memberId}</p>}<p className="truncate text-[11px] text-[var(--text-muted)]">{member.email}</p></div>
                                     <span className="shrink-0 rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[10px] font-medium text-[var(--text-secondary)]">{member.workspaceRole || 'Member'}</span>
                                   </div>
                                   {workspaceFeatureLoading
@@ -1049,6 +1069,19 @@ export default function SettingsView({
                                         : <span className="text-[11px] text-[var(--text-muted)]">No enabled product features</span>}</div>}
                                 </div>;
                               })}</div>}
+                    </Widget>}
+                    {selectedWorkspaceDetails && workspaceDetailsTab === 'numbers' && <Widget title="Workspace Phone Numbers" subtitle="Numbers with a verified workspace association." icon={Phone} padding="none">
+                      {!organizationNumbers ? <p className="p-4 text-xs text-[var(--text-muted)]">Organization phone-number data unavailable.</p>
+                        : <DataTable bare paginated rows={visibleNumbers.filter(number => numberWorkspaceId(number) === selectedId)}
+                            rowKey={number => number.id}
+                            emptyMessage="No phone numbers associated with this workspace."
+                            onRowClick={openNumberDetails}
+                            columns={[
+                              { key: 'number', header: 'Phone number', cell: (number: VirtualNumber) =>
+                                <button type="button" className="text-xs font-semibold text-[var(--accent)] hover:underline" onClick={() => openNumberDetails(number)}>{number.number}</button> },
+                              { key: 'provider', header: 'Provider', cell: (number: VirtualNumber) => <span className="text-xs">{number.provider}</span> },
+                              { key: 'status', header: 'Status', cell: (number: VirtualNumber) => <span className="text-xs">{number.status}</span> },
+                            ] as Column<VirtualNumber>[]} />}
                     </Widget>}
                   </div>
                 </SlideOver>;
@@ -1294,7 +1327,10 @@ export default function SettingsView({
 
 
               {/* Add Member overlay modal */}
-              {accessMember && <SlideOver open onClose={() => setAccessMember(null)} title={`Staff Access — ${accessMember.name || accessMember.email}`} subtitle="Workspace memberships, roles, and effective feature grants." maxWidth="max-w-2xl">
+              {accessMember && <SlideOver open onClose={closeDetails}
+                title={<span className="flex items-center gap-2">{detailHistory.length > 0 && <IconButton icon={ArrowLeft} variant="secondary" label="Back to previous details" onClick={backDetails} />}
+                  {accessMember.name || accessMember.email}</span>}
+                subtitle="Workspace memberships, roles, and effective feature grants." maxWidth="max-w-2xl">
                 <div className="space-y-3">
                   {orgAccessError && <p role="alert" className="text-xs text-rose-700">{orgAccessError}</p>}
                   {workspaceFeatureError && <p role="alert" className="text-xs text-rose-700">Feature access unavailable: {workspaceFeatureError}</p>}
@@ -1317,7 +1353,8 @@ export default function SettingsView({
                     return <div key={workspace.id} className="space-y-3 rounded-xl border border-[var(--border)] p-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold text-[var(--text-primary)]">{workspace.name}</p>
+                          <button type="button" onClick={() => openWorkspaceDetails(workspace)}
+                            className="text-left text-xs font-semibold text-[var(--accent)] hover:underline">{workspace.name}</button>
                           <p className="mt-1 text-[11px] text-[var(--text-muted)]">{active ? `Active access · ${role}` : 'No active access'}</p>
                         </div>
                         <select aria-label={`Workspace role in ${workspace.name}`} value={active ? role : ''}
