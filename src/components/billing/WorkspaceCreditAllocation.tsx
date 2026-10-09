@@ -32,13 +32,16 @@ export default function WorkspaceCreditAllocation() {
     if (new Set(rules.map(rule => rule.workspaceId.trim())).size !== rules.length) { setError('Workspace IDs must be unique.'); return; }
     const percentageTotal = rules.filter(rule => rule.kind === 'percentage').reduce((sum, rule) => sum + (rule.basisPoints || 0), 0);
     if (percentageTotal > 10000) { setError('Percentage allocations cannot exceed 100%.'); return; }
-    if (rules.some(rule => rule.kind === 'percentage' && (!Number.isSafeInteger(rule.basisPoints) || (rule.basisPoints || 0) < 0))) {
+    if (rules.some(rule => rule.kind === 'percentage' && (!Number.isSafeInteger(rule.basisPoints) || (rule.basisPoints || 0) < 0 || (rule.basisPoints || 0) > 10000))) {
       setError('Enter a valid percentage between 0 and 100.'); return;
     }
-    if (rules.some(rule => rule.kind === 'fixed' && (!rule.amount || !/^\\d+$/.test(rule.amount.units) || BigInt(rule.amount.units) < 0n))) {
+    if (rules.some(rule => rule.kind === 'fixed' && (!rule.amount || rule.amount.asset !== 'CREDIT' || rule.amount.scale !== 0 || !/^\\d+$/.test(rule.amount.units) || BigInt(rule.amount.units) < 0n))) {
       setError('Enter a non-negative fixed credit amount.'); return;
     }
-    const mutation = pending || createBillingMutation(options => billingClient.saveAllocationRules(kind, { rules }, options), version);
+    const cleanRules = rules.map(rule => rule.kind === 'fixed'
+      ? { workspaceId: rule.workspaceId.trim(), kind: 'fixed' as const, amount: rule.amount }
+      : { workspaceId: rule.workspaceId.trim(), kind: 'percentage' as const, basisPoints: rule.basisPoints });
+    const mutation = pending || createBillingMutation(options => billingClient.saveAllocationRules(kind, { rules: cleanRules, ruleVersion: version + 1, expectedVersion: version }, options), version);
     setPending(mutation);
     setBusy(true);
     try {
