@@ -67,7 +67,7 @@ export function permissionForRequest(path: string,method: string): string | null
 export function canAccessTab(tab: string,subTab?: string) {
   if (tab === 'settings') {
     if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
-    if (subTab === 'workspaces') return can('organization.read') || can('organization.manage') || can('workspace.settings.manage');
+    if (subTab === 'workspaces' || subTab === 'numbers') return can('organization.read') || can('organization.manage') || can('workspace.settings.manage');
     return (subTab === 'billing' ? can('billing.read') || can('billing.organization.read') || can('billing.workspace.read') : can(subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage'))
       || (subTab === 'team' && can('workspace.members.manage'));
   }
