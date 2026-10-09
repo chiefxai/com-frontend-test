@@ -202,7 +202,7 @@ export default function SettingsView({
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   React.useEffect(() => {
     if (!['numbers', 'workspaces'].includes(subTab) || workspacePanel !== 'numbers' || !canReadOrganization) return;
-    void loadOrganizationNumbers().catch(error => setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'));
+    void loadOrganizationNumbers().catch(error => { setOrganizationNumbers(null); setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'); });
   }, [subTab, workspacePanel, canReadOrganization, loadOrganizationNumbers]);
 
   const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
@@ -789,7 +789,7 @@ export default function SettingsView({
                               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive
                             </span>
                           )}
-                          <button onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(numberWorkspaceId(num) && numberWorkspaceId(num) !== (sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id') || ''))} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:cursor-not-allowed disabled:opacity-30" title="Delete number in current workspace">
+                          <button onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(organizationNumbers && !virtualNumbers.some(row => row.id === num.id))} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:cursor-not-allowed disabled:opacity-30" title="Delete number in current workspace">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
