@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Database, HardDrive, Loader2, ShieldCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 import FeatureAccessSelector from '../components/ui/FeatureAccessSelector';
 import WorkspacePolicyEditor from '../components/WorkspacePolicyEditor';
 import { emptyWorkspacePolicy, serializedPolicy, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
+import { readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
 
 const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
   value: profile.key,
@@ -46,12 +47,6 @@ interface CreateOrgForm {
   billingMethod: 'pay_as_you_go' | 'recharge_based';
   chargeScope: 'ai_only' | 'ai_and_call_provider';
   initialRechargeAmountInr: string;
-  dataRetentionMode: 'default' | 'custom';
-  dataRetentionOverrides: Record<string, number | null>;
-  backupEnabled: boolean;
-  backupFrequency: 'daily' | 'weekly' | 'monthly';
-  backupEmail: string;
-  backupRetentionDays: string;
 }
 
 export default function CreateWorkspacePage() {
@@ -71,17 +66,15 @@ export default function CreateWorkspacePage() {
     billingMethod: 'pay_as_you_go',
     chargeScope: 'ai_only',
     initialRechargeAmountInr: '',
-    dataRetentionMode: 'default',
-    dataRetentionOverrides: {},
-    backupEnabled: false,
-    backupFrequency: 'monthly',
-    backupEmail: '',
-    backupRetentionDays: '365',
   });
   const [workspacePolicy, setWorkspacePolicy] = useState(emptyWorkspacePolicy);
   const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
   const [loadingWorkspacePlans, setLoadingWorkspacePlans] = useState(true);
+  const [retentionCatalog, setRetentionCatalog] = useState<RetentionPolicyCatalog | null>(null);
+  const [selectedRetentionPolicyId, setSelectedRetentionPolicyId] = useState('');
+  const [loadingRetentionPolicies, setLoadingRetentionPolicies] = useState(true);
+  const [retentionLoadError, setRetentionLoadError] = useState('');
   const [firstBranchName, setFirstBranchName] = useState('');
   const [initialWorkspaces, setInitialWorkspaces] = useState<{name:string;industry:string;branchName:string}[]>([]);
   const [selectedFlags, setSelectedFlags] = useState<string[]>(() => defaultFeatureFlagsForIndustry('lending'));
@@ -90,6 +83,7 @@ export default function CreateWorkspacePage() {
   const navigate = useNavigate();
   const availableFeatureKeys = defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':form.industry);
   const selectedWorkspacePlan = workspacePlans.find(plan => plan.id === form.subscriptionPlan && plan.active) || null;
+  const selectedRetentionPolicy = retentionCatalog?.policies.find(policy => policy.id === selectedRetentionPolicyId) || null;
 
   useEffect(() => {
     let active = true;
@@ -113,6 +107,27 @@ export default function CreateWorkspacePage() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    setLoadingRetentionPolicies(true);
+    apiFetch('/api/platform/data-retention/policies')
+      .then(async response => {
+        const body = await response.json().catch(() => null) as RetentionPolicyCatalog & { error?: string } | null;
+        if (!response.ok) throw new Error(body?.error || 'Could not load data retention and backup policies.');
+        if (!body || !Array.isArray(body.policies) || !body.policies.length || !body.defaultPolicyId)
+          throw new Error('No valid retention and backup policies are configured.');
+        if (!active) return;
+        setRetentionCatalog(body);
+        setSelectedRetentionPolicyId(body.defaultPolicyId);
+        setRetentionLoadError('');
+      })
+      .catch(error => {
+        if (active) setRetentionLoadError(error instanceof Error ? error.message : 'Could not load retention policies.');
+      })
+      .finally(() => { if (active) setLoadingRetentionPolicies(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     setForm(current => ({ ...current, workspaceName: generateWorkspaceSlug(current.name) }));
   }, [form.name]);
 
@@ -124,6 +139,14 @@ export default function CreateWorkspacePage() {
     setError('');
     if (!selectedWorkspacePlan) {
       setError('Choose an active workspace plan in the plan settings before creating an organization.');
+      return;
+    }
+    if (!selectedRetentionPolicy) {
+      setError('Choose a configured data retention and backup policy before creating an organization.');
+      return;
+    }
+    if (selectedRetentionPolicy.backup.enabled && !form.adminEmail.trim()) {
+      setError('An organization admin email is required for a policy with automated backups.');
       return;
     }
     if (selectedWorkspacePlan.pricing.baseMonthlyInr == null || selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr == null || selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr == null) {
@@ -157,11 +180,6 @@ export default function CreateWorkspacePage() {
         setError('The service account JSON must contain a valid project_id.');
         return;
       }
-      if (form.backupEnabled && !form.backupEmail.trim()) {
-        setError('Backup email is required when automated backups are enabled.');
-        return;
-      }
-
       const res = await apiFetch('/api/platform/organizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,14 +212,8 @@ export default function CreateWorkspacePage() {
           billingMethod: form.billingMethod,
           chargeScope: form.chargeScope,
           initialRechargeAmountInr: form.billingMethod === 'recharge_based' ? Number(form.initialRechargeAmountInr || 0) : 0,
-          dataRetentionMode: form.dataRetentionMode,
-          dataRetentionOverrides: form.dataRetentionMode === 'custom' ? form.dataRetentionOverrides : {},
-          backup: {
-            enabled: form.backupEnabled,
-            frequency: form.backupFrequency,
-            email: form.backupEmail.trim(),
-            retentionDays: Number(form.backupRetentionDays || 365),
-          },
+          retentionPolicyId: selectedRetentionPolicy.id,
+          retentionPolicyVersion: retentionCatalog?.version,
         }),
       });
       if (!res.ok) {
@@ -422,72 +434,85 @@ export default function CreateWorkspacePage() {
           disabled={loading}
         />
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-3">
-            <p className="text-xs font-bold text-slate-700">Advanced · Data Retention &amp; Backup</p>
-            <p className="text-[11px] text-slate-500 mt-1">Use the platform defaults or define a company-specific retention policy.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <label className={`rounded-xl border p-3 cursor-pointer ${form.dataRetentionMode === 'default' ? 'border-amber-400 ring-1 ring-amber-100' : 'border-slate-200'}`}>
-              <input type="radio" className="sr-only" checked={form.dataRetentionMode === 'default'} onChange={() => setForm(f => ({ ...f, dataRetentionMode: 'default' }))} />
-              <p className="text-xs font-semibold text-slate-700">Platform default</p>
-              <p className="text-[10px] text-slate-500 mt-1">Inherits Super Admin retention settings.</p>
-            </label>
-            <label className={`rounded-xl border p-3 cursor-pointer ${form.dataRetentionMode === 'custom' ? 'border-amber-400 ring-1 ring-amber-100' : 'border-slate-200'}`}>
-              <input type="radio" className="sr-only" checked={form.dataRetentionMode === 'custom'} onChange={() => setForm(f => ({ ...f, dataRetentionMode: 'custom' }))} />
-              <p className="text-xs font-semibold text-slate-700">Custom policy</p>
-              <p className="text-[10px] text-slate-500 mt-1">Set different retention for this company.</p>
-            </label>
-          </div>
-          {form.dataRetentionMode === 'custom' && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {[
-                ['call_recordings', 'Call recordings'],
-                ['transcripts', 'Transcripts'],
-                ['ai_summaries', 'AI summaries'],
-                ['call_logs', 'Call logs'],
-                ['campaign_history', 'Campaign history'],
-                ['audit_logs', 'Audit logs'],
-                ['documents', 'Documents'],
-                ['contacts', 'Contacts'],
-              ].map(([key, label]) => (
-                <div key={key}>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1">{label}</label>
-                  <select
-                    value={form.dataRetentionOverrides[key] == null ? '' : String(form.dataRetentionOverrides[key])}
-                    onChange={e => setForm(f => ({ ...f, dataRetentionOverrides: { ...f.dataRetentionOverrides, [key]: e.target.value === '' ? null : Number(e.target.value) } }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                  >
-                    <option value="">Never</option>
-                    <option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option>
-                    <option value="365">1 year</option><option value="730">2 years</option><option value="1095">3 years</option><option value="1825">5 years</option>
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between">
+        <section aria-label="Data Retention & Backup" className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-card)]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
               <div>
-                <p className="text-xs font-semibold text-slate-700">Automated backups</p>
-                <p className="text-[10px] text-slate-500 mt-1">Creates a ZIP archive, stores it securely, and emails a temporary download link.</p>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Data Retention & Backup</h2>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                  Apply a reusable platform policy. No organization-specific retention or backup setup is required.
+                </p>
               </div>
-              <button type="button" onClick={() => setForm(f => ({ ...f, backupEnabled: !f.backupEnabled }))} className={`relative h-6 w-11 rounded-full transition ${form.backupEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${form.backupEnabled ? 'left-6' : 'left-1'}`} />
-              </button>
             </div>
-            {form.backupEnabled && (
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div><label className="block text-[10px] font-semibold text-slate-500 mb-1">Backup email</label><input type="email" value={form.backupEmail} onChange={set('backupEmail')} placeholder="admin@company.com" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs" /></div>
-                <div><label className="block text-[10px] font-semibold text-slate-500 mb-1">Frequency</label><select value={form.backupFrequency} onChange={set('backupFrequency')} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
-                <div><label className="block text-[10px] font-semibold text-slate-500 mb-1">Backup retention</label><select value={form.backupRetentionDays} onChange={set('backupRetentionDays')} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs"><option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option><option value="365">1 year</option><option value="730">2 years</option></select></div>
-              </div>
-            )}
+            <Link to="/admin/data-retention"
+              className="text-xs font-semibold text-[var(--accent)] hover:underline">Manage policies</Link>
           </div>
+          {loadingRetentionPolicies ? (
+            <p role="status" className="text-xs text-[var(--text-muted)]">Loading available policies…</p>
+          ) : retentionLoadError ? (
+            <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+              {retentionLoadError}. Open Data Retention & Backup to review your policies.
+            </p>
+          ) : (
+            <>
+              <label className="block max-w-lg text-xs font-semibold text-[var(--text-secondary)]">
+                Policy to apply *
+                <select required value={selectedRetentionPolicyId} disabled={loading}
+                  onChange={event => setSelectedRetentionPolicyId(event.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                  {retentionCatalog?.policies.map(policy => (
+                    <option key={policy.id} value={policy.id}>
+                      {policy.name}{policy.id === retentionCatalog.defaultPolicyId ? ' (Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedRetentionPolicy && (
+                <div className="grid gap-3 rounded-xl bg-[var(--bg-subtle)] p-4 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                      <Database className="h-4 w-4 text-[var(--accent)]" /> Data retention
+                    </p>
+                    <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                      Call recordings: {readableRetention(selectedRetentionPolicy.retention.call_recordings)}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                      Transcripts: {readableRetention(selectedRetentionPolicy.retention.transcripts)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                      Plus six additional retention settings included in the policy.
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                      <HardDrive className="h-4 w-4 text-[var(--accent)]" /> Automated backup
+                    </p>
+                    <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                      {readableBackup(selectedRetentionPolicy)}
+                    </p>
+                    {selectedRetentionPolicy.backup.enabled && (
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                        {form.adminEmail.trim()
+                          ? 'Backup links will be sent to ' + form.adminEmail.trim()
+                          : 'Enter an admin email above to enable backup delivery.'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+                The selected retention and backup settings are saved with this organization at creation.
+                Future changes to the platform template do not automatically change its configuration.
+              </p>
+            </>
+          )}
         </section>
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <button type="button" onClick={() => navigate('/admin/organizations')} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700">Cancel</button>
-          <button type="submit" disabled={loading} className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white text-sm font-medium rounded-xl flex items-center gap-2">
+          <button type="submit" disabled={loading || loadingRetentionPolicies || !selectedRetentionPolicy} className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white text-sm font-medium rounded-xl flex items-center gap-2">
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? 'Validating…' : 'Create Workspace'}
           </button>

@@ -27,7 +27,7 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'workspace-plans', label: 'Workspace Plans',   icon: Building2 },
   { path: 'payment-reviews', label: 'Payment Reviews', icon: IndianRupee },
   { path: 'settings',       label: 'Features',           icon: Settings },
-  { path: 'data-retention', label: 'Data Retention',      icon: Database },
+  { path: 'data-retention', label: 'Data Retention & Backup',      icon: Database },
   { path: 'prompts',        label: 'Prompts',             icon: MessageSquareText },
 ];
 
@@ -98,7 +98,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           <Route path="workspace-plans" element={<PageWrap title="Workspace Plans" section="Workspace Plans"><WorkspacePlansPage /></PageWrap>} />
           <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
           <Route path="settings"      element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
-          <Route path="data-retention" element={<PageWrap title="Data Retention" section="Data Retention"><DataRetentionPage /></PageWrap>} />
+          <Route path="data-retention" element={<PageWrap title="Data Retention & Backup" section="Data Retention & Backup"><DataRetentionPage /></PageWrap>} />
           <Route path="prompts"       element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />
           <Route path="*"             element={<Navigate to="overview" replace />} />
         </Routes>
