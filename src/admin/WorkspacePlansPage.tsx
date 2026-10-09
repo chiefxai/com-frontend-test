@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Save, Pencil, ArrowLeft } from 'lucide-react';
+import { Plus, Save, Pencil } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
@@ -81,7 +81,18 @@ export default function WorkspacePlansPage() {
   React.useEffect(() => {
     if (!headerCtx) return;
     headerCtx.setHeader({
-      title: <span className="flex items-center gap-2"><span className="text-[10px] font-medium text-[var(--text-muted)]">Admin /</span> Subscription Plans</span>,
+      title: <span className="flex items-center gap-2 min-w-0">
+        <span className="text-[10px] font-medium text-[var(--text-muted)]">Admin</span>
+        <span className="text-[var(--border)]">/</span>
+        {editingIndex !== null ? <>
+          <button type="button" onClick={cancelEdit} disabled={saving}
+            className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50">
+            Subscription Plans
+          </button>
+          <span className="text-[var(--border)]">/</span>
+          <span className="truncate">{editingIndex === -1 ? 'Create Plan' : 'Edit Plan'}</span>
+        </> : <span className="truncate">Subscription Plans</span>}
+      </span>,
       action: editingIndex !== null ? undefined : <button type="button" onClick={beginAdd} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"><Plus className="h-4 w-4" /> Create plan</button>,
     });
   }, [headerCtx?.setHeader, beginAdd, loading, saving, editingIndex]);
@@ -90,7 +101,7 @@ export default function WorkspacePlansPage() {
   const fieldClass = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500';
   const labelClass = 'block text-xs font-medium text-slate-500';
 
-  return <div className="mx-auto max-w-6xl space-y-5 text-[var(--text-primary)]">
+  return <div className="mx-auto w-full max-w-5xl space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
     {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
     {!draft && (loading ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-muted)]">Loading plans…</div> : (
@@ -120,9 +131,8 @@ export default function WorkspacePlansPage() {
     ))}
 
     {draft && editingIndex !== null && (
-      <div className="w-full max-w-5xl">
+      <div className="mx-auto w-full max-w-5xl">
         <div className="space-y-5">
-        <button type="button" onClick={cancelEdit} className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800"><ArrowLeft className="h-4 w-4" /> Back to subscription plans</button>
         <div className="space-y-5">
           <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-5">
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
