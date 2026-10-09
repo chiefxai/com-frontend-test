@@ -1,10 +1,11 @@
 import React from 'react';
-import { Building2, CreditCard, Pencil, Plus, Save, ShieldCheck, Wallet } from 'lucide-react';
+import { Building2, CreditCard, Pencil, Plus, Save, ShieldCheck, Wallet, Layers3, ArrowUpRight } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 import Widget from '../components/ui/Widget';
-import DataTable, { type Column } from '../components/ui/DataTable';
+import { Card, CardHeader } from '../components/ui/Card';
+import EmptyState from '../components/ui/EmptyState';
 import FilterBar from '../components/ui/FilterBar';
 import Badge from '../components/ui/Badge';
 import KpiCard from '../components/ui/KpiCard';
@@ -199,31 +200,6 @@ export default function WorkspacePlansPage() {
     .filter(plan => plan.active && validAmount(plan.pricing.baseMonthlyInr))
     .map(plan => Number(plan.pricing.baseMonthlyInr));
   const startingFee = activeFees.length ? money(Math.min(...activeFees)) : '—';
-  const columns: Column<WorkspacePlan>[] = [
-    { key: 'name', header: 'Subscription plan', width: '260px', cell: plan =>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{plan.name}</p>
-        <p className="truncate font-mono text-[11px] text-[var(--text-muted)]">{plan.id}</p>
-      </div> },
-    { key: 'status', header: 'Status', width: '120px', cell: plan =>
-      <Badge color={plan.active ? 'green' : 'slate'}>{plan.active ? 'Active' : 'Archived'}</Badge> },
-    { key: 'monthly', header: 'Monthly fee', width: '170px', align: 'right', cell: plan =>
-      <span className="font-semibold text-[var(--text-primary)]">{money(plan.pricing.baseMonthlyInr)}</span> },
-    { key: 'workspaces', header: 'Workspace access', width: '260px', cell: plan =>
-      <div className="min-w-0">
-        <p className="truncate text-xs text-[var(--text-secondary)]">
-          {MODES.find(mode => mode.value === plan.defaultMode)?.label || plan.defaultMode}
-        </p>
-        <p className="text-[11px] text-[var(--text-muted)]">
-          {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces} included
-        </p>
-      </div> },
-    { key: 'credits', header: 'Monthly usage credits', width: '180px', align: 'right', cell: plan =>
-      money(plan.pricing.monthlySubscriptionCreditsInr ?? 0) },
-    { key: 'action', header: 'Action', width: '120px', cell: plan =>
-      <Button type="button" size="xs" variant="secondary" icon={Pencil} disabled={saving}
-        onClick={() => beginEdit(plan)}>Edit plan</Button> },
-  ];
 
   return <div className="w-full min-w-0 space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
@@ -241,7 +217,7 @@ export default function WorkspacePlansPage() {
           <KpiCard colSpan={3} label="Starting monthly fee" value={loading ? '—' : startingFee} icon={Wallet} />
         </div>
 
-        <Widget title="Subscription plan catalog" subtitle="Review plan pricing and workspace allowances."
+        <Widget title="Subscription plan catalog" subtitle="Manage plan pricing, monthly credits and workspace allowances."
           icon={CreditCard} accent="#2563eb" padding="none"
           action={<Button type="button" size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>Refresh</Button>}>
           <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
@@ -262,14 +238,95 @@ export default function WorkspacePlansPage() {
               actions={<IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />}
             />
           </div>
-          <DataTable
-            bare resizable paginated defaultPageSize={25}
-            columns={columns} rows={filteredPlans} rowKey={plan => plan.id}
-            loading={loading}
-            emptyMessage={query || statusFilter !== 'all'
-              ? 'No subscription plans match the filters.'
-              : 'No subscription plans configured yet.'}
-          />
+          {loading ? (
+            <div role="status" className="p-6 text-sm text-[var(--text-muted)]">Loading subscription plans…</div>
+          ) : filteredPlans.length === 0 ? (
+            <EmptyState
+              icon={CreditCard}
+              heading={plans.length ? 'No plans match your filters' : 'No subscription plans yet'}
+              message={plans.length
+                ? 'Try another search or status filter.'
+                : 'Create a subscription plan to make it available for new organizations.'}
+              action={plans.length
+                ? <Button type="button" size="sm" variant="secondary"
+                    onClick={() => { setQuery(''); setStatusFilter('all'); }}>Clear filters</Button>
+                : <Button type="button" size="sm" variant="primary" icon={Plus} onClick={beginAdd}>Create plan</Button>}
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredPlans.map(plan => (
+                <Card key={plan.id} padding="none" hover
+                  className="group relative flex min-w-0 flex-col overflow-hidden transition-colors hover:border-blue-300 dark:hover:border-blue-600">
+                  <div aria-hidden="true"
+                    className="h-1 w-full shrink-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+                  <div className="flex flex-1 flex-col gap-4 p-5">
+                    <CardHeader
+                      title={plan.name}
+                      subtitle={<span className="font-mono text-[11px]">{plan.id}</span>}
+                      icon={CreditCard}
+                      accent={plan.active ? '#2563eb' : '#64748b'}
+                      border={false}
+                      action={<Badge color={plan.active ? 'green' : 'slate'}>
+                        {plan.active ? 'Active' : 'Archived'}
+                      </Badge>}
+                    />
+                    <div className="border-b border-[var(--border)] pb-4">
+                      <div className="flex flex-wrap items-baseline gap-1">
+                        <span className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+                          {money(plan.pricing.baseMonthlyInr)}
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)]">/ month</span>
+                      </div>
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                        <Layers3 className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
+                        {MODES.find(mode => mode.value === plan.defaultMode)?.label || plan.defaultMode}
+                      </p>
+                    </div>
+                    <dl className="space-y-3 text-xs">
+                      <div className="flex items-center justify-between gap-3">
+                        <dt className="text-[var(--text-muted)]">Included workspaces</dt>
+                        <dd className="font-semibold text-[var(--text-primary)]">
+                          {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces}
+                        </dd>
+                      </div>
+                      {plan.defaultMode !== 'single' && (
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-[var(--text-muted)]">Extra workspace / month</dt>
+                          <dd className="font-semibold text-[var(--text-primary)]">
+                            {money(plan.pricing.extraWorkspaceMonthlyInr)}
+                          </dd>
+                        </div>
+                      )}
+                      {plan.defaultMode === 'mixed_industry' && (
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-[var(--text-muted)]">Extra industry / month</dt>
+                          <dd className="font-semibold text-[var(--text-primary)]">
+                            {money(plan.pricing.additionalIndustryMonthlyInr)}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--bg-subtle)] px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
+                          Monthly usage credits
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">
+                          {money(plan.pricing.monthlySubscriptionCreditsInr ?? 0)}
+                        </p>
+                      </div>
+                      <Wallet className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                    </div>
+                    <Button type="button" size="sm" variant="secondary" icon={Pencil}
+                      iconRight={ArrowUpRight} className="w-full justify-center"
+                      disabled={saving} onClick={() => beginEdit(plan)}>
+                      Edit plan
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </Widget>
       </>
     ) : draft ? (
