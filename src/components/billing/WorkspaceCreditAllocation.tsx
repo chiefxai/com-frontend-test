@@ -10,7 +10,7 @@ export default function WorkspaceCreditAllocation() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
-  const [pending, setPending] = React.useState<ReturnType<typeof createBillingMutation> | null>(null);
+  const [pending, setPending] = React.useState<{ execute: () => Promise<{ version: number; rules: AllocationRule[] }> } | null>(null);
 
   const load = React.useCallback(async () => {
     setBusy(true); setError(''); setNotice(''); setPending(null);
