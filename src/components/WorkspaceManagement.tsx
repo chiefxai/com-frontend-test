@@ -86,10 +86,16 @@ export default function WorkspaceManagement({
       setBranchName('');
       setAcceptedPrice(false);
       setShowCreateWorkspace(false);
-      const policyResponse=await apiFetch('/api/settings/workspace-policy');
-      if (policyResponse.ok) setSetup(await policyResponse.json());
       setMessage({ type: 'success', text: 'Workspace created and assigned to you as Workspace Admin.' });
-      await onWorkspaceCreated();
+      // A secondary refresh failure must never make a successful create look
+      // unsuccessful (or encourage a duplicate workspace submission).
+      try {
+        const policyResponse = await apiFetch('/api/settings/workspace-policy');
+        if (policyResponse.ok) setSetup(await policyResponse.json());
+        await onWorkspaceCreated();
+      } catch {
+        setMessage({ type: 'success', text: 'Workspace created. Refresh the page if related workspace data has not updated yet.' });
+      }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Could not create workspace.' });
       setAcceptedPrice(false);
