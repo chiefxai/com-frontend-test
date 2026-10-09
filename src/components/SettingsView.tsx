@@ -62,7 +62,7 @@ interface SettingsViewProps {
   phoneChargesBillable?: boolean;
   // Recharge-based wallet balance. This is shown only when the organization
   // is configured for recharge_based billing.
-  activeSubTab?: 'numbers' | 'team' | 'billing' | 'api';
+  activeSubTab?: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api';
   setActiveSubTab?: (sub: string) => void;
   currentUserEmail?: string;
   multipleWorkspacesEnabled?: boolean;
@@ -151,9 +151,9 @@ export default function SettingsView({
   const canManageOrgMembers = can('organization.members.manage');
   const canManageWorkspaceMembers = can('workspace.members.manage');
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
-  const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'billing' | 'api'>('numbers');
-  const subTab = (activeSubTabProp as 'numbers' | 'team' | 'billing' | 'api') || _internalSubTab;
-  const setSubTab = (v: 'numbers' | 'team' | 'billing' | 'api') => {
+  const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
+  const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
+  const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
     _setInternalSubTab(v);
     setActiveSubTabProp?.(v);
   };
@@ -562,6 +562,7 @@ export default function SettingsView({
       title={<BreadcrumbTitle group="Administration" page={
         subTab === 'numbers' ? 'Virtual Numbers'
         : subTab === 'team' ? 'Staff & Teams'
+        : subTab === 'workspaces' ? 'Organization Workspaces'
         : subTab === 'billing' ? 'Billing & Usage'
         : 'API Keys'
       } />}
@@ -758,11 +759,17 @@ export default function SettingsView({
             </div>
           )}
 
-          {/* Subtab: Team matrix */}
-          {subTab === 'team' && (
+          {/* Separate organization workspace management page. */}
+          {subTab === 'workspaces' && (
             <div className="space-y-6">
               <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
               <WorkspaceSharing enabled={workspaceSharingEnabled} />
+            </div>
+          )}
+
+          {/* Staff and team membership only. */}
+          {subTab === 'team' && (
+            <div className="space-y-6">
               {staffAddMsg && (
                 <div className={`px-4 py-2.5 rounded-lg text-xs font-medium ${staffAddMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                   {staffAddMsg.text}
