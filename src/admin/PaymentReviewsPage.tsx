@@ -5,8 +5,15 @@ import {
 } from '../lib/billing/platformDecision';
 import { newBillingIdempotencyKey } from '../lib/billing/client';
 
-const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) =>
-  `${amount.asset} ${amount.units} (scale ${amount.scale})`;
+const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) => {
+  const digits = BigInt(amount.units);
+  const factor = 10n ** BigInt(amount.scale);
+  const rupees = (digits / factor).toLocaleString('en-IN');
+  const paise = (digits % factor).toString().padStart(amount.scale, '0');
+  return `${amount.asset === 'INR' ? '₹' : amount.asset + ' '}${rupees}${amount.scale ? '.' + paise : ''}`;
+};
+const paymentPurpose = (purpose: PlatformPaymentReview['purpose']) =>
+  purpose === 'topup' ? 'Add usage credits (top-up)' : purpose === 'subscription' ? 'Subscription' : 'Invoice payment';
 
 export default function PaymentReviewsPage() {
   const [rows, setRows] = useState<PlatformPaymentReview[]>([]);
@@ -17,6 +24,7 @@ export default function PaymentReviewsPage() {
   const [receivedUnits, setReceivedUnits] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ type: PaymentDecision; key: string } | null>(null);
@@ -75,12 +83,17 @@ export default function PaymentReviewsPage() {
     setBusy(true);
     setError('');
     try {
-      await decidePlatformPayment(selected.orgId, selected.id, {
+      const outcome = await decidePlatformPayment(selected.orgId, selected.id, {
         decision, expectedVersion: selected.version,
         ...(decision === 'approve' ? {
           receivedAmount: { ...selected.expectedAmount, units: receivedUnits },
         } : { reason: reason.trim() }),
       }, { idempotencyKey: action.key });
+      setSuccess(decision === 'approve' && selected.purpose === 'topup'
+        ? outcome.funding?.status === 'active'
+          ? `Top-up approved. ${formatAmount(selected.expectedAmount)} in usage credits was issued to this organization's credit pool.`
+          : 'Top-up approved. Verify credit funding status before communicating the new balance.'
+        : `Payment ${decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'sent for clarification'}.`);
       setSelected(null);
       setPendingAction(null);
       await load();
@@ -108,6 +121,7 @@ export default function PaymentReviewsPage() {
       </div>
     </div>
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+    {success && <p role="status" className="text-sm text-emerald-700">{success}</p>}
     <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
       <table className="w-full text-left text-sm">
         <thead className="bg-[var(--bg-subtle)]"><tr>
@@ -118,7 +132,7 @@ export default function PaymentReviewsPage() {
         <tbody>
           {rows.map(row => <tr key={row.id} className="border-t border-[var(--border)]">
             <td className="p-3">{row.orgId}</td><td className="p-3">{row.paymentReference || '—'}</td>
-            <td className="p-3">{row.purpose}</td><td className="p-3">{formatAmount(row.expectedAmount)}</td>
+            <td className="p-3">{paymentPurpose(row.purpose)}</td><td className="p-3">{formatAmount(row.expectedAmount)}</td>
             <td className="p-3">{row.status}</td><td className="p-3">{new Date(row.submittedAt).toLocaleString()}</td>
             <td className="p-3"><button type="button" onClick={() => choose(row)}
               className="underline underline-offset-2">Review</button></td>
@@ -131,7 +145,7 @@ export default function PaymentReviewsPage() {
     {cursor && <button type="button" disabled={loading} onClick={() => void load(cursor, true)}
       className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">Load more</button>}
     {selected && <div className="space-y-4 rounded-xl border border-[var(--border)] p-5">
-      <h3 className="font-semibold">Review payment {selected.id}</h3>
+      <h3 className="font-semibold">Review {paymentPurpose(selected.purpose)} · {formatAmount(selected.expectedAmount)}</h3>
       <p className="text-sm">Organization: {selected.orgId} · Reference: {selected.paymentReference || '—'} ·
         Version: {selected.version}</p>
       <p className="text-sm">Expected: {formatAmount(selected.expectedAmount)}. Check the bank record independently.</p>
@@ -143,7 +157,8 @@ export default function PaymentReviewsPage() {
         <input type="checkbox" checked={reviewedProof} onChange={event => { setReviewedProof(event.target.checked); setPendingAction(null); }} />
         I inspected the receipt and independently verified the payment.
       </label>
-      <label className="block text-sm">Verified received units
+      <p className="text-xs text-[var(--text-muted)]">Expected amount: {formatAmount(selected.expectedAmount)}. The value below is expressed in the smallest currency units and must match exactly.</p>
+      <label className="block text-sm">Verified received amount (integer minor units)
         <input value={receivedUnits} onChange={event => { setReceivedUnits(event.target.value); setPendingAction(null); }}
           className="mt-1 block w-full max-w-xs rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-2"
           inputMode="numeric" />
