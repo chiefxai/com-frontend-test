@@ -738,7 +738,7 @@ export default function SettingsView({
                 <Widget title="Workspaces & Numbers" subtitle="Manage organization workspaces, connected numbers, and workspace sharing." icon={Briefcase} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Virtual Numbers</button><button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Sharing</button></div>}>
                   <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
                 </Widget>
-                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
+                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={async () => { await onWorkspaceCreated(); await loadWorkspaceFeatures(); }} />
                 {canReadOrganization && <Widget title="Workspace Feature Access" subtitle="Limit features independently for each branch or workspace." icon={Flag} accent="#6366f1" padding="md">
                   {workspaceFeatureError && <p role="status" className="mb-3 text-xs text-[var(--text-secondary)]">{workspaceFeatureError}</p>}
                   {!workspaceFeatureRows.length ? <p className="text-xs text-[var(--text-muted)]">No workspace feature assignments available.</p> : <>
