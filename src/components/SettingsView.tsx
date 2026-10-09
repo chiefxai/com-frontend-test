@@ -154,6 +154,39 @@ export default function SettingsView({
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
+  const [numberSearch, setNumberSearch] = useState('');
+  const [numberProvider, setNumberProvider] = useState('');
+  const [numberStatus, setNumberStatus] = useState('');
+  const [numberWorkspace, setNumberWorkspace] = useState('');
+  const numberWorkspaceId = (number: VirtualNumber) => {
+    const record = number as VirtualNumber & { workspaceId?: string | null; workspace_id?: string | null };
+    return record.workspaceId || record.workspace_id || '';
+  };
+  const filteredNumbers = virtualNumbers.filter(number =>
+    (!numberSearch || `${number.number} ${number.friendlyName || ''}`.toLowerCase().includes(numberSearch.toLowerCase().trim())) &&
+    (!numberProvider || number.provider === numberProvider) &&
+    (!numberStatus || number.status === numberStatus) &&
+    (!numberWorkspace || (numberWorkspace === '__unknown__' ? !numberWorkspaceId(number) : numberWorkspaceId(number) === numberWorkspace)));
+  const exportFilteredNumbers = () => {
+    const csvField = (value: unknown) => {
+      const content = String(value ?? '').replace(/^[\s]*[=+\-@]/, "'  const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');");
+      return `"${content.replace(/"/g, '""')}"`;
+    };
+    const rows = [['Number','Label','Provider','Status','Workspace','Incoming Calls','Outgoing Calls'],
+      ...filteredNumbers.map(number => [
+        number.number, number.friendlyName, number.provider, number.status,
+        orgWorkspaces.find(workspace => workspace.id === numberWorkspaceId(number))?.name || 'Unknown',
+        number.incomingCallCount, number.outgoingCallCount,
+      ])];
+    const csv = '\uFEFF' + rows.map(row => row.map(csvField).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'virtual-numbers.csv';
+    document.body.appendChild(link); link.click(); link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
     _setInternalSubTab(v);
@@ -654,6 +687,33 @@ export default function SettingsView({
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {workspacePanel === 'numbers' && <>
+              <div className="grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:grid-cols-2 lg:grid-cols-5">
+                <label className="text-xs text-[var(--text-muted)]">Search
+                  <input value={numberSearch} onChange={event => setNumberSearch(event.target.value)} placeholder="Number or label" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
+                </label>
+                <label className="text-xs text-[var(--text-muted)]">Workspace
+                  <select value={numberWorkspace} onChange={event => setNumberWorkspace(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                    <option value="">All workspaces</option>
+                    {orgWorkspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+                    <option value="__unknown__">Unknown association</option>
+                  </select>
+                </label>
+                <label className="text-xs text-[var(--text-muted)]">Provider
+                  <select value={numberProvider} onChange={event => setNumberProvider(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                    <option value="">All providers</option>
+                    {Array.from(new Set(virtualNumbers.map(number => number.provider))).map(provider => <option key={provider} value={provider}>{provider}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs text-[var(--text-muted)]">Status
+                  <select value={numberStatus} onChange={event => setNumberStatus(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                    <option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
+                  </select>
+                </label>
+                <div className="flex flex-col justify-end gap-1">
+                  <button type="button" onClick={exportFilteredNumbers} disabled={!filteredNumbers.length} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Export CSV ({filteredNumbers.length})</button>
+                </div>
+              </div>
+              {virtualNumbers.some(number => !numberWorkspaceId(number)) && <p className="text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
               <Widget
                 title="Virtual Numbers"
                 subtitle="Connected phone numbers and calling providers."
@@ -724,7 +784,7 @@ export default function SettingsView({
                       resizable
                       paginated
                       columns={columns}
-                      rows={virtualNumbers}
+                      rows={filteredNumbers}
                       rowKey={(num) => num.id}
                     />
                   );
