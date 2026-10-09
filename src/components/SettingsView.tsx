@@ -566,7 +566,7 @@ export default function SettingsView({
         : subTab === 'billing' ? 'Billing & Usage'
         : 'API Keys'
       } />}
-      subtitle="Configure virtual telephone lines, distribute agent permissions, and manage security settings."
+      subtitle={subTab === 'billing' ? 'Manage organization credits, top-ups, subscriptions and usage.' : subTab === 'workspaces' ? 'Manage organization workspaces and workspace sharing.' : subTab === 'team' ? 'Manage staff, roles and access.' : 'Configure virtual telephone lines, distribute agent permissions, and manage security settings.'}
       onRefresh={handlePageRefresh}
     >
       <div className="col-span-12 space-y-6">
@@ -1060,11 +1060,14 @@ export default function SettingsView({
             </div>
           )}
 
-          {/* Subtab: Billing info */}
+          {/* Organization-level billing and credit ledger, followed by workspace usage. */}
           {subTab === 'billing' && (
-            <div className="space-y-6">
-              {can('billing.payment.submit') && <OrganizationTopUp />}
-              {can('billing.manage') && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="status">Workspace credit allocation and manual transfers are pending backend API activation. These controls will become available after the billing routes and ledger reads are connected.</div>}
+            <div className="mx-auto w-full max-w-6xl space-y-6">
+              <OrganizationTopUp canSubmit={can('billing.payment.submit')} />
+              <div className="border-t border-slate-200 pt-6">
+                <h2 className="text-base font-semibold text-[var(--text-primary)]">Subscription & usage details</h2>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Monthly plan charges, workspace limits, and metered voice/AI usage are listed below.</p>
+              </div>
               {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
                 <p className="text-lg font-semibold">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
                 <p className="mt-2 text-xs text-slate-500">{organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s). Usage charges and applicable taxes are additional. This is the configured fixed monthly price.</p>
