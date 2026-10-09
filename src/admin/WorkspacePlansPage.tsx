@@ -1,5 +1,6 @@
 import React from 'react';
-import { Building2, CreditCard, Pencil, Plus, Save, Wallet, Layers3, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Building2, CreditCard, Pencil, Plus, Save, Wallet, Layers3, ArrowUpRight, ShieldCheck, Database, HardDrive } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
@@ -10,6 +11,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import { useToast } from '../components/ui/Toast';
+import { readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
   { value: 'single', label: 'One workspace only' },
@@ -18,7 +20,7 @@ const MODES: { value: WorkspaceMode; label: string }[] = [
 ];
 
 const blankPlan = (): WorkspacePlan => ({
-  id: '', name: '', active: true, defaultMode: 'single',
+  id: '', name: '', active: true, defaultMode: 'single', retentionPolicyId: null,
   pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, extraWorkspaceMonthlyInr: 0, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
 });
 
@@ -41,6 +43,9 @@ export default function WorkspacePlansPage() {
   const [plans, setPlans] = React.useState<WorkspacePlan[]>([]);
   const [existingIds, setExistingIds] = React.useState<Set<string>>(new Set());
   const [version, setVersion] = React.useState(0);
+  const [retentionCatalog, setRetentionCatalog] = React.useState<RetentionPolicyCatalog | null>(null);
+  const [loadingPolicies, setLoadingPolicies] = React.useState(true);
+  const [policyError, setPolicyError] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -66,19 +71,45 @@ export default function WorkspacePlansPage() {
     }
   }, []);
 
-  React.useEffect(() => { void load(); }, [load]);
+  const loadPolicies = React.useCallback(async () => {
+    setLoadingPolicies(true);
+    setPolicyError('');
+    try {
+      const response = await apiFetch('/api/platform/data-retention/policies');
+      const body = await response.json().catch(() => null) as
+        (RetentionPolicyCatalog & { error?: string }) | null;
+      if (!response.ok) throw new Error(body?.error || 'Could not load retention and backup policies.');
+      if (!body || !Array.isArray(body.policies) || !body.policies.length
+        || !body.policies.some(policy => policy.id === body.defaultPolicyId)) {
+        throw new Error('No valid retention and backup policies were returned.');
+      }
+      setRetentionCatalog(body);
+    } catch (cause) {
+      setRetentionCatalog(null);
+      setPolicyError(cause instanceof Error ? cause.message : 'Could not load retention and backup policies.');
+    } finally {
+      setLoadingPolicies(false);
+    }
+  }, []);
+
+  React.useEffect(() => { void load(); void loadPolicies(); }, [load, loadPolicies]);
 
   const beginAdd = React.useCallback(() => {
-    setDraft(blankPlan());
+    if (!retentionCatalog || loadingPolicies) return;
+    setDraft({ ...blankPlan(), retentionPolicyId: retentionCatalog.defaultPolicyId });
     setIdTouched(false);
     setEditingIndex(-1);
     setError('');
-  }, []);
+  }, [retentionCatalog, loadingPolicies]);
 
   const beginEdit = (plan: WorkspacePlan) => {
     const index = plans.findIndex(item => item.id === plan.id);
     if (index < 0) return;
-    setDraft({ ...plan, pricing: { ...plan.pricing } });
+    setDraft({
+      ...plan,
+      retentionPolicyId: plan.retentionPolicyId || retentionCatalog?.defaultPolicyId || '',
+      pricing: { ...plan.pricing },
+    });
     setIdTouched(true);
     setEditingIndex(index);
     setError('');
@@ -99,10 +130,20 @@ export default function WorkspacePlansPage() {
   const save = async () => {
     if (!draft || editingIndex === null || saving) return;
     setError('');
+    if (!retentionCatalog || loadingPolicies) {
+      setError('Retention & Backup policies are unavailable. Reload policies before saving a plan.');
+      return;
+    }
+    const policyId = draft.retentionPolicyId || retentionCatalog.defaultPolicyId;
+    if (!retentionCatalog.policies.some(policy => policy.id === policyId)) {
+      setError('Choose a valid Data Retention & Backup policy for this plan.');
+      return;
+    }
     const planToSave: WorkspacePlan = {
       ...draft,
       id: draft.id.trim(),
       name: draft.name.trim(),
+      retentionPolicyId: policyId,
       pricing: {
         ...draft.pricing,
         includedWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.includedWorkspaces,
@@ -175,16 +216,29 @@ export default function WorkspacePlansPage() {
         </> : <span className="truncate">Subscription Plans</span>}
       </span>,
       action: editingIndex === null
-        ? <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />
+        ? <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd}
+            disabled={loading || saving || loadingPolicies || !retentionCatalog} />
         : undefined,
     });
-  }, [headerCtx?.setHeader, beginAdd, cancelEdit, editingIndex, loading, saving]);
+  }, [headerCtx?.setHeader, beginAdd, cancelEdit, editingIndex, loading, saving, loadingPolicies, retentionCatalog]);
+
+  const policyFor = (plan: WorkspacePlan) => retentionCatalog?.policies.find(
+    policy => policy.id === (plan.retentionPolicyId || retentionCatalog.defaultPolicyId),
+  ) || null;
+  const chosenPolicy = draft ? policyFor(draft) : null;
 
   return <div className="w-full min-w-0 space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
       <span>{error}</span>
       {!draft && <Button size="xs" type="button" onClick={() => void load()}>Retry</Button>}
     </div>}
+
+    {policyError && (
+      <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+        <span>{policyError} You can review the plan catalog, but changing a plan requires policy access.</span>
+        <Button type="button" variant="secondary" size="sm" onClick={() => void loadPolicies()} disabled={loadingPolicies}>Retry policies</Button>
+      </div>
+    )}
 
     {editingIndex === null ? (
       loading ? (
@@ -249,6 +303,22 @@ export default function WorkspacePlansPage() {
                 </div>
               )}
             </dl>
+            <div className="space-y-2 border-t border-[var(--border)] pt-3">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">Retention & Backup policy</p>
+                  <p className="truncate text-xs font-semibold text-[var(--text-primary)]" title={policyFor(plan)?.name || 'Policy unavailable'}>
+                    {loadingPolicies ? 'Loading policy…' : policyFor(plan)?.name || 'Policy unavailable'}
+                  </p>
+                  {policyFor(plan) && (
+                    <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
+                      {readableBackup(policyFor(plan)!)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="mt-auto flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--bg-subtle)] px-3 py-2.5">
               <div className="min-w-0">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">
@@ -362,6 +432,62 @@ export default function WorkspacePlansPage() {
                 onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
               <span className={helpClass}>Charged per additional distinct industry, not per workspace.</span>
             </label>}
+          </div>
+        </Widget>
+
+        <Widget colSpan={12} title="Data Retention & Backup"
+          subtitle="Link this subscription plan to one reusable platform policy. New organizations receive a snapshot of both retention and backup settings."
+          icon={ShieldCheck} accent="#0284c7" padding="md">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <label className={labelClass + ' w-full max-w-xl'}>Assigned policy
+                <select className={fieldClass} required disabled={saving || loadingPolicies || !retentionCatalog}
+                  value={draft.retentionPolicyId || retentionCatalog?.defaultPolicyId || ''}
+                  onChange={event => updateDraft({ retentionPolicyId: event.target.value })}>
+                  {!retentionCatalog && <option value="">Policies unavailable</option>}
+                  {retentionCatalog?.policies.map(policy => (
+                    <option key={policy.id} value={policy.id}>
+                      {policy.name}{policy.id === retentionCatalog.defaultPolicyId ? ' (Platform default)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className={helpClass}>Configured under Platform Admin → Data Retention & Backup.</span>
+              </label>
+              <Link to="/admin/data-retention"
+                className="inline-flex min-h-9 items-center rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--bg-subtle)]">
+                Manage policies
+              </Link>
+            </div>
+            {chosenPolicy && (
+              <div className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 sm:grid-cols-2">
+                <div className="min-w-0 space-y-1.5">
+                  <p className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                    <Database className="h-4 w-4 text-[var(--accent)]" /> Data retention
+                  </p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    Call recordings: {readableRetention(chosenPolicy.retention.call_recordings)}
+                  </p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    Transcripts: {readableRetention(chosenPolicy.retention.transcripts)}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-muted)]">Includes six more data retention periods.</p>
+                </div>
+                <div className="min-w-0 space-y-1.5">
+                  <p className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                    <HardDrive className="h-4 w-4 text-[var(--accent)]" /> Automated backup
+                  </p>
+                  <p className="text-xs text-[var(--text-secondary)]">{readableBackup(chosenPolicy)}</p>
+                  {chosenPolicy.backup.enabled && (
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      Backup links are sent to the new organization's admin email.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+              Existing organizations keep their saved policy settings when a subscription plan or template is updated.
+            </p>
           </div>
         </Widget>
 

@@ -72,7 +72,6 @@ export default function CreateWorkspacePage() {
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
   const [loadingWorkspacePlans, setLoadingWorkspacePlans] = useState(true);
   const [retentionCatalog, setRetentionCatalog] = useState<RetentionPolicyCatalog | null>(null);
-  const [selectedRetentionPolicyId, setSelectedRetentionPolicyId] = useState('');
   const [loadingRetentionPolicies, setLoadingRetentionPolicies] = useState(true);
   const [retentionLoadError, setRetentionLoadError] = useState('');
   const [legacyRetentionFallback, setLegacyRetentionFallback] = useState(false);
@@ -84,7 +83,10 @@ export default function CreateWorkspacePage() {
   const navigate = useNavigate();
   const availableFeatureKeys = defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':form.industry);
   const selectedWorkspacePlan = workspacePlans.find(plan => plan.id === form.subscriptionPlan && plan.active) || null;
-  const selectedRetentionPolicy = retentionCatalog?.policies.find(policy => policy.id === selectedRetentionPolicyId) || null;
+  // Organization setup inherits the policy from its subscription plan.
+  // Plans created before this capability use the platform policy default.
+  const planRetentionPolicyId = selectedWorkspacePlan?.retentionPolicyId || retentionCatalog?.defaultPolicyId || '';
+  const selectedRetentionPolicy = retentionCatalog?.policies.find(policy => policy.id === planRetentionPolicyId) || null;
 
   useEffect(() => {
     let active = true;
@@ -133,7 +135,6 @@ export default function CreateWorkspacePage() {
         };
         if (!active) return;
         setRetentionCatalog(legacy);
-        setSelectedRetentionPolicyId(legacy.defaultPolicyId);
         setLegacyRetentionFallback(true);
         setRetentionLoadError('');
         return;
@@ -145,7 +146,6 @@ export default function CreateWorkspacePage() {
       }
       if (!active) return;
       setRetentionCatalog(body);
-      setSelectedRetentionPolicyId(body.defaultPolicyId);
       setLegacyRetentionFallback(false);
       setRetentionLoadError('');
     })()
@@ -171,7 +171,7 @@ export default function CreateWorkspacePage() {
       return;
     }
     if (!selectedRetentionPolicy) {
-      setError('Choose a configured data retention and backup policy before creating an organization.');
+      setError('The subscription plan references a missing retention and backup policy. Update the subscription plan or reload policies.');
       return;
     }
     if (selectedRetentionPolicy.backup.enabled && !form.adminEmail.trim()) {
@@ -480,7 +480,7 @@ export default function CreateWorkspacePage() {
               <div>
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Data Retention & Backup</h2>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                  Apply a reusable platform policy. No organization-specific retention or backup setup is required.
+                  Retention and backup settings are included with the selected subscription plan. No manual configuration is required.
                 </p>
               </div>
             </div>
@@ -500,18 +500,26 @@ export default function CreateWorkspacePage() {
                   Using the existing platform default. Named retention and backup templates become available when the backend service is updated.
                 </p>
               )}
-              <label className="block max-w-lg text-xs font-semibold text-[var(--text-secondary)]">
-                Policy to apply *
-                <select required value={selectedRetentionPolicyId} disabled={loading}
-                  onChange={event => setSelectedRetentionPolicyId(event.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                  {retentionCatalog?.policies.map(policy => (
-                    <option key={policy.id} value={policy.id}>
-                      {policy.name}{policy.id === retentionCatalog.defaultPolicyId ? ' (Default)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Policy included with {selectedWorkspacePlan?.name || 'this subscription plan'}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                  {selectedRetentionPolicy?.name || 'No matching retention & backup policy'}
+                  {selectedRetentionPolicy?.id === retentionCatalog?.defaultPolicyId && (
+                    <span className="ml-2 text-[11px] font-normal text-[var(--text-muted)]">(Platform default)</span>
+                  )}
+                </p>
+                <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                  The policy is assigned in Subscription Plans. Change the plan to use another policy.
+                </p>
+                {!selectedRetentionPolicy && (
+                  <Link to="/admin/workspace-plans"
+                    className="mt-2 inline-flex text-xs font-semibold text-[var(--accent)] hover:underline">
+                    Fix the subscription plan policy
+                  </Link>
+                )}
+              </div>
               {selectedRetentionPolicy && (
                 <div className="grid gap-3 rounded-xl bg-[var(--bg-subtle)] p-4 sm:grid-cols-2">
                   <div className="min-w-0">
@@ -546,7 +554,7 @@ export default function CreateWorkspacePage() {
                 </div>
               )}
               <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
-                The selected retention and backup settings are saved with this organization at creation.
+                The subscription plan's retention and backup settings are saved with this organization at creation.
                 Future changes to the platform template do not automatically change its configuration.
               </p>
             </>

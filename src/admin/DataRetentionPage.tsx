@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Archive, Database, Pencil, Plus, ShieldCheck, Trash2, HardDrive, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
@@ -9,6 +10,7 @@ import IconButton from '../components/ui/IconButton';
 import Modal from '../components/ui/Modal';
 import EmptyState from '../components/ui/EmptyState';
 import { useToast } from '../components/ui/Toast';
+import type { WorkspacePlan } from '../lib/workspacePolicy';
 import {
   BACKUP_DAY_OPTIONS, DEFAULT_BACKUP, DEFAULT_RETENTION, RETENTION_DAY_OPTIONS,
   RETENTION_FIELDS, readableBackup, readableRetention,
@@ -31,6 +33,8 @@ export default function DataRetentionPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [backendNeedsUpdate, setBackendNeedsUpdate] = useState(false);
+  const [linkedPlans, setLinkedPlans] = useState<WorkspacePlan[]>([]);
+  const [linksLoaded, setLinksLoaded] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<RetentionTemplate | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,7 +43,16 @@ export default function DataRetentionPage() {
   const reload = useCallback(async () => {
     setLoading(true);
     setError('');
+    setLinksLoaded(false);
     try {
+      // Plan associations are displayed here to avoid deleting a template
+      // that is still promised by an active or archived subscription plan.
+      const plansResponse = await apiFetch('/api/platform/billing/workspace-plans');
+      if (plansResponse.ok) {
+        const body = await plansResponse.json().catch(() => ({})) as { plans?: WorkspacePlan[] };
+        setLinkedPlans(Array.isArray(body.plans) ? body.plans : []);
+        setLinksLoaded(true);
+      }
       const response = await apiFetch('/api/platform/data-retention/policies');
       if (response.status === 404) {
         const legacyResponse = await apiFetch('/api/platform/data-retention/defaults');
@@ -176,6 +189,11 @@ export default function DataRetentionPage() {
 
   const deletePolicy = async (policy: RetentionTemplate) => {
     if (!catalog || policy.id === catalog.defaultPolicyId || busy) return;
+    if (!linksLoaded || linkedPlans.some(plan =>
+      (plan.retentionPolicyId || catalog.defaultPolicyId) === policy.id)) {
+      setError('This policy is assigned to a subscription plan or assignments could not be verified. Reassign plans before deleting.');
+      return;
+    }
     if (!window.confirm('Delete "' + policy.name + '"? Existing organizations keep their saved policy snapshots.')) return;
     await persist(catalog.policies.filter(row => row.id !== policy.id), catalog.defaultPolicyId,
       policy.name + ' deleted.');
@@ -185,8 +203,9 @@ export default function DataRetentionPage() {
   return (
     <div className="w-full min-w-0 space-y-5">
       <p className="max-w-3xl text-xs leading-relaxed text-[var(--text-muted)]">
-        Create reusable retention and backup policies, then select one when creating an organization.
-        One policy is the default. New organizations receive a snapshot of the chosen settings;
+        Create reusable retention and backup policies, then assign one to each Subscription Plan.
+        Every plan includes both retention and backup rules, with one platform default as the fallback.
+        New organizations inherit their selected plan's policy snapshot;
         existing organization configurations do not change when a template is edited.
       </p>
       {backendNeedsUpdate && (
@@ -208,6 +227,9 @@ export default function DataRetentionPage() {
         <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
           {catalog.policies.map(policy => {
             const isDefault = policy.id === catalog.defaultPolicyId;
+            const assignedPlans = linkedPlans.filter(plan =>
+              (plan.retentionPolicyId || catalog.defaultPolicyId) === policy.id);
+            const deletionBlocked = !linksLoaded || assignedPlans.length > 0;
             return (
               <Card key={policy.id} hover padding="none" className="flex min-w-0 flex-col overflow-hidden">
                 <div aria-hidden="true" className={'h-1 w-full ' +
@@ -239,6 +261,12 @@ export default function DataRetentionPage() {
                     </dl>
                     <p className="text-[10px] text-[var(--text-muted)]">Plus {RETENTION_FIELDS.length - 4} additional data types</p>
                   </div>
+                  {assignedPlans.length > 0 && (
+                    <div className="rounded-lg border border-[var(--border)] px-3 py-2 text-[11px] text-[var(--text-secondary)]">
+                      <span className="font-semibold">Used by {assignedPlans.length} subscription {assignedPlans.length === 1 ? 'plan' : 'plans'}:</span>{' '}
+                      {assignedPlans.map(plan => plan.name).join(', ')}
+                    </div>
+                  )}
                   <div className="mt-auto rounded-lg bg-[var(--bg-subtle)] px-3 py-3">
                     <p className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
                       <HardDrive className="h-4 w-4 text-[var(--text-secondary)]" />
@@ -259,7 +287,9 @@ export default function DataRetentionPage() {
                           disabled={busy || backendNeedsUpdate} onClick={() => void setDefault(policy)}>Set default</Button>
                         <Button type="button" size="sm" variant="ghost" icon={Trash2}
                           className="ml-auto text-rose-600 dark:text-rose-400"
-                          disabled={busy || backendNeedsUpdate} onClick={() => void deletePolicy(policy)}>Delete</Button>
+                          disabled={busy || backendNeedsUpdate || deletionBlocked}
+                          title={deletionBlocked ? 'Reassign linked subscription plans before deleting this policy.' : 'Delete policy'}
+                          onClick={() => void deletePolicy(policy)}>Delete</Button>
                       </>
                     )}
                   </div>
@@ -271,7 +301,8 @@ export default function DataRetentionPage() {
       ) : <EmptyState icon={ShieldCheck} heading="No policies found" message="Create a policy to get started." />}
       {defaultPolicy && (
         <p className="text-[11px] text-[var(--text-muted)]">
-          Default for new organizations: <strong className="text-[var(--text-secondary)]">{defaultPolicy.name}</strong>.
+          Platform default: <strong className="text-[var(--text-secondary)]">{defaultPolicy.name}</strong>.
+          Assign policies to <Link to="/admin/workspace-plans" className="font-semibold text-[var(--accent)] hover:underline">Subscription Plans</Link>.
           Automated backups use each organization's admin email, not a shared recipient.
         </p>
       )}

@@ -4,6 +4,8 @@ export interface WorkspacePlan {
   name: string;
   active: boolean;
   defaultMode: WorkspaceMode;
+  /** Combined retention + backup template assigned to this subscription plan. */
+  retentionPolicyId?: string | null;
   pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; extraWorkspaceMonthlyInr: number | null; additionalIndustryMonthlyInr: number | null; monthlySubscriptionCreditsInr?: number };
 }
 export interface WorkspacePlanCatalog { version: number; plans: WorkspacePlan[] }
