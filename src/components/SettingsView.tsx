@@ -35,8 +35,6 @@ import Modal from './ui/Modal';
 import DataTable, { Column } from './ui/DataTable';
 import WorkspaceManagement from './WorkspaceManagement';
 import WorkspaceSharing from './WorkspaceSharing';
-import WorkspaceCreditAllocation from './billing/WorkspaceCreditAllocation';
-import OrganizationCreditTransfers from './billing/OrganizationCreditTransfers';
 
 interface SettingsViewProps {
   virtualNumbers: VirtualNumber[];
@@ -1057,7 +1055,7 @@ export default function SettingsView({
           {/* Subtab: Billing info */}
           {subTab === 'billing' && (
             <div className="space-y-6">
-              {can('billing.manage') && <><WorkspaceCreditAllocation /><OrganizationCreditTransfers /></>}
+              {can('billing.manage') && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="status">Workspace credit allocation and manual transfers are pending backend API activation. These controls will become available after the billing routes and ledger reads are connected.</div>}
               {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
                 <p className="text-lg font-semibold">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
                 <p className="mt-2 text-xs text-slate-500">{organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s). Usage charges and applicable taxes are additional. This is the configured fixed monthly price.</p>
