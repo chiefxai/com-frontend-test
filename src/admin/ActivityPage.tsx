@@ -59,6 +59,8 @@ export default function ActivityPage() {
         />
         <div className="mt-3">
           <DataTable
+        resizable
+            resizable
             columns={columns}
             rows={filtered}
             rowKey={(a) => a.id}
