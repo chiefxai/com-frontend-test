@@ -1,12 +1,12 @@
-import React, { useId, useMemo, useState } from 'react';
-import { Check, CheckCheck, Layers3, Search, ShieldCheck, X } from 'lucide-react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, ChevronDown, Info, Layers3, Minus, Search, ShieldCheck, X } from 'lucide-react';
 import { FEATURE_REGISTRY } from '../../features/feature-flags/registry';
 import { getAllFlagGroups } from '../../features/feature-flags/flagGroups';
 
 interface FeatureAccessSelectorProps {
-  /** Only these feature keys may be assigned from this screen. */
   availableKeys: string[];
-  /** Controlled grants; unknown keys are preserved unless explicitly cleared elsewhere. */
+  /** Controlled permission keys; never hold a separate copy of granted access. */
   value: string[];
   onChange: (keys: string[]) => void;
   disabled?: boolean;
@@ -14,11 +14,17 @@ interface FeatureAccessSelectorProps {
   description?: string;
 }
 
+interface PopoverPosition {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
+}
+
 /**
- * One shared, inline permission selector across Platform Admin organization
- * creation and Organization Administration's Add Member / Grant Access forms.
- * No floating dropdown: groups and individual flags remain visible and usable
- * inside narrow forms, modals and scroll containers.
+ * Shared searchable group / individual permission picker. Rendering the menu
+ * into document.body avoids clipping by Admin forms, Modals and SlideOvers.
+ * Groups are only convenient presets over the same individually controlled keys.
  */
 export default function FeatureAccessSelector({
   availableKeys,
@@ -26,16 +32,26 @@ export default function FeatureAccessSelector({
   onChange,
   disabled = false,
   label = 'Feature Access',
-  description = 'Choose which product features should be available.',
+  description = 'Choose a feature group or select individual permissions.',
 }: FeatureAccessSelectorProps) {
-  const searchId = useId();
+  const id = useId();
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [position, setPosition] = useState<PopoverPosition | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const allowed = useMemo(() => new Set(availableKeys), [availableKeys]);
   const selected = useMemo(() => new Set(value), [value]);
   const features = useMemo(
     () => FEATURE_REGISTRY.filter(feature => allowed.has(feature.key)),
     [allowed],
+  );
+  const labels = useMemo(
+    () => new Map(features.map(feature => [feature.key, feature.label])),
+    [features],
   );
   const groups = useMemo(
     () => getAllFlagGroups()
@@ -46,172 +62,261 @@ export default function FeatureAccessSelector({
       .filter(group => group.selectableKeys.length > 0),
     [allowed],
   );
-
-  const term = search.trim().toLowerCase();
-  const visibleFeatures = features.filter(feature =>
-    !term || (feature.label + ' ' + feature.description + ' ' + feature.key)
-      .toLowerCase().includes(term),
-  );
   const selectedCount = features.filter(feature => selected.has(feature.key)).length;
+  const query = search.trim().toLowerCase();
+  const matchingGroups = groups.filter(group =>
+    !query
+    || (group.label + ' ' + group.description).toLowerCase().includes(query)
+    || group.selectableKeys.some(key => (labels.get(key) || key).toLowerCase().includes(query)),
+  );
+  const matchingFeatures = features.filter(feature =>
+    !query
+    || (feature.label + ' ' + feature.key + ' ' + feature.description).toLowerCase().includes(query),
+  );
 
-  const changeGrants = (keys: string[], enable: boolean) => {
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const padding = 12;
+    const width = Math.min(448, Math.max(320, rect.width), window.innerWidth - padding * 2);
+    const below = window.innerHeight - rect.bottom - padding;
+    const above = rect.top - padding;
+    const upward = below < 340 && above > below;
+    const space = upward ? above : below;
+    const maxHeight = Math.min(480, Math.max(160, space - 8), window.innerHeight - padding * 2);
+    const top = Math.min(
+      Math.max(padding, upward ? rect.top - maxHeight - 8 : rect.bottom + 8),
+      window.innerHeight - maxHeight - padding,
+    );
+    const left = Math.max(padding, Math.min(rect.left, window.innerWidth - width - padding));
+    setPosition({ top, left, width, maxHeight });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updatePosition) : null;
+    if (triggerRef.current) observer?.observe(triggerRef.current);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+      observer?.disconnect();
+    };
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    // Modal and SlideOver also listen for Escape; close the picker first.
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    const handleOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !popoverRef.current?.contains(target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape, true);
+    document.addEventListener('pointerdown', handleOutsidePointer, true);
+    return () => {
+      document.removeEventListener('keydown', handleEscape, true);
+      document.removeEventListener('pointerdown', handleOutsidePointer, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (open && position) searchRef.current?.focus();
+  }, [open, position !== null]);
+
+  const changeGrants = (keys: string[], grant: boolean) => {
     if (disabled) return;
     const next = new Set(value);
-    keys.forEach(key => {
-      if (!allowed.has(key)) return;
-      if (enable) next.add(key);
+    for (const key of keys) {
+      if (!allowed.has(key)) continue;
+      if (grant) next.add(key);
       else next.delete(key);
-    });
+    }
     onChange([...next]);
   };
 
-  const selectAll = () => changeGrants(features.map(feature => feature.key), true);
-  const clearSelection = () => changeGrants(features.map(feature => feature.key), false);
+  const closeAndFocus = () => {
+    setOpen(false);
+    setSearch('');
+    setExpandedGroup(null);
+    triggerRef.current?.focus();
+  };
 
   return (
-    <section
-      aria-label={label}
-      className="@container min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)]"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border)] px-4 py-4 sm:px-5">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-            <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{label}</h3>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-[var(--text-muted)]">{description}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span role="status" aria-live="polite"
-            className="whitespace-nowrap rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-            {selectedCount} / {features.length} selected
-          </span>
-        </div>
+    <div className="w-full min-w-0 space-y-2">
+      <div className="min-w-0">
+        <span id={id + '-label'} className="block text-xs font-semibold text-[var(--text-primary)]">
+          {label}
+        </span>
+        {description && <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">{description}</p>}
       </div>
+      <button
+        ref={triggerRef}
+        id={id + '-trigger'}
+        type="button"
+        aria-labelledby={id + '-label ' + id + '-summary'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? id + '-popover' : undefined}
+        disabled={disabled || features.length === 0}
+        onClick={() => {
+          if (!open) {
+            setSearch('');
+            setExpandedGroup(null);
+            setPosition(null);
+          }
+          setOpen(current => !current);
+        }}
+        className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-left transition-colors hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+          <span id={id + '-summary'} className="truncate text-xs font-medium text-[var(--text-secondary)]">
+            {features.length === 0
+              ? 'No features available'
+              : selectedCount === 0
+                ? 'Select feature groups or individual features'
+                : selectedCount + ' of ' + features.length + ' permissions selected'}
+          </span>
+        </span>
+        <ChevronDown className={'h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform ' + (open ? 'rotate-180' : '')} aria-hidden="true" />
+      </button>
 
-      {features.length === 0 ? (
-        <div role="status" className="px-5 py-8">
-          <p className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-6 text-center text-xs leading-relaxed text-[var(--text-secondary)]">
-            No features are currently available to grant here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid min-w-0 grid-cols-1 @xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.55fr)]">
-          <div className="min-w-0 space-y-3 border-b border-[var(--border)] p-4 sm:p-5 @xl:border-b-0 @xl:border-r">
-            <div>
-              <p className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
-                <Layers3 className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
-                Feature groups
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                Add or remove a complete set of features in one click.
-              </p>
-            </div>
-            <div role="group" aria-label="Feature group presets"
-              className="grid max-h-[min(22rem,45vh)] grid-cols-1 gap-2 overflow-y-auto overscroll-contain pr-1 @md:grid-cols-2 @xl:grid-cols-1">
-              {groups.map(group => {
-                const included = group.selectableKeys.filter(key => selected.has(key)).length;
-                const fullySelected = included === group.selectableKeys.length;
-                const partiallySelected = included > 0 && !fullySelected;
-                return (
-                  <button key={group.key} type="button" disabled={disabled}
-                    title={group.description}
-                    aria-label={group.label + ', ' + included + ' of ' + group.selectableKeys.length + ' features selected'}
-                    aria-pressed={fullySelected}
-                    onClick={() => changeGrants(group.selectableKeys, !fullySelected)}
-                    className={
-                      'group flex min-w-0 items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 ' +
-                      (fullySelected
-                        ? 'border-blue-400 bg-blue-50/60 dark:border-blue-600 dark:bg-blue-500/10'
-                        : 'border-[var(--border)] bg-[var(--bg-base)] hover:border-blue-300 hover:bg-[var(--bg-subtle)]')
-                    }>
-                    <span className={
-                      'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ' +
-                      (fullySelected
-                        ? 'border-blue-600 bg-blue-600 text-white'
-                        : partiallySelected
-                          ? 'border-blue-400 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
-                          : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-muted)]')
-                    }>
-                      {fullySelected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> :
-                        partiallySelected ? <span aria-hidden="true" className="h-0.5 w-2.5 rounded bg-current" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-[var(--text-primary)]">{group.label}</span>
-                      <span className="mt-1 block text-[11px] leading-relaxed text-[var(--text-muted)]">{group.description}</span>
-                      <span className="mt-1.5 block text-[10px] font-semibold text-[var(--text-secondary)]">
-                        {included} of {group.selectableKeys.length} features
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-3 p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h4 className="text-xs font-semibold text-[var(--text-primary)]">Individual features</h4>
-                <p className="mt-1 text-[11px] text-[var(--text-muted)]">Fine-tune access to specific modules.</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button type="button" disabled={disabled || selectedCount === features.length}
-                  onClick={selectAll}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-40">
-                  <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" /> Select all
-                </button>
-                <button type="button" disabled={disabled || selectedCount === 0}
-                  onClick={clearSelection}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-40">
-                  <X className="h-3.5 w-3.5" aria-hidden="true" /> Clear
-                </button>
-              </div>
-            </div>
-
+      {open && position && createPortal(
+        <div
+          id={id + '-popover'}
+          ref={popoverRef}
+          role="dialog"
+          aria-modal="false"
+          aria-label={label + ' options'}
+          style={{ position: 'fixed', top: position.top, left: position.left, width: position.width, maxHeight: position.maxHeight, zIndex: 700 }}
+          className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl"
+        >
+          <div className="shrink-0 border-b border-[var(--border)] p-3">
             <div className="relative">
-              <label htmlFor={searchId} className="sr-only">Search individual features</label>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
-              <input id={searchId} type="search" value={search}
-                disabled={disabled}
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+              <input
+                ref={searchRef}
+                type="search"
+                value={search}
                 onChange={event => setSearch(event.target.value)}
-                placeholder="Search features…"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] py-2.5 pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-50" />
-            </div>
-
-            <div role="group" aria-label="Individual feature permissions"
-              className="grid max-h-[min(22rem,45vh)] min-w-0 grid-cols-1 content-start gap-2 overflow-y-auto overscroll-contain pr-1">
-              {visibleFeatures.map(feature => {
-                const checked = selected.has(feature.key);
-                return (
-                  <label key={feature.key}
-                    className={
-                      'flex min-w-0 cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-3 transition-colors has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 ' +
-                      (checked
-                        ? 'border-blue-300 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-500/[0.08]'
-                        : 'border-[var(--border)] bg-[var(--bg-base)] hover:border-blue-200 hover:bg-[var(--bg-subtle)]')
-                    }>
-                    <input type="checkbox" checked={checked} disabled={disabled}
-                      onChange={event => changeGrants([feature.key], event.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
-                    <span className="min-w-0">
-                      <span className="block text-xs font-semibold text-[var(--text-primary)]">{feature.label}</span>
-                      <span className="mt-1 block text-[11px] leading-relaxed text-[var(--text-muted)]">{feature.description}</span>
-                    </span>
-                  </label>
-                );
-              })}
-              {visibleFeatures.length === 0 && (
-                <div role="status" className="col-span-full rounded-lg border border-dashed border-[var(--border)] px-4 py-6 text-center text-xs text-[var(--text-muted)]">
-                  No features match your search.
-                </div>
+                placeholder="Search groups or features…"
+                aria-label="Search feature groups and permissions"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] py-2.5 pl-9 pr-9 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              {search && (
+                <button type="button" onClick={() => { setSearch(''); searchRef.current?.focus(); }}
+                  aria-label="Clear permission search" className="absolute right-2 top-1.5 rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
               )}
             </div>
           </div>
-        </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+            <div className="px-2 pb-2 pt-1">
+              <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+                <Layers3 className="h-3.5 w-3.5" aria-hidden="true" /> Feature groups
+              </h3>
+            </div>
+            {matchingGroups.length === 0 ? (
+              <p className="px-3 pb-3 text-xs text-[var(--text-muted)]">No matching feature groups.</p>
+            ) : matchingGroups.map(group => {
+              const count = group.selectableKeys.filter(key => selected.has(key)).length;
+              const full = count === group.selectableKeys.length;
+              const partial = count > 0 && !full;
+              const infoOpen = expandedGroup === group.key;
+              return (
+                <div key={group.key} className="mb-1 overflow-hidden rounded-lg">
+                  <div className="flex items-center gap-1 hover:bg-[var(--bg-subtle)]">
+                    <button type="button" disabled={disabled}
+                      onClick={() => changeGrants(group.selectableKeys, !full)}
+                      aria-label={(full ? 'Remove ' : 'Select ') + group.label + ' group'}
+                      aria-pressed={full}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:opacity-60">
+                      <span className={'flex h-4 w-4 shrink-0 items-center justify-center rounded border ' + (full || partial ? 'border-blue-600 bg-blue-600 text-white' : 'border-[var(--border)] bg-[var(--bg-surface)]')}>
+                        {full ? <Check className="h-3 w-3" aria-hidden="true" /> : partial ? <Minus className="h-3 w-3" aria-hidden="true" /> : null}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-[var(--text-primary)]">{group.label}</span>
+                        <span className="block text-[11px] text-[var(--text-muted)]">{count} / {group.selectableKeys.length} permissions</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedGroup(current => current === group.key ? null : group.key)}
+                      aria-label={'View permissions in ' + group.label}
+                      aria-expanded={infoOpen}
+                      aria-controls={id + '-group-' + group.key}
+                      title={'See permissions in ' + group.label}
+                      className="mr-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-surface)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25"
+                    >
+                      <Info className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                  {infoOpen && (
+                    <div id={id + '-group-' + group.key} className="mx-2 mb-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                      <p className="mb-2 text-[11px] leading-relaxed text-[var(--text-secondary)]">{group.description}</p>
+                      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Included permissions</p>
+                      <ul className="space-y-1.5">
+                        {group.selectableKeys.map(key => (
+                          <li key={key} className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                            <span className={'h-1.5 w-1.5 shrink-0 rounded-full ' + (selected.has(key) ? 'bg-emerald-500' : 'bg-[var(--text-muted)]')} />
+                            {labels.get(key) || key}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="mx-2 mb-2 mt-3 border-t border-[var(--border)] pt-3">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Individual features</h3>
+            </div>
+            {matchingFeatures.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-[var(--text-muted)]">No matching individual features.</p>
+            ) : matchingFeatures.map(feature => {
+              const checked = selected.has(feature.key);
+              return (
+                <button key={feature.key} type="button" disabled={disabled}
+                  aria-label={(checked ? 'Remove ' : 'Select ') + feature.label + ' feature'}
+                  aria-pressed={checked}
+                  onClick={() => changeGrants([feature.key], !checked)}
+                  className="mb-1 flex w-full min-w-0 items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:opacity-60">
+                  <span className={'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ' + (checked ? 'border-blue-600 bg-blue-600 text-white' : 'border-[var(--border)] bg-[var(--bg-surface)]')}>
+                    {checked && <Check className="h-3 w-3" aria-hidden="true" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-[var(--text-primary)]">{feature.label}</span>
+                    <span className="mt-0.5 block text-[11px] leading-relaxed text-[var(--text-muted)]">{feature.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
+            <span role="status" className="text-[11px] text-[var(--text-secondary)]">{selectedCount} of {features.length} selected</span>
+            <button type="button" onClick={closeAndFocus}
+              className="rounded-lg bg-[var(--accent)] px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25">
+              Done
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
-    </section>
+    </div>
   );
 }
