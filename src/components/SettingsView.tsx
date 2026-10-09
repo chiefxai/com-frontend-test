@@ -33,6 +33,8 @@ import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import DataTable, { Column } from './ui/DataTable';
+import FilterBar from './ui/FilterBar';
+import KpiCard from './ui/KpiCard';
 import WorkspaceManagement from './WorkspaceManagement';
 import WorkspaceSharing from './WorkspaceSharing';
 import OrganizationTopUp, { type BillingPanel } from './billing/OrganizationTopUp';
@@ -684,53 +686,31 @@ export default function SettingsView({
           : undefined}
       onRefresh={handlePageRefresh}
     >
-      <div className="col-span-12 mx-auto w-full max-w-5xl space-y-5">
+      <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
 
           {/* Compact workspace landing page with focused number and sharing views. */}
           {(subTab === 'numbers' || subTab === 'workspaces') && (
-            <div className="space-y-5">
+            <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
               {workspacePanel === 'overview' && <>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-left transition-colors hover:bg-[var(--bg-subtle)]">
-                    <span className="text-sm font-semibold text-[var(--text-primary)]">Virtual Numbers →</span>
-                    <span className="mt-1 block text-xs text-[var(--text-muted)]">Connected numbers and calling providers</span>
-                  </button>
-                  <button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-left transition-colors hover:bg-[var(--bg-subtle)]">
-                    <span className="text-sm font-semibold text-[var(--text-primary)]">Workspace Sharing →</span>
-                    <span className="mt-1 block text-xs text-[var(--text-muted)]">Shared access and permissions</span>
-                  </button>
-                </div>
+                <Widget title="Workspaces & Numbers" subtitle="Manage organization workspaces, connected numbers, and workspace sharing." icon={Briefcase} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Virtual Numbers</button><button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Sharing</button></div>}>
+                  <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
+                </Widget>
                 <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {workspacePanel === 'numbers' && <>
               {organizationNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{organizationNumbersError} Only numbers in the currently selected workspace are shown.</p>}
-              <div className="grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:grid-cols-2 lg:grid-cols-5">
-                <label className="text-xs text-[var(--text-muted)]">Search
-                  <input value={numberSearch} onChange={event => setNumberSearch(event.target.value)} placeholder="Number or label" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
-                </label>
-                <label className="text-xs text-[var(--text-muted)]">Workspace
-                  <select value={numberWorkspace} onChange={event => setNumberWorkspace(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                    <option value="">All workspaces</option>
-                    {orgWorkspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
-                    <option value="__unknown__">Unknown association</option>
-                  </select>
-                </label>
-                <label className="text-xs text-[var(--text-muted)]">Provider
-                  <select value={numberProvider} onChange={event => setNumberProvider(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                    <option value="">All providers</option>
-                    {Array.from(new Set(visibleNumbers.map(number => number.provider))).map(provider => <option key={provider} value={provider}>{provider}</option>)}
-                  </select>
-                </label>
-                <label className="text-xs text-[var(--text-muted)]">Status
-                  <select value={numberStatus} onChange={event => setNumberStatus(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                    <option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
-                  </select>
-                </label>
-                <div className="flex flex-col justify-end gap-1">
-                  <button type="button" onClick={exportFilteredNumbers} disabled={!filteredNumbers.length} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Export CSV ({filteredNumbers.length})</button>
-                </div>
-              </div>
+              <Widget showHeader={false} padding="md">
+                <FilterBar
+                  search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
+                  selects={[
+                    { key: 'Workspace', label: 'Workspace', value: numberWorkspace, onChange: setNumberWorkspace, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id })), { label: 'Unknown association', value: '__unknown__' }] },
+                    { key: 'Provider', label: 'Provider', value: numberProvider, onChange: setNumberProvider, options: [{ label: 'All providers', value: '' }, ...Array.from(new Set(visibleNumbers.map(number => number.provider))).map(provider => ({ label: provider, value: provider }))] },
+                    { key: 'Status', label: 'Status', value: numberStatus, onChange: setNumberStatus, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
+                  ]}
+                  actions={<button type="button" onClick={exportFilteredNumbers} disabled={!filteredNumbers.length} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Export CSV ({filteredNumbers.length})</button>}
+                />
+              </Widget>
               {visibleNumbers.some(number => !numberWorkspaceId(number)) && <p className="text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
               <Widget
                 title="Virtual Numbers"
@@ -920,7 +900,7 @@ export default function SettingsView({
 
           {/* Staff and team membership only. */}
           {subTab === 'team' && (
-            <div className="space-y-6">
+            <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
               {staffAddMsg && (
                 <div className={`px-4 py-2.5 rounded-lg text-xs font-medium ${staffAddMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                   {staffAddMsg.text}
@@ -942,22 +922,12 @@ export default function SettingsView({
               >
                 {workspaceMembersError && canManageWorkspaceMembers && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{workspaceMembersError}</div>}
                 {orgAccessError && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{orgAccessError}</div>}
-                {canReadOrgMembers && <div className="grid gap-3 border-b border-[var(--border)] p-4 sm:grid-cols-3">
-                  <label className="text-xs text-[var(--text-muted)]">Workspace
-                    <select aria-label="Filter staff by workspace" value={staffWorkspaceFilter} onChange={event => setStaffWorkspaceFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                      <option value="">All workspaces</option>{orgWorkspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
-                    </select>
-                  </label>
-                  <label className="text-xs text-[var(--text-muted)]">Role
-                    <select aria-label="Filter staff by role" value={staffRoleFilter} onChange={event => setStaffRoleFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                      <option value="">All roles</option>{Array.from(new Set(teamMembers.map(member => member.role))).map(role => <option key={role} value={role}>{role}</option>)}
-                    </select>
-                  </label>
-                  <label className="text-xs text-[var(--text-muted)]">Status
-                    <select aria-label="Filter staff by status" value={staffStatusFilter} onChange={event => setStaffStatusFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                      <option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
-                    </select>
-                  </label>
+                {canReadOrgMembers && <div className="border-b border-[var(--border)] p-4">
+                  <FilterBar selects={[
+                    { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: setStaffWorkspaceFilter, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
+                    { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers.map(member => member.role))).map(role => ({ label: role, value: role }))] },
+                    { key: 'Status', label: 'Status', value: staffStatusFilter, onChange: setStaffStatusFilter, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
+                  ]} />
                 </div>}
 
                 {(() => {
@@ -1264,20 +1234,13 @@ export default function SettingsView({
 
           {/* Organization-level billing and credit ledger, followed by workspace usage. */}
           {subTab === 'billing' && (
-            <div className="mx-auto w-full max-w-5xl space-y-5">
-              {billingPanel === 'dashboard' && <div className="space-y-4">
-                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Billing overview</h2>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <section className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Monthly subscription</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{organizationPricing ? `${organizationPricing.workspaceCount} workspaces · ${organizationPricing.additionalIndustries} additional industry packs` : 'Plan details unavailable.'}</p></div>
-                    <button type="button" onClick={() => setBillingPanel('plan')} className="mt-5 self-start rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View plan →</button>
-                  </section>
-                  <section className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Workspace spend this period</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{workspaceBilling?.workspaceName || 'Current workspace'}</p></div>
-                    <button type="button" onClick={() => setBillingPanel('usage')} className="mt-5 self-start rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View usage →</button>
-                  </section>
+            <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
+              {billingPanel === 'dashboard' && <Widget title="Billing overview" icon={CreditCard} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setBillingPanel('plan')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View plan</button><button type="button" onClick={() => setBillingPanel('usage')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View usage</button></div>}>
+                <div className="grid grid-cols-12 gap-4 pt-2">
+                  <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} label="Monthly subscription" value={organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : 'Not available'} sub={organizationPricing ? `${organizationPricing.workspaceCount} workspaces · ${organizationPricing.additionalIndustries} additional industry packs` : 'Plan details unavailable.'} />
+                  <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} label="Workspace spend this period" value={workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : 'Not available'} sub={workspaceBilling?.workspaceName || 'Current workspace'} />
                 </div>
-              </div>}
+              </Widget>}
               <OrganizationTopUp canSubmit={can('billing.payment.submit')} view={billingPanel} onNavigate={setBillingPanel} />
               {billingPanel === 'plan' && <>
               {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
@@ -1294,19 +1257,10 @@ export default function SettingsView({
                   accent="#f59e0b"
                   padding="md"
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Workspace spend</span>
-                      <strong className="text-md text-slate-800 font-mono">{formatInr(workspaceBilling.periodSpendInr)}</strong>
-                    </div>
-                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Monthly cap</span>
-                      <strong className="text-md text-slate-800 font-mono">{workspaceBilling.monthlyBudgetInr == null ? 'No cap' : formatInr(workspaceBilling.monthlyBudgetInr)}</strong>
-                    </div>
-                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Cap remaining</span>
-                      <strong className="text-md text-slate-800 font-mono">{workspaceBilling.remainingBudgetInr == null ? '—' : formatInr(workspaceBilling.remainingBudgetInr)}</strong>
-                    </div>
+                  <div className="grid grid-cols-12 gap-4 pt-2">
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Workspace spend" value={formatInr(workspaceBilling.periodSpendInr)} />
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Monthly cap" value={workspaceBilling.monthlyBudgetInr == null ? 'No cap' : formatInr(workspaceBilling.monthlyBudgetInr)} />
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Cap remaining" value={workspaceBilling.remainingBudgetInr == null ? '—' : formatInr(workspaceBilling.remainingBudgetInr)} />
                   </div>
                   {can('workspace.settings.manage') && (
                     <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
@@ -1336,40 +1290,17 @@ export default function SettingsView({
                     const reserved = Number(orgSettings.rechargeReservedInr ?? 0);
                     const available = Math.max(0, balance - reserved);
                     return (
-                      <div className="flex items-center justify-between gap-4 rounded-[9px] border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 px-5 py-4">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Available balance</p>
-                          <p className="text-xs text-slate-500 dark:text-[var(--text-secondary)] mt-1">
-                            {reserved > 0 ? 'Reserved for active calls' : 'Ready to use'}
-                          </p>
-                        </div>
-                        <strong className="text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400">
-                          {'₹'}{available.toFixed(2)}
-                        </strong>
-                      </div>
+                      <KpiCard label="Available balance" value={`₹${available.toFixed(2)}`} sub={reserved > 0 ? 'Reserved for active calls' : 'Ready to use'} icon={DollarSign} iconBg="#d1fae5" iconColor="#047857" />
                     );
                   })()}
                 </Widget>
               )}
 
               <Widget title="AI Voice Usage This Period" icon={CreditCard} accent="#10b981" padding="md">
-                <div className="grid grid-cols-3 gap-4 pt-2">
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Minutes Consumed</span>
-                    <strong className="text-md text-slate-800 font-mono">{(workspaceBilling?.aiMinutesUsed ?? orgSettings.aiMinutesUsed).toFixed(2)}</strong>
-                  </div>
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">AI spend this period</span>
-                    <strong className="text-md text-slate-800 font-mono">{formatInr(workspaceBilling?.aiSpendInr ?? (orgSettings.aiMinutesUsed * costPerMinuteInr))}</strong>
-                  </div>
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
-                      {callProviderRate
-                        ? `${callProviderRate.label} ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${callProviderRate.rateAmount}/${callProviderRate.rateUnit}${callProviderRate.taxPercent ? ` +${callProviderRate.taxPercent}% tax` : ''})`
-                        : `Phone ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${phoneCostPerMinute}/min)`}
-                    </span>
-                    <strong className="text-md text-slate-800 font-mono">{formatCurrency(workspaceBilling?.phoneSpendInr ?? orgSettings.phoneCharges)}</strong>
-                  </div>
+                <div className="grid grid-cols-12 gap-4 pt-2">
+                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Minutes Consumed" value={(workspaceBilling?.aiMinutesUsed ?? orgSettings.aiMinutesUsed).toFixed(2)} />
+                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="AI spend this period" value={formatInr(workspaceBilling?.aiSpendInr ?? (orgSettings.aiMinutesUsed * costPerMinuteInr))} />
+                  <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label={callProviderRate ? `${callProviderRate.label} ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${callProviderRate.rateAmount}/${callProviderRate.rateUnit}${callProviderRate.taxPercent ? ` +${callProviderRate.taxPercent}% tax` : ''})` : `Phone ${phoneChargesBillable ? 'Charges' : '(Est.)'} (${currencySymbol()}${phoneCostPerMinute}/min)`} value={formatCurrency(workspaceBilling?.phoneSpendInr ?? orgSettings.phoneCharges)} />
                 </div>
                 {!phoneChargesBillable && (
                   <p className="text-[10px] text-slate-400 mt-3">
@@ -1381,23 +1312,10 @@ export default function SettingsView({
 
               {aiTokenCost && (
                 <Widget title="AI Token Cost This Period" icon={CreditCard} accent="#6366f1" padding="md">
-                  <div className="grid grid-cols-3 gap-4 pt-2">
-                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Tokens Used</span>
-                      <strong className="text-md text-slate-800 font-mono">{(aiTokenUsage?.totalTokens ?? 0).toLocaleString()}</strong>
-                    </div>
-                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
-                        {aiTokenCurrentRate ? `${aiTokenCurrentRate.label} Rate (₹${aiTokenCurrentRate.ratePer1kTokens}/${aiTokenCurrentRate.tokenUnit.toLocaleString()} tokens)` : 'Rate before tax'}
-                      </span>
-                      <strong className="text-md text-slate-800 font-mono">{formatInr(aiTokenCost.baseCost)}</strong>
-                    </div>
-                    <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
-                        Total {aiTokenCurrentRate?.taxPercent ? `(incl. tax)` : ''}
-                      </span>
-                      <strong className="text-md text-slate-800 font-mono">{formatInr(aiTokenCost.totalCost)}</strong>
-                    </div>
+                  <div className="grid grid-cols-12 gap-4 pt-2">
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Tokens Used" value={(aiTokenUsage?.totalTokens ?? 0).toLocaleString()} />
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label={aiTokenCurrentRate ? `${aiTokenCurrentRate.label} Rate (₹${aiTokenCurrentRate.ratePer1kTokens}/${aiTokenCurrentRate.tokenUnit.toLocaleString()} tokens)` : 'Rate before tax'} value={formatInr(aiTokenCost.baseCost)} />
+                    <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label={`Total ${aiTokenCurrentRate?.taxPercent ? '(incl. tax)' : ''}`} value={formatInr(aiTokenCost.totalCost)} />
                   </div>
                   {aiTokenCost.pricedSessionCount < aiTokenCost.sessionCount && (
                     <p className="text-[10px] text-amber-600 mt-3">
@@ -1428,25 +1346,11 @@ export default function SettingsView({
                   </button>
                 }
               >
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Sessions</span>
-                    <strong className="text-md text-slate-800 font-mono">{aiUsageSummary?.sessionCount ?? 0}</strong>
-                  </div>
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Total Tokens</span>
-                    <strong className="text-md text-slate-800 font-mono">{(aiUsageSummary?.totalTokens ?? 0).toLocaleString()}</strong>
-                  </div>
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Est. Cost ({currencySymbol()})</span>
-                    <strong className="text-md text-slate-800 font-mono">
-                      {formatCurrency(convertToDisplayCurrency(aiUsageSummary?.totalCost ?? 0, aiUsageSummary?.currency || 'USD'), { decimals: 4 })}
-                    </strong>
-                  </div>
-                  <div className="bg-[var(--bg-base)] p-4 rounded-[9px] text-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Failed Sessions</span>
-                    <strong className={`text-md font-mono ${(aiUsageSummary?.failedCount ?? 0) > 0 ? 'text-rose-600' : 'text-slate-800'}`}>{aiUsageSummary?.failedCount ?? 0}</strong>
-                  </div>
+                <div className="grid grid-cols-12 gap-4 pt-2">
+                  <KpiCard colSpan={3} label="Sessions" value={aiUsageSummary?.sessionCount ?? 0} />
+                  <KpiCard colSpan={3} label="Total Tokens" value={(aiUsageSummary?.totalTokens ?? 0).toLocaleString()} />
+                  <KpiCard colSpan={3} label={`Est. Cost (${currencySymbol()})`} value={formatCurrency(convertToDisplayCurrency(aiUsageSummary?.totalCost ?? 0, aiUsageSummary?.currency || 'USD'), { decimals: 4 })} />
+                  <KpiCard colSpan={3} label="Failed Sessions" value={aiUsageSummary?.failedCount ?? 0} />
                 </div>
 
                 {aiUsageByAdmin.length > 0 && (
@@ -1509,7 +1413,7 @@ export default function SettingsView({
 
           {/* Subtab: API details & Audit Logs */}
           {subTab === 'api' && (
-            <div className="space-y-6">
+            <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
               <Widget title="Third-Party Gateway API Credentials" subtitle="Configure active server tokens utilized by automated calling triggers and OCR engines." icon={Key} accent="#6366f1" padding="md">
                 <div className="space-y-3.5">
                   {orgSettings.apiKeys.map((k, idx) => (

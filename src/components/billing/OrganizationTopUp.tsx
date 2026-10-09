@@ -3,6 +3,9 @@ import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wal
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
 import type { BillingAmount, BillingOverview, PaymentRequest } from '../../lib/billing/types';
+import DataTable from '../ui/DataTable';
+import KpiCard from '../ui/KpiCard';
+import Widget from '../ui/Widget';
 
 type Quote = { quoteId: string; paymentAmount: BillingAmount; topupCredits: BillingAmount; validUntil: string };
 const formatMoney = (amount: BillingAmount) =>
@@ -139,21 +142,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     cancelled: 'Cancelled',
   };
 
-  return <div className="space-y-5" id="organization-billing-overview">
-    {view === 'dashboard' && <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-base font-semibold text-[var(--text-primary)]">Credits & recent payments</h2><p className="mt-1 text-xs text-[var(--text-muted)]">An overview of your organization's billing ledger.</p></div>
-        <button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
-          <p className="text-xs text-[var(--text-secondary)]">Subscription credits available</p>
-          <p className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{overview ? sumBalance(subscriptionCredits) : '—'}</p>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
-          <p className="text-xs text-[var(--text-secondary)]">Top-up credits available</p>
-          <p className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{overview ? sumBalance(topupCredits) : '—'}</p>
-        </div>
+  return <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6" id="organization-billing-overview">
+    {view === 'dashboard' && <Widget title="Credits & recent payments" subtitle="An overview of your organization's billing ledger." icon={Wallet} accent="#f59e0b" padding="md" action={<button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>}>
+      <div className="grid grid-cols-12 gap-4 pt-2">
+        <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} label="Subscription credits available" value={overview ? sumBalance(subscriptionCredits) : '—'} />
+        <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} label="Top-up credits available" value={overview ? sumBalance(topupCredits) : '—'} />
       </div>
       {overviewError && <p className="mt-3 text-xs text-amber-700">Credit ledger unavailable: {overviewError}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
@@ -171,57 +164,31 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           </li>)}
         </ul> : <p className="mt-3 text-xs text-[var(--text-muted)]">No recent payments found.</p>}
       </div>
-    </section>}
+    </Widget>}
     {(view === 'credits' || view === 'topup') && <>
 
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-slate-700"><Wallet className="h-5 w-5 text-amber-500" /><h2 className="text-base font-semibold">Organization credits & payments</h2></div>
-          <p className="mt-1 text-xs text-slate-500">Check available usage credits, add credits, and track submitted payments.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
-          {canSubmit && <button type="button" onClick={() => { setShowForm(current => !current); setError(''); }} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-400"><Plus className="h-4 w-4" /> Add credits</button>}
-        </div>
-      </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="flex items-center gap-2 text-xs font-medium text-slate-500"><Wallet className="h-4 w-4" /> Available subscription credits</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-800">{overview ? sumBalance(subscriptionCredits) : '—'}</p>
-          <p className="mt-1 text-[11px] text-slate-500">Issued with your subscription, subject to expiry.</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="flex items-center gap-2 text-xs font-medium text-slate-500"><ArrowDownToLine className="h-4 w-4" /> Available top-up credits</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-800">{overview ? sumBalance(topupCredits) : '—'}</p>
-          <p className="mt-1 text-[11px] text-slate-500">Purchased credits added after payment approval.</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="flex items-center gap-2 text-xs font-medium text-slate-500"><CreditCard className="h-4 w-4" /> Subscription period</p>
-          <p className="mt-2 text-sm font-semibold capitalize text-slate-800">{overview?.activePeriod?.status || 'Not available'}</p>
-          <p className="mt-1 text-[11px] text-slate-500">{overview?.activePeriod?.endsAt ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}` : 'Your subscription billing details.'}</p>
-        </div>
+    <Widget title="Organization credits & payments" subtitle="Check available usage credits, add credits, and track submitted payments." icon={Wallet} accent="#f59e0b" padding="md" action={<div className="flex items-center gap-2"><button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>{canSubmit && <button type="button" onClick={() => { setShowForm(current => !current); setError(''); }} className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-400"><Plus className="h-4 w-4" /> Add credits</button>}</div>}>
+      <div className="grid grid-cols-12 gap-4 pt-2">
+        <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Available subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'} sub="Issued with your subscription, subject to expiry." icon={Wallet} iconBg="#fef3c7" iconColor="#b45309" />
+        <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Available top-up credits" value={overview ? sumBalance(topupCredits) : '—'} sub="Purchased credits added after payment approval." icon={ArrowDownToLine} iconBg="#fef3c7" iconColor="#b45309" />
+        <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Subscription period" value={overview?.activePeriod?.status || 'Not available'} sub={overview?.activePeriod?.endsAt ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}` : 'Your subscription billing details.'} icon={CreditCard} iconBg="#e0f2fe" iconColor="#0369a1" />
       </div>
       {overviewError && <p role="status" className="mt-3 text-xs text-amber-700">Credit ledger unavailable: {overviewError}. The figures below may use the separate legacy billing view.</p>}
       {!canSubmit && <p className="mt-3 text-xs text-slate-500">Top-up submission is available to organization owners, organization admins and billing admins with payment-submission permission.</p>}
-    </section>
+    </Widget>
 
-    {canSubmit && (showForm || view === 'topup') && <section className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm" id="add-credits-form">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-slate-800">Request additional usage credits</h3>
-        <p className="mt-1 text-xs text-slate-500">Pay by bank transfer or UPI outside this page, then upload proof. ₹1 paid provides ₹1 of usage credits; your subscription plan stays unchanged.</p>
-        <p className="mt-1 text-xs text-amber-700">Submitting proof does not add credits. A platform admin must verify and approve the payment.</p>
-      </div>
+    {canSubmit && (showForm || view === 'topup') && <Widget title="Request additional usage credits" subtitle="Pay by bank transfer or UPI outside this page, then upload proof. ₹1 paid provides ₹1 of usage credits; your subscription plan stays unchanged." icon={Plus} accent="#f59e0b" padding="md">
+      <p className="mb-4 text-xs text-amber-700">Submitting proof does not add credits. A platform admin must verify and approve the payment.</p>
       <form onSubmit={submit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-xs font-medium text-slate-600">Top-up amount (₹)
             <input required value={amount} onChange={e => { setAmount(e.target.value); resetQuote(); }}
-              placeholder="1000.00" inputMode="decimal" className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+              placeholder="1000.00" inputMode="decimal" className="mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500" />
             <span className="mt-1 block text-[11px] font-normal text-slate-500">₹1 to ₹999,999.99, up to two decimal places.</span>
           </label>
           <label className="block text-xs font-medium text-slate-600">Bank or UPI transaction reference
             <input required value={reference} onChange={e => { setReference(e.target.value); setPaymentKey(newBillingIdempotencyKey()); setError(''); }}
-              placeholder="UTR or payment reference" className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+              placeholder="UTR or payment reference" className="mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500" />
           </label>
         </div>
         <label className="block text-xs font-medium text-slate-600">Payment receipt
@@ -231,7 +198,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </label>
         <label className="block text-xs font-medium text-slate-600">Payment note (optional)
           <textarea value={note} onChange={e => { setNote(e.target.value); setPaymentKey(newBillingIdempotencyKey()); }} maxLength={2000} rows={2}
-            className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+            className="mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]" />
         </label>
         {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
         <div className="flex items-center justify-end gap-3">
@@ -241,48 +208,34 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           </button>
         </div>
       </form>
-    </section>}
+    </Widget>}
 
     </>}
-    {success && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-medium text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />{success}</div>}
-    {view === 'payments' && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Clock3 className="h-4 w-4 text-slate-500" /> Payment history</h3><p className="mt-1 text-xs text-slate-500">Track top-up verification and other organization payments.</p></div>
-        <select aria-label="Payment type" value={historyFilter} onChange={e => setHistoryFilter(e.target.value as 'topup' | 'all')}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+    {success && <Widget showHeader={false} padding="md" className="border-emerald-200 bg-emerald-50"><p role="status" className="text-xs font-medium text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />{success}</p></Widget>}
+    {view === 'payments' && <Widget title="Payment history" subtitle="Track top-up verification and other organization payments." icon={Clock3} accent="#64748b" padding="md" action={<select aria-label="Payment type" value={historyFilter} onChange={e => setHistoryFilter(e.target.value as 'topup' | 'all')} className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-primary)]">
           <option value="topup">Top-up payments</option><option value="all">All payments</option>
-        </select>
-      </div>
+        </select>}>
       {historyError && <p role="alert" className="mt-3 text-xs text-rose-700">{historyError}</p>}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[580px] text-left text-xs">
-          <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
-            <tr><th className="px-3 py-3 font-medium">Date</th><th className="px-3 py-3 font-medium">Type</th><th className="px-3 py-3 font-medium">Amount</th><th className="px-3 py-3 font-medium">Status</th></tr>
-          </thead>
-          <tbody>
-            {displayedHistory.map(payment => <tr key={payment.id} className="border-b border-slate-100 text-slate-700">
-              <td className="px-3 py-3">{new Date(payment.submittedAt).toLocaleDateString('en-IN')}</td>
-              <td className="px-3 py-3 capitalize">{payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose}</td>
-              <td className="px-3 py-3 font-semibold">{formatMoney(payment.expectedAmount)}</td>
-              <td className="px-3 py-3">{statuses[payment.status] || payment.status}</td>
-            </tr>)}
-          </tbody>
-        </table>
-        {!displayedHistory.length && !historyLoading && <p className="p-4 text-center text-xs text-slate-500">No matching payments on this page.</p>}
-        {historyLoading && <p className="p-4 text-center text-xs text-slate-500">Loading payments…</p>}
+      <div className="mt-4">
+        <DataTable<PaymentRequest> bare resizable loading={historyLoading} columns={[
+          { key: 'date', header: 'Date', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
+          { key: 'type', header: 'Type', cell: payment => payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose },
+          { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold">{formatMoney(payment.expectedAmount)}</span> },
+          { key: 'status', header: 'Status', cell: payment => statuses[payment.status] || payment.status },
+        ]} rows={displayedHistory} rowKey={payment => payment.id} emptyMessage="No matching payments on this page." />
       </div>
       <div className="mt-4 flex items-center justify-between gap-3">
         <span className="text-xs text-slate-500">Page {cursorStack.length} · up to 10 payments per page</span>
         <div className="flex gap-2">
           <button type="button" disabled={historyLoading || cursorStack.length <= 1} onClick={() => {
             const previous = cursorStack.slice(0, -1); setCursorStack(previous); void loadHistory(previous[previous.length - 1]);
-          }} className="rounded-lg border border-slate-200 px-3 py-2 text-xs disabled:opacity-40">Previous</button>
+          }} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] disabled:opacity-40">Previous</button>
           <button type="button" disabled={historyLoading || !nextCursor} onClick={() => {
             if (!nextCursor) return; setCursorStack(current => [...current, nextCursor]); void loadHistory(nextCursor);
-          }} className="rounded-lg border border-slate-200 px-3 py-2 text-xs disabled:opacity-40">Next</button>
+          }} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] disabled:opacity-40">Next</button>
         </div>
       </div>
       {historyFilter === 'topup' && <p className="mt-2 text-[11px] text-slate-500">Pagination follows all payments. Some pages may have no top-ups; use Next to browse older requests.</p>}
-    </section>}
+    </Widget>}
   </div>;
 }
