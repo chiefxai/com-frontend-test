@@ -159,6 +159,8 @@ export default function SettingsView({
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
+  const [selectedWorkspaceDetails, setSelectedWorkspaceDetails] = useState<{ id: string; name: string; status: string; industry?: string; branchName?: string | null } | null>(null);
+  const [selectedNumberDetails, setSelectedNumberDetails] = useState<VirtualNumber | null>(null);
   // Workspace feature grants are read-only here: they are combined with
   // each staff member's organization grants and workspace-specific role.
   const [workspaceFeatureRows, setWorkspaceFeatureRows] = useState<{id:string;name:string;configured:boolean;enabledFeatures:string[]}[]>([]);
@@ -183,7 +185,7 @@ export default function SettingsView({
     }
   }, []);
   React.useEffect(() => {
-    if (subTab !== 'team' || !canReadOrgMembers || !canReadOrganization) return;
+    if (!['team','numbers','workspaces'].includes(subTab) || !canReadOrgMembers || !canReadOrganization) return;
     void loadWorkspaceFeatures();
   }, [subTab, canReadOrgMembers, canReadOrganization, loadWorkspaceFeatures]);
 
@@ -724,7 +726,8 @@ export default function SettingsView({
                 <Widget title="Workspaces & Numbers" subtitle="Manage organization workspaces, connected numbers, and workspace sharing." icon={Briefcase} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Virtual Numbers</button><button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Sharing</button></div>}>
                   <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
                 </Widget>
-                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
+                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated}
+                  onSelectWorkspace={workspace => { setSelectedWorkspaceDetails(workspace); setSelectedNumberDetails(null); void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Could not load workspace membership.')); }} />
 
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
@@ -769,7 +772,9 @@ export default function SettingsView({
                             <Phone className="h-3.5 w-3.5 text-indigo-400" />
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800 dark:text-[var(--text-primary)]">{num.number}</p>
+                            <button type="button" className="text-left font-semibold text-[var(--accent)] hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+                              onClick={() => { setSelectedNumberDetails(num); setSelectedWorkspaceDetails(null); void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Could not load workspace membership.')); }}
+                              aria-label={`View workspace details for number ${num.number}`}>{num.number}</button>
                             {num.friendlyName && <p className="text-xs text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{num.friendlyName}</p>}
                           </div>
                         </div>
@@ -809,6 +814,67 @@ export default function SettingsView({
                   );
                 })()}
               </Widget>
+
+              {/* Workspace and number details use the existing shared modal as a right-hand panel. */}
+              {(selectedWorkspaceDetails || selectedNumberDetails) && (() => {
+                const selectedId = selectedWorkspaceDetails?.id || (selectedNumberDetails ? numberWorkspaceId(selectedNumberDetails) : '');
+                const workspace = selectedWorkspaceDetails || orgWorkspaces.find(row => row.id === selectedId) || null;
+                const assignments = selectedId ? (orgAssignments[selectedId] || []).filter(row => row.assignmentStatus === 'Active' && row.memberStatus.toLowerCase() === 'active') : [];
+                const features = workspaceFeatureRows.find(row => row.id === selectedId);
+                const entitled = new Set(workspaceFeatureAllowed);
+                const permittedByWorkspace = features?.enabledFeatures || [];
+                return <Modal open onClose={() => { setSelectedWorkspaceDetails(null); setSelectedNumberDetails(null); }}
+                  title={selectedNumberDetails ? `Virtual Number · ${selectedNumberDetails.number}` : `Workspace · ${workspace?.name || 'Details'}`}
+                  subtitle="Workspace membership and access details"
+                  maxWidth="max-w-md" className="!fixed !right-0 !top-0 !bottom-0 !h-[100dvh] !max-h-[100dvh] !rounded-none">
+                  <div className="space-y-4">
+                    {selectedNumberDetails && <Widget title="Number Details" padding="md">
+                      <dl className="grid grid-cols-2 gap-3 text-xs">
+                        <div><dt className="text-[var(--text-muted)]">Number</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.number}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Provider</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.provider}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Status</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.status}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Label</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.friendlyName || '—'}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Incoming calls</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.incomingCallCount}</dd></div>
+                        <div><dt className="text-[var(--text-muted)]">Outgoing calls</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.outgoingCallCount}</dd></div>
+                      </dl>
+                    </Widget>}
+                    <Widget title={workspace ? workspace.name : 'Workspace association'} padding="md" icon={Briefcase}>
+                      {workspace
+                        ? <p className="text-xs text-[var(--text-secondary)]">{workspace.status} workspace · {assignments.length} active member(s)</p>
+                        : <p className="text-xs text-[var(--text-muted)]">No known workspace association. Membership cannot be inferred from this number.</p>}
+                    </Widget>
+                    {workspace && <Widget title="Workspace Members" subtitle={selectedNumberDetails ? 'Users with workspace access, not necessarily assigned directly to this number.' : 'Users with active workspace access.'} icon={Users} padding="md">
+                      {!canReadOrgMembers
+                        ? <p className="text-xs text-[var(--text-muted)]">Organization member-read permission is required to view this list.</p>
+                        : orgAccessError
+                          ? <p role="alert" className="text-xs text-rose-600">{orgAccessError}</p>
+                          : assignments.length === 0
+                            ? <p className="text-xs text-[var(--text-muted)]">No active members returned for this workspace.</p>
+                            : <div className="divide-y divide-[var(--border)]">{assignments.map(member => {
+                                const memberRecord = teamMembers.find(row => row.id === member.memberId);
+                                const memberGrants = memberRecord?.featureFlags;
+                                const isAdmin = member.workspaceRole === 'Workspace Admin';
+                                const effective = features && (isAdmin || Array.isArray(memberGrants))
+                                  ? permittedByWorkspace.filter(key => entitled.has(key) && (isAdmin || memberGrants?.includes(key)))
+                                  : null;
+                                return <div key={member.memberId} className="space-y-2 py-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--text-primary)]">{member.name || member.email || member.memberId}</p><p className="truncate text-[11px] text-[var(--text-muted)]">{member.email}</p></div>
+                                    <span className="shrink-0 rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[10px] font-medium text-[var(--text-secondary)]">{member.workspaceRole || 'Member'}</span>
+                                  </div>
+                                  {workspaceFeatureLoading
+                                    ? <p className="text-[11px] text-[var(--text-muted)]">Loading feature grants…</p>
+                                    : effective === null
+                                      ? <p className="text-[11px] text-[var(--text-muted)]">Individual feature grants unavailable.</p>
+                                      : <div className="flex flex-wrap gap-1">{effective.length
+                                        ? effective.map(key => <span key={key} className="rounded-md border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)]">{FEATURE_REGISTRY.find(flag => flag.key === key)?.label || key}</span>)
+                                        : <span className="text-[11px] text-[var(--text-muted)]">No enabled product features</span>}</div>}
+                                </div>;
+                              })}</div>}
+                    </Widget>}
+                  </div>
+                </Modal>;
+              })()}
 
               {/* Add Provider overlay modal */}
               {showProviderForm && (
