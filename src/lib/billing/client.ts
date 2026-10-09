@@ -68,6 +68,18 @@ export const billingClient = Object.freeze({
   submitPayment: (input: Record<string, unknown>, options: BillingMutationOptions) => jsonRequest<PaymentRequest>('/api/billing/payments', {
     method: 'POST', headers: mutationHeaders(options), body: JSON.stringify(input),
   }),
+  /** Upload a private receipt using the backend's multipart payment contract.
+   *  The same mutation key must be reused when retrying the same submission.
+   *  Available only after the backend payment-submission rollout flag is enabled.
+   */
+  submitPaymentWithProof: (input: Record<string, unknown>, proof: File, options: BillingMutationOptions) => {
+    const form = new FormData();
+    form.append('command', JSON.stringify(input));
+    form.append('proof', proof, proof.name);
+    return jsonRequest<PaymentRequest>('/api/billing/payments', {
+      method: 'POST', headers: mutationHeaders(options), body: form,
+    });
+  },
   previewAllocation: <T = unknown>(input: Record<string, unknown>) => jsonRequest<T>('/api/billing/allocations/preview', {
     method: 'POST', body: JSON.stringify(input),
   }),
