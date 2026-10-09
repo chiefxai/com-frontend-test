@@ -153,6 +153,7 @@ export default function SettingsView({
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
+  const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
     _setInternalSubTab(v);
@@ -560,24 +561,57 @@ export default function SettingsView({
 
   return (
     <PageShell
-      title={<BreadcrumbTitle group="Administration" page={
-        (subTab === 'numbers' || subTab === 'workspaces') ? 'Workspaces & Numbers'
-        : subTab === 'team' ? 'Staff & Teams'
-        : subTab === 'workspaces' ? 'Organization Workspaces'
-        : subTab === 'billing' ? 'Billing & Usage'
-        : 'API Keys'
-      } />}
-      subtitle={subTab === 'billing' ? 'Manage organization credits, top-ups, subscriptions and usage.' : subTab === 'workspaces' ? 'Manage organization workspaces and workspace sharing.' : subTab === 'team' ? 'Manage staff, roles and access.' : 'Configure virtual telephone lines, distribute agent permissions, and manage security settings.'}
+      title={
+        subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces'
+          ? <span className="flex min-w-0 items-center gap-2">
+              <span className="text-[10px] font-medium text-[var(--text-muted)]">Administration</span>
+              <span className="text-[var(--border)]">/</span>
+              {subTab === 'billing'
+                ? billingPanel === 'dashboard'
+                  ? <span className="truncate text-sm font-semibold">Billing & Usage</span>
+                  : <>
+                      <button type="button" onClick={() => setBillingPanel('dashboard')} className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]">Billing & Usage</button>
+                      <span className="text-[var(--border)]">/</span>
+                      <span className="truncate text-sm font-semibold">{billingPanel === 'plan' ? 'Subscription' : billingPanel === 'usage' ? 'Usage' : billingPanel === 'payments' ? 'Payments' : billingPanel === 'topup' ? 'Add Credits' : 'Credits'}</span>
+                    </>
+                : workspacePanel === 'overview'
+                  ? <span className="truncate text-sm font-semibold">Workspaces & Numbers</span>
+                  : <>
+                      <button type="button" onClick={() => setWorkspacePanel('overview')} className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]">Workspaces & Numbers</button>
+                      <span className="text-[var(--border)]">/</span>
+                      <span className="truncate text-sm font-semibold">{workspacePanel === 'numbers' ? 'Virtual Numbers' : 'Sharing'}</span>
+                    </>}
+            </span>
+          : <BreadcrumbTitle group="Administration" page={subTab === 'team' ? 'Staff & Teams' : 'API Keys'} />
+      }
+      subtitle={subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' ? undefined : subTab === 'team' ? 'Manage staff and access.' : undefined}
+      action={subTab === 'billing' && billingPanel !== 'dashboard'
+        ? <button type="button" onClick={() => setBillingPanel('dashboard')} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">← Back to billing</button>
+        : (subTab === 'numbers' || subTab === 'workspaces') && workspacePanel !== 'overview'
+          ? <button type="button" onClick={() => setWorkspacePanel('overview')} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">← Back to workspaces</button>
+          : undefined}
       onRefresh={handlePageRefresh}
     >
-      <div className="col-span-12 space-y-6">
+      <div className="col-span-12 mx-auto w-full max-w-5xl space-y-5">
 
-          {/* Combined organization workspaces and virtual numbers. */}
+          {/* Compact workspace landing page with focused number and sharing views. */}
           {(subTab === 'numbers' || subTab === 'workspaces') && (
-            <div className="space-y-6">
-              <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
-              <WorkspaceSharing enabled={workspaceSharingEnabled} />
-              <Widget
+            <div className="space-y-5">
+              {workspacePanel === 'overview' && <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-left transition-colors hover:bg-[var(--bg-subtle)]">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">Virtual Numbers →</span>
+                    <span className="mt-1 block text-xs text-[var(--text-muted)]">Connected numbers and calling providers</span>
+                  </button>
+                  <button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-left transition-colors hover:bg-[var(--bg-subtle)]">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">Workspace Sharing →</span>
+                    <span className="mt-1 block text-xs text-[var(--text-muted)]">Shared access and permissions</span>
+                  </button>
+                </div>
+                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
+              </>}
+              {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
+              {workspacePanel === 'numbers' && <Widget
                 title="Virtual Numbers"
                 subtitle="Telephone lines connected to this organization's AI calling infrastructure."
                 icon={Hash}
@@ -1057,20 +1091,16 @@ export default function SettingsView({
 
           {/* Organization-level billing and credit ledger, followed by workspace usage. */}
           {subTab === 'billing' && (
-            <div className="mx-auto w-full max-w-6xl space-y-6">
-              {billingPanel !== 'dashboard' && <div className="flex flex-wrap items-center justify-between gap-3">
-                <button type="button" onClick={() => setBillingPanel('dashboard')} className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">← Back to Billing Dashboard</button>
-                <span className="text-sm font-semibold text-[var(--text-primary)]">{billingPanel === 'plan' ? 'Subscription details' : billingPanel === 'usage' ? 'Usage & workspace limits' : billingPanel === 'payments' ? 'Payment history' : billingPanel === 'topup' ? 'Add usage credits' : 'Available credits'}</span>
-              </div>}
+            <div className="mx-auto w-full max-w-5xl space-y-5">
               {billingPanel === 'dashboard' && <div className="space-y-4">
-                <div><h2 className="text-lg font-semibold text-[var(--text-primary)]">Billing at a glance</h2><p className="mt-1 text-xs text-[var(--text-muted)]">Your plan, spending and credits in one place. Open a section for detailed information.</p></div>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Billing overview</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <section className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Monthly subscription</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{organizationPricing ? `${organizationPricing.workspaceCount} workspaces · ${organizationPricing.additionalIndustries} additional industry packs` : 'Plan information has not been loaded.'}</p></div>
+                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Monthly subscription</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{organizationPricing ? `${organizationPricing.workspaceCount} workspaces · ${organizationPricing.additionalIndustries} additional industry packs` : 'Plan details unavailable.'}</p></div>
                     <button type="button" onClick={() => setBillingPanel('plan')} className="mt-5 self-start rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View plan →</button>
                   </section>
                   <section className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
-                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Workspace spend this period</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{workspaceBilling?.workspaceName || 'Current workspace'} · AI & phone usage details</p></div>
+                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Workspace spend this period</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{workspaceBilling?.workspaceName || 'Current workspace'}</p></div>
                     <button type="button" onClick={() => setBillingPanel('usage')} className="mt-5 self-start rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View usage →</button>
                   </section>
                 </div>
