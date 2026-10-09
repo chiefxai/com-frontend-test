@@ -1,6 +1,6 @@
 import React from 'react';
-import { billingClient, createBillingMutation } from '../lib/billing/client';
-import type { AllocationRule } from '../lib/billing/types';
+import { billingClient, createBillingMutation } from '../../lib/billing/client';
+import type { AllocationRule } from '../../lib/billing/types';
 
 /** Organization-admin allocation editor. Writes are versioned and idempotent. */
 export default function WorkspaceCreditAllocation() {
