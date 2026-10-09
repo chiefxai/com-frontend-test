@@ -156,6 +156,7 @@ export default function SettingsView({
   const canManageWorkspaceMembers = can('workspace.members.manage');
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
+  const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
   const canManageOrganization = can('organization.manage');
@@ -244,7 +245,6 @@ export default function SettingsView({
     URL.revokeObjectURL(url);
   };
 
-  const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   React.useEffect(() => {
     if (!['numbers', 'workspaces'].includes(subTab) || workspacePanel !== 'numbers' || !canReadOrganization) return;
     void loadOrganizationNumbers().catch(error => { setOrganizationNumbers(null); setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'); });
