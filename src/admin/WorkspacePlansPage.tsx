@@ -1,8 +1,7 @@
 import React from 'react';
-import { Plus, Save, Pencil, X, ArrowLeft, CreditCard, Building2 } from 'lucide-react';
+import { Plus, Save, Pencil, ArrowLeft } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
-import AwsCreateLayout from '../components/ui/AwsCreateLayout';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
@@ -82,8 +81,8 @@ export default function WorkspacePlansPage() {
   }, [headerCtx?.setHeader, beginAdd, loading, saving, editingIndex]);
 
   const money = (amount: number | null) => amount == null ? 'Not set' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
-  const fieldClass = 'mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30';
-  const labelClass = 'block text-xs font-semibold text-[var(--text-secondary)]';
+  const fieldClass = 'mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500';
+  const labelClass = 'block text-xs font-medium text-slate-500';
 
   return <div className="mx-auto max-w-6xl space-y-5 text-[var(--text-primary)]">
     {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
@@ -115,22 +114,27 @@ export default function WorkspacePlansPage() {
     ))}
 
     {draft && editingIndex !== null && (
-      <AwsCreateLayout breadcrumb="Workspace Plans" title={editingIndex === -1 ? "Create plan" : "Edit plan"} description="" steps={[]} activeStep={0}>
-        <div className="mx-auto w-full max-w-5xl space-y-5">
-        <button type="button" onClick={cancelEdit} className="inline-flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"><ArrowLeft className="h-4 w-4" /> Back to plans</button>
-        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
-          <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-            <div><h3 id="workspace-plan-form-title" className="text-lg font-semibold">{editingIndex === -1 ? 'Create workspace plan' : 'Edit workspace plan'}</h3></div>
-            <button type="button" onClick={cancelEdit} disabled={saving} aria-label="Close plan form" className="rounded-lg p-2 hover:bg-[var(--bg-subtle)] disabled:opacity-50"><X className="h-5 w-5" /></button>
-          </div>
-          <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-6 p-6">
-            <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3"><Building2 className="h-4 w-4 text-[var(--accent)]" /><h4 className="text-sm font-semibold">Plan identity</h4></div>
-            <div className="grid gap-5 sm:grid-cols-2">
+      <div className="w-full max-w-5xl">
+        <div className="space-y-5">
+        <button type="button" onClick={cancelEdit} className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800"><ArrowLeft className="h-4 w-4" /> Back to plans</button>
+        <div className="space-y-5">
+          <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-5">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 id="workspace-plan-form-title" className="text-sm font-semibold text-slate-800">Plan identity</h2>
+                <p className="mt-1 text-[11px] text-slate-500">Give this plan a name and a stable identifier.</p>
+              </div>
+            <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClass}>Plan name<input required value={draft.name} onChange={event => { const name = event.target.value; updateDraft({ name, ...(editingIndex === -1 && !idTouched ? { id: name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) } : {}) }); }} className={fieldClass} /></label>
             <label className={labelClass}>Stable plan ID<input required value={draft.id} onChange={event => { setIdTouched(true); updateDraft({ id: event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') }); }} disabled={existingIds.has(draft.id)} placeholder="e.g. scale" className={fieldClass + ' disabled:opacity-60'} /></label>
             </div>
-            <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3"><CreditCard className="h-4 w-4 text-[var(--accent)]" /><h4 className="text-sm font-semibold">Workspace access & pricing</h4></div>
-            <div className="grid gap-5 sm:grid-cols-2">
+            </section>
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-slate-800">Workspace access & pricing</h2>
+                <p className="mt-1 text-[11px] text-slate-500">Configure workspace structure, monthly prices and subscription credits.</p>
+              </div>
+            <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClass + ' sm:col-span-2'}>Default workspace structure<select value={draft.defaultMode} onChange={event => { const mode = event.target.value as WorkspaceMode; updateDraft({ defaultMode: mode, pricing: { ...draft.pricing, includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces } }); }} className={fieldClass}>{MODES.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select></label>
             <label className={labelClass}>Organization / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.baseMonthlyInr ?? ''} onChange={event => updatePricing('baseMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
             <label className={labelClass}>Additional workspace / month (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.extraWorkspaceMonthlyInr ?? ''} onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} className={fieldClass} /></label>
@@ -139,14 +143,15 @@ export default function WorkspacePlansPage() {
             <label className={labelClass}>Monthly subscription credits (INR)<input required type="number" min="0" step="0.01" value={draft.pricing.monthlySubscriptionCreditsInr ?? 0} onChange={event => updatePricing("monthlySubscriptionCreditsInr", Number(event.target.value))} className={fieldClass} /><span className="mt-1 block font-normal text-[var(--text-muted)]">Organization-level entitlement per paid billing cycle. Allocation and issuance are implemented separately.</span></label>
             <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2"><input type="checkbox" checked={draft.active} onChange={event => updateDraft({ active: event.target.checked })} className="h-4 w-4 accent-[var(--accent)]" /> Active plan (available for new organizations)</label>
             </div>
+            </section>
           </form>
-          <div className="flex justify-end gap-2 border-t border-[var(--border)] px-6 py-4">
-            <button type="button" onClick={cancelEdit} disabled={saving} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--bg-subtle)]">Cancel</button>
-            <button type="submit" form="workspace-plan-form" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4" />{saving ? 'Saving…' : editingIndex === -1 ? 'Create plan' : 'Save changes'}</button>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <button type="button" onClick={cancelEdit} disabled={saving} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700">Cancel</button>
+            <button type="submit" form="workspace-plan-form" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2 text-sm font-medium text-white hover:bg-amber-400 disabled:opacity-60"><Save className="h-4 w-4" />{saving ? 'Saving…' : editingIndex === -1 ? 'Create plan' : 'Save changes'}</button>
           </div>
-        </section>
+        </div>
       </div>
-      </AwsCreateLayout>
+      </div>
     )}
   </div>;
 }
