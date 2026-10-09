@@ -1,19 +1,35 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, AlertTriangle, ToggleLeft, Hash, Plus, X, Cloud, Database, Archive } from 'lucide-react';
+import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, Cloud, Database, Archive, Building2, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { OrgDetail } from './types';
 import { callCostInr, formatInr } from '../lib/pricing';
 import SlideOver from '../components/ui/SlideOver';
 import Modal from '../components/ui/Modal';
+import { Card, CardHeader } from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from '../components/ui/FeatureAccessSelector';
 import OrgBillingConsole from './OrgBillingConsole';
 import OrganizationWorkspaceSetup from './OrganizationWorkspaceSetup';
 
+type DetailSection = 'overview' | 'people' | 'access';
+
+const PANEL_CLASS = 'min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-card)] sm:p-5';
+const FIELD_CLASS = 'w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/25 disabled:opacity-60';
+
+function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block min-w-0 space-y-1.5">
+    <span className="block text-[11px] font-semibold text-[var(--text-secondary)]">{label}</span>
+    {children}
+  </label>;
+}
+
 export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: string; onClose: () => void; onChanged: () => void }) {
   const [detail, setDetail] = useState<OrgDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [activeSection, setActiveSection] = useState<DetailSection>('overview');
   const [editForm, setEditForm] = useState({ name: '', workspaceName: '', industry: '', subscriptionPlan: '', aiMinutesLimit: '', billingMethod: 'pay_as_you_go', chargeScope: 'ai_only' });
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -53,6 +69,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   const handleAddNumber = async () => {
     if (!newNum.number.trim()) return;
     setNumBusy(true);
+    setActionError(null);
     try {
       const res = await apiFetch(`/api/platform/organizations/${orgId}/numbers`, {
         method: 'POST',
@@ -63,13 +80,26 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
       setNewNum({ number: '', friendlyName: '', provider: 'Vobiz.ai' });
       setAddNumberForm(false);
       loadNumbers();
-    } catch { /* ignore */ } finally { setNumBusy(false); }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to add this virtual number.');
+    } finally {
+      setNumBusy(false);
+    }
   };
 
   const handleDeleteNumber = async (numberId: string) => {
-    if (!confirm('Remove this virtual number?')) return;
-    await apiFetch(`/api/platform/organizations/${orgId}/numbers/${encodeURIComponent(numberId)}`, { method: 'DELETE' });
-    setNumbers(prev => prev.filter(n => n.id !== numberId));
+    if (!window.confirm('Remove this virtual number?')) return;
+    setActionError(null);
+    try {
+      const response = await apiFetch(`/api/platform/organizations/${orgId}/numbers/${encodeURIComponent(numberId)}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || 'Unable to remove this virtual number.');
+      }
+      setNumbers(previous => previous.filter(number => number.id !== numberId));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to remove this virtual number.');
+    }
   };
 
   const loadRetention = () => {
@@ -85,6 +115,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   };
 
   const saveRetention = async () => {
+    setActionError(null);
     setRetentionBusy(true);
     try {
       const res = await apiFetch(`/api/platform/organizations/${orgId}/data-retention`, {
@@ -98,6 +129,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   };
 
   const saveBackup = async (patch: any) => {
+    setActionError(null);
     setBackupBusy(true);
     try {
       const res = await apiFetch(`/api/platform/organizations/${orgId}/backup`, {
@@ -110,6 +142,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   };
 
   const requestBackup = async () => {
+    setActionError(null);
     setBackupBusy(true);
     try {
       const res = await apiFetch(`/api/platform/organizations/${orgId}/backup`, { method: 'POST' });
@@ -187,10 +220,25 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
           chargeScope: d.chargeScope || 'ai_only'
         });
       })
+      .catch(error => setActionError(error instanceof Error ? error.message : 'Unable to load organization details.'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); loadFlags(); loadNumbers(); loadGcpProject(); loadRetention(); }, [orgId]);
+  useEffect(() => {
+    setDetail(null);
+    setNumbers([]);
+    setEnabledFlags([]);
+    setRetentionState(null);
+    setBackupState(null);
+    setActiveSection('overview');
+    setEditing(false);
+    setActionError(null);
+    load();
+    loadFlags();
+    loadNumbers();
+    loadGcpProject();
+    loadRetention();
+  }, [orgId]);
 
   const handleSaveEdit = async () => {
     setBusy(true);
@@ -271,140 +319,102 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     <>
     <SlideOver open onClose={onClose} title="Organization details">
       <div className="-mx-6 -my-5 flex min-h-full flex-col bg-[var(--bg-surface)] text-[var(--text-primary)]">
-        {loading || !detail ? (
-          <div className="flex items-center justify-center h-64 text-slate-400"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
+        {!detail ? (
+          <div className="flex items-center justify-center h-64 text-[var(--text-muted)]"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
         ) : (
           <>
-            <div className="sticky -top-5 z-30 border-b border-[var(--border)] px-6 py-5 shadow-sm" style={{ background: 'var(--bg-surface)' }}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{detail.name}</h2>
-                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${String(detail.status || '').toLowerCase() === 'suspended' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+            <header className="sticky -top-5 z-30 border-b border-[var(--border)] bg-[var(--bg-surface)] px-4 pt-4 shadow-sm sm:px-6">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                  <Building2 className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="min-w-0 break-words text-base font-semibold text-[var(--text-primary)] sm:text-lg">{detail.name}</h2>
+                    <Badge color={String(detail.status || '').toLowerCase() === 'suspended' ? 'rose' : 'green'}>
                       {String(detail.status || '').toLowerCase() === 'suspended' ? 'Suspended' : 'Active'}
-                    </span>
+                    </Badge>
                   </div>
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">{detail.workspaceName} · {detail.industry}</p>
+                  <p className="mt-1 break-all text-xs text-[var(--text-muted)]">
+                    {detail.workspaceName} <span aria-hidden="true">·</span> {detail.industry}
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setEditing((v) => !v)}
-                  disabled={busy}
-                  className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-surface)] disabled:opacity-50"
-                >
-                  <Pencil className="h-3.5 w-3.5" /> {editing ? 'Cancel Edit' : 'Edit'}
-                </button>
-                <button
-                  onClick={handleToggleSuspend}
-                  disabled={busy}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50 ${
-                    String(detail.status || '').toLowerCase() === 'suspended'
-                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                  }`}
-                >
-                  {String(detail.status || '').toLowerCase() === 'suspended'
-                    ? <PlayCircle className="h-3.5 w-3.5" />
-                    : <Ban className="h-3.5 w-3.5" />}
-                  {String(detail.status || '').toLowerCase() === 'suspended' ? 'Revoke Suspension' : 'Suspend'}
-                </button>
-                <button
-                  onClick={openDeleteModal}
-                  disabled={busy}
-                  className="ml-auto flex min-h-9 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Delete Org
-                </button>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" icon={Pencil} disabled={busy}
+                  onClick={() => { setActionError(null); setEditing(true); }}>Edit details</Button>
+                <Button type="button" size="sm" icon={String(detail.status || '').toLowerCase() === 'suspended' ? PlayCircle : Ban}
+                  variant="secondary" disabled={busy} onClick={() => void handleToggleSuspend()}>
+                  {String(detail.status || '').toLowerCase() === 'suspended' ? 'Reactivate' : 'Suspend'}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" icon={RefreshCw} disabled={loading}
+                  onClick={() => { load(); loadFlags(); loadNumbers(); loadGcpProject(); loadRetention(); }}>
+                  Refresh
+                </Button>
+                <Button type="button" size="sm" variant="danger" icon={Trash2}
+                  className="ml-auto" disabled={busy} onClick={openDeleteModal}>Delete</Button>
               </div>
-
-              {actionError && <p className="text-xs text-rose-600 mt-2">{actionError}</p>}
-
-              {editing && (
-                <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Name</label>
-                      <input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Workspace</label>
-                      <input value={editForm.workspaceName} onChange={(e) => setEditForm((f) => ({ ...f, workspaceName: e.target.value }))} className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Industry</label>
-                      <input value={editForm.industry} onChange={(e) => setEditForm((f) => ({ ...f, industry: e.target.value }))} className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Plan</label>
-                      <input value={editForm.subscriptionPlan} onChange={(e) => setEditForm((f) => ({ ...f, subscriptionPlan: e.target.value }))} className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">AI Minutes Limit</label>
-                      <input value={editForm.aiMinutesLimit} onChange={(e) => setEditForm((f) => ({ ...f, aiMinutesLimit: e.target.value }))} placeholder="Unlimited" className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Billing Method</label>
-                      <select value={editForm.billingMethod} onChange={(e) => setEditForm((f) => ({ ...f, billingMethod: e.target.value }))} className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5">
-                        <option value="pay_as_you_go">Pay as you go</option>
-                        <option value="recharge_based">Recharge based</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Charge Scope</label>
-                      <select value={editForm.chargeScope} onChange={(e) => setEditForm((f) => ({ ...f, chargeScope: e.target.value }))} className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5">
-                        <option value="ai_only">AI only</option>
-                        <option value="ai_and_call_provider">AI + Call Provider</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button onClick={handleSaveEdit} disabled={busy} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50">
-                    {busy ? 'Saving…' : 'Save Changes'}
+              {actionError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-500/10 dark:text-rose-300">
+                {actionError}
+              </p>}
+              <nav aria-label="Organization detail sections"
+                className="mt-4 flex min-w-0 gap-1 overflow-x-auto">
+                {([
+                  ['overview', 'Overview', LayoutDashboard],
+                  ['people', 'People & Activity', Activity],
+                  ['access', 'Access & Settings', ShieldCheck],
+                ] as const).map(([key, label, Icon]) => (
+                  <button key={key} type="button" aria-pressed={activeSection === key}
+                    onClick={() => setActiveSection(key)}
+                    className={'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 ' +
+                      (activeSection === key
+                        ? 'border-[var(--accent)] text-[var(--accent)]'
+                        : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]')}>
+                    <Icon className="h-3.5 w-3.5" aria-hidden="true" /> {label}
                   </button>
-                </div>
-              )}
-            </div>
+                ))}
+              </nav>
+            </header>
 
-            <div className="p-6 space-y-6">
+            <div className="space-y-5 px-4 pb-6 pt-4 sm:px-6">
+              {activeSection === 'overview' && (
+                <section id="org-detail-overview" aria-label="Organization overview" className="space-y-4">
+
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
-                  <div className="text-lg font-semibold text-slate-800">{detail.counts.members}</div>
-                  <div className="text-[10px] text-slate-400 uppercase">Members</div>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
-                  <div className="text-lg font-semibold text-slate-800">{detail.counts.leads}</div>
-                  <div className="text-[10px] text-slate-400 uppercase">Leads</div>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
-                  <div className="text-lg font-semibold text-slate-800">{detail.counts.workflows}</div>
-                  <div className="text-[10px] text-slate-400 uppercase">Workflows</div>
-                </div>
-                <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
-                  <div className="text-lg font-semibold text-slate-800">{detail.counts.campaigns}</div>
-                  <div className="text-[10px] text-slate-400 uppercase">Campaigns</div>
-                </div>
+                {([
+                  ['Members', detail.counts.members, Users],
+                  ['Leads', detail.counts.leads, Building2],
+                  ['Workflows', detail.counts.workflows, Settings2],
+                  ['Campaigns', detail.counts.campaigns, Activity],
+                ] as const).map(([label, count, Icon]) => (
+                  <Card key={label} padding="sm" className="min-w-0">
+                    <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="text-[11px] font-semibold">{label}</span>
+                    </div>
+                    <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--text-primary)]">{count}</p>
+                  </Card>
+                ))}
               </div>
 
               <OrganizationWorkspaceSetup key={orgId} orgId={orgId} />
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Billing</h4>
-                <div className="flex items-center justify-between text-sm mb-2"><span className="text-slate-500">Method</span><span className="font-semibold text-slate-800">{detail.billingMethod === 'recharge_based' ? 'Recharge based' : 'Pay as you go'}</span></div>
-                <div className="flex items-center justify-between text-sm mb-2"><span className="text-slate-500">Charge scope</span><span className="font-semibold text-slate-800">{detail.chargeScope === 'ai_and_call_provider' ? 'AI + Call Provider' : 'AI only'}</span></div>
+              <div className={PANEL_CLASS}>
+                <CardHeader title="Billing" subtitle="Current billing method and charges" icon={CreditCard} accent="#0d9488" />
+                <div className="flex items-center justify-between text-sm mb-2"><span className="text-[var(--text-secondary)]">Method</span><span className="font-semibold text-[var(--text-primary)]">{detail.billingMethod === 'recharge_based' ? 'Recharge based' : 'Pay as you go'}</span></div>
+                <div className="flex items-center justify-between text-sm mb-2"><span className="text-[var(--text-secondary)]">Charge scope</span><span className="font-semibold text-[var(--text-primary)]">{detail.chargeScope === 'ai_and_call_provider' ? 'AI + Call Provider' : 'AI only'}</span></div>
                 {detail.billingMethod === 'recharge_based' && (
                   <>
                     <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">Available balance</div>
-                          <div className="mt-1 text-2xl font-bold text-slate-900">₹{Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0).toFixed(2)}</div>
+                          <div className="mt-1 text-2xl font-bold text-emerald-950">₹{Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0).toFixed(2)}</div>
                         </div>
                         <div className="rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">Recharge</div>
                       </div>
-                      <div className="mt-2 text-[10px] text-slate-500">
+                      <div className="mt-2 text-[10px] text-[var(--text-secondary)]">
                         {Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0) > 0
                           ? 'Calls can use this prepaid balance.'
                           : 'No available balance. Calls should remain blocked until the organization is recharged.'}
@@ -419,7 +429,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                         value={rechargeAmount}
                         onChange={(e) => setRechargeAmount(e.target.value)}
                         disabled={rechargeBusy}
-                        className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1.5"
+                        className={FIELD_CLASS + " flex-1"}
                       />
                       <button
                         disabled={rechargeBusy || Number(rechargeAmount) <= 0}
@@ -445,7 +455,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                             setRechargeBusy(false);
                           }
                         }}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                        className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                       >{rechargeBusy ? 'Recharging…' : 'Recharge'}</button>
                     </div>
                   </>
@@ -455,271 +465,416 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Plan & Usage</h4>
+              <div className={PANEL_CLASS}>
+                <CardHeader title="Plan & usage" subtitle="Subscription and accumulated usage" icon={Activity} accent="#2563eb" />
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-500">Plan</span>
-                  <span className="font-semibold text-slate-800">{detail.subscriptionPlan}</span>
+                  <span className="text-[var(--text-secondary)]">Plan</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{detail.subscriptionPlan}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-500">AI minutes</span>
-                  <span className="font-semibold text-slate-800">{detail.aiMinutesUsed}</span>
+                  <span className="text-[var(--text-secondary)]">AI minutes</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{detail.aiMinutesUsed}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-500">AI voice cost</span>
-                  <span className="font-semibold text-slate-800">{formatInr(detail.totalCostInr)}</span>
+                  <span className="text-[var(--text-secondary)]">AI voice cost</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{formatInr(detail.totalCostInr)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Signed up</span>
-                  <span className="text-slate-600">{new Date(detail.createdAt).toLocaleDateString()}</span>
+                  <span className="text-[var(--text-secondary)]">Signed up</span>
+                  <span className="text-[var(--text-secondary)]">{new Date(detail.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5"><Cloud className="h-3.5 w-3.5" /> Vertex AI Project</h4>
-                  {gcpProject?.mode !== 'existing' && gcpProject?.status !== 'ready' && gcpProject?.status !== 'retained' && (
-                    <button onClick={retryGcpProject} disabled={gcpBusy} className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">
-                      {gcpBusy ? 'Queueing…' : 'Retry'}
-                    </button>
-                  )}
-                </div>
+              <div className={PANEL_CLASS}>
+                <CardHeader title="Vertex AI project" subtitle="Cloud project connected to this organization"
+                  icon={Cloud} accent="#7c3aed"
+                  action={
+                    gcpProject?.mode !== 'existing' && gcpProject?.status !== 'ready' && gcpProject?.status !== 'retained'
+                      ? <Button type="button" size="xs" variant="secondary" loading={gcpBusy}
+                          onClick={() => void retryGcpProject()}>Retry</Button>
+                      : undefined
+                  }
+                />
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-slate-500">Status</span>
-                  <span className="font-semibold text-slate-800 capitalize">{gcpProject?.status || 'pending'}</span>
+                  <span className="text-[var(--text-secondary)]">Status</span>
+                  <span className="font-semibold text-[var(--text-primary)] capitalize">{gcpProject?.status || 'pending'}</span>
                 </div>
-                {gcpProject?.project_id && <div className="flex items-center justify-between text-sm mb-2"><span className="text-slate-500">Project</span><span className="font-mono text-xs text-slate-700">{gcpProject.project_id}</span></div>}
-                {gcpProject?.location && <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Location</span><span className="text-slate-700">{gcpProject.location}</span></div>}
-                {gcpProject?.mode && <div className="flex items-center justify-between text-sm mt-2"><span className="text-slate-500">Configuration</span><span className="text-slate-700 capitalize">{gcpProject.mode === 'existing' ? 'Existing project' : 'Automatic provisioning'}</span></div>}
+                {gcpProject?.project_id && <div className="flex items-center justify-between text-sm mb-2"><span className="text-[var(--text-secondary)]">Project</span><span className="font-mono text-xs text-[var(--text-primary)]">{gcpProject.project_id}</span></div>}
+                {gcpProject?.location && <div className="flex items-center justify-between text-sm"><span className="text-[var(--text-secondary)]">Location</span><span className="text-[var(--text-primary)]">{gcpProject.location}</span></div>}
+                {gcpProject?.mode && <div className="flex items-center justify-between text-sm mt-2"><span className="text-[var(--text-secondary)]">Configuration</span><span className="text-[var(--text-primary)] capitalize">{gcpProject.mode === 'existing' ? 'Existing project' : 'Automatic provisioning'}</span></div>}
                 {gcpProject?.status === 'ready' && <div className="text-xs text-emerald-600 font-medium mt-3">Vertex AI: Enabled</div>}
                 {gcpProject?.error_message && <p className="text-xs text-rose-600 mt-3">{gcpProject.error_message}</p>}
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Team</h4>
-                <div className="space-y-2">
-                  {detail.members.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between text-sm">
-                      <div>
-                        <span className="font-medium text-slate-700">{m.name}</span>
-                        <span className="text-slate-400 ml-2 text-xs">{m.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!m.hasAccount && <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">invited</span>}
-                        <span className="text-xs text-slate-500">{m.role}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {detail.members.length === 0 && <p className="text-xs text-slate-400">No team members.</p>}
-                </div>
-              </div>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><PhoneCall className="h-3.5 w-3.5" /> Recent Calls</h4>
-                <div className="space-y-2">
-                  {detail.recentCalls.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600">{c.callerNumber || 'Unknown'} · {c.agentName}</span>
-                      <span className="text-slate-400">{c.durationSeconds}s · {formatInr(callCostInr(c.durationSeconds))} · {new Date(c.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  ))}
-                  {detail.recentCalls.length === 0 && <p className="text-xs text-slate-400">No calls yet.</p>}
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><ScrollText className="h-3.5 w-3.5" /> Recent Activity</h4>
-                <div className="space-y-2">
-                  {detail.recentActivity.map((a) => (
-                    <div key={a.id} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-600">{a.action}</span>
-                      <span className="text-slate-400">{new Date(a.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  ))}
-                  {detail.recentActivity.length === 0 && <p className="text-xs text-slate-400">No activity yet.</p>}
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
-                    <Hash className="h-3.5 w-3.5" /> Virtual Numbers
-                    {numbersLoading && <Loader2 className="h-3 w-3 animate-spin ml-1 text-slate-400" />}
-                  </h4>
-                  <button
-                    onClick={() => setAddNumberForm(v => !v)}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                  >
-                    {addNumberForm ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                    {addNumberForm ? 'Cancel' : 'Add'}
-                  </button>
-                </div>
-                {addNumberForm && (
-                  <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <input
-                        placeholder="Phone number (E.164)"
-                        value={newNum.number}
-                        onChange={e => setNewNum(f => ({ ...f, number: e.target.value }))}
-                        className="col-span-2 text-xs border border-slate-200 rounded-lg px-2 py-1.5 font-mono"
-                      />
-                      <select
-                        value={newNum.provider}
-                        onChange={e => setNewNum(f => ({ ...f, provider: e.target.value }))}
-                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5"
-                      >
-                        <option>Vobiz.ai</option>
-                      </select>
-                    </div>
-                    <input
-                      placeholder="Label (optional)"
-                      value={newNum.friendlyName}
-                      onChange={e => setNewNum(f => ({ ...f, friendlyName: e.target.value }))}
-                      className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5"
+                </section>
+              )}
+              {activeSection === 'people' && (
+                <section id="org-detail-people" aria-label="People and activity" className="space-y-4">
+                  <Card padding="md">
+                    <CardHeader title="Team members" subtitle={detail.members.length + ' people in this organization'} icon={Users} accent="#2563eb" />
+                    {detail.members.length ? (
+                      <ul className="divide-y divide-[var(--border)]">
+                        {detail.members.map(member => (
+                          <li key={member.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--text-secondary)]">
+                              {(member.name || member.email || '?').trim().charAt(0).toUpperCase()}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{member.name || member.email}</p>
+                              <p className="break-all text-[11px] text-[var(--text-muted)]">{member.email}</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {!member.hasAccount && <Badge color="amber">Invited</Badge>}
+                              <Badge color="slate">{member.role}</Badge>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-xs text-[var(--text-muted)]">No team members yet.</p>}
+                  </Card>
+                  <Card padding="md">
+                    <CardHeader title="Recent calls" subtitle="Latest voice activity" icon={PhoneCall} accent="#0891b2"
+                      action={<Badge color="slate">{detail.recentCalls.length}</Badge>} />
+                    {detail.recentCalls.length ? (
+                      <ul className="divide-y divide-[var(--border)]">
+                        {detail.recentCalls.map(call => (
+                          <li key={call.id} className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                            <div className="min-w-0 flex-1">
+                              <p className="break-all text-xs font-semibold text-[var(--text-primary)]">{call.callerNumber || 'Unknown number'}</p>
+                              <p className="mt-1 text-[11px] text-[var(--text-muted)]">{call.agentName || 'Unassigned agent'} · {new Date(call.createdAt).toLocaleDateString()}</p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-xs font-semibold tabular-nums text-[var(--text-primary)]">{formatInr(callCostInr(call.durationSeconds))}</p>
+                              <p className="mt-1 text-[11px] text-[var(--text-muted)]">{call.durationSeconds}s</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-xs text-[var(--text-muted)]">No recent calls.</p>}
+                  </Card>
+                  <Card padding="md">
+                    <CardHeader title="Recent activity" subtitle="Changes and actions across the organization" icon={ScrollText} accent="#7c3aed" />
+                    {detail.recentActivity.length ? (
+                      <ul className="divide-y divide-[var(--border)]">
+                        {detail.recentActivity.map(event => (
+                          <li key={event.id} className="flex flex-wrap items-start justify-between gap-2 py-3 first:pt-0 last:pb-0">
+                            <div className="min-w-0 flex-1">
+                              <p className="break-words text-xs font-medium text-[var(--text-primary)]">{event.action}</p>
+                              {event.actorEmail && <p className="mt-1 break-all text-[11px] text-[var(--text-muted)]">{event.actorEmail}</p>}
+                            </div>
+                            <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{new Date(event.createdAt).toLocaleDateString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-xs text-[var(--text-muted)]">No recent activity.</p>}
+                  </Card>
+                </section>
+              )}
+              {activeSection === 'access' && (
+                <section id="org-detail-access" aria-label="Access and settings" className="space-y-4">
+                  <Card padding="md">
+                    <CardHeader title="Feature access" icon={ShieldCheck} accent="#2563eb"
+                      subtitle="Control which modules this organization can use." />
+                    {flagSaveError && (
+                      <p role="alert" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+                        {flagSaveError}
+                      </p>
+                    )}
+                    <FeatureAccessSelector
+                      label="Granted permissions"
+                      description="Select a feature group or find an individual permission. Use the information icon beside a group to inspect its included features."
+                      availableKeys={FEATURE_REGISTRY.map(feature => feature.key)}
+                      value={enabledFlags}
+                      onChange={keys => { void applyFlagGroup(keys); }}
+                      disabled={flagsBusy}
                     />
-                    <button
-                      onClick={handleAddNumber}
-                      disabled={numBusy || !newNum.number.trim()}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                      {numBusy ? 'Adding…' : 'Add Number'}
-                    </button>
-                  </div>
-                )}
-                {numbers.length === 0 && !numbersLoading && (
-                  <p className="text-xs text-slate-400">No virtual numbers registered.</p>
-                )}
-                <div className="space-y-2">
-                  {numbers.map(n => (
-                    <div key={n.id} className="flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-mono font-medium text-slate-700">{n.number}</span>
-                        {n.friendlyName && <span className="text-slate-400 ml-2">{n.friendlyName}</span>}
-                        <span className="ml-2 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{n.provider}</span>
+                    <p role="status" className="mt-3 flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
+                      {flagsBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                      {flagsBusy ? 'Saving permission changes…' : 'Permission changes save automatically.'}
+                    </p>
+                  </Card>
+
+                  <Card padding="md">
+                    <CardHeader title="Virtual numbers" icon={Hash} accent="#0d9488"
+                      subtitle="Connected call-provider phone numbers."
+                      action={<Button type="button" size="sm" variant="secondary"
+                        icon={addNumberForm ? X : Plus}
+                        onClick={() => setAddNumberForm(previous => !previous)}>
+                        {addNumberForm ? 'Cancel' : 'Add number'}
+                      </Button>}
+                    />
+                    {addNumberForm && (
+                      <div className="mb-4 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <DetailField label="Phone number (E.164)">
+                            <input className={FIELD_CLASS} type="tel" autoComplete="off"
+                              placeholder="+14155550123" value={newNum.number}
+                              onChange={event => setNewNum(value => ({ ...value, number: event.target.value }))} />
+                          </DetailField>
+                          <DetailField label="Provider">
+                            <select className={FIELD_CLASS} value={newNum.provider}
+                              onChange={event => setNewNum(value => ({ ...value, provider: event.target.value }))}>
+                              <option>Vobiz.ai</option>
+                            </select>
+                          </DetailField>
+                        </div>
+                        <DetailField label="Friendly name (optional)">
+                          <input className={FIELD_CLASS} value={newNum.friendlyName}
+                            placeholder="Support line" onChange={event => setNewNum(value => ({ ...value, friendlyName: event.target.value }))} />
+                        </DetailField>
+                        <div className="flex justify-end">
+                          <Button type="button" variant="primary" size="sm" icon={Plus} loading={numBusy}
+                            disabled={!newNum.number.trim()} onClick={() => void handleAddNumber()}>Add number</Button>
+                        </div>
                       </div>
-                      <button onClick={() => handleDeleteNumber(n.id)} className="text-rose-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                    )}
+                    {numbersLoading ? (
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading phone numbers…
+                      </div>
+                    ) : numbers.length ? (
+                      <ul className="divide-y divide-[var(--border)]">
+                        {numbers.map(number => (
+                          <li key={number.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                            <div className="min-w-0">
+                              <p className="break-all font-mono text-xs font-semibold text-[var(--text-primary)]">{number.number}</p>
+                              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                                {number.friendlyName || 'No label'} · {number.provider}
+                              </p>
+                            </div>
+                            <Button type="button" size="xs" variant="ghost" icon={Trash2}
+                              aria-label={'Remove virtual number ' + number.number}
+                              className="shrink-0 text-rose-600" onClick={() => void handleDeleteNumber(number.id)}>
+                              Remove
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-xs text-[var(--text-muted)]">No virtual numbers registered.</p>}
+                  </Card>
+
+                  <Card padding="md">
+                    <CardHeader title="Data retention" icon={Database} accent="#7c3aed"
+                      subtitle="Set how long each type of organizational data is retained."
+                      action={<Badge color={retentionMode === 'custom' ? 'purple' : 'slate'}>
+                        {retentionMode === 'custom' ? 'Custom' : 'Platform default'}
+                      </Badge>}
+                    />
+                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
+                      {([
+                        ['default', 'Use platform default'],
+                        ['custom', 'Custom periods'],
+                      ] as const).map(([mode, label]) => (
+                        <button key={mode} type="button" aria-pressed={retentionMode === mode}
+                          onClick={() => {
+                            if (mode === 'custom' && retentionMode !== 'custom'
+                              && Object.keys(retentionOverrides).length === 0) {
+                              setRetentionOverrides(retentionState?.policy || retentionState?.defaults || {});
+                            }
+                            setRetentionMode(mode);
+                          }}
+                          className={'rounded-md px-2.5 py-2 text-xs font-semibold transition-colors ' +
+                            (retentionMode === mode
+                              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+                              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]')}>
+                          {label}
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Database className="h-3.5 w-3.5" /> Data Retention</h4>
-                <p className="text-[10px] text-slate-400 mb-3">Source: {retentionMode === 'custom' ? 'Organization override' : 'Platform default'}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    ['call_recordings', 'Call recordings'], ['transcripts', 'Transcripts'], ['ai_summaries', 'AI summaries'],
-                    ['call_logs', 'Call logs'], ['campaign_history', 'Campaign history'], ['audit_logs', 'Audit logs'],
-                    ['documents', 'Documents'], ['contacts', 'Contacts'],
-                  ].map(([key, label]) => (
-                    <div key={key}>
-                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">{label}</label>
-                      <select
-                        value={retentionMode === 'custom' ? (retentionOverrides[key] == null ? '' : String(retentionOverrides[key])) : String(retentionState?.defaults?.[key] ?? '')}
-                        disabled={retentionMode !== 'custom'}
-                        onChange={e => setRetentionOverrides(prev => ({ ...prev, [key]: e.target.value === '' ? null : Number(e.target.value) }))}
-                        className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 disabled:bg-slate-50"
-                      >
-                        <option value="">Never</option><option value="30">30 days</option><option value="90">90 days</option>
-                        <option value="180">180 days</option><option value="365">1 year</option><option value="730">2 years</option>
-                        <option value="1095">3 years</option><option value="1825">5 years</option>
-                      </select>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {([
+                        ['call_recordings', 'Call recordings'],
+                        ['transcripts', 'Transcripts'],
+                        ['ai_summaries', 'AI summaries'],
+                        ['call_logs', 'Call logs'],
+                        ['campaign_history', 'Campaign history'],
+                        ['audit_logs', 'Audit logs'],
+                        ['documents', 'Documents'],
+                        ['contacts', 'Contacts'],
+                      ] as const).map(([key, label]) => {
+                        const policyValue = retentionMode === 'custom'
+                          ? (Object.prototype.hasOwnProperty.call(retentionOverrides, key)
+                            ? retentionOverrides[key] : retentionState?.defaults?.[key])
+                          : retentionState?.defaults?.[key];
+                        return (
+                          <DetailField key={key} label={label}>
+                            <select className={FIELD_CLASS} value={policyValue == null ? '' : String(policyValue)}
+                              disabled={retentionMode === 'default' || retentionBusy}
+                              onChange={event => setRetentionOverrides(previous => ({
+                                ...previous,
+                                [key]: event.target.value === '' ? null : Number(event.target.value),
+                              }))}>
+                              <option value="">Never</option>
+                              <option value="30">30 days</option><option value="90">90 days</option>
+                              <option value="180">180 days</option><option value="365">1 year</option>
+                              <option value="730">2 years</option><option value="1095">3 years</option>
+                              <option value="1825">5 years</option>
+                            </select>
+                          </DetailField>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <button onClick={() => setRetentionMode('default')} className={`text-[10px] px-2.5 py-1.5 rounded-lg ${retentionMode === 'default' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>Use default</button>
-                  <button onClick={() => setRetentionMode('custom')} className={`text-[10px] px-2.5 py-1.5 rounded-lg ${retentionMode === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Custom policy</button>
-                  <button onClick={saveRetention} disabled={retentionBusy} className="ml-auto text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white disabled:opacity-50">{retentionBusy ? 'Saving…' : 'Save policy'}</button>
-                </div>
-              </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
+                      <p className="text-[11px] text-[var(--text-muted)]">
+                        {retentionMode === 'default' ? 'Using platform retention periods.' : 'Custom changes apply after saving.'}
+                      </p>
+                      <Button type="button" size="sm" variant="primary" loading={retentionBusy}
+                        onClick={() => void saveRetention()}>Save retention</Button>
+                    </div>
+                  </Card>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><Archive className="h-3.5 w-3.5" /> Backups</h4>
-                <div className="flex items-center justify-between text-sm mb-2"><span className="text-slate-500">Status</span><span className="font-semibold text-slate-800">{backupState?.lastStatus || 'never'}</span></div>
-                <div className="space-y-2">
-                  <input type="email" value={backupState?.email || ''} onChange={e => setBackupState((p:any) => ({ ...p, email: e.target.value }))} placeholder="Backup administrator email" className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <select value={backupState?.frequency || 'monthly'} onChange={e => setBackupState((p:any) => ({ ...p, frequency: e.target.value }))} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select>
-                    <select value={String(backupState?.retentionDays || 365)} onChange={e => setBackupState((p:any) => ({ ...p, retentionDays: Number(e.target.value) }))} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5"><option value="30">30 days</option><option value="90">90 days</option><option value="180">180 days</option><option value="365">1 year</option><option value="730">2 years</option></select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => saveBackup({ enabled: !backupState?.enabled, email: backupState?.email, frequency: backupState?.frequency, retentionDays: backupState?.retentionDays })} disabled={backupBusy} className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-lg ${backupState?.enabled ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'}`}>{backupState?.enabled ? 'Backups enabled' : 'Enable backups'}</button>
-                    <button onClick={() => saveBackup({ enabled: !!backupState?.enabled, email: backupState?.email, frequency: backupState?.frequency, retentionDays: backupState?.retentionDays })} disabled={backupBusy} className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-slate-900 text-white">Save</button>
-                    <button onClick={requestBackup} disabled={backupBusy || !backupState?.email} className="ml-auto text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white disabled:opacity-50">Create backup now</button>
-                  </div>
-                  {backupState?.lastError && <p className="text-[10px] text-rose-600">{backupState.lastError}</p>}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {flagSaveError && (
-                  <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
-                    {flagSaveError}
-                  </p>
-                )}
-                <FeatureAccessSelector
-                  label="Feature Access"
-                  description="Set the modules this organization can use. Staff access can be restricted separately in Organization Administration."
-                  availableKeys={FEATURE_REGISTRY.map(feature => feature.key)}
-                  value={enabledFlags}
-                  onChange={keys => { void applyFlagGroup(keys); }}
-                  disabled={flagsBusy}
-                />
-                <p role="status" className="flex items-center gap-2 px-1 text-[11px] text-[var(--text-muted)]">
-                  {flagsBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {flagsBusy ? 'Saving feature access…' : 'Changes save automatically.'}
-                </p>
-              </div>
+                  <Card padding="md">
+                    <CardHeader title="Backups" icon={Archive} accent="#0d9488"
+                      subtitle="Scheduled data exports and backup retention."
+                      action={<Badge color={backupState?.enabled ? 'green' : 'slate'}>
+                        {backupState?.enabled ? 'Enabled' : 'Disabled'}
+                      </Badge>}
+                    />
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                      <span className="text-xs text-[var(--text-secondary)]">Last backup status</span>
+                      <Badge color={backupState?.lastStatus === 'completed' ? 'green'
+                        : backupState?.lastStatus === 'failed' ? 'rose' : 'slate'}>
+                        {backupState?.lastStatus || 'Never'}
+                      </Badge>
+                    </div>
+                    <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                      <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={Boolean(backupState?.enabled)}
+                        disabled={backupBusy}
+                        onChange={event => setBackupState((previous: any) => ({ ...previous, enabled: event.target.checked }))} />
+                      Enable scheduled backups
+                    </label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <DetailField label="Backup notification email">
+                          <input className={FIELD_CLASS} type="email" autoComplete="email"
+                            placeholder="admin@company.com" value={backupState?.email || ''}
+                            disabled={backupBusy}
+                            onChange={event => setBackupState((previous: any) => ({ ...previous, email: event.target.value }))} />
+                        </DetailField>
+                      </div>
+                      <DetailField label="Frequency">
+                        <select className={FIELD_CLASS} value={backupState?.frequency || 'monthly'} disabled={backupBusy}
+                          onChange={event => setBackupState((previous: any) => ({ ...previous, frequency: event.target.value }))}>
+                          <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+                        </select>
+                      </DetailField>
+                      <DetailField label="Keep backups for">
+                        <select className={FIELD_CLASS} value={String(backupState?.retentionDays || 365)} disabled={backupBusy}
+                          onChange={event => setBackupState((previous: any) => ({ ...previous, retentionDays: Number(event.target.value) }))}>
+                          <option value="30">30 days</option><option value="90">90 days</option>
+                          <option value="180">180 days</option><option value="365">1 year</option>
+                          <option value="730">2 years</option>
+                        </select>
+                      </DetailField>
+                    </div>
+                    {backupState?.lastError && <p role="alert" className="mt-3 text-xs text-rose-600">{backupState.lastError}</p>}
+                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
+                      <Button type="button" size="sm" variant="secondary" loading={backupBusy}
+                        disabled={!backupState?.email} onClick={() => void requestBackup()}>
+                        Create backup now
+                      </Button>
+                      <Button type="button" size="sm" variant="primary" loading={backupBusy}
+                        onClick={() => void saveBackup({
+                          enabled: Boolean(backupState?.enabled),
+                          email: backupState?.email,
+                          frequency: backupState?.frequency,
+                          retentionDays: backupState?.retentionDays,
+                        })}>Save backup settings</Button>
+                    </div>
+                  </Card>
+                </section>
+              )}
             </div>
           </>
         )}
       </div>
     </SlideOver>
 
-    {/* Delete confirmation modal */}
-    {deleteModal && detail && (
-      <Modal open onClose={() => setDeleteModal(false)} maxWidth="max-w-md" zIndex="z-[400]">
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
-              <AlertTriangle className="h-5 w-5 text-rose-600" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">Delete organization</h3>
-              <p className="text-slate-500 text-xs mt-0.5">This permanently deletes all data and cannot be undone.</p>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-600 mb-3">
-            Type <strong className="font-mono text-slate-900">{detail.name}</strong> to confirm:
+    {/* Editing is a dedicated modal rather than a form inside the sticky sidebar header. */}
+    {editing && detail && (
+      <Modal open title="Edit organization" subtitle={detail.name}
+        maxWidth="max-w-2xl" zIndex="z-[400]"
+        onClose={() => { if (!busy) setEditing(false); }}
+        footer={<>
+          <Button type="button" size="sm" variant="secondary" disabled={busy}
+            onClick={() => setEditing(false)}>Cancel</Button>
+          <Button type="button" size="sm" variant="primary" loading={busy}
+            onClick={() => void handleSaveEdit()}>Save changes</Button>
+        </>}>
+        {actionError && (
+          <p role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+            {actionError}
           </p>
-          <input
-            ref={deleteInputRef}
-            value={deleteConfirm}
-            onChange={(e) => setDeleteConfirm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleDelete()}
-            placeholder={detail.name}
-            className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-rose-500"
-          />
+        )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <DetailField label="Organization name">
+            <input className={FIELD_CLASS} value={editForm.name} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, name: event.target.value }))} />
+          </DetailField>
+          <DetailField label="Workspace slug">
+            <input className={FIELD_CLASS} value={editForm.workspaceName} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, workspaceName: event.target.value }))} />
+          </DetailField>
+          <DetailField label="Industry">
+            <input className={FIELD_CLASS} value={editForm.industry} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, industry: event.target.value }))} />
+          </DetailField>
+          <DetailField label="Subscription plan">
+            <input className={FIELD_CLASS} value={editForm.subscriptionPlan} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, subscriptionPlan: event.target.value }))} />
+          </DetailField>
+          <DetailField label="AI minutes limit">
+            <input className={FIELD_CLASS} type="number" min="0" step="1"
+              placeholder="Unlimited" value={editForm.aiMinutesLimit} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, aiMinutesLimit: event.target.value }))} />
+          </DetailField>
+          <DetailField label="Billing method">
+            <select className={FIELD_CLASS} value={editForm.billingMethod} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, billingMethod: event.target.value }))}>
+              <option value="pay_as_you_go">Pay as you go</option>
+              <option value="recharge_based">Recharge based</option>
+            </select>
+          </DetailField>
+          <DetailField label="Charge scope">
+            <select className={FIELD_CLASS} value={editForm.chargeScope} disabled={busy}
+              onChange={event => setEditForm(value => ({ ...value, chargeScope: event.target.value }))}>
+              <option value="ai_only">AI only</option>
+              <option value="ai_and_call_provider">AI + call provider</option>
+            </select>
+          </DetailField>
+        </div>
+        <p className="mt-4 text-xs text-[var(--text-muted)]">
+          Changes to identity and billing will be saved to the organization's existing settings.
+        </p>
+      </Modal>
+    )}
 
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => setDeleteModal(false)}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleteConfirm !== detail.name}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Delete permanently
-            </button>
-          </div>
+    {/* Destructive actions stay behind a separate name-confirmation dialog. */}
+    {deleteModal && detail && (
+      <Modal open maxWidth="max-w-md" zIndex="z-[400]"
+        title="Delete organization"
+        subtitle="This action permanently deletes the organization's data and cannot be undone."
+        onClose={() => { if (!busy) setDeleteModal(false); }}
+        footer={<>
+          <Button type="button" size="sm" variant="secondary" disabled={busy}
+            onClick={() => setDeleteModal(false)}>Cancel</Button>
+          <Button type="button" size="sm" variant="danger" icon={Trash2} loading={busy}
+            disabled={deleteConfirm !== detail.name}
+            onClick={() => void handleDelete()}>Delete permanently</Button>
+        </>}>
+        <div className="space-y-3">
+          <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
+            Type <strong className="font-semibold text-[var(--text-primary)]">{detail.name}</strong> to confirm.
+          </p>
+          <label htmlFor="org-delete-confirm" className="block text-[11px] font-semibold text-[var(--text-secondary)]">
+            Organization name
+          </label>
+          <input id="org-delete-confirm" ref={deleteInputRef}
+            className={FIELD_CLASS} autoComplete="off" value={deleteConfirm}
+            placeholder={detail.name}
+            onChange={event => setDeleteConfirm(event.target.value)}
+            onKeyDown={event => { if (event.key === 'Enter' && deleteConfirm === detail.name) void handleDelete(); }} />
         </div>
       </Modal>
     )}
