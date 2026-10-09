@@ -26,7 +26,7 @@ export default function ManualCreditTransfer({ orgId }: { orgId: string }) {
       return;
     }
     const payload = {
-      orgId, grantId: grantId.trim(),
+      schemaVersion: 1, orgId, grantId: grantId.trim(),
       fromScope: { orgId, ownerType: 'organization', ownerId: orgId },
       toScope: { orgId, ownerType: 'workspace', ownerId: workspaceId.trim() },
       amount: { asset, units, scale: Number(scale) },
