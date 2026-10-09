@@ -231,6 +231,7 @@ export default function OrganizationsPage() {
       />
 
       <DataTable
+        resizable
         columns={columns}
         rows={filtered}
         rowKey={(o) => o.id}
