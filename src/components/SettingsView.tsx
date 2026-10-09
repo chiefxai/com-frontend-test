@@ -162,6 +162,13 @@ export default function SettingsView({
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
   const [selectedWorkspaceDetails, setSelectedWorkspaceDetails] = useState<{ id: string; name: string; status: string; industry?: string; branchName?: string | null } | null>(null);
   const [selectedNumberDetails, setSelectedNumberDetails] = useState<VirtualNumber | null>(null);
+  const [workspaceDetailsTab, setWorkspaceDetailsTab] = useState<'overview' | 'members' | 'numbers'>('overview');
+  const [detailHistory, setDetailHistory] = useState<Array<{
+    workspace: typeof selectedWorkspaceDetails;
+    number: VirtualNumber | null;
+    member: TeamMember | null;
+  }>>([]);
+
   // Workspace feature grants are read-only here: they are combined with
   // each staff member's organization grants and workspace-specific role.
   const [workspaceFeatureRows, setWorkspaceFeatureRows] = useState<{id:string;name:string;configured:boolean;enabledFeatures:string[]}[]>([]);
@@ -235,7 +242,7 @@ export default function SettingsView({
   };
 
   React.useEffect(() => {
-    if (!['numbers', 'workspaces'].includes(subTab) || workspacePanel !== 'numbers' || !canReadOrganization) return;
+    if (!['numbers', 'workspaces'].includes(subTab) || !canReadOrganization) return;
     void loadOrganizationNumbers().catch(error => { setOrganizationNumbers(null); setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'); });
   }, [subTab, workspacePanel, canReadOrganization, loadOrganizationNumbers]);
 
@@ -468,6 +475,53 @@ export default function SettingsView({
     } catch (error) {
       setOrgAccessError(error instanceof Error ? error.message : 'Could not update workspace access.');
     } finally { setAccessSaving(''); }
+  };
+
+  // One shared right-sidebar navigation flow. Switching related records replaces
+  // the visible panel rather than opening a second drawer over the first.
+  const navigateDetail = (target: {
+    workspace?: typeof selectedWorkspaceDetails;
+    number?: VirtualNumber | null;
+    member?: TeamMember | null;
+  }) => {
+    if (selectedWorkspaceDetails || selectedNumberDetails || accessMember) {
+      setDetailHistory(prev => [...prev, {
+        workspace: selectedWorkspaceDetails, number: selectedNumberDetails, member: accessMember,
+      }]);
+    } else {
+      setDetailHistory([]);
+    }
+    setSelectedWorkspaceDetails(target.workspace || null);
+    setSelectedNumberDetails(target.number || null);
+    setAccessMember(target.member || null);
+    setWorkspaceDetailsTab('overview');
+  };
+  const openWorkspaceDetails = (workspace: NonNullable<typeof selectedWorkspaceDetails>) => {
+    navigateDetail({ workspace });
+    if (canReadOrgMembers) void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Could not load workspace membership.'));
+  };
+  const openNumberDetails = (number: VirtualNumber) => {
+    navigateDetail({ number });
+    if (canReadOrgMembers) void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Could not load workspace membership.'));
+  };
+  const openMemberDetails = (member: TeamMember) => {
+    navigateDetail({ member });
+    if (canReadOrganization && canReadOrgMembers) void loadWorkspaceFeatures();
+  };
+  const closeDetails = () => {
+    setSelectedWorkspaceDetails(null);
+    setSelectedNumberDetails(null);
+    setAccessMember(null);
+    setDetailHistory([]);
+  };
+  const backDetails = () => {
+    const previous = detailHistory[detailHistory.length - 1];
+    if (!previous) return;
+    setDetailHistory(history => history.slice(0, -1));
+    setSelectedWorkspaceDetails(previous.workspace);
+    setSelectedNumberDetails(previous.number);
+    setAccessMember(previous.member);
+    setWorkspaceDetailsTab('overview');
   };
   const assignedWorkspaces = (memberId: string) => orgWorkspaces.filter(workspace =>
     orgAssignments[workspace.id]?.some(assignment => assignment.memberId === memberId && assignment.assignmentStatus === 'Active'));
@@ -727,8 +781,15 @@ export default function SettingsView({
                 <Widget title="Workspaces & Numbers" subtitle="Manage organization workspaces, connected numbers, and workspace sharing." icon={Briefcase} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Virtual Numbers</button><button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Sharing</button></div>}>
                   <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
                 </Widget>
-                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated}
-                  onSelectWorkspace={workspace => { setSelectedWorkspaceDetails(workspace); setSelectedNumberDetails(null); void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Could not load workspace membership.')); }} />
+                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={async () => { await onWorkspaceCreated(); await loadOrganizationAccess(); await loadOrganizationNumbers(); }}
+                  memberCounts={Object.fromEntries(orgWorkspaces.map(row => [row.id, canReadOrgMembers && !orgAccessError && orgAssignments[row.id] ? orgAssignments[row.id].filter(member => member.assignmentStatus === 'Active' && member.memberStatus.toLowerCase() === 'active').length : undefined]).filter(([, count]) => count !== undefined))}
+                  numberCounts={Object.fromEntries(visibleNumbers.filter(number => numberWorkspaceId(number)).reduce((counts, number) => {
+                    const key = numberWorkspaceId(number);
+                    counts.set(key, (counts.get(key) || 0) + 1);
+                    return counts;
+                  }, new Map<string, number>()))}
+                  numberCountsAvailable={organizationNumbers !== null}
+                  onSelectWorkspace={workspace => { openWorkspaceDetails(workspace); }} />
 
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
@@ -774,13 +835,20 @@ export default function SettingsView({
                           </div>
                           <div>
                             <button type="button" className="text-left font-semibold text-[var(--accent)] hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
-                              onClick={() => { setSelectedNumberDetails(num); setSelectedWorkspaceDetails(null); void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Could not load workspace membership.')); }}
+                              onClick={() => { openNumberDetails(num); }}
                               aria-label={`View workspace details for number ${num.number}`}>{num.number}</button>
                             {num.friendlyName && <p className="text-xs text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{num.friendlyName}</p>}
                           </div>
                         </div>
                       ),
                     },
+                    { key: 'workspace', header: 'Workspace', cell: (num) => {
+                      const id = numberWorkspaceId(num);
+                      const workspace = orgWorkspaces.find(row => row.id === id);
+                      return workspace ? <button type="button" className="text-xs text-[var(--accent)] hover:underline"
+                        onClick={() => openWorkspaceDetails(workspace)}>{workspace.name}</button>
+                        : <span className="text-xs text-[var(--text-muted)]">Unknown</span>;
+                    } },
                     { key: 'provider', header: 'Gateway Provider', cell: (num) => <ProviderBadge provider={num.provider} /> },
                     { key: 'load', header: 'Dial Load (In / Out)', cell: (num) => <span className="text-xs text-slate-500 dark:text-[var(--text-secondary)]">{num.incomingCallCount} in / {num.outgoingCallCount} out</span> },
                     {
@@ -1039,7 +1107,7 @@ export default function SettingsView({
                       header: 'Enlisted Representative',
                       cell: (member) => (
                         <div>
-                          <button type="button" onClick={() => { setAccessMember(member); setOrgAccessError(''); void loadWorkspaceFeatures(); }}
+                          <button type="button" onClick={() => { setOrgAccessError(''); openMemberDetails(member); }}
                             className="text-left font-semibold text-[var(--accent)] hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                             aria-label={`View workspace and feature access for ${member.name || member.email}`}>{member.name || member.email}</button>
                           <p className="text-[10px] text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{member.email}</p>
@@ -1121,7 +1189,7 @@ export default function SettingsView({
                     header: 'Workspace Access',
                     cell: member => <div className="flex min-w-40 items-center gap-2">
                       <span className="text-xs text-[var(--text-secondary)]">{assignedWorkspaces(member.id).length} workspace(s)</span>
-                      {canManageOrgMembers && <button type="button" onClick={() => { setAccessMember(member); setOrgAccessError(''); void loadWorkspaceFeatures(); }} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Manage Access</button>}
+                      {canManageOrgMembers && <button type="button" onClick={() => { setOrgAccessError(''); openMemberDetails(member); }} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Manage Access</button>}
                     </div>,
                   });
                   if (!canReadOrgMembers) columns.splice(2);
