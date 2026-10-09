@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuthorization } from '../lib/authorization';
 import Widget from './ui/Widget';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
+import Modal from './ui/Modal';
+import IconButton from './ui/IconButton';
 
 interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
@@ -28,6 +30,7 @@ export default function WorkspaceManagement({
   const canManage = can('organization.manage');
   const canRead = can('organization.read');
   const [search, setSearch] = useState('');
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
   const [setup, setSetup] = useState<WorkspaceSetup | null>(null);
   const [acceptedPrice, setAcceptedPrice] = useState(false);
@@ -82,6 +85,7 @@ export default function WorkspaceManagement({
       setName('');
       setBranchName('');
       setAcceptedPrice(false);
+      setShowCreateWorkspace(false);
       const policyResponse=await apiFetch('/api/settings/workspace-policy');
       if (policyResponse.ok) setSetup(await policyResponse.json());
       setMessage({ type: 'success', text: 'Workspace created and assigned to you as Workspace Admin.' });
@@ -96,62 +100,101 @@ export default function WorkspaceManagement({
     }
   };
 
+  const filteredWorkspaces = workspaces.filter(workspace =>
+    !search.trim() || `${workspace.name} ${workspace.branchName || ''} ${workspace.industry}`
+      .toLowerCase().includes(search.toLowerCase().trim()));
+
   return (
-    <Widget title="Organization Workspaces" subtitle="Create isolated branch workspaces using your organization’s primary industry." icon={Building2} accent="#0891b2" padding="md">
-      {message && <div role="status" className={`mb-4 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{message.text}</div>}
-      <div className="mb-5 space-y-3">
-        <FilterBar search={{ value: search, onChange: setSearch, placeholder: 'Search workspace or branch' }} />
-        <DataTable
-          bare
-          paginated
-          resizable
-          loading={loading}
-          emptyMessage="No workspaces match this search."
-          columns={[
-            { key: 'workspace', header: 'Workspace', cell: (workspace: WorkspaceRow) =>
-              <button type="button" onClick={() => onSelectWorkspace?.(workspace)}
-                className="text-left font-semibold text-[var(--accent)] hover:underline"
-                aria-label={`View workspace ${workspace.name}`}>{workspace.name}</button> },
-            { key: 'branch', header: 'Branch / Industry', cell: (workspace: WorkspaceRow) =>
-              <span className="text-xs text-[var(--text-secondary)]">{workspace.branchName || workspace.industry.replaceAll('_', ' ')}</span> },
-            { key: 'members', header: 'Members', cell: (workspace: WorkspaceRow) =>
-              <span className="text-xs text-[var(--text-secondary)]">{memberCounts[workspace.id] ?? '—'}</span> },
-            { key: 'numbers', header: 'Phone Numbers', cell: (workspace: WorkspaceRow) =>
-              <span className="text-xs text-[var(--text-secondary)]">{numberCountsAvailable ? (numberCounts[workspace.id] ?? 0) : '—'}</span> },
-            { key: 'status', header: 'Status', cell: (workspace: WorkspaceRow) =>
-              <span className="text-xs text-[var(--text-secondary)]">{workspace.status}</span> },
-          ] as Column<WorkspaceRow>[]}
-          rows={workspaces.filter(workspace => !search.trim() || `${workspace.name} ${workspace.branchName || ''} ${workspace.industry}`.toLowerCase().includes(search.toLowerCase().trim()))}
-          rowKey={workspace => workspace.id}
+    <Widget showHeader={false} padding="none">
+      {message && <div role="status" className={`m-4 rounded-lg border px-3 py-2 text-xs ${message.type === 'success'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{message.text}</div>}
+      <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+        <FilterBar
+          search={{ value: search, onChange: setSearch, placeholder: 'Search workspace or branch' }}
+          hasActiveFilters={Boolean(search.trim())}
+          onClear={() => setSearch('')}
+          resultCount={{ filtered: filteredWorkspaces.length, total: workspaces.length, label: 'workspaces' }}
+          actions={canManage
+            ? <IconButton icon={Plus} label="Create Workspace" onClick={() => setShowCreateWorkspace(true)} />
+            : undefined}
         />
       </div>
-      {canManage && (
-      <form onSubmit={createWorkspace} className="grid gap-3 border-t border-[var(--border)] pt-4 md:grid-cols-3">
-        <label className="space-y-1 text-xs font-medium text-[var(--text-secondary)]">
-          Workspace name
-          <input required maxLength={120} value={name} onChange={event => setName(event.target.value)} placeholder="Sales - Mumbai" className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
-        </label>
-        <label className="space-y-1 text-xs font-medium text-[var(--text-secondary)]">
-          Industry
-          <input readOnly value={industry.replaceAll('_', ' ')} className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
-        </label>
-        <label className="space-y-1 text-xs font-medium text-[var(--text-secondary)]">
-          Branch (optional)
-          <input maxLength={160} value={branchName} onChange={event => setBranchName(event.target.value)} placeholder="Mumbai" className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
-        </label>
-        <div className="md:col-span-3 space-y-3">
+      <DataTable
+        bare
+        paginated
+        resizable
+        loading={loading}
+        emptyMessage={workspaces.length ? 'No workspaces match this search.' : 'No workspaces available.'}
+        columns={[
+          { key: 'workspace', header: 'Workspace', cell: (workspace: WorkspaceRow) =>
+            <button type="button" onClick={() => onSelectWorkspace?.(workspace)}
+              className="text-left font-semibold text-[var(--accent)] hover:underline"
+              aria-label={`View workspace ${workspace.name}`}>{workspace.name}</button> },
+          { key: 'branch', header: 'Branch / Industry', cell: (workspace: WorkspaceRow) =>
+            <span className="text-xs text-[var(--text-secondary)]">{workspace.branchName || workspace.industry.replaceAll('_', ' ')}</span> },
+          { key: 'members', header: 'Members', cell: (workspace: WorkspaceRow) =>
+            <span className="text-xs text-[var(--text-secondary)]">{memberCounts[workspace.id] ?? '—'}</span> },
+          { key: 'numbers', header: 'Phone Numbers', cell: (workspace: WorkspaceRow) =>
+            <span className="text-xs text-[var(--text-secondary)]">{numberCountsAvailable ? (numberCounts[workspace.id] ?? 0) : '—'}</span> },
+          { key: 'status', header: 'Status', cell: (workspace: WorkspaceRow) =>
+            <span className="text-xs text-[var(--text-secondary)]">{workspace.status}</span> },
+        ] as Column<WorkspaceRow>[]}
+        rows={filteredWorkspaces}
+        rowKey={workspace => workspace.id}
+      />
+      {canManage && <Modal
+        open={showCreateWorkspace}
+        onClose={() => { if (!saving) { setShowCreateWorkspace(false); setAcceptedPrice(false); } }}
+        title="Create Workspace"
+        subtitle="Enter the new workspace details and confirm the organization's pricing before creating it."
+        maxWidth="max-w-lg"
+      >
+        <form onSubmit={createWorkspace} className="space-y-4">
+          <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
+            <span>Workspace name</span>
+            <input required maxLength={120} autoFocus value={name} onChange={event => setName(event.target.value)}
+              placeholder="Sales - Mumbai"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
+          </label>
+          <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
+            <span>Industry</span>
+            <input readOnly value={industry.replaceAll('_', ' ')}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
+          </label>
+          <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
+            <span>Branch (optional)</span>
+            <input maxLength={160} value={branchName} onChange={event => setBranchName(event.target.value)}
+              placeholder="Mumbai"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
+          </label>
           <p className="text-xs text-[var(--text-muted)]">Different industries are provisioned by a platform administrator.</p>
-          {setup?.addBranchQuote ? <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            <input type="checkbox" checked={acceptedPrice} onChange={event=>setAcceptedPrice(event.target.checked)} />
-            <span>{setup.addBranchQuote.upgradesToMultipleBranches ? 'Upgrade to multiple branches. ' : ''}I accept a fixed organization price of ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}/month after adding this workspace (current: ₹{setup.currentQuote?.totalMonthlyInr.toFixed(2)}). Usage charges and applicable taxes are additional.</span>
-          </label> : <p className="text-xs text-amber-700">Ask a platform administrator to configure branch pricing before adding another workspace.</p>}
-          <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !acceptedPrice || !name.trim()} className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            Create workspace
-          </button>
-        </div>
-      </form>
-      )}
+          {setup?.addBranchQuote
+            ? <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <input type="checkbox" className="mt-0.5" checked={acceptedPrice} onChange={event => setAcceptedPrice(event.target.checked)} />
+                <span>
+                  {setup.addBranchQuote.upgradesToMultipleBranches ? 'Upgrade to multiple branches. ' : ''}
+                  I accept a fixed organization price of ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}/month
+                  after adding this workspace (current: ₹{setup.currentQuote?.totalMonthlyInr.toFixed(2)}).
+                  Usage charges and applicable taxes are additional.
+                </span>
+              </label>
+            : <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Ask a platform administrator to configure branch pricing before adding another workspace.
+              </p>}
+          <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
+            <button type="button" disabled={saving} onClick={() => { setShowCreateWorkspace(false); setAcceptedPrice(false); }}
+              className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !acceptedPrice || !name.trim()}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              {saving ? 'Creating…' : 'Create Workspace'}
+            </button>
+          </div>
+        </form>
+      </Modal>}
     </Widget>
   );
 }
