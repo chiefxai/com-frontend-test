@@ -157,6 +157,9 @@ export default function App() {
     dialer: 'outbound',
   };
   const activeSubTab = subSlug || DEFAULT_SUB_TAB[activeTab] || '';
+  useEffect(() => {
+    if (slug === 'administration' && subSlug === 'workspaces') navigate('/administration/numbers', { replace: true });
+  }, [slug, subSlug, navigate]);
 
   // Keep-alive tab rendering: once a tab has been visited, keep it mounted
   // (hidden via CSS instead of unmounted) so navigating back to it shows the
