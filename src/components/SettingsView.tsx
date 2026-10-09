@@ -35,7 +35,7 @@ import Modal from './ui/Modal';
 import DataTable, { Column } from './ui/DataTable';
 import WorkspaceManagement from './WorkspaceManagement';
 import WorkspaceSharing from './WorkspaceSharing';
-import OrganizationTopUp from './billing/OrganizationTopUp';
+import OrganizationTopUp, { type BillingPanel } from './billing/OrganizationTopUp';
 
 interface SettingsViewProps {
   virtualNumbers: VirtualNumber[];
@@ -152,6 +152,7 @@ export default function SettingsView({
   const canManageWorkspaceMembers = can('workspace.members.manage');
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
+  const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
     _setInternalSubTab(v);
@@ -1063,15 +1064,32 @@ export default function SettingsView({
           {/* Organization-level billing and credit ledger, followed by workspace usage. */}
           {subTab === 'billing' && (
             <div className="mx-auto w-full max-w-6xl space-y-6">
-              <OrganizationTopUp canSubmit={can('billing.payment.submit')} />
-              <div className="border-t border-slate-200 pt-6">
-                <h2 className="text-base font-semibold text-[var(--text-primary)]">Subscription & usage details</h2>
-                <p className="mt-1 text-xs text-[var(--text-muted)]">Monthly plan charges, workspace limits, and metered voice/AI usage are listed below.</p>
-              </div>
+              {billingPanel !== 'dashboard' && <div className="flex flex-wrap items-center justify-between gap-3">
+                <button type="button" onClick={() => setBillingPanel('dashboard')} className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">← Back to Billing Dashboard</button>
+                <span className="text-sm font-semibold text-[var(--text-primary)]">{billingPanel === 'plan' ? 'Subscription details' : billingPanel === 'usage' ? 'Usage & workspace limits' : billingPanel === 'payments' ? 'Payment history' : billingPanel === 'topup' ? 'Add usage credits' : 'Available credits'}</span>
+              </div>}
+              {billingPanel === 'dashboard' && <div className="space-y-4">
+                <div><h2 className="text-lg font-semibold text-[var(--text-primary)]">Billing at a glance</h2><p className="mt-1 text-xs text-[var(--text-muted)]">Your plan, spending and credits in one place. Open a section for detailed information.</p></div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <section className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
+                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Monthly subscription</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{organizationPricing ? formatInr(organizationPricing.totalMonthlyInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{organizationPricing ? `${organizationPricing.workspaceCount} workspaces · ${organizationPricing.additionalIndustries} additional industry packs` : 'Plan information has not been loaded.'}</p></div>
+                    <button type="button" onClick={() => setBillingPanel('plan')} className="mt-5 self-start rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View plan →</button>
+                  </section>
+                  <section className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
+                    <div><p className="text-xs font-medium text-[var(--text-muted)]">Workspace spend this period</p><p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{workspaceBilling ? formatInr(workspaceBilling.periodSpendInr) : 'Not available'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{workspaceBilling?.workspaceName || 'Current workspace'} · AI & phone usage details</p></div>
+                    <button type="button" onClick={() => setBillingPanel('usage')} className="mt-5 self-start rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View usage →</button>
+                  </section>
+                </div>
+              </div>}
+              <OrganizationTopUp canSubmit={can('billing.payment.submit')} view={billingPanel} onNavigate={setBillingPanel} />
+              {billingPanel === 'plan' && <>
+                <div className="border-t border-[var(--border)] pt-4"><h2 className="text-base font-semibold text-[var(--text-primary)]">Subscription & plan pricing</h2></div>
               {organizationPricing && <Widget title="Organization monthly plan" subtitle="Shared across all organization workspaces" icon={CreditCard} accent="#0891b2" padding="md">
                 <p className="text-lg font-semibold">{formatInr(organizationPricing.totalMonthlyInr)} / month</p>
                 <p className="mt-2 text-xs text-slate-500">{organizationPricing.workspaceCount} workspace(s) · {organizationPricing.additionalIndustries} additional industry pack(s). Usage charges and applicable taxes are additional. This is the configured fixed monthly price.</p>
               </Widget>}
+              </>}
+              {billingPanel === 'usage' && <>
               {workspaceBilling && (
                 <Widget
                   title={`${workspaceBilling.workspaceName} spend this period`}
@@ -1289,6 +1307,7 @@ export default function SettingsView({
                   )}
                 </div>
               </Widget>
+              </>}
             </div>
           )}
 
