@@ -934,7 +934,7 @@ export default function App() {
             aiTokenCurrentRate={aiTokenCurrentRate}
             aiTokenUsage={aiTokenUsage}
             callProviderRate={callProviderRate}
-            activeSubTab={activeSubTab as 'numbers' | 'team' | 'billing' | 'api'}
+            activeSubTab={activeSubTab as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api'}
             setActiveSubTab={setActiveSubTab}
             currentUserEmail={kcUser?.email}
             multipleWorkspacesEnabled={multipleWorkspacesEnabled}
