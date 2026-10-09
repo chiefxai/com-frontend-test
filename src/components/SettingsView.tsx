@@ -26,7 +26,9 @@ import { useRefresh } from '../lib/RefreshContext';
 import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../types';
 import { COST_PER_MINUTE_INR_FALLBACK, formatInr } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
-import FlagGroupPicker from './ui/FlagGroupPicker';
+import FeatureAccessSelector from './ui/FeatureAccessSelector';
+import Button from './ui/Button';
+import { useToast } from './ui/Toast';
 import IconButton from './ui/IconButton';
 import PageShell from './ui/PageShell';
 import BreadcrumbTitle from './ui/BreadcrumbTitle';
@@ -139,6 +141,7 @@ export default function SettingsView({
   onWorkspaceCreated = async () => {},
 }: SettingsViewProps) {
   const { can } = useAuthorization();
+  const { showToast } = useToast();
   const canReadOrganization = can('organization.read');
   const canReadOrgMembers = can('organization.members.read');
   const canManageOrgMembers = can('organization.members.manage');
@@ -424,7 +427,7 @@ export default function SettingsView({
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffPhone, setNewStaffPhone] = useState('');
-  const [newStaffRole, setNewStaffRole] = useState<UserRole>('Loan Agent');
+  const [newStaffRole, setNewStaffRole] = useState<UserRole>('Member');
   const [newStaffFeatures, setNewStaffFeatures] = useState<string[]>([]);
   const [addingStaff, setAddingStaff] = useState(false);
   const [staffAddMsg, setStaffAddMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -590,31 +593,37 @@ export default function SettingsView({
   // Feature flag editing for existing team members
   const [editFlagsFor, setEditFlagsFor] = useState<string | null>(null); // member id
   const [editFlagsValue, setEditFlagsValue] = useState<string[]>([]);
+  const [editFlagsError, setEditFlagsError] = useState('');
   const [savingFlags, setSavingFlags] = useState(false);
 
   const openFlagEditor = (member: TeamMember) => {
     setEditFlagsFor(member.id);
     setEditFlagsValue(member.featureFlags || []);
+    setEditFlagsError('');
   };
 
   const handleSaveFlags = async (memberId: string) => {
+    if (savingFlags) return;
     setSavingFlags(true);
+    setEditFlagsError('');
     try {
       const res = await apiFetch(`/api/settings/team/${memberId}/flags`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ featureFlags: editFlagsValue }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        alert(body.error || 'Failed to update feature flags');
-        return;
-      }
-      const updated = await res.json();
-      setTeamMembers(prev => prev.map(m => m.id === memberId ? { ...m, featureFlags: updated.featureFlags || editFlagsValue } : m));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to update feature access.');
+      setTeamMembers(prev => prev.map(member =>
+        member.id === memberId
+          ? { ...member, featureFlags: Array.isArray(data.featureFlags) ? data.featureFlags : editFlagsValue }
+          : member));
       setEditFlagsFor(null);
-    } catch {
-      alert('Could not reach the server');
+      showToast('Feature access saved successfully.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update feature access.';
+      setEditFlagsError(message);
+      showToast(message, 'error');
     } finally {
       setSavingFlags(false);
     }
@@ -661,7 +670,9 @@ export default function SettingsView({
       });
       const data = await res.json();
       if (!res.ok) {
-        setStaffAddMsg({ type: 'error', text: data.error || 'Failed to add member' });
+        const message = data.error || 'Failed to add member';
+        setStaffAddMsg({ type: 'error', text: message });
+        showToast(message, 'error');
         return;
       }
       setTeamMembers((prev) => [...prev, data]);
@@ -670,23 +681,22 @@ export default function SettingsView({
       setNewStaffEmail('');
       setNewStaffPhone('');
       setNewStaffFeatures([]);
-      setStaffAddMsg({
-        type: 'success',
-        text: data.credsSent
+      setNewStaffRole('Member');
+      showToast(
+        data.credsSent
           ? `${newStaffName} added — credentials sent to ${newStaffEmail}`
           : `${newStaffName} added successfully`,
-      });
+        'success',
+      );
+      setShowAddStaff(false);
     } catch {
       setStaffAddMsg({ type: 'error', text: 'Could not reach the server' });
+      showToast('Could not reach the server.', 'error');
     } finally {
       setAddingStaff(false);
     }
   };
 
-  const toggleFeature = (key: string) =>
-    setNewStaffFeatures((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
 
   // Remove staff member permanently
   const handleRemoveStaff = async (staffId: string, name: string, memberEmail: string, memberRole: string) => {
@@ -1100,12 +1110,6 @@ export default function SettingsView({
           {/* Staff and team membership only. */}
           {subTab === 'team' && (
             <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
-              {staffAddMsg && (
-                <div className={`px-4 py-2.5 rounded-lg text-xs font-medium ${staffAddMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
-                  {staffAddMsg.text}
-                </div>
-              )}
-
               {/* Organization membership and current-workspace access in one matrix. */}
               {(canReadOrgMembers || canManageWorkspaceMembers) && (
               <Widget showHeader={false} padding="none">
@@ -1133,7 +1137,7 @@ export default function SettingsView({
                     actions={<>
                       {currentOwnerMember && <button type="button" onClick={() => { setOwnerTransferError(''); setShowOwnerTransfer(true); }}
                         className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100">Transfer Owner</button>}
-                      {canManageOrgMembers && <IconButton icon={Plus} label="Add Member" onClick={() => setShowAddStaff(true)} />}
+                      {canManageOrgMembers && <IconButton icon={Plus} label="Add Member" onClick={() => { setStaffAddMsg(null); setShowAddStaff(true); }} />}
                     </>}
                   />
                 </div>
@@ -1170,7 +1174,7 @@ export default function SettingsView({
                     },
                     {
                       key: 'role',
-                      header: 'Administrative Role',
+                      header: 'Role',
                       cell: (member) => (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400">
                           {member.role}
@@ -1180,15 +1184,17 @@ export default function SettingsView({
                     {
                       key: 'access',
                       header: 'Feature Access',
-                      cell: (member) => member.role === 'Organization Admin' || member.role === 'Super Admin' ? (
+                      cell: (member) => !canManageOrgMembers
+                        || member.role === 'Organization Admin' || member.role === 'Super Admin' ? (
                         <button type="button" onClick={() => openMemberDetails(member)}
                           className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--accent)] hover:underline">
                           <Flag className="h-3 w-3" /> View workspace features
                         </button>
                       ) : (
                         <button
-                          onClick={() => editFlagsFor === member.id ? setEditFlagsFor(null) : openFlagEditor(member)}
-                          className="flex items-center gap-1.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                          type="button"
+                          onClick={() => openFlagEditor(member)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]"
                         >
                           <Flag className="h-3 w-3" />
                           {(member.featureFlags || []).length} granted
@@ -1279,63 +1285,6 @@ export default function SettingsView({
                       columns={columns}
                       rows={filteredStaff}
                       rowKey={(member) => member.id}
-                      isRowExpanded={(member) => editFlagsFor === member.id}
-                      renderExpandedRow={(member) => (
-                        <div className="px-6 pb-4 pt-0 bg-indigo-50/40 dark:bg-indigo-500/5">
-                          <div className="border border-indigo-100 dark:border-indigo-500/20 rounded-[9px] p-4 bg-[var(--bg-surface)] dark:bg-[var(--bg-surface)] space-y-3">
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-[var(--text-muted)] uppercase tracking-wider">
-                              Feature Access — {member.name}
-                            </p>
-                            <FlagGroupPicker
-                              availableKeys={orgAllowedFlags}
-                              onApply={(keys) => setEditFlagsValue(keys)}
-                            />
-                            <div className="flex flex-wrap gap-2">
-                              {FEATURE_REGISTRY.filter(f => orgAllowedFlags.includes(f.key)).map((flag) => {
-                                const active = editFlagsValue.includes(flag.key);
-                                return (
-                                  <button
-                                    key={flag.key}
-                                    type="button"
-                                    onClick={() =>
-                                      setEditFlagsValue(prev =>
-                                        prev.includes(flag.key)
-                                          ? prev.filter(k => k !== flag.key)
-                                          : [...prev, flag.key]
-                                      )
-                                    }
-                                    className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
-                                      active
-                                        ? 'bg-indigo-600 text-white border-indigo-600'
-                                        : 'bg-[var(--bg-surface)] dark:bg-[var(--bg-subtle)] text-slate-500 dark:text-[var(--text-secondary)] border-[var(--border)] dark:border-[var(--border)] hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                                    }`}
-                                  >
-                                    {flag.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <div className="flex items-center gap-2 justify-end pt-1">
-                              <button
-                                type="button"
-                                onClick={() => setEditFlagsFor(null)}
-                                className="text-xs text-slate-400 dark:text-[var(--text-muted)] hover:text-slate-600 dark:hover:text-[var(--text-primary)] font-medium px-3 py-1.5 cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveFlags(member.id)}
-                                disabled={savingFlags}
-                                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-semibold rounded-lg px-4 py-1.5 transition-all cursor-pointer flex items-center gap-1.5"
-                              >
-                                {savingFlags ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                Save Access
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     />
                   );
                 })()}
@@ -1343,6 +1292,36 @@ export default function SettingsView({
               )}
 
 
+
+              {editFlagsFor && canManageOrgMembers && (
+                <Modal
+                  open
+                  maxWidth="max-w-3xl"
+                  onClose={() => { if (!savingFlags) setEditFlagsFor(null); }}
+                  title={`Feature Access — ${teamMembers.find(member => member.id === editFlagsFor)?.name || teamMembers.find(member => member.id === editFlagsFor)?.email || 'Team member'}`}
+                  subtitle="Choose the features this member can access. The organization and workspace policies still determine effective access."
+                  footer={<>
+                    <Button type="button" variant="secondary" disabled={savingFlags}
+                      onClick={() => setEditFlagsFor(null)}>Cancel</Button>
+                    <Button type="button" variant="primary" loading={savingFlags}
+                      onClick={() => void handleSaveFlags(editFlagsFor)}>Save access</Button>
+                  </>}
+                >
+                  <div className="space-y-3">
+                    {editFlagsError && (
+                      <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+                        {editFlagsError}
+                      </p>
+                    )}
+                    <FeatureAccessSelector
+                      availableKeys={orgAllowedFlags}
+                      value={editFlagsValue}
+                      onChange={setEditFlagsValue}
+                      disabled={savingFlags}
+                    />
+                  </div>
+                </Modal>
+              )}
 
               {/* Add Member overlay modal */}
               {accessMember && <SlideOver open onClose={closeDetails}
@@ -1424,12 +1403,15 @@ export default function SettingsView({
               {showAddStaff && canManageOrgMembers && (
                 <Modal
                   open
-                  onClose={() => setShowAddStaff(false)}
+                  onClose={() => { if (!addingStaff) setShowAddStaff(false); }}
                   title="Add Team Member"
                   subtitle="An account is provisioned through the environment authentication provider. In production, users authenticate through Google Identity Platform."
-                  maxWidth="max-w-lg"
+                  maxWidth="max-w-3xl"
                 >
-                    <form onSubmit={(e) => { handleAddStaff(e); if (!staffAddMsg || staffAddMsg.type === 'success') setShowAddStaff(false); }} className="space-y-3">
+                    <form onSubmit={event => { void handleAddStaff(event); }} className="space-y-4">
+                        {staffAddMsg?.type === 'error' && (
+                          <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">{staffAddMsg.text}</p>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Full Name</label>
@@ -1444,36 +1426,31 @@ export default function SettingsView({
                             <input type="tel" value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Job title</label>
-                            <select value={newStaffRole} onChange={(e: any) => setNewStaffRole(e.target.value)} className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
-                              <option value="Sales Manager">Sales Manager</option>
+                            <label htmlFor="new-staff-role" className="text-[11px] font-semibold text-[var(--text-secondary)]">Role</label>
+                            <select id="new-staff-role" value={newStaffRole}
+                              onChange={event => setNewStaffRole(event.target.value as UserRole)}
+                              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
                               <option value="Member">Member</option>
                               <option value="Manager">Manager</option>
                               <option value="Viewer">Viewer (read-only)</option>
                               <option value="Workspace Admin">Workspace Admin</option>
-                              <option value="Billing Admin">Billing Admin (organization billing)</option>
-                              <option value="Loan Agent">Loan Agent</option>
-                              <option value="Collection Agent">Collection Agent</option>
-                              <option value="AI Agent Manager">AI Agent Manager</option>
+                              <option value="Billing Admin">Billing Admin</option>
                             </select>
                           </div>
                         </div>
 
-                        <div className="rounded-[9px]">
-                          <FlagGroupPicker
-                            availableKeys={orgAllowedFlags}
-                            value={newStaffFeatures}
-                            onApply={setNewStaffFeatures}
-                            compact
-                          />
-                        </div>
+                        <FeatureAccessSelector
+                          availableKeys={orgAllowedFlags}
+                          value={newStaffFeatures}
+                          onChange={setNewStaffFeatures}
+                          disabled={addingStaff}
+                        />
 
                         <div className="flex items-center justify-end gap-3 pt-1">
-                          <button type="button" onClick={() => setShowAddStaff(false)} className="text-xs text-slate-400 hover:text-slate-600 font-medium px-3 py-2 cursor-pointer">Cancel</button>
-                          <button type="submit" disabled={addingStaff} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-xs font-semibold rounded-lg px-5 py-2 transition-all cursor-pointer flex items-center gap-2">
-                            {addingStaff ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-                            {addingStaff ? 'Adding…' : 'Add Member'}
-                          </button>
+                          <Button type="button" variant="secondary" size="sm"
+                            disabled={addingStaff} onClick={() => setShowAddStaff(false)}>Cancel</Button>
+                          <Button type="submit" variant="primary" size="sm" icon={UserPlus}
+                            loading={addingStaff}>Add member</Button>
                         </div>
                       </form>
                 </Modal>

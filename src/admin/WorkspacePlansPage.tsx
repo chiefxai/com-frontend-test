@@ -11,6 +11,7 @@ import Badge from '../components/ui/Badge';
 import KpiCard from '../components/ui/KpiCard';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
+import { useToast } from '../components/ui/Toast';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
   { value: 'single', label: 'One workspace only' },
@@ -38,13 +39,13 @@ function validAmount(value: number | null | undefined) {
 
 export default function WorkspacePlansPage() {
   const headerCtx = usePageHeaderContext();
+  const { showToast } = useToast();
   const [plans, setPlans] = React.useState<WorkspacePlan[]>([]);
   const [existingIds, setExistingIds] = React.useState<Set<string>>(new Set());
   const [version, setVersion] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
-  const [message, setMessage] = React.useState('');
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
   const [draft, setDraft] = React.useState<WorkspacePlan | null>(null);
   const [idTouched, setIdTouched] = React.useState(false);
@@ -76,7 +77,6 @@ export default function WorkspacePlansPage() {
     setIdTouched(false);
     setEditingIndex(-1);
     setError('');
-    setMessage('');
   }, []);
 
   const beginEdit = (plan: WorkspacePlan) => {
@@ -86,7 +86,6 @@ export default function WorkspacePlansPage() {
     setIdTouched(true);
     setEditingIndex(index);
     setError('');
-    setMessage('');
   };
 
   const cancelEdit = React.useCallback(() => {
@@ -104,7 +103,6 @@ export default function WorkspacePlansPage() {
   const save = async () => {
     if (!draft || editingIndex === null || saving) return;
     setError('');
-    setMessage('');
     const planToSave: WorkspacePlan = {
       ...draft,
       id: draft.id.trim(),
@@ -155,7 +153,7 @@ export default function WorkspacePlansPage() {
       setPlans(savedPlans);
       setExistingIds(new Set(savedPlans.map(plan => plan.id)));
       setVersion(body.version || version + 1);
-      setMessage(editingIndex === -1 ? 'Subscription plan created successfully.' : 'Subscription plan updated successfully.');
+      showToast(editingIndex === -1 ? 'Subscription plan created successfully.' : 'Subscription plan updated successfully.', 'success');
       setDraft(null);
       setEditingIndex(null);
     } catch (cause) {
@@ -206,7 +204,6 @@ export default function WorkspacePlansPage() {
       <span>{error}</span>
       {!draft && <Button size="xs" type="button" onClick={() => void load()}>Retry</Button>}
     </div>}
-    {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">{message}</div>}
 
     {editingIndex === null ? (
       <>
@@ -217,27 +214,34 @@ export default function WorkspacePlansPage() {
           <KpiCard colSpan={3} label="Starting monthly fee" value={loading ? '—' : startingFee} icon={Wallet} />
         </div>
 
-        <Widget title="Subscription plan catalog" subtitle="Manage plan pricing, monthly credits and workspace allowances."
-          icon={CreditCard} accent="#2563eb" padding="none"
-          action={<Button type="button" size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>Refresh</Button>}>
-          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
-            <FilterBar
-              search={{ value: query, onChange: setQuery, placeholder: 'Search plans by name or code…' }}
-              selects={[{
-                key: 'status', label: 'Status', value: statusFilter,
-                onChange: value => setStatusFilter(value as typeof statusFilter),
-                options: [
-                  { label: 'All statuses', value: 'all' },
-                  { label: 'Active', value: 'active' },
-                  { label: 'Archived', value: 'archived' },
-                ],
-              }]}
-              onClear={() => { setQuery(''); setStatusFilter('all'); }}
-              hasActiveFilters={Boolean(query.trim() || statusFilter !== 'all')}
-              resultCount={{ filtered: filteredPlans.length, total: plans.length, label: 'plans' }}
-              actions={<IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />}
-            />
+        <section aria-label="Subscription plan catalog" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Subscription plan catalog</h2>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                Manage monthly pricing, credits and workspace allowances.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>Refresh</Button>
+              <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd} disabled={loading || saving} />
+            </div>
           </div>
+          <FilterBar
+            search={{ value: query, onChange: setQuery, placeholder: 'Search plans by name or code…' }}
+            selects={[{
+              key: 'status', label: 'Status', value: statusFilter,
+              onChange: value => setStatusFilter(value as typeof statusFilter),
+              options: [
+                { label: 'All statuses', value: 'all' },
+                { label: 'Active', value: 'active' },
+                { label: 'Archived', value: 'archived' },
+              ],
+            }]}
+            onClear={() => { setQuery(''); setStatusFilter('all'); }}
+            hasActiveFilters={Boolean(query.trim() || statusFilter !== 'all')}
+            resultCount={{ filtered: filteredPlans.length, total: plans.length, label: 'plans' }}
+          />
           {loading ? (
             <div role="status" className="p-6 text-sm text-[var(--text-muted)]">Loading subscription plans…</div>
           ) : filteredPlans.length === 0 ? (
@@ -253,7 +257,7 @@ export default function WorkspacePlansPage() {
                 : <Button type="button" size="sm" variant="primary" icon={Plus} onClick={beginAdd}>Create plan</Button>}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredPlans.map(plan => (
                 <Card key={plan.id} padding="none" hover
                   className="group relative flex min-w-0 flex-col overflow-hidden transition-colors hover:border-blue-300 dark:hover:border-blue-600">
@@ -327,7 +331,7 @@ export default function WorkspacePlansPage() {
               ))}
             </div>
           )}
-        </Widget>
+        </section>
       </>
     ) : draft ? (
       <form id="workspace-plan-form" onSubmit={event => { event.preventDefault(); void save(); }}

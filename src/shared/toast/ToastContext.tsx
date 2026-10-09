@@ -1,70 +1,41 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import { Toaster, toast } from 'sonner';
+import { useTheme } from '../theme/ThemeContext';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
-
-interface ToastItem {
-  id: number;
-  type: ToastType;
-  message: string;
-}
 
 interface ToastContextValue {
   showToast: (message: string, type?: ToastType, duration?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+const DEFAULT_DURATION_MS = 6000;
 
-const TOAST_STYLE: Record<ToastType, { icon: React.ElementType; iconColor: string; accent: string }> = {
-  success: { icon: CheckCircle2, iconColor: '#059669', accent: '#059669' },
-  error:   { icon: AlertTriangle, iconColor: '#e11d48', accent: '#e11d48' },
-  info:    { icon: Info,          iconColor: '#2563eb', accent: '#2563eb' },
-  warning: { icon: AlertTriangle, iconColor: '#d97706', accent: '#d97706' },
-};
-
-const AUTO_DISMISS_MS = 6000;
-
+/**
+ * Sonner is mounted once above both organization and platform admin routing.
+ * Keep the existing useToast API working for feature screens while delegating
+ * stacking, accessible announcements, dismissals and timing to Sonner.
+ */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const idRef = useRef(0);
+  const { resolved } = useTheme();
 
-  const dismiss = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  const showToast = useCallback((message: string, type: ToastType = 'info', duration = DEFAULT_DURATION_MS) => {
+    toast[type](message, { duration: Math.max(0, duration) });
   }, []);
-
-  const showToast = useCallback((message: string, type: ToastType = 'info', duration = AUTO_DISMISS_MS) => {
-    const id = ++idRef.current;
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => dismiss(id), Math.max(0, duration));
-  }, [dismiss]);
+  const value = useMemo(() => ({ showToast }), [showToast]);
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
-        {toasts.map((t) => {
-          const { icon: Icon, iconColor, accent } = TOAST_STYLE[t.type];
-          return (
-            <div
-              key={t.id}
-              role="alert"
-              className="pointer-events-auto flex items-start gap-2.5 rounded-xl border shadow-lg px-4 py-3 text-sm"
-              style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)', borderLeft: `3px solid ${accent}` }}
-            >
-              <Icon className="h-4 w-4 shrink-0 mt-0.5" style={{ color: iconColor }} />
-              <p className="flex-1 leading-snug" style={{ color: 'var(--text-primary)' }}>{t.message}</p>
-              <button
-                onClick={() => dismiss(t.id)}
-                className="shrink-0 h-5 w-5 flex items-center justify-center rounded hover:bg-[var(--bg-subtle)] transition-colors"
-                style={{ color: 'var(--text-muted)' }}
-                aria-label="Dismiss"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      <Toaster
+        position="top-right"
+        theme={resolved}
+        richColors
+        closeButton
+        expand={false}
+        visibleToasts={5}
+        toastOptions={{ duration: DEFAULT_DURATION_MS }}
+      />
     </ToastContext.Provider>
   );
 }

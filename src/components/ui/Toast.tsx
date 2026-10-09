@@ -1,4 +1,5 @@
-// Compatibility barrel: existing imports now use the app-wide toast context.
-// Keep this file until callers have been migrated to src/shared/toast.
+// Shared toast API for organization and platform admin pages.
+// The app-level ToastProvider renders Sonner at the top-right.
 export { ToastProvider, useToast } from '../../shared/toast/ToastContext';
 export type { ToastType } from '../../shared/toast/ToastContext';
+export { toast } from 'sonner';

@@ -14,6 +14,7 @@ import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
+import { useToast } from '../components/ui/Toast';
 
 type FeatureScope = 'app' | 'capability';
 type FeatureFlag = {
@@ -50,11 +51,11 @@ function scopeLabel(scope?: FeatureScope): string {
 }
 
 export default function SettingsPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [groups, setGroups] = useState<FeatureGroup[]>([]);
   const [loadError, setLoadError] = useState('');
-  const [notice, setNotice] = useState('');
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -98,7 +99,6 @@ export default function SettingsPage() {
     const nextEnabled = !flag.enabled;
     setTogglingKey(flag.key);
     setLoadError('');
-    setNotice('');
     setFlags(current => current.map(item =>
       item.key === flag.key ? { ...item, enabled: nextEnabled } : item));
     try {
@@ -108,7 +108,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ enabled: nextEnabled }),
       });
       await requireJson<unknown>(response, 'Unable to update ' + flag.label + '.');
-      setNotice(flag.label + ' ' + (nextEnabled ? 'enabled' : 'disabled') + ' globally.');
+      showToast(flag.label + ' ' + (nextEnabled ? 'enabled' : 'disabled') + ' globally.', 'success');
     } catch (cause) {
       setFlags(current => current.map(item =>
         item.key === flag.key ? { ...item, enabled: flag.enabled } : item));
@@ -144,14 +144,12 @@ export default function SettingsPage() {
     setGroupDraft({ key: '', label: '', description: '', featureKeys: [] });
     setGroupError('');
     setGroupFeatureQuery('');
-    setNotice('');
   };
   const startEditGroup = (group: FeatureGroup) => {
     setEditingGroupKey(group.key);
     setGroupDraft({ ...group, featureKeys: [...group.featureKeys] });
     setGroupError('');
     setGroupFeatureQuery('');
-    setNotice('');
   };
   const closeGroupEditor = () => {
     if (!savingGroup) { setGroupDraft(null); setGroupError(''); }
@@ -187,7 +185,7 @@ export default function SettingsPage() {
       const saved = await requireJson<FeatureGroup[]>(response, 'Unable to save the feature group.');
       if (!Array.isArray(saved)) throw new Error('Unexpected feature group response.');
       setGroups(saved);
-      setNotice(label + ' saved successfully.');
+      showToast(label + ' saved successfully.', 'success');
       setGroupDraft(null);
       setEditingGroupKey(null);
     } catch (cause) {
@@ -202,7 +200,6 @@ export default function SettingsPage() {
     if (!window.confirm('Delete "' + group.label + '"? Organizations using this bundle may be affected.')) return;
     setDeletingKey(group.key);
     setLoadError('');
-    setNotice('');
     try {
       const response = await apiFetch('/api/platform/feature-groups/' + encodeURIComponent(group.key), {
         method: 'DELETE',
@@ -210,7 +207,7 @@ export default function SettingsPage() {
       const saved = await requireJson<FeatureGroup[]>(response, 'Unable to delete the feature group.');
       if (!Array.isArray(saved)) throw new Error('Unexpected feature group response.');
       setGroups(saved);
-      setNotice(group.label + ' deleted.');
+      showToast(group.label + ' deleted.', 'success');
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : 'Unable to delete the group.');
     } finally {
@@ -239,13 +236,10 @@ export default function SettingsPage() {
       <KpiCard colSpan={3} label="Feature groups" value={loading ? '—' : groups.length}
         icon={Users2} iconBg="#0891b218" iconColor="#0891b2" />
 
-      {(loadError || notice) && <div className="col-span-12" role={loadError ? 'alert' : 'status'}>
-        <div className={'flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-xs ' +
-          (loadError
-            ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300'
-            : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300')}>
-          <span>{loadError || notice}</span>
-          {loadError && <Button type="button" size="xs" onClick={() => void load()}>Reload</Button>}
+      {loadError && <div className="col-span-12" role="alert">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+          <span>{loadError}</span>
+          <Button type="button" size="xs" onClick={() => void load()}>Reload</Button>
         </div>
       </div>}
 
