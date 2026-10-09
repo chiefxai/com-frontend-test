@@ -33,6 +33,7 @@ import PageShell from './ui/PageShell';
 import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
 import Modal from './ui/Modal';
+import SlideOver from './ui/SlideOver';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import KpiCard from './ui/KpiCard';
@@ -932,10 +933,10 @@ export default function SettingsView({
                 const features = workspaceFeatureRows.find(row => row.id === selectedId);
                 const entitled = new Set(workspaceFeatureAllowed);
                 const permittedByWorkspace = features?.enabledFeatures || [];
-                return <Modal open onClose={() => { setSelectedWorkspaceDetails(null); setSelectedNumberDetails(null); }}
+                return <SlideOver open onClose={() => { setSelectedWorkspaceDetails(null); setSelectedNumberDetails(null); }}
                   title={selectedNumberDetails ? `Virtual Number · ${selectedNumberDetails.number}` : `Workspace · ${workspace?.name || 'Details'}`}
                   subtitle="Workspace membership and access details"
-                  maxWidth="max-w-md" className="!fixed !right-0 !top-0 !bottom-0 !h-[100dvh] !max-h-[100dvh] !rounded-none">
+                  maxWidth="max-w-2xl">
                   <div className="space-y-4">
                     {selectedNumberDetails && <Widget title="Number Details" padding="md">
                       <dl className="grid grid-cols-2 gap-3 text-xs">
@@ -982,7 +983,7 @@ export default function SettingsView({
                               })}</div>}
                     </Widget>}
                   </div>
-                </Modal>;
+                </SlideOver>;
               })()}
 
 
@@ -1225,7 +1226,7 @@ export default function SettingsView({
 
 
               {/* Add Member overlay modal */}
-              {accessMember && <Modal open onClose={() => setAccessMember(null)} title={`Staff Access — ${accessMember.name || accessMember.email}`} subtitle="Workspace memberships, roles, and effective feature grants." maxWidth="max-w-2xl">
+              {accessMember && <SlideOver open onClose={() => setAccessMember(null)} title={`Staff Access — ${accessMember.name || accessMember.email}`} subtitle="Workspace memberships, roles, and effective feature grants." maxWidth="max-w-2xl">
                 <div className="space-y-3">
                   {orgAccessError && <p role="alert" className="text-xs text-rose-700">{orgAccessError}</p>}
                   {workspaceFeatureError && <p role="alert" className="text-xs text-rose-700">Feature access unavailable: {workspaceFeatureError}</p>}
@@ -1277,7 +1278,7 @@ export default function SettingsView({
                   })}
                   <p className="text-[11px] text-[var(--text-muted)]">Feature access reflects organization grants, workspace feature policies, and staff grants. Changes to workspace roles save immediately; the backend protects the last workspace administrator.</p>
                 </div>
-              </Modal>}
+              </SlideOver>}
               {showOwnerTransfer && (
                 <Modal open onClose={() => { if (!transferringOwner) setShowOwnerTransfer(false); }} title="Transfer Organization Ownership" subtitle="The selected active member becomes Owner. You retain Organization Admin access.">
                   <div className="space-y-4 p-4">
