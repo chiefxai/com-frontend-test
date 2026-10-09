@@ -43,3 +43,46 @@ export async function decidePlatformPayment(
   }
   return payload as PlatformPaymentDecisionResult;
 }
+
+
+export interface PlatformPaymentReview {
+  id: string;
+  orgId: string;
+  purpose: 'subscription' | 'topup' | 'invoice';
+  status: string;
+  version: number;
+  expectedAmount: BillingAmount;
+  receivedAmount: BillingAmount | null;
+  paymentReference: string | null;
+  proofAvailable: boolean;
+  submittedAt: string;
+  reviewedAt: string | null;
+}
+
+export async function listPlatformPaymentReviews(
+  cursor?: string | null,
+  status: 'pending_verification' | 'needs_clarification' | 'approved' | 'rejected' | 'all' = 'pending_verification',
+): Promise<{ rows: PlatformPaymentReview[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ status, limit: '30' });
+  if (cursor) params.set('cursor', cursor);
+  const response = await apiFetch(`/api/platform/billing/payment-reviews?${params}`);
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new BillingApiError(result?.error || 'Could not load payment review queue.', {
+    code: result?.code, status: response.status,
+  });
+  return result;
+}
+
+export async function platformPaymentReceipt(
+  orgId: string,
+  paymentRequestId: string,
+): Promise<{ url: string; expiresIn: number }> {
+  const response = await apiFetch(
+    `/api/platform/billing/organizations/${encodeURIComponent(orgId)}/payments/${encodeURIComponent(paymentRequestId)}/proof`,
+  );
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new BillingApiError(result?.error || 'Could not load receipt.', {
+    code: result?.code, status: response.status,
+  });
+  return result;
+}
