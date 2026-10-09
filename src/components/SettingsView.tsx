@@ -154,6 +154,17 @@ export default function SettingsView({
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
+  const [organizationNumbers, setOrganizationNumbers] = useState<VirtualNumber[] | null>(null);
+  const [organizationNumbersError, setOrganizationNumbersError] = useState('');
+  const loadOrganizationNumbers = React.useCallback(async () => {
+    const response = await apiFetch('/api/settings/organization/numbers');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Unable to load numbers across the organization.');
+    setOrganizationNumbers(Array.isArray(data.rows) ? data.rows : []);
+    if (Array.isArray(data.workspaces)) setOrgWorkspaces(data.workspaces);
+    setOrganizationNumbersError('');
+  }, []);
+  const visibleNumbers = organizationNumbers || virtualNumbers;
   const [numberSearch, setNumberSearch] = useState('');
   const [numberProvider, setNumberProvider] = useState('');
   const [numberStatus, setNumberStatus] = useState('');
@@ -162,7 +173,7 @@ export default function SettingsView({
     const record = number as VirtualNumber & { workspaceId?: string | null; workspace_id?: string | null };
     return record.workspaceId || record.workspace_id || '';
   };
-  const filteredNumbers = virtualNumbers.filter(number =>
+  const filteredNumbers = visibleNumbers.filter(number =>
     (!numberSearch || `${number.number} ${number.friendlyName || ''}`.toLowerCase().includes(numberSearch.toLowerCase().trim())) &&
     (!numberProvider || number.provider === numberProvider) &&
     (!numberStatus || number.status === numberStatus) &&
@@ -188,6 +199,11 @@ export default function SettingsView({
   };
 
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
+  React.useEffect(() => {
+    if (!['numbers', 'workspaces'].includes(subTab) || workspacePanel !== 'numbers' || !can('organization.read')) return;
+    void loadOrganizationNumbers().catch(error => setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'));
+  }, [subTab, workspacePanel, can, loadOrganizationNumbers]);
+
   const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
     _setInternalSubTab(v);
     setActiveSubTabProp?.(v);
@@ -687,6 +703,7 @@ export default function SettingsView({
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {workspacePanel === 'numbers' && <>
+              {organizationNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{organizationNumbersError} Only numbers in the currently selected workspace are shown.</p>}
               <div className="grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:grid-cols-2 lg:grid-cols-5">
                 <label className="text-xs text-[var(--text-muted)]">Search
                   <input value={numberSearch} onChange={event => setNumberSearch(event.target.value)} placeholder="Number or label" className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]" />
@@ -701,7 +718,7 @@ export default function SettingsView({
                 <label className="text-xs text-[var(--text-muted)]">Provider
                   <select value={numberProvider} onChange={event => setNumberProvider(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
                     <option value="">All providers</option>
-                    {Array.from(new Set(virtualNumbers.map(number => number.provider))).map(provider => <option key={provider} value={provider}>{provider}</option>)}
+                    {Array.from(new Set(visibleNumbers.map(number => number.provider))).map(provider => <option key={provider} value={provider}>{provider}</option>)}
                   </select>
                 </label>
                 <label className="text-xs text-[var(--text-muted)]">Status
@@ -713,7 +730,7 @@ export default function SettingsView({
                   <button type="button" onClick={exportFilteredNumbers} disabled={!filteredNumbers.length} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Export CSV ({filteredNumbers.length})</button>
                 </div>
               </div>
-              {virtualNumbers.some(number => !numberWorkspaceId(number)) && <p className="text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
+              {visibleNumbers.some(number => !numberWorkspaceId(number)) && <p className="text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
               <Widget
                 title="Virtual Numbers"
                 subtitle="Connected phone numbers and calling providers."
@@ -729,7 +746,7 @@ export default function SettingsView({
                   </button>
                 }
               >
-                {virtualNumbers.length === 0 ? (
+                {visibleNumbers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <div className="h-12 w-12 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-3">
                       <Phone className="h-5 w-5 text-indigo-400" />
@@ -771,7 +788,7 @@ export default function SettingsView({
                               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive
                             </span>
                           )}
-                          <button onClick={() => handleDeleteNumber(num.id)} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors" title="Delete number">
+                          <button onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(numberWorkspaceId(num) && numberWorkspaceId(num) !== (sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id') || ''))} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:cursor-not-allowed disabled:opacity-30" title="Delete number in current workspace">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
