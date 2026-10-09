@@ -3,6 +3,8 @@ import { Building2, Loader2, Plus } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuthorization } from '../lib/authorization';
 import Widget from './ui/Widget';
+import DataTable, { Column } from './ui/DataTable';
+import FilterBar from './ui/FilterBar';
 
 interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
@@ -11,13 +13,21 @@ export default function WorkspaceManagement({
   enabled,
   onWorkspaceCreated,
   onSelectWorkspace,
+  memberCounts = {},
+  numberCounts = {},
+  numberCountsAvailable = false,
 }: {
   enabled: boolean;
   onWorkspaceCreated: () => Promise<void>;
   onSelectWorkspace?: (workspace: { id: string; name: string; status: string; industry: string; branchName?: string | null }) => void;
+  memberCounts?: Record<string, number>;
+  numberCounts?: Record<string, number>;
+  numberCountsAvailable?: boolean;
 }) {
   const { can } = useAuthorization();
   const canManage = can('organization.manage');
+  const canRead = can('organization.read');
+  const [search, setSearch] = useState('');
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
   const [setup, setSetup] = useState<WorkspaceSetup | null>(null);
   const [acceptedPrice, setAcceptedPrice] = useState(false);
@@ -29,7 +39,7 @@ export default function WorkspaceManagement({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    if (!enabled || !canManage) return;
+    if (!enabled || !canRead) return;
     let cancelled = false;
     Promise.all([
       apiFetch('/api/settings/workspaces').then(async response => {
@@ -52,9 +62,9 @@ export default function WorkspaceManagement({
     }).finally(() => { if (!cancelled) setLoading(false); });
     setLoading(true);
     return () => { cancelled = true; };
-  }, [enabled, canManage]);
+  }, [enabled, canRead]);
 
-  if (!enabled || !canManage) return null;
+  if (!enabled || !canRead) return null;
 
   const createWorkspace = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -89,19 +99,34 @@ export default function WorkspaceManagement({
   return (
     <Widget title="Organization Workspaces" subtitle="Create isolated branch workspaces using your organization’s primary industry." icon={Building2} accent="#0891b2" padding="md">
       {message && <div role="status" className={`mb-4 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{message.text}</div>}
-      <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {workspaces.map(workspace => (
-          <button key={workspace.id} type="button" onClick={() => onSelectWorkspace?.(workspace)}
-            disabled={!onSelectWorkspace}
-            aria-label={`View workspace members for ${workspace.name}`}
-            className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-left transition-colors enabled:hover:border-[var(--accent)] enabled:hover:bg-[var(--bg-subtle)] enabled:focus-visible:outline enabled:focus-visible:outline-2 enabled:focus-visible:outline-[var(--accent)] disabled:cursor-default">
-            <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{workspace.name}{workspace.status !== 'Active' ? ' · Inactive' : ''}</p>
-            <p className="mt-1 text-[10px] text-[var(--text-muted)]">{workspace.branchName ? `${workspace.branchName} · ` : ''}{workspace.industry.replaceAll('_', ' ')}</p>
-            {onSelectWorkspace && <p className="mt-2 text-[10px] font-semibold text-[var(--accent)]">View members →</p>}
-          </button>
-        ))}
-        {!loading && workspaces.length === 0 && <p className="text-xs text-[var(--text-muted)]">No workspaces available.</p>}
+      <div className="mb-5 space-y-3">
+        <FilterBar search={{ value: search, onChange: setSearch, placeholder: 'Search workspace or branch' }} />
+        <DataTable
+          bare
+          paginated
+          resizable
+          loading={loading}
+          emptyMessage="No workspaces match this search."
+          columns={[
+            { key: 'workspace', header: 'Workspace', cell: (workspace: WorkspaceRow) =>
+              <button type="button" onClick={() => onSelectWorkspace?.(workspace)}
+                className="text-left font-semibold text-[var(--accent)] hover:underline"
+                aria-label={`View workspace ${workspace.name}`}>{workspace.name}</button> },
+            { key: 'branch', header: 'Branch / Industry', cell: (workspace: WorkspaceRow) =>
+              <span className="text-xs text-[var(--text-secondary)]">{workspace.branchName || workspace.industry.replaceAll('_', ' ')}</span> },
+            { key: 'members', header: 'Members', cell: (workspace: WorkspaceRow) =>
+              <span className="text-xs text-[var(--text-secondary)]">{memberCounts[workspace.id] ?? '—'}</span> },
+            { key: 'numbers', header: 'Phone Numbers', cell: (workspace: WorkspaceRow) =>
+              <span className="text-xs text-[var(--text-secondary)]">{numberCountsAvailable ? (numberCounts[workspace.id] ?? 0) : '—'}</span> },
+            { key: 'status', header: 'Status', cell: (workspace: WorkspaceRow) =>
+              <span className="text-xs text-[var(--text-secondary)]">{workspace.status}</span> },
+          ] as Column<WorkspaceRow>[]}
+          rows={workspaces.filter(workspace => !search.trim() || `${workspace.name} ${workspace.branchName || ''} ${workspace.industry}`.toLowerCase().includes(search.toLowerCase().trim()))}
+          rowKey={workspace => workspace.id}
+          onRowClick={onSelectWorkspace}
+        />
       </div>
+      {canManage && (
       <form onSubmit={createWorkspace} className="grid gap-3 border-t border-[var(--border)] pt-4 md:grid-cols-3">
         <label className="space-y-1 text-xs font-medium text-[var(--text-secondary)]">
           Workspace name
@@ -127,6 +152,7 @@ export default function WorkspaceManagement({
           </button>
         </div>
       </form>
+      )}
     </Widget>
   );
 }
