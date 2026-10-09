@@ -808,26 +808,29 @@ export default function SettingsView({
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {workspacePanel === 'numbers' && <>
               {organizationNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{organizationNumbersError} Only numbers in the currently selected workspace are shown.</p>}
-              <Widget showHeader={false} padding="md">
-                <FilterBar
-                  search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
-                  selects={[
-                    { key: 'Workspace', label: 'Workspace', value: numberWorkspace, onChange: setNumberWorkspace, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id })), { label: 'Unknown association', value: '__unknown__' }] },
-                    { key: 'Provider', label: 'Provider', value: numberProvider, onChange: setNumberProvider, options: [{ label: 'All providers', value: '' }, ...Array.from(new Set(visibleNumbers.map(number => number.provider))).map(provider => ({ label: provider, value: provider }))] },
-                    { key: 'Status', label: 'Status', value: numberStatus, onChange: setNumberStatus, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
-                  ]}
-                  actions={<button type="button" onClick={exportFilteredNumbers} disabled={!filteredNumbers.length} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Export CSV ({filteredNumbers.length})</button>}
-                />
-              </Widget>
-              {visibleNumbers.some(number => !numberWorkspaceId(number)) && <p className="text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
-              <Widget
-                title="Virtual Numbers"
-                subtitle="Connected phone numbers and calling providers."
-                icon={Hash}
-                accent="#6366f1"
-                padding="none"
-                action={<IconButton icon={Plus} label="Add Provider" onClick={() => setShowProviderForm(true)} />}
-              >
+              <Widget showHeader={false} padding="none">
+                <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                  <FilterBar
+                    search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
+                    selects={[
+                      { key: 'Workspace', label: 'Workspace', value: numberWorkspace, onChange: setNumberWorkspace, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id })), { label: 'Unknown association', value: '__unknown__' }] },
+                      { key: 'Provider', label: 'Provider', value: numberProvider, onChange: setNumberProvider, options: [{ label: 'All providers', value: '' }, ...Array.from(new Set(visibleNumbers.map(number => number.provider))).map(provider => ({ label: provider, value: provider }))] },
+                      { key: 'Status', label: 'Status', value: numberStatus, onChange: setNumberStatus, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
+                    ]}
+                    hasActiveFilters={Boolean(numberSearch.trim() || numberWorkspace || numberProvider || numberStatus)}
+                    onClear={() => { setNumberSearch(''); setNumberWorkspace(''); setNumberProvider(''); setNumberStatus(''); }}
+                    resultCount={{ filtered: filteredNumbers.length, total: visibleNumbers.length, label: 'numbers' }}
+                    actions={<>
+                      <button type="button" onClick={exportFilteredNumbers} disabled={!filteredNumbers.length}
+                        className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
+                        Export CSV ({filteredNumbers.length})
+                      </button>
+                      <IconButton icon={Plus} label="Add Provider" onClick={() => setShowProviderForm(true)} />
+                    </>}
+                  />
+                </div>
+                {visibleNumbers.some(number => !numberWorkspaceId(number)) &&
+                  <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
                 {visibleNumbers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <div className="h-12 w-12 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-3">
@@ -1111,26 +1114,35 @@ export default function SettingsView({
 
               {/* Organization membership and current-workspace access in one matrix. */}
               {(canReadOrgMembers || canManageWorkspaceMembers) && (
-              <Widget
-                title="Team Matrix"
-                subtitle="Organization membership and access to the selected workspace."
-                icon={Users}
-                accent="#6366f1"
-                padding="none"
-                action={<div className="flex items-center gap-2">
-                  {currentOwnerMember && <button type="button" onClick={() => { setOwnerTransferError(''); setShowOwnerTransfer(true); }} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100">Transfer Owner</button>}
-                  {canManageOrgMembers && <IconButton icon={Plus} label="Add Member" onClick={() => setShowAddStaff(true)} />}
-                </div>}
-              >
+              <Widget showHeader={false} padding="none">
                 {workspaceMembersError && canManageWorkspaceMembers && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{workspaceMembersError}</div>}
                 {orgAccessError && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{orgAccessError}</div>}
-                {canReadOrgMembers && <div className="border-b border-[var(--border)] p-4">
-                  <FilterBar selects={[
-                    { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: setStaffWorkspaceFilter, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
-                    { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers.map(member => member.role))).map(role => ({ label: role, value: role }))] },
-                    { key: 'Status', label: 'Status', value: staffStatusFilter, onChange: setStaffStatusFilter, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
-                  ]} />
-                </div>}
+                <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                  <FilterBar
+                    selects={canReadOrgMembers ? [
+                      { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: setStaffWorkspaceFilter, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
+                      { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers.map(member => member.role))).map(role => ({ label: role, value: role }))] },
+                      { key: 'Status', label: 'Status', value: staffStatusFilter, onChange: setStaffStatusFilter, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
+                    ] : []}
+                    onClear={() => { setStaffWorkspaceFilter(''); setStaffRoleFilter(''); setStaffStatusFilter(''); }}
+                    hasActiveFilters={Boolean(staffWorkspaceFilter || staffRoleFilter || staffStatusFilter)}
+                    resultCount={canReadOrgMembers
+                      ? {
+                          filtered: teamMembers.filter(member =>
+                            (!staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter)) &&
+                            (!staffRoleFilter || member.role === staffRoleFilter) &&
+                            (!staffStatusFilter || member.status === staffStatusFilter)).length,
+                          total: teamMembers.length,
+                          label: 'members',
+                        }
+                      : { filtered: workspaceMembers.length, total: workspaceMembers.length, label: 'members' }}
+                    actions={<>
+                      {currentOwnerMember && <button type="button" onClick={() => { setOwnerTransferError(''); setShowOwnerTransfer(true); }}
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-semibold text-amber-800 hover:bg-amber-100">Transfer Owner</button>}
+                      {canManageOrgMembers && <IconButton icon={Plus} label="Add Member" onClick={() => setShowAddStaff(true)} />}
+                    </>}
+                  />
+                </div>
 
                 {(() => {
                   const matrixMembers: TeamMember[] = canReadOrgMembers ? teamMembers : workspaceMembers.map(member => ({
