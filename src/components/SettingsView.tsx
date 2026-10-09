@@ -1075,7 +1075,6 @@ export default function SettingsView({
                         : <DataTable bare paginated rows={visibleNumbers.filter(number => numberWorkspaceId(number) === selectedId)}
                             rowKey={number => number.id}
                             emptyMessage="No phone numbers associated with this workspace."
-                            onRowClick={openNumberDetails}
                             columns={[
                               { key: 'number', header: 'Phone number', cell: (number: VirtualNumber) =>
                                 <button type="button" className="text-xs font-semibold text-[var(--accent)] hover:underline" onClick={() => openNumberDetails(number)}>{number.number}</button> },
@@ -1163,10 +1162,10 @@ export default function SettingsView({
                       key: 'access',
                       header: 'Feature Access',
                       cell: (member) => member.role === 'Organization Admin' || member.role === 'Super Admin' ? (
-                        <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          <Flag className="h-3 w-3" />
-                          Full Access
-                        </span>
+                        <button type="button" onClick={() => openMemberDetails(member)}
+                          className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--accent)] hover:underline">
+                          <Flag className="h-3 w-3" /> View workspace features
+                        </button>
                       ) : (
                         <button
                           onClick={() => editFlagsFor === member.id ? setEditFlagsFor(null) : openFlagEditor(member)}
