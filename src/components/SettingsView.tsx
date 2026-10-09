@@ -777,10 +777,23 @@ export default function SettingsView({
           {/* Compact workspace landing page with focused number and sharing views. */}
           {(subTab === 'numbers' || subTab === 'workspaces') && (
             <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
+              <Widget showHeader={false} padding="sm">
+                <div role="tablist" aria-label="Workspace management views" className="flex flex-wrap gap-2">
+                  {([
+                    { key: 'overview', label: 'Workspaces' },
+                    { key: 'numbers', label: 'Phone Numbers' },
+                    { key: 'sharing', label: 'Sharing' },
+                  ] as const).map(item =>
+                    <button key={item.key} type="button" role="tab"
+                      aria-selected={workspacePanel === item.key} onClick={() => setWorkspacePanel(item.key)}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${workspacePanel === item.key
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+                      {item.label}
+                    </button>)}
+                </div>
+              </Widget>
               {workspacePanel === 'overview' && <>
-                <Widget title="Workspaces & Numbers" subtitle="Manage organization workspaces, connected numbers, and workspace sharing." icon={Briefcase} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Virtual Numbers</button><button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Sharing</button></div>}>
-                  <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
-                </Widget>
                 <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={async () => { await onWorkspaceCreated(); await loadOrganizationAccess(); await loadOrganizationNumbers(); }}
                   memberCounts={Object.fromEntries(orgWorkspaces.map(row => [row.id, canReadOrgMembers && !orgAccessError && orgAssignments[row.id] ? orgAssignments[row.id].filter(member => member.assignmentStatus === 'Active' && member.memberStatus.toLowerCase() === 'active').length : undefined]).filter(([, count]) => count !== undefined))}
                   numberCounts={Object.fromEntries(visibleNumbers.filter(number => numberWorkspaceId(number)).reduce((counts, number) => {
