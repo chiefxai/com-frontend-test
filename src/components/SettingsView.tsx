@@ -346,6 +346,48 @@ export default function SettingsView({
   const [staffAddMsg, setStaffAddMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberAssignment[]>([]);
   const [workspaceMembersError, setWorkspaceMembersError] = useState('');
+  const [orgWorkspaces, setOrgWorkspaces] = useState<{id:string;name:string;status:string}[]>([]);
+  const [orgAssignments, setOrgAssignments] = useState<Record<string, WorkspaceMemberAssignment[]>>({});
+  const [accessMember, setAccessMember] = useState<TeamMember | null>(null);
+  const [staffWorkspaceFilter, setStaffWorkspaceFilter] = useState('');
+  const [staffRoleFilter, setStaffRoleFilter] = useState('');
+  const [staffStatusFilter, setStaffStatusFilter] = useState('');
+  const [accessSaving, setAccessSaving] = useState('');
+  const [orgAccessError, setOrgAccessError] = useState('');
+  const loadOrganizationAccess = React.useCallback(async () => {
+    const response = await apiFetch('/api/settings/organization/workspace-access');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Could not load organization workspace access.');
+    setOrgWorkspaces(Array.isArray(data.workspaces) ? data.workspaces : []);
+    const grouped: Record<string, WorkspaceMemberAssignment[]> = {};
+    for (const group of (Array.isArray(data.assignments) ? data.assignments : [])) {
+      if (typeof group.workspaceId === 'string') grouped[group.workspaceId] = Array.isArray(group.members) ? group.members : [];
+    }
+    setOrgAssignments(grouped);
+    setOrgAccessError('');
+  }, []);
+  React.useEffect(() => {
+    if (subTab !== 'team' || !canReadOrgMembers) return;
+    void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Unable to load workspace access.'));
+  }, [subTab, canReadOrgMembers, loadOrganizationAccess]);
+  const updateOrgAccess = async (memberId: string, workspaceId: string, role: string) => {
+    setAccessSaving(workspaceId);
+    setOrgAccessError('');
+    try {
+      const response = await apiFetch(`/api/settings/organization/workspace-access/${encodeURIComponent(workspaceId)}/${encodeURIComponent(memberId)}`, {
+        method: role ? 'PUT' : 'DELETE',
+        ...(role ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) } : {}),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Could not update workspace access.');
+      await loadOrganizationAccess();
+    } catch (error) {
+      setOrgAccessError(error instanceof Error ? error.message : 'Could not update workspace access.');
+    } finally { setAccessSaving(''); }
+  };
+  const assignedWorkspaces = (memberId: string) => orgWorkspaces.filter(workspace =>
+    orgAssignments[workspace.id]?.some(assignment => assignment.memberId === memberId && assignment.assignmentStatus === 'Active'));
+
   const [savingWorkspaceMember, setSavingWorkspaceMember] = useState<string | null>(null);
   const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
   const [ownerTransferTarget, setOwnerTransferTarget] = useState('');
@@ -821,6 +863,25 @@ export default function SettingsView({
                 </div>}
               >
                 {workspaceMembersError && canManageWorkspaceMembers && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{workspaceMembersError}</div>}
+                {orgAccessError && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{orgAccessError}</div>}
+                {canReadOrgMembers && <div className="grid gap-3 border-b border-[var(--border)] p-4 sm:grid-cols-3">
+                  <label className="text-xs text-[var(--text-muted)]">Workspace
+                    <select aria-label="Filter staff by workspace" value={staffWorkspaceFilter} onChange={event => setStaffWorkspaceFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                      <option value="">All workspaces</option>{orgWorkspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-xs text-[var(--text-muted)]">Role
+                    <select aria-label="Filter staff by role" value={staffRoleFilter} onChange={event => setStaffRoleFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                      <option value="">All roles</option>{Array.from(new Set(teamMembers.map(member => member.role))).map(role => <option key={role} value={role}>{role}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-xs text-[var(--text-muted)]">Status
+                    <select aria-label="Filter staff by status" value={staffStatusFilter} onChange={event => setStaffStatusFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                      <option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
+                    </select>
+                  </label>
+                </div>}
+
                 {(() => {
                   const matrixMembers: TeamMember[] = canReadOrgMembers ? teamMembers : workspaceMembers.map(member => ({
                     id: member.memberId,
@@ -831,6 +892,10 @@ export default function SettingsView({
                     performanceScore: 0,
                     assignedLeadsCount: 0,
                   }));
+                  const filteredStaff = matrixMembers.filter(member =>
+                    (!staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter)) &&
+                    (!staffRoleFilter || member.role === staffRoleFilter) &&
+                    (!staffStatusFilter || member.status === staffStatusFilter));
                   const columns: Column<TeamMember>[] = [
                     {
                       key: 'member',
@@ -912,6 +977,14 @@ export default function SettingsView({
                       },
                     },
                   ];
+                  if (canReadOrgMembers) columns.splice(2, 0, {
+                    key: 'workspaceAccess',
+                    header: 'Workspace Access',
+                    cell: member => <div className="flex min-w-40 items-center gap-2">
+                      <span className="text-xs text-[var(--text-secondary)]">{assignedWorkspaces(member.id).length} workspace(s)</span>
+                      {canManageOrgMembers && <button type="button" onClick={() => { setAccessMember(member); setOrgAccessError(''); }} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Manage Access</button>}
+                    </div>,
+                  });
                   if (!canReadOrgMembers) columns.splice(2);
                   if (canManageWorkspaceMembers) columns.splice(canReadOrgMembers ? 2 : columns.length, 0, {
                     key: 'workspaceRole',
@@ -946,7 +1019,7 @@ export default function SettingsView({
                       resizable
                       paginated
                       columns={columns}
-                      rows={matrixMembers}
+                      rows={filteredStaff}
                       rowKey={(member) => member.id}
                       isRowExpanded={(member) => editFlagsFor === member.id}
                       renderExpandedRow={(member) => (
@@ -1012,6 +1085,26 @@ export default function SettingsView({
               )}
 
               {/* Add Member overlay modal */}
+              {accessMember && <Modal open onClose={() => setAccessMember(null)} title={`Workspace Access — ${accessMember.name || accessMember.email}`} subtitle="Grant a different role in each organization workspace." maxWidth="max-w-lg">
+                <div className="space-y-3">
+                  {orgAccessError && <p role="alert" className="text-xs text-rose-700">{orgAccessError}</p>}
+                  {!orgWorkspaces.length && <p className="text-xs text-[var(--text-muted)]">No organization workspaces available.</p>}
+                  {orgWorkspaces.map(workspace => {
+                    const assignment = orgAssignments[workspace.id]?.find(row => row.memberId === accessMember.id);
+                    const active = assignment?.assignmentStatus === 'Active';
+                    return <div key={workspace.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] p-3">
+                      <div><p className="text-xs font-semibold text-[var(--text-primary)]">{workspace.name}</p><p className="mt-1 text-[11px] text-[var(--text-muted)]">{active ? 'Access granted' : 'No access'}</p></div>
+                      <select aria-label={`Workspace role in ${workspace.name}`} value={active ? assignment?.workspaceRole || '' : ''}
+                        disabled={!canManageOrgMembers || accessSaving === workspace.id || accessMember.status !== 'Active'}
+                        onChange={event => void updateOrgAccess(accessMember.id, workspace.id, event.target.value)}
+                        className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2.5 py-2 text-xs text-[var(--text-primary)] disabled:opacity-50">
+                        <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
+                      </select>
+                    </div>;
+                  })}
+                  <p className="text-[11px] text-[var(--text-muted)]">Changes are saved immediately. The backend prevents removal of a workspace's last administrator.</p>
+                </div>
+              </Modal>}
               {showOwnerTransfer && (
                 <Modal open onClose={() => { if (!transferringOwner) setShowOwnerTransfer(false); }} title="Transfer Organization Ownership" subtitle="The selected active member becomes Owner. You retain Organization Admin access.">
                   <div className="space-y-4 p-4">
