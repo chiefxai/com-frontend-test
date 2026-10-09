@@ -659,11 +659,6 @@ export default function SettingsView({
       title={
         subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces'
           ? <span className="flex min-w-0 items-center gap-2">
-              {subTab === 'billing' && billingPanel !== 'dashboard'
-                ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Billing & Usage" onClick={() => setBillingPanel('dashboard')} />
-                : (subTab === 'numbers' || subTab === 'workspaces') && workspacePanel !== 'overview'
-                  ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Workspaces & Numbers" onClick={() => setWorkspacePanel('overview')} />
-                  : null}
               <span className="text-[10px] font-medium text-[var(--text-muted)]">Administration</span>
               <span className="text-[var(--border)]">/</span>
               {subTab === 'billing'
@@ -684,6 +679,11 @@ export default function SettingsView({
             </span>
           : <BreadcrumbTitle group="Administration" page={subTab === 'team' ? 'Staff & Teams' : 'API Keys'} />
       }
+      titleSuffix={subTab === 'billing' && billingPanel !== 'dashboard'
+        ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Billing & Usage" onClick={() => setBillingPanel('dashboard')} />
+        : (subTab === 'numbers' || subTab === 'workspaces') && workspacePanel !== 'overview'
+          ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Workspaces & Numbers" onClick={() => setWorkspacePanel('overview')} />
+          : undefined}
       subtitle={subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' ? undefined : subTab === 'team' ? 'Manage staff and access.' : undefined}
       onRefresh={handlePageRefresh}
     >
