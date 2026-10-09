@@ -181,9 +181,9 @@ export default function SettingsView({
     setWorkspaceFeatureError('');
   }, []);
   React.useEffect(() => {
-    if (!['numbers','workspaces'].includes(subTab) || !canReadOrganization) return;
+    if (subTab !== 'team' || !canReadOrgMembers) return;
     void loadWorkspaceFeatures().catch(error => setWorkspaceFeatureError(error.message || 'Could not load workspace features.'));
-  }, [subTab, canReadOrganization, loadWorkspaceFeatures]);
+  }, [subTab, canReadOrgMembers, loadWorkspaceFeatures]);
   const saveWorkspaceFeatures = async () => {
     if (!workspaceFeatureId) return;
     setWorkspaceFeatureSaving(true); setWorkspaceFeatureError('');
@@ -738,40 +738,7 @@ export default function SettingsView({
                 <Widget title="Workspaces & Numbers" subtitle="Manage organization workspaces, connected numbers, and workspace sharing." icon={Briefcase} accent="#0891b2" padding="md" action={<div className="flex flex-wrap gap-2"><button type="button" onClick={() => setWorkspacePanel('numbers')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Virtual Numbers</button><button type="button" onClick={() => setWorkspacePanel('sharing')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Sharing</button></div>}>
                   <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
                 </Widget>
-                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={async () => { await onWorkspaceCreated(); await loadWorkspaceFeatures(); }} />
-                {canReadOrganization && <Widget title="Workspace Feature Access" subtitle="Limit features independently for each branch or workspace." icon={Flag} accent="#6366f1" padding="md">
-                  {workspaceFeatureError && <p role="status" className="mb-3 text-xs text-[var(--text-secondary)]">{workspaceFeatureError}</p>}
-                  {!workspaceFeatureRows.length ? <p className="text-xs text-[var(--text-muted)]">No workspace feature assignments available.</p> : <>
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Workspace
-                      <select aria-label="Select workspace for feature access" value={workspaceFeatureId}
-                        onChange={event => {
-                          const selected = workspaceFeatureRows.find(row => row.id === event.target.value);
-                          setWorkspaceFeatureId(event.target.value);
-                          setWorkspaceFeatureDraft(selected?.enabledFeatures || []);
-                        }}
-                        className="mt-2 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
-                        {workspaceFeatureRows.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
-                      </select>
-                    </label>
-                    <div className="mt-4">
-                      <FlagGroupPicker key={workspaceFeatureId} availableKeys={workspaceFeatureAllowed} value={workspaceFeatureDraft}
-                        label="Enabled workspace features" description="Only features granted to the organization can be selected."
-                        onApply={setWorkspaceFeatureDraft} compact />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {workspaceFeatureDraft.length} of {workspaceFeatureAllowed.length} organization features selected.
-                        {workspaceFeatureRows.find(row => row.id === workspaceFeatureId)?.configured
-                          ? ' Unselected features are blocked in this workspace.'
-                          : ' Not yet configured; current access remains unchanged until saved.'}
-                      </p>
-                      {canManageOrganization && <button type="button" onClick={() => void saveWorkspaceFeatures()}
-                        disabled={workspaceFeatureSaving} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                        {workspaceFeatureSaving ? 'Saving…' : 'Save workspace access'}
-                      </button>}
-                    </div>
-                  </>}
-                </Widget>}
+                <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
 
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
@@ -1199,6 +1166,40 @@ export default function SettingsView({
                 })()}
               </Widget>
               )}
+
+                {canReadOrganization && <Widget title="Workspace Feature Access" subtitle="Limit features independently for each branch or workspace." icon={Flag} accent="#6366f1" padding="md">
+                  {workspaceFeatureError && <p role="status" className="mb-3 text-xs text-[var(--text-secondary)]">{workspaceFeatureError}</p>}
+                  {!workspaceFeatureRows.length ? <p className="text-xs text-[var(--text-muted)]">No workspace feature assignments available.</p> : <>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Workspace
+                      <select aria-label="Select workspace for feature access" value={workspaceFeatureId}
+                        onChange={event => {
+                          const selected = workspaceFeatureRows.find(row => row.id === event.target.value);
+                          setWorkspaceFeatureId(event.target.value);
+                          setWorkspaceFeatureDraft(selected?.enabledFeatures || []);
+                        }}
+                        className="mt-2 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                        {workspaceFeatureRows.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+                      </select>
+                    </label>
+                    <div className="mt-4">
+                      <FlagGroupPicker key={workspaceFeatureId} availableKeys={workspaceFeatureAllowed} value={workspaceFeatureDraft}
+                        label="Enabled workspace features" description="Only features granted to the organization can be selected."
+                        onApply={setWorkspaceFeatureDraft} compact />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {workspaceFeatureDraft.length} of {workspaceFeatureAllowed.length} organization features selected.
+                        {workspaceFeatureRows.find(row => row.id === workspaceFeatureId)?.configured
+                          ? ' Unselected features are blocked in this workspace.'
+                          : ' Not yet configured; current access remains unchanged until saved.'}
+                      </p>
+                      {canManageOrganization && <button type="button" onClick={() => void saveWorkspaceFeatures()}
+                        disabled={workspaceFeatureSaving} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                        {workspaceFeatureSaving ? 'Saving…' : 'Save workspace access'}
+                      </button>}
+                    </div>
+                  </>}
+                </Widget>}
 
               {/* Add Member overlay modal */}
               {accessMember && <Modal open onClose={() => setAccessMember(null)} title={`Workspace Access — ${accessMember.name || accessMember.email}`} subtitle="Grant a different role in each organization workspace." maxWidth="max-w-lg">
