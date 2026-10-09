@@ -9,7 +9,8 @@ const formatMoney = (amount: BillingAmount) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })
     .format(Number(amount.units) / 10 ** amount.scale);
 
-export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: boolean }) {
+export type BillingPanel = 'dashboard' | 'credits' | 'topup' | 'payments' | 'plan' | 'usage';
+export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void }) {
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
   const [overviewError, setOverviewError] = React.useState('');
@@ -61,6 +62,7 @@ export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: b
   }, [loadOverview, loadHistory]);
   React.useEffect(() => { void refresh(); }, [refresh]);
   const displayedHistory = history.filter(item => historyFilter === 'all' || item.purpose === 'topup');
+  const recentPayments = overview?.recentPayments || history;
   const balances = overview?.balances || [];
   const subscriptionCredits = balances.filter(balance => balance.kind === 'subscription');
   const topupCredits = balances.filter(balance => balance.kind === 'topup');
@@ -138,6 +140,40 @@ export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: b
   };
 
   return <div className="space-y-5" id="organization-billing-overview">
+    {view === 'dashboard' && <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="text-base font-semibold text-[var(--text-primary)]">Credits & recent payments</h2><p className="mt-1 text-xs text-[var(--text-muted)]">An overview of your organization's billing ledger.</p></div>
+        <button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
+          <p className="text-xs text-[var(--text-secondary)]">Subscription credits available</p>
+          <p className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{overview ? sumBalance(subscriptionCredits) : '—'}</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
+          <p className="text-xs text-[var(--text-secondary)]">Top-up credits available</p>
+          <p className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{overview ? sumBalance(topupCredits) : '—'}</p>
+        </div>
+      </div>
+      {overviewError && <p className="mt-3 text-xs text-amber-700">Credit ledger unavailable: {overviewError}</p>}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onNavigate?.('credits')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View credits</button>
+        {canSubmit && <button type="button" onClick={() => onNavigate?.('topup')} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white">Add credits</button>}
+        <button type="button" onClick={() => onNavigate?.('payments')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">View payments</button>
+      </div>
+      <div className="mt-5 border-t border-[var(--border)] pt-4">
+        <div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-[var(--text-primary)]">Recent activity</h3><button type="button" onClick={() => onNavigate?.('payments')} className="text-xs font-semibold text-amber-600">View all</button></div>
+        {recentPayments.length ? <ul className="mt-3 divide-y divide-[var(--border)]">
+          {recentPayments.slice(0, 3).map(payment => <li key={payment.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-xs">
+            <span className="text-[var(--text-secondary)]">{payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose} · {new Date(payment.submittedAt).toLocaleDateString('en-IN')}</span>
+            <span className="font-medium text-[var(--text-primary)]">{formatMoney(payment.expectedAmount)}</span>
+            <span className="text-[var(--text-secondary)]">{statuses[payment.status] || payment.status}</span>
+          </li>)}
+        </ul> : <p className="mt-3 text-xs text-[var(--text-muted)]">No recent payments found.</p>}
+      </div>
+    </section>}
+    {(view === 'credits' || view === 'topup') && <>
+
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -170,7 +206,7 @@ export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: b
       {!canSubmit && <p className="mt-3 text-xs text-slate-500">Top-up submission is available to organization owners, organization admins and billing admins with payment-submission permission.</p>}
     </section>
 
-    {canSubmit && showForm && <section className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm" id="add-credits-form">
+    {canSubmit && (showForm || view === 'topup') && <section className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm" id="add-credits-form">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-slate-800">Request additional usage credits</h3>
         <p className="mt-1 text-xs text-slate-500">Pay by bank transfer or UPI outside this page, then upload proof. ₹1 paid provides ₹1 of usage credits; your subscription plan stays unchanged.</p>
@@ -199,7 +235,7 @@ export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: b
         </label>
         {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
         <div className="flex items-center justify-end gap-3">
-          <button type="button" onClick={() => setShowForm(false)} disabled={busy} className="px-3 py-2 text-sm text-slate-500">Cancel</button>
+          <button type="button" onClick={() => { setShowForm(false); if (view === 'topup') onNavigate?.('credits'); }} disabled={busy} className="px-3 py-2 text-sm text-slate-500">Cancel</button>
           <button type="submit" disabled={busy || Boolean(success)} className="rounded-xl bg-amber-500 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-400 disabled:opacity-50">
             {busy ? 'Submitting…' : quote ? 'Retry payment submission' : 'Submit for verification'}
           </button>
@@ -207,8 +243,9 @@ export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: b
       </form>
     </section>}
 
+    </>}
     {success && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-medium text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />{success}</div>}
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    {view === 'payments' && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Clock3 className="h-4 w-4 text-slate-500" /> Payment history</h3><p className="mt-1 text-xs text-slate-500">Track top-up verification and other organization payments.</p></div>
         <select aria-label="Payment type" value={historyFilter} onChange={e => setHistoryFilter(e.target.value as 'topup' | 'all')}
@@ -246,6 +283,6 @@ export default function OrganizationTopUp({ canSubmit = false }: { canSubmit?: b
         </div>
       </div>
       {historyFilter === 'topup' && <p className="mt-2 text-[11px] text-slate-500">Pagination follows all payments. Some pages may have no top-ups; use Next to browse older requests.</p>}
-    </section>
+    </section>}
   </div>;
 }
