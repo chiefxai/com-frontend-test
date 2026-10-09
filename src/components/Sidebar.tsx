@@ -90,9 +90,8 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
     // 'api' (API Keys) hidden from navigation for now — SettingsView.tsx's
     // content for it is untouched, just not reachable from here.
     subItems: [
-      { id: 'numbers',  label: 'Virtual Numbers', icon: Phone },
+      { id: 'numbers',  label: 'Workspaces & Numbers', icon: Building2 },
       { id: 'team',     label: 'Staff & Teams',   icon: Users },
-      { id: 'workspaces', label: 'Organization Workspaces', icon: Building2 },
       { id: 'billing',  label: 'Billing & Usage', icon: CreditCard },
     ],
   },
