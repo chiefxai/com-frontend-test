@@ -51,26 +51,29 @@ export default function ActivityPage() {
       <KpiCard colSpan={3} label="Total events" value={rows.length} icon={ScrollText} iconBg="#2a78d61a" iconColor="#2a78d6" />
       <KpiCard colSpan={3} label="Events, last 24h" value={eventsLast24h} icon={Clock3} iconBg="#4a3aa71a" iconColor="#4a3aa7" />
 
-      <div className="col-span-12">
-        <FilterBar
-          search={{ value: query, onChange: setQuery, placeholder: 'Search by org, action, or actor…' }}
-          selects={[{ key: 'organization', label: 'Organization', value: orgFilter, onChange: setOrgFilter, options: [{ label: 'All organizations', value: '' }, ...orgNames.map(name => ({ label: name, value: name }))] }]}
-          resultCount={{ filtered: filtered.length, total: rows.length, label: 'events' }}
-        />
-        <div className="mt-3">
-          <DataTable
-        resizable
-            resizable
-            columns={columns}
-            rows={filtered}
-            rowKey={(a) => a.id}
-            loading={loading}
-            emptyMessage={query ? `No activity matches "${query}"` : 'No activity recorded yet.'}
-            paginated
-            defaultPageSize={25}
+      <Widget colSpan={12} showHeader={false} padding="none">
+        <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <FilterBar
+            search={{ value: query, onChange: setQuery, placeholder: 'Search by organization, action, or actor…' }}
+            selects={[{ key: 'organization', label: 'Organization', value: orgFilter, onChange: setOrgFilter,
+              options: [{ label: 'All organizations', value: '' }, ...orgNames.map(name => ({ label: name, value: name }))] }]}
+            hasActiveFilters={Boolean(query.trim() || orgFilter)}
+            onClear={() => { setQuery(''); setOrgFilter(''); }}
+            resultCount={{ filtered: filtered.length, total: rows.length, label: 'events' }}
           />
         </div>
-      </div>
+        <DataTable
+          bare
+          resizable
+          columns={columns}
+          rows={filtered}
+          rowKey={row => row.id}
+          loading={loading}
+          emptyMessage={query || orgFilter ? 'No activity matches your filters.' : 'No activity recorded yet.'}
+          paginated
+          defaultPageSize={25}
+        />
+      </Widget>
     </div>
   );
 }
