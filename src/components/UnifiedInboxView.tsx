@@ -166,8 +166,10 @@ export default function UnifiedInboxView() {
         readResponse<Channel[]>(channelResponse, 'Unable to load messaging channels.'),
         readResponse<Conversation[]>(conversationResponse, 'Unable to load conversations.'),
       ]);
+      const nextConversations = Array.isArray(conversationRows) ? conversationRows : [];
       setChannels(Array.isArray(channelRows) ? channelRows : []);
-      setConversations(Array.isArray(conversationRows) ? conversationRows : []);
+      setConversations(nextConversations);
+      setSelectedId(current => current && !nextConversations.some(conversation => conversation.id === current) ? null : current);
     } catch (reason) {
       setLoadError(reason instanceof Error ? reason.message : 'Unable to load the inbox.');
     } finally {
