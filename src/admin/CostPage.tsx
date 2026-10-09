@@ -74,7 +74,49 @@ type CostArchiveEntry = {
 };
 
 
-type PricingTab = 'call' | 'ai';
+const GEMINI_LIVE_KEY = 'gemini';
+const GEMINI_POST_KEY = 'gemini-postcall';
+const GEMINI_SAVE_KEY = 'gemini-pair';
+
+type GeminiSharedSettings = Pick<CostProvider, 'pricingMode' | 'tokenUnit' | 'timeUnit' | 'taxPercent' | 'active'>;
+
+/** The legacy billing ledger still has separate Gemini roles. The UI presents
+ * their shared settings once and keeps the two role-specific rates separate. */
+function geminiSharedSettings(live: CostProvider): GeminiSharedSettings {
+  return {
+    pricingMode: live.pricingMode ?? 'time',
+    tokenUnit: live.tokenUnit ?? 1000,
+    timeUnit: live.timeUnit ?? 'minute',
+    taxPercent: live.taxPercent,
+    active: live.active,
+  };
+}
+
+function alignGeminiDraft(rows: CostProvider[]): CostProvider[] {
+  const live = rows.find(row => row.key === GEMINI_LIVE_KEY);
+  const post = rows.find(row => row.key === GEMINI_POST_KEY);
+  if (!live || !post) return rows;
+  const shared = geminiSharedSettings(live);
+  return rows.map(row => row.key === GEMINI_POST_KEY ? { ...row, ...shared } : row);
+}
+
+function geminiSharedSettingsDiffer(live: CostProvider, post: CostProvider): boolean {
+  const first = geminiSharedSettings(live);
+  const second = geminiSharedSettings(post);
+  return Object.keys(first).some(key =>
+    first[key as keyof GeminiSharedSettings] !== second[key as keyof GeminiSharedSettings]);
+}
+
+async function persistCostProvider(provider: CostProvider): Promise<CostProvider> {
+  const response = await apiFetch('/api/platform/cost-providers/' + encodeURIComponent(provider.key), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(provider),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Unable to save provider pricing.');
+  return data as CostProvider;
+}
 const FIELD_CLASS = 'w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60';
 
 function providerSnapshot(provider: CostProvider): string {
@@ -124,7 +166,6 @@ export default function CostPage() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
-  const [pricingTab, setPricingTab] = useState<PricingTab>('call');
 
   const [archive, setArchive] = useState<CostArchiveEntry[]>([]);
   const [loadingArchive, setLoadingArchive] = useState(true);
@@ -140,7 +181,7 @@ export default function CostPage() {
       const body = await response.json().catch(() => null);
       if (!response.ok) throw new Error(body?.error || 'Unable to load provider pricing.');
       const next = Array.isArray(body) ? body as CostProvider[] : [];
-      setProviders(next);
+      setProviders(alignGeminiDraft(next));
       setSavedProviders(next.map(provider => ({ ...provider })));
       setSaveErrors({});
       setSavedKey(null);
@@ -173,11 +214,12 @@ export default function CostPage() {
 
   const updateLocal = (key: string, patch: Partial<CostProvider>) => {
     setProviders(current => current.map(provider => provider.key === key ? { ...provider, ...patch } : provider));
-    setSavedKey(previous => previous === key ? null : previous);
+    const errorKey = key === GEMINI_LIVE_KEY || key === GEMINI_POST_KEY ? GEMINI_SAVE_KEY : key;
+    setSavedKey(previous => previous === errorKey ? null : previous);
     setSaveErrors(previous => {
-      if (!previous[key]) return previous;
+      if (!previous[errorKey]) return previous;
       const next = { ...previous };
-      delete next[key];
+      delete next[errorKey];
       return next;
     });
   };
@@ -186,6 +228,68 @@ export default function CostPage() {
     const saved = savedProviders.find(provider => provider.key === key);
     if (!saved) return;
     updateLocal(key, { ...saved });
+  };
+
+  const updateGeminiShared = (patch: Partial<GeminiSharedSettings>) => {
+    setProviders(current => current.map(provider =>
+      provider.key === GEMINI_LIVE_KEY || provider.key === GEMINI_POST_KEY
+        ? { ...provider, ...patch } : provider));
+    setSavedKey(previous => previous === GEMINI_SAVE_KEY ? null : previous);
+    setSaveErrors(previous => ({ ...previous, [GEMINI_SAVE_KEY]: '' }));
+  };
+
+  const resetGemini = () => {
+    setProviders(current => {
+      const originals = savedProviders.filter(row =>
+        row.key === GEMINI_LIVE_KEY || row.key === GEMINI_POST_KEY);
+      const resetRows = alignGeminiDraft(originals);
+      return current.map(row => resetRows.find(original => original.key === row.key) || row);
+    });
+    setSaveErrors(previous => ({ ...previous, [GEMINI_SAVE_KEY]: '' }));
+    setSavedKey(null);
+  };
+
+  const saveGemini = async () => {
+    if (savingKey) return;
+    const live = providers.find(provider => provider.key === GEMINI_LIVE_KEY);
+    const post = providers.find(provider => provider.key === GEMINI_POST_KEY);
+    if (!live || !post) return;
+    if (!validProvider(live) || !validProvider(post)) {
+      setSaveErrors(previous => ({ ...previous, [GEMINI_SAVE_KEY]:
+        'Enter valid non-negative prices and a tax percentage between 0 and 100.' }));
+      return;
+    }
+    setSavingKey(GEMINI_SAVE_KEY);
+    setSavedKey(null);
+    setSaveErrors(previous => ({ ...previous, [GEMINI_SAVE_KEY]: '' }));
+    let liveSaved = false;
+    try {
+      // These two existing PUT endpoints share one platform-settings JSON store:
+      // make the requests sequentially, never concurrently (avoid lost updates).
+      const savedLive = await persistCostProvider(live);
+      liveSaved = true;
+      setSavedProviders(current => current.map(row =>
+        row.key === savedLive.key ? { ...savedLive } : row));
+      const savedPost = await persistCostProvider(post);
+      setSavedProviders(current => current.map(row =>
+        row.key === savedPost.key ? { ...savedPost } : row));
+      setProviders(current => current.map(row =>
+        row.key === savedLive.key ? savedLive
+        : row.key === savedPost.key ? savedPost
+        : row));
+      setSavedKey(GEMINI_SAVE_KEY);
+      window.setTimeout(() =>
+        setSavedKey(current => current === GEMINI_SAVE_KEY ? null : current), 3500);
+    } catch (reason) {
+      const detail = reason instanceof Error ? reason.message : 'Unable to save Gemini pricing.';
+      setSaveErrors(previous => ({ ...previous, [GEMINI_SAVE_KEY]:
+        liveSaved
+          ? 'Live Voice was saved, but Post-Call Agents could not be saved. ' +
+            'The displayed settings have not been fully applied. Retry Save Gemini to synchronize both rates. ' + detail
+          : 'Gemini pricing was not fully saved. ' + detail }));
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   const saveProvider = async (provider: CostProvider) => {
@@ -197,14 +301,7 @@ export default function CostPage() {
     setSavingKey(provider.key);
     setSaveErrors(previous => ({ ...previous, [provider.key]: '' }));
     try {
-      const response = await apiFetch('/api/platform/cost-providers/' + encodeURIComponent(provider.key), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(provider),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Unable to save provider pricing.');
-      const saved = body as CostProvider;
+      const saved = await persistCostProvider(provider);
       setProviders(current => current.map(row => row.key === provider.key ? saved : row));
       setSavedProviders(current => current.map(row => row.key === provider.key ? { ...saved } : row));
       setSavedKey(provider.key);
@@ -218,7 +315,14 @@ export default function CostPage() {
   };
 
   const activeCallProviders = savedProviders.filter(provider => provider.kind === 'call' && provider.active);
-  const activeAiProviders = savedProviders.filter(provider => provider.kind === 'ai' && provider.active);
+  // Count Gemini once in the KPI: Live Voice and Post-Call Agents share one
+  // visible provider form, even though the billing engine records two roles.
+  const activeAiProviderCount = new Set(
+    savedProviders
+      .filter(provider => provider.kind === 'ai' && provider.active)
+      .map(provider => provider.key === GEMINI_LIVE_KEY || provider.key === GEMINI_POST_KEY
+        ? 'gemini' : provider.key),
+  ).size;
   const primaryCallProvider = activeCallProviders.find(provider => (provider.rateAmount ?? 0) > 0);
   const callRate = primaryCallProvider ? formatInr(perMinuteRate(primaryCallProvider)) : '—';
 
@@ -257,11 +361,42 @@ export default function CostPage() {
       </span> },
   ];
 
-  const displayedProviders = providers.filter(provider => provider.kind === pricingTab);
-  const dirtyCount = providers.filter(provider => {
+  const callProviders = providers.filter(provider => provider.kind === 'call');
+  const geminiLive = providers.find(provider => provider.key === GEMINI_LIVE_KEY);
+  const geminiPost = providers.find(provider => provider.key === GEMINI_POST_KEY);
+  const pairedGemini = Boolean(geminiLive && geminiPost);
+  const otherAiProviders = providers.filter(provider =>
+    provider.kind === 'ai' && (!pairedGemini ||
+      (provider.key !== GEMINI_LIVE_KEY && provider.key !== GEMINI_POST_KEY)));
+
+  const isDirty = (provider: CostProvider) => {
     const saved = savedProviders.find(row => row.key === provider.key);
-    return saved && providerSnapshot(saved) !== providerSnapshot(provider);
-  }).length;
+    return Boolean(saved && providerSnapshot(saved) !== providerSnapshot(provider));
+  };
+  const geminiDirty = pairedGemini && Boolean(geminiLive && geminiPost
+    && (isDirty(geminiLive) || isDirty(geminiPost)));
+  const savedGeminiLive = savedProviders.find(row => row.key === GEMINI_LIVE_KEY);
+  const savedGeminiPost = savedProviders.find(row => row.key === GEMINI_POST_KEY);
+  const geminiNeedsSync = Boolean(savedGeminiLive && savedGeminiPost
+    && geminiSharedSettingsDiffer(savedGeminiLive, savedGeminiPost));
+  const dirtyCount = providers.filter(provider =>
+    !(pairedGemini && (provider.key === GEMINI_LIVE_KEY || provider.key === GEMINI_POST_KEY))
+    && isDirty(provider)).length + (geminiDirty ? 1 : 0);
+
+  const renderProvider = (provider: CostProvider) => (
+    <ProviderRow
+      key={provider.key}
+      provider={provider}
+      dirty={isDirty(provider)}
+      saving={savingKey === provider.key}
+      blocked={Boolean(savingKey)}
+      saved={savedKey === provider.key}
+      error={saveErrors[provider.key]}
+      onChange={patch => updateLocal(provider.key, patch)}
+      onReset={() => resetProvider(provider.key)}
+      onSave={() => void saveProvider(provider)}
+    />
+  );
 
   return (
     <div className="grid grid-cols-12 gap-4 md:gap-5">
@@ -269,35 +404,25 @@ export default function CostPage() {
         sub="Per minute · tax included" icon={Zap} iconBg="#f59e0b1a" iconColor="#d97706" />
       <KpiCard colSpan={3} label="Active call providers" value={loadingProviders ? '—' : activeCallProviders.length}
         icon={Phone} iconBg="#0d94881a" iconColor="#0d9488" />
-      <KpiCard colSpan={3} label="Active AI providers" value={loadingProviders ? '—' : activeAiProviders.length}
+      <KpiCard colSpan={3} label="Active AI providers" value={loadingProviders ? '—' : activeAiProviderCount}
         icon={Cpu} iconBg="#4a3aa71a" iconColor="#4a3aa7" />
       <KpiCard colSpan={3} label="Deleted organizations" value={loadingArchive ? '—' : archive.length}
         sub="Cost snapshots retained" icon={Archive} iconBg="#b453091a" iconColor="#b45309" />
 
       <Widget colSpan={12} title="Provider pricing"
-        subtitle="Set rates and tax for the supported providers. Save each provider to apply its changes."
+        subtitle="Configure telephony and Gemini AI rates in one place."
         icon={Zap} accent="#2563eb" padding="none"
         action={dirtyCount > 0
           ? <span role="status" className="rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:text-amber-300">
-              {dirtyCount} unsaved {dirtyCount === 1 ? 'provider' : 'providers'}
+              {dirtyCount} unsaved {dirtyCount === 1 ? 'configuration' : 'configurations'}
             </span>
           : undefined}>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
-          <div role="tablist" aria-label="Pricing provider type" className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-            <button type="button" role="tab" aria-selected={pricingTab === 'call'} onClick={() => setPricingTab('call')}
-              className={(pricingTab === 'call' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]') +
-                ' inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors'}>
-              <Phone className="h-3.5 w-3.5" /> Call providers <span className="text-[var(--text-muted)]">{providers.filter(row => row.kind === 'call').length}</span>
-            </button>
-            <button type="button" role="tab" aria-selected={pricingTab === 'ai'} onClick={() => setPricingTab('ai')}
-              className={(pricingTab === 'ai' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]') +
-                ' inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors'}>
-              <Cpu className="h-3.5 w-3.5" /> AI providers <span className="text-[var(--text-muted)]">{providers.filter(row => row.kind === 'ai').length}</span>
-            </button>
-          </div>
-          <p className="text-xs text-[var(--text-muted)]">Rates affect new usage; historical records retain their billed values.</p>
+        <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3">
+          <p className="text-xs text-[var(--text-muted)]">
+            Manage call pricing and AI pricing together. Changes apply to future usage;
+            historical billing entries keep their original rates.
+          </p>
         </div>
-
         {loadingProviders
           ? <div role="status" className="flex items-center justify-center gap-2 py-12 text-sm text-[var(--text-muted)]">
               <RefreshCw className="h-4 w-4 animate-spin" /> Loading provider rates…
@@ -307,27 +432,44 @@ export default function CostPage() {
                 <span>{providersError}</span>
                 <Button type="button" size="sm" onClick={() => void loadProviders()}>Retry</Button>
               </div>
-            : displayedProviders.length === 0
-              ? <EmptyState icon={pricingTab === 'call' ? Phone : Cpu}
-                  heading="No providers configured"
-                  message="Supported providers are registered by the platform backend." />
-              : <div className="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2">
-                  {displayedProviders.map(provider => {
-                    const saved = savedProviders.find(row => row.key === provider.key);
-                    return <ProviderRow
-                      key={provider.key}
-                      provider={provider}
-                      dirty={Boolean(saved && providerSnapshot(provider) !== providerSnapshot(saved))}
-                      saving={savingKey === provider.key}
+            : <div className="grid grid-cols-1 items-start gap-5 p-4 xl:grid-cols-2">
+                <section className="min-w-0 space-y-3" aria-label="Call provider pricing">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-[var(--text-secondary)]" />
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Call provider</h3>
+                  </div>
+                  {callProviders.length > 0
+                    ? callProviders.map(renderProvider)
+                    : <EmptyState icon={Phone} heading="No call provider configured"
+                        message="Call providers are registered by the backend." />}
+                </section>
+                <section className="min-w-0 space-y-3" aria-label="AI provider pricing">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-[var(--text-secondary)]" />
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">AI provider</h3>
+                  </div>
+                  {pairedGemini && geminiLive && geminiPost && (
+                    <GeminiPricingCard
+                      live={geminiLive}
+                      post={geminiPost}
+                      dirty={geminiDirty}
+                      needsSync={geminiNeedsSync}
+                      saving={savingKey === GEMINI_SAVE_KEY}
                       blocked={Boolean(savingKey)}
-                      saved={savedKey === provider.key}
-                      error={saveErrors[provider.key]}
-                      onChange={patch => updateLocal(provider.key, patch)}
-                      onReset={() => resetProvider(provider.key)}
-                      onSave={() => void saveProvider(provider)}
-                    />;
-                  })}
-                </div>}
+                      saved={savedKey === GEMINI_SAVE_KEY}
+                      error={saveErrors[GEMINI_SAVE_KEY]}
+                      onSharedChange={updateGeminiShared}
+                      onPriceChange={updateLocal}
+                      onReset={resetGemini}
+                      onSave={() => void saveGemini()}
+                    />
+                  )}
+                  {otherAiProviders.map(renderProvider)}
+                  {!pairedGemini && otherAiProviders.length === 0
+                    && <EmptyState icon={Cpu} heading="No AI provider configured"
+                         message="AI providers are registered by the backend." />}
+                </section>
+              </div>}
       </Widget>
 
       <Widget colSpan={12} title="Deleted organizations"
@@ -366,6 +508,150 @@ export default function CostPage() {
             : 'No deleted organizations have been archived yet.'}
         />
       </Widget>
+    </div>
+  );
+}
+
+/* Gemini is one form in the UI, with two distinct persisted model rates. */
+function GeminiPricingCard({
+  live, post, dirty, needsSync, saving, blocked, saved, error,
+  onSharedChange, onPriceChange, onReset, onSave,
+}: {
+  live: CostProvider;
+  post: CostProvider;
+  dirty: boolean;
+  needsSync: boolean;
+  saving: boolean;
+  blocked: boolean;
+  saved: boolean;
+  error?: string;
+  onSharedChange: (patch: Partial<GeminiSharedSettings>) => void;
+  onPriceChange: (key: string, patch: Partial<CostProvider>) => void;
+  onReset: () => void;
+  onSave: () => void;
+}) {
+  const mode = live.pricingMode ?? 'time';
+  const rateField = mode === 'time' ? 'timeRateAmount' : 'ratePer1kTokens';
+  const priceLabel = mode === 'time' ? 'Rate per time unit (INR)' : 'Rate per token unit (INR)';
+  const invalid = !validProvider(live) || !validProvider(post);
+  const livePrice = effectiveCost(live);
+  const postPrice = effectiveCost(post);
+
+  return (
+    <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-semibold text-[var(--text-primary)]">Gemini AI</h4>
+            <Badge color={live.active ? 'green' : 'slate'}>{live.active ? 'Active' : 'Inactive'}</Badge>
+            {dirty && <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-300">Unsaved</span>}
+          </div>
+          <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+            Separate Live Voice and Post-Call Agent prices with shared billing settings.
+          </p>
+        </div>
+      </div>
+      {needsSync && <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+        Previously saved Gemini billing settings differ. The Live Voice settings are shown;
+        save Gemini pricing to apply them to both models.
+      </div>}
+      <fieldset disabled={blocked} className="space-y-4 p-4">
+        <div>
+          <p className="mb-3 text-xs font-semibold text-[var(--text-primary)]">Model prices</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Live Voice price (INR)">
+              <input aria-label="Gemini Live Voice price (INR)"
+                className={FIELD_CLASS} type="number" min="0" step="0.0001"
+                value={live[rateField] ?? 0}
+                onChange={event => onPriceChange(live.key, mode === 'time'
+                  ? { timeRateAmount: Number(event.target.value) }
+                  : { ratePer1kTokens: Number(event.target.value) })} />
+              <span className="mt-1 block text-[11px] text-[var(--text-muted)]">{priceLabel}</span>
+            </Field>
+            <Field label="Post-Call Agent price (INR)">
+              <input aria-label="Gemini Post-Call Agent price (INR)"
+                className={FIELD_CLASS} type="number" min="0" step="0.0001"
+                value={post[rateField] ?? 0}
+                onChange={event => onPriceChange(post.key, mode === 'time'
+                  ? { timeRateAmount: Number(event.target.value) }
+                  : { ratePer1kTokens: Number(event.target.value) })} />
+              <span className="mt-1 block text-[11px] text-[var(--text-muted)]">{priceLabel}</span>
+            </Field>
+          </div>
+        </div>
+        <div className="border-t border-[var(--border)] pt-4">
+          <p className="mb-3 text-xs font-semibold text-[var(--text-primary)]">Shared billing settings</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Pricing basis">
+              <select className={FIELD_CLASS} aria-label="Gemini pricing basis"
+                value={mode} onChange={event =>
+                  onSharedChange({ pricingMode: event.target.value as 'time' | 'token' })}>
+                <option value="time">Time based</option>
+                <option value="token">Token based</option>
+              </select>
+            </Field>
+            {mode === 'time'
+              ? <Field label="Billing per">
+                  <select className={FIELD_CLASS} aria-label="Gemini billing per"
+                    value={live.timeUnit ?? 'minute'} onChange={event =>
+                      onSharedChange({ timeUnit: event.target.value as 'minute' | 'second' })}>
+                    <option value="minute">Minute</option>
+                    <option value="second">Second</option>
+                  </select>
+                </Field>
+              : <Field label="Billing per">
+                  <select className={FIELD_CLASS} aria-label="Gemini billing per"
+                    value={live.tokenUnit ?? 1000} onChange={event =>
+                      onSharedChange({ tokenUnit: Number(event.target.value) })}>
+                    {TOKEN_UNIT_OPTIONS.map(option =>
+                      <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </Field>}
+            <Field label="Tax (%)">
+              <input className={FIELD_CLASS} aria-label="Gemini tax percentage"
+                type="number" min="0" max="100" step="0.01"
+                value={live.taxPercent ?? 0}
+                onChange={event => onSharedChange({ taxPercent: Number(event.target.value) })} />
+            </Field>
+            <Field label="Availability">
+              <select className={FIELD_CLASS} aria-label="Gemini availability"
+                value={live.active ? '1' : '0'}
+                onChange={event => onSharedChange({ active: event.target.value === '1' })}>
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </Field>
+          </div>
+        </div>
+      </fieldset>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-[var(--text-primary)]">
+            Live Voice: {livePrice.amount} / {livePrice.unit}
+          </p>
+          <p className="text-xs font-semibold text-[var(--text-primary)]">
+            Post-Call Agent: {postPrice.amount} / {postPrice.unit}
+          </p>
+          <p className="text-[11px] text-[var(--text-muted)]">
+            Estimated rates include {live.taxPercent || 0}% tax.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {dirty && <Button type="button" size="sm" icon={RotateCcw} variant="ghost"
+            disabled={blocked} onClick={onReset}>Reset</Button>}
+          <Button type="button" size="sm" variant="primary" loading={saving}
+            disabled={blocked || !dirty || invalid} onClick={onSave}>
+            {saved && !dirty ? 'Saved' : 'Save Gemini'}
+          </Button>
+        </div>
+      </div>
+      {invalid && <p role="alert" className="border-t border-[var(--border)] px-4 py-2 text-xs text-rose-600">
+        Enter valid non-negative prices and a tax percentage between 0 and 100.
+      </p>}
+      {error && <p role="alert" className="border-t border-[var(--border)] px-4 py-2 text-xs text-rose-600">{error}</p>}
+      {saved && !dirty && <p role="status" className="border-t border-[var(--border)] px-4 py-2 text-xs text-emerald-700">
+        Both Gemini prices and shared billing settings saved successfully.
+      </p>}
     </div>
   );
 }
