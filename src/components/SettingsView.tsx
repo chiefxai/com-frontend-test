@@ -158,6 +158,48 @@ export default function SettingsView({
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
+  const canManageOrganization = can('organization.manage');
+  const [workspaceFeatureRows, setWorkspaceFeatureRows] = useState<{id:string;name:string;configured:boolean;enabledFeatures:string[]}[]>([]);
+  const [workspaceFeatureAllowed, setWorkspaceFeatureAllowed] = useState<string[]>([]);
+  const [workspaceFeatureId, setWorkspaceFeatureId] = useState('');
+  const [workspaceFeatureDraft, setWorkspaceFeatureDraft] = useState<string[]>([]);
+  const [workspaceFeatureError, setWorkspaceFeatureError] = useState('');
+  const [workspaceFeatureSaving, setWorkspaceFeatureSaving] = useState(false);
+  const loadWorkspaceFeatures = React.useCallback(async () => {
+    const response = await apiFetch('/api/settings/organization/workspace-features');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Could not load workspace features.');
+    const rows = Array.isArray(data.workspaces) ? data.workspaces : [];
+    setWorkspaceFeatureRows(rows);
+    setWorkspaceFeatureAllowed(Array.isArray(data.availableFeatures) ? data.availableFeatures : []);
+    setWorkspaceFeatureId(previous => {
+      const selected = rows.find((row: {id:string}) => row.id === previous) || rows[0];
+      if (selected) setWorkspaceFeatureDraft(selected.enabledFeatures || []);
+      return selected?.id || '';
+    });
+    setWorkspaceFeatureError('');
+  }, []);
+  React.useEffect(() => {
+    if (!['numbers','workspaces'].includes(subTab) || !canReadOrganization) return;
+    void loadWorkspaceFeatures().catch(error => setWorkspaceFeatureError(error.message || 'Could not load workspace features.'));
+  }, [subTab, canReadOrganization, loadWorkspaceFeatures]);
+  const saveWorkspaceFeatures = async () => {
+    if (!workspaceFeatureId) return;
+    setWorkspaceFeatureSaving(true); setWorkspaceFeatureError('');
+    try {
+      const response = await apiFetch(`/api/settings/organization/workspace-features/${encodeURIComponent(workspaceFeatureId)}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({enabledFeatures:workspaceFeatureDraft}),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not save workspace feature access.');
+      setWorkspaceFeatureRows(current => current.map(row => row.id === workspaceFeatureId
+        ? {...row,configured:true,enabledFeatures:workspaceFeatureDraft} : row));
+      setWorkspaceFeatureError('Workspace feature access saved.');
+    } catch(error) { setWorkspaceFeatureError(error instanceof Error ? error.message : 'Could not save workspace features.'); }
+    finally { setWorkspaceFeatureSaving(false); }
+  };
+
   const [organizationNumbers, setOrganizationNumbers] = useState<VirtualNumber[] | null>(null);
   const [organizationNumbersError, setOrganizationNumbersError] = useState('');
   const loadOrganizationNumbers = React.useCallback(async () => {
@@ -697,6 +739,40 @@ export default function SettingsView({
                   <p className="text-xs text-[var(--text-muted)]">Workspace membership and billing remain organization-scoped, with access managed separately for each workspace.</p>
                 </Widget>
                 <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={onWorkspaceCreated} />
+                {canReadOrganization && <Widget title="Workspace Feature Access" subtitle="Limit features independently for each branch or workspace." icon={Flag} accent="#6366f1" padding="md">
+                  {workspaceFeatureError && <p role="status" className="mb-3 text-xs text-[var(--text-secondary)]">{workspaceFeatureError}</p>}
+                  {!workspaceFeatureRows.length ? <p className="text-xs text-[var(--text-muted)]">No workspace feature assignments available.</p> : <>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Workspace
+                      <select aria-label="Select workspace for feature access" value={workspaceFeatureId}
+                        onChange={event => {
+                          const selected = workspaceFeatureRows.find(row => row.id === event.target.value);
+                          setWorkspaceFeatureId(event.target.value);
+                          setWorkspaceFeatureDraft(selected?.enabledFeatures || []);
+                        }}
+                        className="mt-2 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)]">
+                        {workspaceFeatureRows.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+                      </select>
+                    </label>
+                    <div className="mt-4">
+                      <FlagGroupPicker key={workspaceFeatureId} availableKeys={workspaceFeatureAllowed} value={workspaceFeatureDraft}
+                        label="Enabled workspace features" description="Only features granted to the organization can be selected."
+                        onApply={setWorkspaceFeatureDraft} compact />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {workspaceFeatureDraft.length} of {workspaceFeatureAllowed.length} organization features selected.
+                        {workspaceFeatureRows.find(row => row.id === workspaceFeatureId)?.configured
+                          ? ' Unselected features are blocked in this workspace.'
+                          : ' Not yet configured; current access remains unchanged until saved.'}
+                      </p>
+                      {canManageOrganization && <button type="button" onClick={() => void saveWorkspaceFeatures()}
+                        disabled={workspaceFeatureSaving} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                        {workspaceFeatureSaving ? 'Saving…' : 'Save workspace access'}
+                      </button>}
+                    </div>
+                  </>}
+                </Widget>}
+
               </>}
               {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {workspacePanel === 'numbers' && <>
