@@ -10,9 +10,11 @@ interface WorkspaceRow { id: string; name: string; industry: string; branchName?
 export default function WorkspaceManagement({
   enabled,
   onWorkspaceCreated,
+  onSelectWorkspace,
 }: {
   enabled: boolean;
   onWorkspaceCreated: () => Promise<void>;
+  onSelectWorkspace?: (workspace: { id: string; name: string; status: string; industry: string; branchName?: string | null }) => void;
 }) {
   const { can } = useAuthorization();
   const canManage = can('organization.manage');
@@ -89,10 +91,14 @@ export default function WorkspaceManagement({
       {message && <div role="status" className={`mb-4 rounded-lg border px-3 py-2 text-xs ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{message.text}</div>}
       <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {workspaces.map(workspace => (
-          <div key={workspace.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5">
+          <button key={workspace.id} type="button" onClick={() => onSelectWorkspace?.(workspace)}
+            disabled={!onSelectWorkspace}
+            aria-label={`View workspace members for ${workspace.name}`}
+            className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-left transition-colors enabled:hover:border-[var(--accent)] enabled:hover:bg-[var(--bg-subtle)] enabled:focus-visible:outline enabled:focus-visible:outline-2 enabled:focus-visible:outline-[var(--accent)] disabled:cursor-default">
             <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{workspace.name}{workspace.status !== 'Active' ? ' · Inactive' : ''}</p>
             <p className="mt-1 text-[10px] text-[var(--text-muted)]">{workspace.branchName ? `${workspace.branchName} · ` : ''}{workspace.industry.replaceAll('_', ' ')}</p>
-          </div>
+            {onSelectWorkspace && <p className="mt-2 text-[10px] font-semibold text-[var(--accent)]">View members →</p>}
+          </button>
         ))}
         {!loading && workspaces.length === 0 && <p className="text-xs text-[var(--text-muted)]">No workspaces available.</p>}
       </div>
