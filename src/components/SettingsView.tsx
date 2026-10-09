@@ -6,6 +6,7 @@ import {
   CreditCard,
   Key,
   Trash2,
+  ArrowLeft,
   CheckCircle,
   FileText,
   Clock,
@@ -658,6 +659,11 @@ export default function SettingsView({
       title={
         subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces'
           ? <span className="flex min-w-0 items-center gap-2">
+              {subTab === 'billing' && billingPanel !== 'dashboard'
+                ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Billing & Usage" onClick={() => setBillingPanel('dashboard')} />
+                : (subTab === 'numbers' || subTab === 'workspaces') && workspacePanel !== 'overview'
+                  ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Workspaces & Numbers" onClick={() => setWorkspacePanel('overview')} />
+                  : null}
               <span className="text-[10px] font-medium text-[var(--text-muted)]">Administration</span>
               <span className="text-[var(--border)]">/</span>
               {subTab === 'billing'
@@ -679,11 +685,6 @@ export default function SettingsView({
           : <BreadcrumbTitle group="Administration" page={subTab === 'team' ? 'Staff & Teams' : 'API Keys'} />
       }
       subtitle={subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' ? undefined : subTab === 'team' ? 'Manage staff and access.' : undefined}
-      action={subTab === 'billing' && billingPanel !== 'dashboard'
-        ? <button type="button" onClick={() => setBillingPanel('dashboard')} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">← Back to billing</button>
-        : (subTab === 'numbers' || subTab === 'workspaces') && workspacePanel !== 'overview'
-          ? <button type="button" onClick={() => setWorkspacePanel('overview')} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">← Back to workspaces</button>
-          : undefined}
       onRefresh={handlePageRefresh}
     >
       <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
@@ -718,14 +719,7 @@ export default function SettingsView({
                 icon={Hash}
                 accent="#6366f1"
                 padding="none"
-                action={
-                  <button
-                    onClick={() => setShowProviderForm(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Add Provider
-                  </button>
-                }
+                action={<IconButton icon={Plus} label="Add Provider" onClick={() => setShowProviderForm(true)} />}
               >
                 {visibleNumbers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -769,9 +763,7 @@ export default function SettingsView({
                               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive
                             </span>
                           )}
-                          <button onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(organizationNumbers && !virtualNumbers.some(row => row.id === num.id))} className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:cursor-not-allowed disabled:opacity-30" title="Delete number in current workspace">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <IconButton icon={Trash2} variant="secondary" label="Delete number in current workspace" onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(organizationNumbers && !virtualNumbers.some(row => row.id === num.id))} className="text-rose-500 hover:text-rose-600" />
                         </div>
                       ),
                     },
