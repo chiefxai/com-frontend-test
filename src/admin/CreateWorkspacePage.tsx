@@ -5,8 +5,7 @@ import { apiFetch } from '../lib/api';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 import FeatureAccessSelector from '../components/ui/FeatureAccessSelector';
-import WorkspacePolicyEditor from '../components/WorkspacePolicyEditor';
-import { emptyWorkspacePolicy, serializedPolicy, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
+import { monthlyPreview, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
 import { DEFAULT_BACKUP, DEFAULT_RETENTION, readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
 
 const INDUSTRIES = Object.values(INDUSTRY_PROFILES).map(profile => ({
@@ -44,9 +43,7 @@ interface CreateOrgForm {
   callAuthId: string;
   callAuthToken: string;
   callPhoneNumber: string;
-  billingMethod: 'pay_as_you_go' | 'recharge_based';
   chargeScope: 'ai_only' | 'ai_and_call_provider';
-  initialRechargeAmountInr: string;
 }
 
 export default function CreateWorkspacePage() {
@@ -63,11 +60,8 @@ export default function CreateWorkspacePage() {
     callAuthId: '',
     callAuthToken: '',
     callPhoneNumber: '',
-    billingMethod: 'pay_as_you_go',
     chargeScope: 'ai_only',
-    initialRechargeAmountInr: '',
   });
-  const [workspacePolicy, setWorkspacePolicy] = useState(emptyWorkspacePolicy);
   const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
   const [loadingWorkspacePlans, setLoadingWorkspacePlans] = useState(true);
@@ -81,8 +75,22 @@ export default function CreateWorkspacePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const availableFeatureKeys = defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':form.industry);
   const selectedWorkspacePlan = workspacePlans.find(plan => plan.id === form.subscriptionPlan && plan.active) || null;
+  const planMode = selectedWorkspacePlan?.defaultMode || 'single';
+  const availableFeatureKeys = defaultFeatureFlagsForIndustry(planMode === 'mixed_industry' ? 'lending' : form.industry);
+  const initialWorkspacePrice = selectedWorkspacePlan
+    ? monthlyPreview({
+        mode: planMode,
+        pricing: {
+          baseMonthlyInr: selectedWorkspacePlan.pricing.baseMonthlyInr,
+          includedWorkspaces: selectedWorkspacePlan.pricing.includedWorkspaces,
+          extraWorkspaceMonthlyInr: selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr,
+          additionalIndustryMonthlyInr: selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr,
+        },
+      }, form.industry, [{ industry: form.industry }, ...initialWorkspaces.map(branch => ({
+        industry: planMode === 'same_industry' ? form.industry : branch.industry,
+      }))])
+    : null;
   // Organization setup inherits the policy from its subscription plan.
   // Plans created before this capability use the platform policy default.
   const planRetentionPolicyId = selectedWorkspacePlan?.retentionPolicyId || retentionCatalog?.defaultPolicyId || '';
@@ -101,7 +109,6 @@ export default function CreateWorkspacePage() {
         const first = plans.find(plan => plan.id === 'starter') || plans[0];
         if (first) {
           setForm(current => ({ ...current, subscriptionPlan: first.id }));
-          setWorkspacePolicy({ mode: first.defaultMode, pricing: { ...first.pricing } });
         }
       })
       .catch(error => { if (active) setError(error instanceof Error ? error.message : 'Could not load workspace plan defaults.'); })
@@ -182,6 +189,10 @@ export default function CreateWorkspacePage() {
       setError('Configure all monthly prices for this plan in Admin → Workspace Plans before creating an organization. Enter 0 for any price that does not apply.');
       return;
     }
+    if (initialWorkspaces.length > 0 && !form.adminEmail.trim()) {
+      setError('An organization admin email is required when creating additional initial workspaces.');
+      return;
+    }
     setLoading(true);
     try {
       if (!form.gcpCredentialsJson.trim()) {
@@ -219,9 +230,19 @@ export default function CreateWorkspacePage() {
           subscriptionPlan: form.subscriptionPlan,
           workspacePlanId: form.subscriptionPlan,
           workspacePlanVersion,
-          workspacePolicy: { ...serializedPolicy(workspacePolicy), planId: selectedWorkspacePlan?.id, planVersion: workspacePlanVersion },
+          workspacePolicy: {
+            mode: selectedWorkspacePlan.defaultMode,
+            pricing: {
+              baseMonthlyInr: selectedWorkspacePlan.pricing.baseMonthlyInr,
+              includedWorkspaces: selectedWorkspacePlan.pricing.includedWorkspaces,
+              extraWorkspaceMonthlyInr: selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr,
+              additionalIndustryMonthlyInr: selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr,
+            },
+            planId: selectedWorkspacePlan.id,
+            planVersion: workspacePlanVersion,
+          },
           firstBranchName: firstBranchName.trim() || null,
-          initialWorkspaces: workspacePolicy.mode==='single' ? [] : initialWorkspaces.map(branch=>({...branch,industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})),
+          initialWorkspaces: planMode === 'single' ? [] : initialWorkspaces.map(branch=>({...branch,industry:planMode==='same_industry'?form.industry:branch.industry})),
           adminEmail: form.adminEmail,
           adminName: form.adminName,
           featureFlags: selectedFlags,
@@ -238,9 +259,8 @@ export default function CreateWorkspacePage() {
               phoneNumber: form.callPhoneNumber.trim(),
             },
           } : {}),
-          billingMethod: form.billingMethod,
           chargeScope: form.chargeScope,
-          initialRechargeAmountInr: form.billingMethod === 'recharge_based' ? Number(form.initialRechargeAmountInr || 0) : 0,
+          billingMethod: 'pay_as_you_go',
           ...(legacyRetentionFallback
             ? {
                 dataRetentionMode: 'default',
@@ -274,7 +294,7 @@ export default function CreateWorkspacePage() {
         </div>
       )}
       {error && (
-        <div className="mb-4 bg-rose-50 border border-rose-200 rounded-lg px-4 py-2 text-sm text-rose-600">
+        <div role="alert" className="mb-4 bg-rose-50 border border-rose-200 rounded-lg px-4 py-2 text-sm text-rose-600 dark:bg-rose-950/30 dark:border-rose-900 dark:text-rose-300">
           {error}
         </div>
       )}
@@ -334,32 +354,36 @@ export default function CreateWorkspacePage() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3">
-            <h2 className="text-sm font-semibold text-slate-800">Workspace plan</h2>
-            <p className="mt-1 text-[11px] text-slate-500">Choose the plan first; its defaults will be used for the workspace structure and pricing below.</p>
+            <h2 className="text-sm font-semibold text-slate-800">Subscription plan</h2>
+            <p className="mt-1 text-[11px] text-slate-500">The selected plan sets workspace allowances, monthly pricing, and the retention and backup policy.</p>
           </div>
             <select value={form.subscriptionPlan} onChange={event=>{
               const plan=workspacePlans.find(item=>item.id===event.target.value);
               setForm(current=>({...current,subscriptionPlan:event.target.value}));
-              if(plan)setWorkspacePolicy({mode:plan.defaultMode,pricing:{...plan.pricing}});
+              if(plan) {
+                setSelectedFlags(defaultFeatureFlagsForIndustry(plan.defaultMode==='mixed_industry'?'lending':form.industry));
+                if(plan.defaultMode==='single')setInitialWorkspaces([]);
+              }
             }} aria-label="Workspace plan" disabled={loadingWorkspacePlans || !workspacePlans.length} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:bg-slate-100">
               {workspacePlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
             </select>
+            {selectedWorkspacePlan && <div className="mt-4 rounded-xl border border-cyan-100 bg-cyan-50/60 p-3 text-xs text-slate-600 dark:border-cyan-900 dark:bg-cyan-950/30">
+              <p className="font-semibold text-slate-800">{selectedWorkspacePlan.name} plan details</p>
+              <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                <div className="flex justify-between gap-3"><dt>Workspace setup</dt><dd className="font-medium text-slate-800">{planMode === 'single' ? 'Single workspace' : planMode === 'same_industry' ? 'Multiple workspaces · same industry' : 'Multiple workspaces · mixed industries'}</dd></div>
+                <div className="flex justify-between gap-3"><dt>Included workspaces</dt><dd className="font-medium text-slate-800">{planMode === 'single' ? 1 : selectedWorkspacePlan.pricing.includedWorkspaces}</dd></div>
+                <div className="flex justify-between gap-3"><dt>Monthly subscription</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.baseMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>
+                {planMode !== 'single' && <div className="flex justify-between gap-3"><dt>Additional workspace / month</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
+                {planMode === 'mixed_industry' && <div className="flex justify-between gap-3"><dt>Additional industry / month</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
+                {selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr != null && <div className="flex justify-between gap-3"><dt>Monthly usage credits</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr.toFixed(2)}</dd></div>}
+              </dl>
+              <p className="mt-2 text-[10px] text-slate-500">Workspace setup and prices come from Admin → Subscription Plans. They cannot be changed here.</p>
+            </div>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-800">Workspace structure</h2>
-            <p className="mt-1 text-[11px] text-slate-500">Choose how many workspaces the organization starts with and whether they share one industry.</p>
-          </div>
-          {loadingWorkspacePlans && <p className="text-xs text-slate-500">Loading plan defaults…</p>}
-          {selectedWorkspacePlan && <div className="rounded-xl border border-cyan-100 bg-cyan-50/60 p-3 text-xs text-slate-600">
-            <p className="font-semibold text-slate-800">{selectedWorkspacePlan.name} default pricing</p>
-            <p className="mt-1">Organization plan: ₹{selectedWorkspacePlan.pricing.baseMonthlyInr?.toFixed(2) ?? 'Not configured'} / month · Each additional workspace: ₹{selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr?.toFixed(2) ?? 'Not configured'} / month</p>
-            {workspacePolicy.mode==='mixed_industry' && <p>Additional distinct industry: ₹{selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr?.toFixed(2) ?? 'Not configured'} / month</p>}
-            <p className="mt-1 text-[10px] text-slate-500">Plan defaults are managed separately in Admin → Plans &amp; Pricing. This organization receives a pricing snapshot when created.</p>
-          </div>}
-          <WorkspacePolicyEditor value={workspacePolicy} onChange={value=>{setWorkspacePolicy(value);if(value.mode!==workspacePolicy.mode)setSelectedFlags(defaultFeatureFlagsForIndustry(value.mode==='mixed_industry'?'lending':form.industry));}} primaryIndustry={form.industry} workspaces={[{industry:form.industry},...(workspacePolicy.mode==='single'?[]:initialWorkspaces.map(branch=>({industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})))]} showPricingFields={false} />
           <div className="border-t border-slate-100 pt-4">
+            <h2 className="text-sm font-semibold text-slate-800">Organization industry</h2>
             <label className="block text-xs font-medium text-slate-600" htmlFor="primary-industry">Primary industry</label>
             <p className="mt-1 text-[11px] text-slate-500">Sets the default industry for this organization and its first workspace.</p>
             <select
@@ -368,57 +392,41 @@ export default function CreateWorkspacePage() {
               onChange={(e) => {
                 const industry = e.target.value;
                 setForm(f => ({ ...f, industry }));
-                setSelectedFlags(defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':industry));
+                setSelectedFlags(defaultFeatureFlagsForIndustry(planMode==='mixed_industry'?'lending':industry));
               }}
               className="mt-2 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
             </select>
           </div>
-          <label className="block text-xs text-slate-500">First workspace / branch name
+          <label className="block text-xs text-slate-500">Initial workspace name
             <input maxLength={120} value={firstBranchName} onChange={event=>setFirstBranchName(event.target.value)} placeholder="Head office" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
           </label>
-          {workspacePolicy.mode!=='single' && <div className="space-y-3">
+          {planMode!=='single' && <div className="space-y-3 border-t border-slate-100 pt-4">
+            <h3 className="text-xs font-semibold text-slate-700">Additional initial workspaces</h3>
+            <p className="text-xs text-slate-500">The selected plan controls which workspace types are allowed and how they are priced.</p>
             {initialWorkspaces.map((branch,index)=><div key={index} className="grid gap-2 sm:grid-cols-3">
               <input aria-label={`Workspace ${index+2} name`} required maxLength={120} placeholder="Branch workspace name" value={branch.name} onChange={event=>setInitialWorkspaces(rows=>rows.map((row,i)=>i===index?{...row,name:event.target.value}:row))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-              {workspacePolicy.mode==='mixed_industry'?<select aria-label={`Workspace ${index+2} industry`} value={branch.industry} onChange={event=>setInitialWorkspaces(rows=>rows.map((row,i)=>i===index?{...row,industry:event.target.value}:row))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">{INDUSTRIES.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select>:<span className="p-2 text-sm text-slate-500">{INDUSTRIES.find(option=>option.value===form.industry)?.label}</span>}
+              {planMode==='mixed_industry'?<select aria-label={`Workspace ${index+2} industry`} value={branch.industry} onChange={event=>setInitialWorkspaces(rows=>rows.map((row,i)=>i===index?{...row,industry:event.target.value}:row))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">{INDUSTRIES.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select>:<span className="p-2 text-sm text-slate-500">{INDUSTRIES.find(option=>option.value===form.industry)?.label}</span>}
               <button type="button" onClick={()=>setInitialWorkspaces(rows=>rows.filter((_,i)=>i!==index))} className="text-sm text-rose-600">Remove workspace</button>
             </div>)}
             <button type="button" onClick={()=>setInitialWorkspaces(rows=>[...rows,{name:'',industry:form.industry,branchName:''}])} className="text-sm font-semibold text-amber-700">+ Add initial workspace</button>
             <p className="text-xs text-slate-500">The initial organization administrator receives access to every initial workspace. More branches can be added later.</p>
+            {initialWorkspacePrice !== null && <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700">Estimated fixed monthly plan price for {initialWorkspaces.length + 1} initial workspace(s): ₹{initialWorkspacePrice.toFixed(2)}. Usage charges and applicable taxes are additional.</p>}
           </div>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-3">
-            <p className="text-xs font-bold text-slate-700">Billing</p>
-            <p className="text-[11px] text-slate-500 mt-1">Choose how this organization pays for voice usage.</p>
+            <p className="text-xs font-bold text-slate-700">Voice usage</p>
+            <p className="text-[11px] text-slate-500 mt-1">The selected plan sets the monthly subscription price. New organizations use pay-as-you-go for voice usage; choose whether call-provider charges are included.</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <label className={`rounded-xl border p-3 cursor-pointer ${form.billingMethod === 'pay_as_you_go' ? 'border-amber-400 ring-1 ring-amber-100' : 'border-slate-200'}`}>
-              <input type="radio" className="sr-only" checked={form.billingMethod === 'pay_as_you_go'} onChange={() => setForm(f => ({ ...f, billingMethod: 'pay_as_you_go' }))} />
-              <p className="text-xs font-semibold text-slate-700">Pay as you go</p>
-              <p className="text-[10px] text-slate-500 mt-1">Calls are billed from actual usage.</p>
-            </label>
-            <label className={`rounded-xl border p-3 cursor-pointer ${form.billingMethod === 'recharge_based' ? 'border-amber-400 ring-1 ring-amber-100' : 'border-slate-200'}`}>
-              <input type="radio" className="sr-only" checked={form.billingMethod === 'recharge_based'} onChange={() => setForm(f => ({ ...f, billingMethod: 'recharge_based' }))} />
-              <p className="text-xs font-semibold text-slate-700">Recharge based</p>
-              <p className="text-[10px] text-slate-500 mt-1">New calls are blocked when credits are insufficient.</p>
-            </label>
-          </div>
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-slate-500 mb-1">Charge Scope *</label>
-            <select value={form.chargeScope} onChange={set('chargeScope')} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
-              <option value="ai_only">AI only</option>
-              <option value="ai_and_call_provider">AI + Call Provider</option>
+          <label className="block text-xs font-medium text-slate-500">Charge scope
+            <select value={form.chargeScope} onChange={set('chargeScope')} className="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+              <option value="ai_only">AI usage</option>
+              <option value="ai_and_call_provider">AI and call-provider usage</option>
             </select>
-          </div>
-          {form.billingMethod === 'recharge_based' && (
-            <div className="mt-3">
-              <label className="block text-xs font-medium text-slate-500 mb-1">Initial Recharge (INR)</label>
-              <input type="number" min="0" step="0.01" value={form.initialRechargeAmountInr} onChange={set('initialRechargeAmountInr')} placeholder="0" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
-            </div>
-          )}
+          </label>
         </section>
 
 
@@ -429,7 +437,7 @@ export default function CreateWorkspacePage() {
               <p className="text-xs font-bold text-slate-700">Call Provider Setup</p>
               <p className="text-[11px] text-slate-500 mt-1">Only required when Charge Scope is AI + Call Provider.</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3 dark:bg-[var(--bg-subtle)]">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Call Provider *</label>
                 <select value={form.callProvider} onChange={set('callProvider')} className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
@@ -455,11 +463,11 @@ export default function CreateWorkspacePage() {
         )}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs text-slate-400 mb-3">Admin member (optional) — they'll be linked automatically on first login</p>
+          <p className="text-xs text-slate-400 mb-3">Admin member{initialWorkspaces.length > 0 ? ' (required for additional initial workspaces)' : ' (optional)'} — they'll be linked automatically on first login</p>
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Admin Email</label>
-              <input type="email" value={form.adminEmail} onChange={set('adminEmail')} placeholder="admin@acme.com" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+              <input type="email" value={form.adminEmail} onChange={set('adminEmail')} placeholder="admin@acme.com" required={initialWorkspaces.length > 0} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Admin Name</label>

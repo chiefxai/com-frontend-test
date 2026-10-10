@@ -9,7 +9,7 @@ export default function WorkspacePolicyEditor({value,onChange,primaryIndustry,wo
   const additionalIndustries=new Set(workspaces.map(w=>w.industry).filter(i=>i!==primaryIndustry)).size;
   const inputClass='mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800';
   return <div className="space-y-4">
-    <div className="grid gap-3 md:grid-cols-3">{workspaceModes.map(option=><label key={option.value} className={`cursor-pointer rounded-xl border p-3 ${value.mode===option.value?'border-amber-500 bg-amber-50':'border-slate-200'}`}>
+    <div className="grid gap-3 md:grid-cols-3">{workspaceModes.map(option=><label key={option.value} className={`cursor-pointer rounded-xl border p-3 transition-colors ${value.mode===option.value?'border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-950/30':'border-slate-200 dark:hover:bg-[var(--bg-subtle)]'}`}>
       <input type="radio" checked={value.mode===option.value} onChange={()=>onChange({...value,mode:option.value})} className="mr-2" />
       <span className="text-xs font-semibold text-slate-800">{option.label}</span>
       <p className="mt-2 text-xs text-slate-500">{option.description}</p>
