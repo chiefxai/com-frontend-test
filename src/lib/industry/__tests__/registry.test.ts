@@ -23,6 +23,13 @@ describe('industry registry', () => {
     expect(keys).toContain('vehicle_sale');
   });
 
+  it('labels healthcare records as Patients without introducing a new module', () => {
+    const healthcare = getIndustryProfile('healthcare');
+    expect(healthcare.labels.contact.plural).toBe('Patients');
+    expect(healthcare.modules.filter(module => module.tabId === 'objects')).toHaveLength(1);
+    expect(healthcare.modules.find(module => module.tabId === 'objects')?.label).toBe('Patients');
+  });
+
   it('normalizes identity from industry-specific field names', () => {
     expect(getDomainRecordIdentity({
       id: 'customer-1',

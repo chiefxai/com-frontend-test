@@ -160,7 +160,7 @@ function createPackProfile(
 ): IndustryProfile {
   const recordModuleLabels: Record<string, string> = {
     real_estate: 'Property Records',
-    healthcare: 'Patient Records',
+    healthcare: 'Patients',
     insurance: 'Policy & Claims',
     education: 'Admissions',
     ecommerce: 'Orders',

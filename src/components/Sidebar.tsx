@@ -248,6 +248,7 @@ export default function Sidebar({
 
   const profile = industryProfile || industryContext.profile;
   const labels = profile.labels;
+  const isHealthcare = profile.key === 'healthcare';
 
   const industryModuleIcons: Record<string, React.ElementType> = {
     layers: Layers,
@@ -264,14 +265,22 @@ export default function Sidebar({
     .filter((module) => !module.featureFlag || isEnabled(module.featureFlag))
     .map((module) => ({
       id: module.tabId!,
-      label: module.label,
+      // The healthcare patient records module is the single Patients entry.
+      // The server may still send the legacy "Patient Records" label.
+      label: isHealthcare && module.tabId === 'objects' ? 'Patients' : module.label,
       icon: industryModuleIcons[module.iconKey || 'layers'] || Layers,
     }));
+
+  // Prefer the existing Patient Records screen when permitted. Keep a
+  // Patients fallback for users who have directory access but not Objects.
+  const canUsePatientRecords = isHealthcare
+    && industryModuleItems.some(item => item.id === 'objects')
+    && canAccessTab('objects');
 
   const allMenuItems = [
     { id: 'leads',        label: labels.lead.plural,             icon: UserPlus },
     { id: 'pipeline',     label: labels.pipeline.plural,          icon: Target },
-    { id: 'contacts',     label: `${labels.contact.plural} Directory`, icon: Contact },
+    { id: 'contacts',     label: isHealthcare ? 'Patients' : `${labels.contact.plural} Directory`, icon: Contact },
     { id: 'workflows',    label: 'Workflow Builder',  icon: GitBranch },
     { id: 'call-logs',    label: 'Call Logs',         icon: History },
     { id: 'inbox',        label: 'Unified Inbox',     icon: Inbox },
@@ -284,6 +293,8 @@ export default function Sidebar({
   ];
 
   const menuItems = allMenuItems.filter((item) => {
+    // One Patients navigation item, never a second Patients Directory link.
+    if (canUsePatientRecords && item.id === 'contacts') return false;
     if (!canAccessTab(item.id)) return false;
     const flagKey = TAB_TO_FLAG[item.id];
     if (flagKey && !isEnabled(flagKey)) return false;

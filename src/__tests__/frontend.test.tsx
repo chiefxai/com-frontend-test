@@ -86,6 +86,7 @@ import * as store from '../features/feature-flags/userFlagsStore';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import { DEFAULT_FLAGS } from '../features/feature-flags/types';
 import Sidebar from '../components/Sidebar';
+import { getIndustryProfile } from '../lib/industry/registry';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -796,7 +797,8 @@ describe('Sidebar', () => {
   async function renderSidebar(
     kcClaims: Record<string, unknown>,
     grantedFlags: string[],
-    industry = 'lending'
+    industry = 'lending',
+    industryProfile?: ReturnType<typeof getIndustryProfile>,
   ) {
     setupKc(kcClaims);
     mockKc.init.mockResolvedValue(true);
@@ -812,16 +814,20 @@ describe('Sidebar', () => {
         : 'Loan Agent'
       : 'Loan Agent';
 
+    const setActiveTab = vi.fn();
     render(
       <MemoryRouter>
         <KeycloakProvider>
           <FeatureFlagProvider>
             <Sidebar
               activeTab="dashboard"
-              setActiveTab={vi.fn()}
+              setActiveTab={setActiveTab}
+              activeSubTab=""
+              setActiveSubTab={vi.fn()}
               userRole={userRole as any}
               organizationName="Test Org"
               industry={industry}
+              industryProfile={industryProfile}
             />
           </FeatureFlagProvider>
         </KeycloakProvider>
@@ -831,6 +837,7 @@ describe('Sidebar', () => {
     await act(async () => {});
     await act(async () => { await store.fetchUserFlags(); });
     await waitFor(() => screen.getByText('Executive Desk'));
+    return setActiveTab;
   }
 
   it('org admin — all standard tabs visible', async () => {
@@ -895,6 +902,36 @@ describe('Sidebar', () => {
     // Non-lending tabs still present
     expect(screen.getByText('Executive Desk')).toBeInTheDocument();
     expect(screen.getByText('Contact Directory')).toBeInTheDocument();
+  });
+
+  it('healthcare org — one Patients entry opens the existing records screen', async () => {
+    const navigate = await renderSidebar(
+      { sub: 'admin', email: 'a@t.com', realm_access: { roles: ['org-admin'] } },
+      [],
+      'healthcare',
+    );
+
+    expect(screen.getAllByText('Patients')).toHaveLength(1);
+    expect(screen.queryByText('Patients Directory')).not.toBeInTheDocument();
+    expect(screen.queryByText('Patient Records')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Patients'));
+    expect(navigate).toHaveBeenCalledWith('objects');
+  });
+
+  it('healthcare org — legacy server module label still produces one Patients item', async () => {
+    const profile = getIndustryProfile('healthcare');
+    const oldServerLabel = {
+      ...profile,
+      modules: profile.modules.map(module => ({ ...module, label: 'Patient Records' })),
+    };
+    await renderSidebar(
+      { sub: 'admin', email: 'a@t.com', realm_access: { roles: ['org-admin'] } },
+      [], 'healthcare', oldServerLabel,
+    );
+
+    expect(screen.getAllByText('Patients')).toHaveLength(1);
+    expect(screen.queryByText('Patient Records')).not.toBeInTheDocument();
+    expect(screen.queryByText('Patients Directory')).not.toBeInTheDocument();
   });
 
   it('lending org — Lead CRM, AI Campaigns, Loan Lifecycle tabs visible', async () => {
