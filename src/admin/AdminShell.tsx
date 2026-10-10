@@ -1,5 +1,9 @@
 import React from 'react';
-import { LayoutDashboard, Building2, Users, ScrollText, Settings, Database, IndianRupee, MessageSquareText } from 'lucide-react';
+import {
+  LayoutDashboard, Building2, Users, ScrollText, Settings, Database,
+  IndianRupee, MessageSquareText, PanelLeftClose, PanelLeftOpen, Layers3,
+  ShieldCheck,
+} from 'lucide-react';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
 import OrganizationsPage from './OrganizationsPage';
@@ -14,107 +18,182 @@ import PaymentReviewsPage from './PaymentReviewsPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
 import PageHeaderBar from '../components/ui/PageHeaderBar';
+import Tooltip from '../components/ui/Tooltip';
 import { PageHeaderProvider, usePageHeaderContext } from '../lib/PageHeaderContext';
 import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
-import SidebarFrame from '../components/ui/SidebarFrame';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
-  { path: 'overview',       label: 'Overview',           icon: LayoutDashboard },
-  { path: 'organizations',  label: 'Organizations',      icon: Building2 },
-  { path: 'users',          label: 'Users',              icon: Users },
-  { path: 'activity',       label: 'Activity',           icon: ScrollText },
-  { path: 'cost',           label: 'Cost & Pricing',     icon: IndianRupee },
-  { path: 'workspace-plans', label: 'Workspace Plans',   icon: Building2 },
-  { path: 'payment-reviews', label: 'Payment Reviews', icon: IndianRupee },
-  { path: 'settings',       label: 'Features',           icon: Settings },
-  { path: 'data-retention', label: 'Data Retention & Backup',      icon: Database },
-  { path: 'prompts',        label: 'Prompts',             icon: MessageSquareText },
+  { path: 'overview',        label: 'Overview',                icon: LayoutDashboard },
+  { path: 'organizations',   label: 'Organizations',           icon: Building2 },
+  { path: 'users',           label: 'Users',                   icon: Users },
+  { path: 'activity',        label: 'Activity',                icon: ScrollText },
+  { path: 'cost',            label: 'Cost & Pricing',          icon: IndianRupee },
+  { path: 'workspace-plans', label: 'Workspace Plans',         icon: Layers3 },
+  { path: 'payment-reviews', label: 'Payment Reviews',         icon: ShieldCheck },
+  { path: 'settings',        label: 'Features',                icon: Settings },
+  { path: 'data-retention',  label: 'Data Retention & Backup', icon: Database },
+  { path: 'prompts',         label: 'Prompts',                 icon: MessageSquareText },
 ];
 
+const COLLAPSE_STORAGE = 'admin-sidebar-collapsed';
+
+function initialCollapsed() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const saved = window.localStorage.getItem(COLLAPSE_STORAGE);
+    // Default to an icon rail on narrow screens, while respecting a stored choice.
+    return saved === null ? window.innerWidth < 768 : saved === 'true';
+  } catch {
+    return window.innerWidth < 768;
+  }
+}
+
 export default function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }) {
-  const [collapsed, setCollapsed] = React.useState(() => localStorage.getItem('admin-sidebar-collapsed') === 'true');
+  const [collapsed, setCollapsed] = React.useState(initialCollapsed);
+  const toggleSidebar = () => setCollapsed(current => !current);
 
   React.useEffect(() => {
-    localStorage.setItem('admin-sidebar-collapsed', String(collapsed));
+    try { window.localStorage.setItem(COLLAPSE_STORAGE, String(collapsed)); }
+    catch { /* Browsers may restrict local storage. */ }
   }, [collapsed]);
+
   return (
-    <div className="admin-shell flex h-dvh w-screen overflow-hidden overscroll-none bg-[var(--bg-base)] text-[var(--text-primary)] font-sans">
-      <SidebarFrame
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(value => !value)}
-        collapsedWidth="w-[72px]"
-        expandedWidth="w-60"
-        className="admin-sidebar self-start transition-all duration-200"
+    <div className="admin-shell flex h-dvh w-screen min-w-0 overflow-hidden bg-[var(--sidebar-bg)] font-sans text-[var(--text-primary)]">
+      {/* A single, full-height navigation surface contains the brand, collapse
+          control, routes, and account menu. There is no separate app header. */}
+      <aside
+        aria-label="Platform Admin sidebar"
+        className={`admin-sidebar relative z-30 flex h-dvh min-h-0 shrink-0 flex-col overflow-visible transition-[width] duration-200 ease-out ${collapsed ? 'w-[64px]' : 'w-[268px] max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:shadow-2xl'}`}
       >
-        <div className={`sticky top-0 z-10 h-16 shrink-0 flex items-center border-b border-[var(--border)] bg-[var(--sidebar-bg)] ${collapsed ? 'justify-center px-2' : 'gap-2 px-5'}`}>
-          <div className="h-8 w-8 shrink-0 flex items-center justify-center overflow-hidden">
-            <img src={chiefVoiceLogo} alt="ChiefVoice" className="h-9 w-9 object-contain" />
-          </div>
-          {!collapsed && <div className="min-w-0 overflow-hidden">
-            <div className="text-sm font-bold text-[var(--text-primary)] leading-none truncate">ChiefVoice</div>
-            <div className="text-[9px] text-amber-500 uppercase tracking-widest mt-0.5">Platform Admin</div>
-          </div>}
+        <div className={`flex h-[72px] shrink-0 items-center ${collapsed ? 'flex-col justify-center gap-1 px-2' : 'justify-between gap-2 px-3'}`}>
+          {collapsed ? (
+            <Tooltip label="Expand sidebar" side="right">
+              <button type="button" aria-label="Expand sidebar" aria-expanded={false}
+                aria-controls="platform-admin-nav" onClick={toggleSidebar}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+                <PanelLeftOpen className="h-5 w-5" />
+              </button>
+            </Tooltip>
+          ) : (
+            <>
+              <Link to="/admin/overview" className="flex min-w-0 items-center gap-2.5 rounded-lg p-1.5 hover:bg-[var(--bg-subtle)]" aria-label="ChiefVoice Platform Admin home">
+                <img src={chiefVoiceLogo} alt="" className="h-8 w-8 shrink-0 object-contain" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-[var(--text-primary)]">ChiefVoice</span>
+                  <span className="block truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Platform Admin</span>
+                </span>
+              </Link>
+              <Tooltip label="Collapse sidebar" side="right">
+                <button type="button" aria-label="Collapse sidebar" aria-expanded={true}
+                  aria-controls="platform-admin-nav" onClick={toggleSidebar}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+                  <PanelLeftClose className="h-5 w-5" />
+                </button>
+              </Tooltip>
+            </>
+          )}
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 space-y-1">
-          {NAV.map(({ path, label, icon: Icon }) => (
-            <NavLink
-              key={path}
-              to={`/admin/${path}`}
-              className={({ isActive }) =>
-                `w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive ? 'admin-nav-active' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
-                }`
-              }
-            >
-              <Icon className={`h-4 w-4 shrink-0 ${collapsed ? '' : 'mr-3'}`} />
-              {!collapsed && label}
-            </NavLink>
-          ))}
+        {collapsed && (
+          <Link to="/admin/overview" aria-label="ChiefVoice home" title="ChiefVoice"
+            className="mx-auto mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl hover:bg-[var(--bg-subtle)]">
+            <img src={chiefVoiceLogo} alt="" className="h-7 w-7 object-contain" />
+          </Link>
+        )}
+
+        <nav id="platform-admin-nav" aria-label="Platform Admin navigation"
+          className={`min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-3 ${collapsed ? 'px-2' : 'px-3'}`}>
+          {!collapsed && (
+            <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Workspace
+            </p>
+          )}
+          {NAV.map(({ path, label, icon: Icon }) => {
+            const item = (
+              <NavLink
+                key={path}
+                to={`/admin/${path}`}
+                onClick={() => { if (window.innerWidth < 768) setCollapsed(true); }}
+                title={collapsed ? label : undefined}
+                aria-label={collapsed ? label : undefined}
+                className={({ isActive }) =>
+                  `group flex h-11 w-full items-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${collapsed ? 'justify-center' : 'gap-3 px-3'} ${isActive
+                    ? 'bg-[var(--accent-subtle)] font-semibold text-[var(--accent)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'}`
+                }
+              >
+                <Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
+                {!collapsed && <span className="min-w-0 truncate">{label}</span>}
+              </NavLink>
+            );
+            return collapsed
+              ? <Tooltip key={path} label={label} side="right" className="flex w-full">{item}</Tooltip>
+              : item;
+          })}
         </nav>
 
-      </SidebarFrame>
-
-      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <header className="h-16 shrink-0 bg-[var(--header-bg)] border-b border-[var(--border)] flex items-center justify-between px-8 z-20">
-          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Platform control center
+        <div className={`shrink-0 border-t border-[var(--sidebar-border)] ${collapsed ? 'px-2 py-3' : 'px-3 py-3'}`}>
+          {!collapsed && (
+            <p className="mb-2 flex items-center gap-2 px-2.5 text-[11px] text-[var(--text-muted)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              Platform control center
+            </p>
+          )}
+          <div className={`flex items-center gap-2 rounded-xl ${collapsed ? 'justify-center' : 'px-1'}`}>
+            <ProfileMenu
+              kcUser={{ name: email, email }}
+              dbRole="Platform Admin"
+              logout={onLogout}
+              placement="top-start"
+              compact={collapsed}
+            />
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-[var(--text-primary)]" title={email}>{email}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">Account & appearance</p>
+              </div>
+            )}
           </div>
-          <ProfileMenu kcUser={{ name: email, email }} dbRole="Platform Admin" logout={onLogout} />
-        </header>
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <PageHeaderProvider>
-            <PageHeaderBar />
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
-        <Routes>
-          <Route index element={<Navigate to="overview" replace />} />
-          <Route path="overview"      element={<PageWrap title="Overview" section="Overview"><OverviewPage /></PageWrap>} />
-          <Route path="organizations" element={<PageWrap title="Organizations" section="Organizations"><OrganizationsPage /></PageWrap>} />
-          <Route path="organizations/create" element={<PageWrap title="Create Workspace" section="Organizations" backTo="/admin/organizations"><CreateWorkspacePage /></PageWrap>} />
-          <Route path="users"         element={<PageWrap title="Users" section="Users"><UsersPage /></PageWrap>} />
-          <Route path="activity"      element={<PageWrap title="Activity" section="Activity"><ActivityPage /></PageWrap>} />
-          <Route path="cost"          element={<PageWrap title="Cost & Pricing" section="Cost & Pricing"><CostPage /></PageWrap>} />
-          <Route path="workspace-plans" element={<PageWrap title="Workspace Plans" section="Workspace Plans"><WorkspacePlansPage /></PageWrap>} />
-          <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
-          <Route path="settings"      element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
-          <Route path="data-retention" element={<PageWrap title="Data Retention & Backup" section="Data Retention & Backup"><DataRetentionPage /></PageWrap>} />
-          <Route path="prompts"       element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />
-          <Route path="*"             element={<Navigate to="overview" replace />} />
-        </Routes>
-            </div>
-          </PageHeaderProvider>
         </div>
+      </aside>
+
+      {/* On narrow screens, an expanded sidebar overlays the content rather than
+          shrinking the workspace; tapping outside closes it. */}
+      {!collapsed && (
+        <button type="button" aria-label="Close navigation panel" onClick={() => setCollapsed(true)}
+          className="fixed inset-0 z-20 bg-black/40 md:hidden" />
+      )}
+
+      {/* The page title and route content share one uninterrupted canvas,
+          like ChatGPT and Google Cloud, instead of two stacked chrome bars. */}
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl border-l border-t border-[var(--border)] bg-[var(--bg-base)]">
+        <PageHeaderProvider>
+          <PageHeaderBar integrated />
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[var(--bg-base)]">
+            <Routes>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<PageWrap title="Overview" section="Overview"><OverviewPage /></PageWrap>} />
+              <Route path="organizations" element={<PageWrap title="Organizations" section="Organizations"><OrganizationsPage /></PageWrap>} />
+              <Route path="organizations/create" element={<PageWrap title="Create Workspace" section="Organizations" backTo="/admin/organizations"><CreateWorkspacePage /></PageWrap>} />
+              <Route path="users" element={<PageWrap title="Users" section="Users"><UsersPage /></PageWrap>} />
+              <Route path="activity" element={<PageWrap title="Activity" section="Activity"><ActivityPage /></PageWrap>} />
+              <Route path="cost" element={<PageWrap title="Cost & Pricing" section="Cost & Pricing"><CostPage /></PageWrap>} />
+              <Route path="workspace-plans" element={<PageWrap title="Workspace Plans" section="Workspace Plans"><WorkspacePlansPage /></PageWrap>} />
+              <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
+              <Route path="settings" element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
+              <Route path="data-retention" element={<PageWrap title="Data Retention & Backup" section="Data Retention & Backup"><DataRetentionPage /></PageWrap>} />
+              <Route path="prompts" element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />
+              <Route path="*" element={<Navigate to="overview" replace />} />
+            </Routes>
+          </div>
+        </PageHeaderProvider>
       </main>
     </div>
   );
 }
 
 function PageWrap({
-  title,
-  section,
-  backTo,
-  children,
+  title, section, backTo, children,
 }: {
   title: string;
   section: string;
@@ -122,30 +201,26 @@ function PageWrap({
   children: React.ReactNode;
 }) {
   const headerCtx = usePageHeaderContext();
-
   React.useEffect(() => {
     if (!headerCtx) return;
     headerCtx.setHeader({
       title: (
-        <span className="flex items-center gap-2 min-w-0">
+        <span className="flex min-w-0 items-center gap-2">
           <span className="text-[10px] font-medium text-[var(--text-muted)]">Admin</span>
           <span className="text-[var(--border)]">/</span>
-          {backTo ? (
+          {backTo && (
             <>
-              <Link
-                to={backTo}
-                className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-              >
+              <Link to={backTo} className="text-[10px] font-medium text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]">
                 {section}
               </Link>
               <span className="text-[var(--border)]">/</span>
             </>
-          ) : null}
+          )}
           <span className="truncate">{title}</span>
         </span>
-      )
+      ),
     });
   }, [headerCtx?.setHeader, title, section, backTo]);
 
-  return <div className="admin-page px-8 pb-4 pt-5">{children}</div>;
+  return <div className="admin-page px-5 pb-5 pt-3 md:px-8">{children}</div>;
 }

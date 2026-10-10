@@ -7,6 +7,10 @@ export interface ProfileMenuProps {
   kcUser: { name?: string; email?: string; role?: string; picture?: string; avatarUrl?: string } | null;
   dbRole: string | null;
   logout: () => void;
+  /** Optional upward placement for the account menu in a full-height sidebar. */
+  placement?: 'bottom-end' | 'top-start';
+  /** Avatar-only button used when a sidebar collapses to its icon rail. */
+  compact?: boolean;
 }
 
 const THEME_OPTIONS = [
@@ -15,7 +19,7 @@ const THEME_OPTIONS = [
   { mode: 'system' as const, icon: Monitor, label: 'System' },
 ];
 
-export default function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps) {
+export default function ProfileMenu({ kcUser, dbRole, logout, placement = 'bottom-end', compact = false }: ProfileMenuProps) {
   const { mode, setMode } = useTheme();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -37,7 +41,13 @@ export default function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps
       {/* Avatar trigger */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full transition-colors cursor-pointer group"
+        type="button"
+        aria-label="Open account menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={compact
+          ? 'flex h-11 w-11 items-center justify-center rounded-xl transition-colors cursor-pointer group'
+          : 'flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full transition-colors cursor-pointer group'}
         style={{ background: 'transparent' }}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -50,13 +60,13 @@ export default function ProfileMenu({ kcUser, dbRole, logout }: ProfileMenuProps
             <span aria-hidden="true">{initials || '?'}</span>
           )}
         </span>
-        <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {!compact && <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />}
       </button>
 
       {/* Dropdown panel */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-2xl overflow-hidden z-[200]"
+          className={`absolute z-[200] w-72 max-w-[calc(100vw-20px)] overflow-hidden rounded-2xl shadow-2xl ${placement === 'top-start' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-2'}`}
           style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
         >
           {/* Identity section */}

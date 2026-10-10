@@ -11,7 +11,7 @@ import Tooltip from './Tooltip';
 // The refresh button calls the CURRENT page's own onRefresh (published by
 // PageShell, defaulting to the app-wide refresh when a page doesn't supply
 // one) — not a fixed handler — so it always reloads whatever page is showing.
-export default function PageHeaderBar() {
+export default function PageHeaderBar({ integrated = false }: { integrated?: boolean } = {}) {
   const ctx = usePageHeaderContext();
   const [spinning, setSpinning] = React.useState(false);
 
@@ -28,7 +28,7 @@ export default function PageHeaderBar() {
 
   return (
     <>
-      <div className="shrink-0 h-16 px-5 md:px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
+      <div className={`shrink-0 h-16 px-5 md:px-8 flex items-center justify-between gap-4 ${integrated ? 'bg-[var(--bg-base)]' : 'border-b border-[var(--border)] bg-[var(--bg-surface)]'}`}>
         <div className="min-w-0 flex items-center gap-2.5 shrink-0">
           <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] leading-snug truncate">
             {header.title}
@@ -62,7 +62,7 @@ export default function PageHeaderBar() {
       </div>
 
       {header.toolbar && (
-        <div className="shrink-0 px-8 py-2.5 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center gap-3 flex-wrap">
+        <div className={`shrink-0 px-5 md:px-8 py-2.5 flex items-center gap-3 flex-wrap ${integrated ? 'bg-[var(--bg-base)]' : 'border-b border-[var(--border)] bg-[var(--bg-subtle)]'}`}>
           {header.toolbar}
         </div>
       )}
