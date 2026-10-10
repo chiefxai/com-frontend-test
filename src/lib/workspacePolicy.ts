@@ -6,18 +6,18 @@ export interface WorkspacePlan {
   defaultMode: WorkspaceMode;
   /** Combined retention + backup template assigned to this subscription plan. */
   retentionPolicyId?: string | null;
-  pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; extraWorkspaceMonthlyInr: number | null; additionalIndustryMonthlyInr: number | null; monthlySubscriptionCreditsInr?: number };
+  pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; additionalIndustryMonthlyInr: number | null; monthlySubscriptionCreditsInr?: number };
 }
 export interface WorkspacePlanCatalog { version: number; plans: WorkspacePlan[] }
 export interface WorkspacePolicyDraft {
   mode: WorkspaceMode;
-  pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; extraWorkspaceMonthlyInr: number | null; additionalIndustryMonthlyInr: number | null };
+  pricing: { baseMonthlyInr: number | null; includedWorkspaces: number; additionalIndustryMonthlyInr: number | null };
 }
-export const emptyWorkspacePolicy: WorkspacePolicyDraft = { mode: 'single', pricing: { baseMonthlyInr: null, includedWorkspaces: 1, extraWorkspaceMonthlyInr: null, additionalIndustryMonthlyInr: null } };
+export const emptyWorkspacePolicy: WorkspacePolicyDraft = { mode: 'single', pricing: { baseMonthlyInr: null, includedWorkspaces: 1, additionalIndustryMonthlyInr: null } };
 export const workspaceModes: {value: WorkspaceMode; label: string; description: string}[] = [
-  { value:'single', label:'Single workspace', description:'One branch initially. The organization admin can add same-industry branches after accepting the configured price.' },
-  { value:'same_industry', label:'Multiple branches · same industry', description:'Organization admins can create branches using the primary industry.' },
-  { value:'mixed_industry', label:'Multiple workspaces · different industries', description:'Platform admins can add different industries. Organization admins can add branches in the primary industry only.' },
+  { value:'single', label:'Single workspace', description:'The subscription includes one workspace.' },
+  { value:'same_industry', label:'Multiple branches · same industry', description:'The subscription includes the configured number of workspaces in the primary industry.' },
+  { value:'mixed_industry', label:'Multiple workspaces · different industries', description:'The subscription includes the configured number of workspaces. Additional industries may have a separate charge.' },
 ];
 export function serializedPolicy(draft: WorkspacePolicyDraft) {
   const pricing = { ...draft.pricing, includedWorkspaces: draft.mode === 'single' ? 1 : draft.pricing.includedWorkspaces,
@@ -27,8 +27,6 @@ export function serializedPolicy(draft: WorkspacePolicyDraft) {
 }
 export function monthlyPreview(draft: WorkspacePolicyDraft, primaryIndustry: string, workspaces: {industry:string}[]) {
   const p = draft.pricing;
-  if (p.baseMonthlyInr === null || p.extraWorkspaceMonthlyInr === null || (draft.mode === 'mixed_industry' && p.additionalIndustryMonthlyInr === null)) return null;
-  const included = draft.mode === 'single' ? 1 : p.includedWorkspaces;
-  return p.baseMonthlyInr + Math.max(0,workspaces.length-included)*p.extraWorkspaceMonthlyInr
-    + new Set(workspaces.map(w=>w.industry).filter(i=>i!==primaryIndustry)).size*(p.additionalIndustryMonthlyInr || 0);
+  if (p.baseMonthlyInr === null || (draft.mode === 'mixed_industry' && p.additionalIndustryMonthlyInr === null)) return null;
+  return p.baseMonthlyInr + new Set(workspaces.map(w=>w.industry).filter(i=>i!==primaryIndustry)).size*(p.additionalIndustryMonthlyInr || 0);
 }

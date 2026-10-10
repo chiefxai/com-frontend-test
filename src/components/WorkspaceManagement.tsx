@@ -8,7 +8,7 @@ import FilterBar from './ui/FilterBar';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
 
-interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
+interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number}}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
 
 export default function WorkspaceManagement({
@@ -33,7 +33,6 @@ export default function WorkspaceManagement({
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[]>([]);
   const [setup, setSetup] = useState<WorkspaceSetup | null>(null);
-  const [acceptedPrice, setAcceptedPrice] = useState(false);
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
   const [branchName, setBranchName] = useState('');
@@ -71,7 +70,7 @@ export default function WorkspaceManagement({
 
   const createWorkspace = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!acceptedPrice || !setup?.addBranchQuote) return;
+    if (!setup?.addBranchQuote) return;
     setSaving(true);
     setMessage(null);
     try {
@@ -84,7 +83,6 @@ export default function WorkspaceManagement({
       setWorkspaces(current => [...current, body as WorkspaceRow]);
       setName('');
       setBranchName('');
-      setAcceptedPrice(false);
       setShowCreateWorkspace(false);
       setMessage({ type: 'success', text: 'Workspace created and assigned to you as Workspace Admin.' });
       // A secondary refresh failure must never make a successful create look
@@ -98,7 +96,6 @@ export default function WorkspaceManagement({
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Could not create workspace.' });
-      setAcceptedPrice(false);
       const refreshed=await apiFetch('/api/settings/workspace-policy').catch(()=>null);
       if(refreshed?.ok) { const value=await refreshed.json(); setSetup(value); setWorkspaces(value.workspaces); }
     } finally {
@@ -151,9 +148,9 @@ export default function WorkspaceManagement({
       />
       {canManage && <Modal
         open={showCreateWorkspace}
-        onClose={() => { if (!saving) { setShowCreateWorkspace(false); setAcceptedPrice(false); } }}
+        onClose={() => { if (!saving) setShowCreateWorkspace(false); }}
         title="Create Workspace"
-        subtitle="Enter the new workspace details and confirm the organization's pricing before creating it."
+        subtitle="Create a workspace within the limit included in the organization subscription."
         maxWidth="max-w-lg"
       >
         <form onSubmit={createWorkspace} className="space-y-4">
@@ -176,24 +173,20 @@ export default function WorkspaceManagement({
           </label>
           <p className="text-xs text-[var(--text-muted)]">Different industries are provisioned by a platform administrator.</p>
           {setup?.addBranchQuote
-            ? <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                <input type="checkbox" className="mt-0.5" checked={acceptedPrice} onChange={event => setAcceptedPrice(event.target.checked)} />
-                <span>
-                  {setup.addBranchQuote.upgradesToMultipleBranches ? 'Upgrade to multiple branches. ' : ''}
-                  I accept a fixed organization price of ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}/month
-                  after adding this workspace (current: ₹{setup.currentQuote?.totalMonthlyInr.toFixed(2)}).
-                  Usage charges and applicable taxes are additional.
-                </span>
-              </label>
+            ? <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
+                Included in the subscription: workspace {workspaces.length + 1} of {setup.policy.pricing?.includedWorkspaces ?? workspaces.length + 1}. Monthly subscription price remains ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}. Usage charges and applicable taxes are additional.
+              </p>
             : <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                Ask a platform administrator to configure branch pricing before adding another workspace.
+                {setup?.policy.pricing && workspaces.length >= setup.policy.pricing.includedWorkspaces
+                  ? `This subscription includes up to ${setup.policy.pricing.includedWorkspaces} workspace${setup.policy.pricing.includedWorkspaces === 1 ? '' : 's'}. Upgrade the subscription to add another workspace.`
+                  : 'Ask a platform administrator to configure branch pricing before adding another workspace.'}
               </p>}
           <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
-            <button type="button" disabled={saving} onClick={() => { setShowCreateWorkspace(false); setAcceptedPrice(false); }}
+            <button type="button" disabled={saving} onClick={() => setShowCreateWorkspace(false)}
               className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
               Cancel
             </button>
-            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !acceptedPrice || !name.trim()}
+            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !name.trim()}
               className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               {saving ? 'Creating…' : 'Create Workspace'}

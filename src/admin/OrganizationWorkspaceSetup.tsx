@@ -37,6 +37,8 @@ export default function OrganizationWorkspaceSetup({orgId}:{orgId:string}) {
   }
   if(!setup)return <p className="text-xs text-slate-500">{message || 'Loading workspace setup…'}</p>;
   const unsaved=JSON.stringify({mode:setup.policy.mode,pricing:setup.policy.pricing || emptyWorkspacePolicy.pricing})!==JSON.stringify(policy);
+  const includedWorkspaces=policy.mode==='single'?1:policy.pricing.includedWorkspaces;
+  const workspaceLimitReached=setup.workspaces.length>=includedWorkspaces;
   const next=monthlyPreview(policy,setup.policy.primaryIndustry,[...setup.workspaces,{industry:policy.mode==='mixed_industry'?branch.industry:setup.policy.primaryIndustry}]);
   return <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
     <h4 className="text-sm font-semibold text-slate-800">Workspace structure and pricing</h4>
@@ -53,8 +55,10 @@ export default function OrganizationWorkspaceSetup({orgId}:{orgId:string}) {
       <select aria-label="New workspace industry" value={policy.mode==='mixed_industry'?branch.industry:setup.policy.primaryIndustry} disabled={policy.mode!=='mixed_industry'} onChange={event=>setBranch(current=>({...current,industry:event.target.value}))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
         {Object.values(INDUSTRY_PROFILES).map(industry=><option key={industry.key} value={industry.key}>{industry.label}</option>)}
       </select>
-      {next!==null && <p className="text-xs text-slate-600">Fixed monthly estimate after adding: ₹{next.toFixed(2)}, plus usage and applicable taxes.</p>}
-      <button disabled={busy || unsaved || !setup.currentQuote} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Create workspace</button>
+      {workspaceLimitReached
+        ? <p role="status" className="text-xs text-amber-700">This subscription includes up to {includedWorkspaces} workspace{includedWorkspaces===1?'':'s'}. Upgrade the subscription to add another workspace.</p>
+        : next!==null && <p className="text-xs text-slate-600">Fixed monthly estimate after adding: ₹{next.toFixed(2)}, plus usage and applicable taxes.</p>}
+      <button disabled={busy || unsaved || !setup.currentQuote || workspaceLimitReached} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Create workspace</button>
     </form>
   </section>;
 }

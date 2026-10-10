@@ -170,8 +170,8 @@ export default function CreateWorkspacePage() {
       setError('An organization admin email is required for a policy with automated backups.');
       return;
     }
-    if (selectedWorkspacePlan.pricing.baseMonthlyInr == null || selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr == null || selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr == null) {
-      setError('Configure all monthly prices for this plan in Admin → Workspace Plans before creating an organization. Enter 0 for any price that does not apply.');
+    if (selectedWorkspacePlan.pricing.baseMonthlyInr == null || selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr == null) {
+      setError('Configure the monthly prices for this plan in Admin → Workspace Plans before creating an organization. Enter 0 for any price that does not apply.');
       return;
     }
     setLoading(true);
@@ -216,7 +216,6 @@ export default function CreateWorkspacePage() {
             pricing: {
               baseMonthlyInr: selectedWorkspacePlan.pricing.baseMonthlyInr,
               includedWorkspaces: selectedWorkspacePlan.pricing.includedWorkspaces,
-              extraWorkspaceMonthlyInr: selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr,
               additionalIndustryMonthlyInr: selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr,
             },
             planId: selectedWorkspacePlan.id,
@@ -334,7 +333,6 @@ export default function CreateWorkspacePage() {
                 <div className="flex justify-between gap-3"><dt>Workspace setup</dt><dd className="font-medium text-slate-800">{planMode === 'single' ? 'Single workspace' : planMode === 'same_industry' ? 'Multiple workspaces · same industry' : 'Multiple workspaces · mixed industries'}</dd></div>
                 <div className="flex justify-between gap-3"><dt>Included workspaces</dt><dd className="font-medium text-slate-800">{planMode === 'single' ? 1 : selectedWorkspacePlan.pricing.includedWorkspaces}</dd></div>
                 <div className="flex justify-between gap-3"><dt>Monthly subscription</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.baseMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>
-                {planMode !== 'single' && <div className="flex justify-between gap-3"><dt>Additional workspace / month</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
                 {planMode === 'mixed_industry' && <div className="flex justify-between gap-3"><dt>Additional industry / month</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
                 {selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr != null && <div className="flex justify-between gap-3"><dt>Monthly usage credits</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr.toFixed(2)}</dd></div>}
               </dl>

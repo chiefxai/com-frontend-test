@@ -21,7 +21,7 @@ const MODES: { value: WorkspaceMode; label: string }[] = [
 
 const blankPlan = (): WorkspacePlan => ({
   id: '', name: '', active: true, defaultMode: 'single', retentionPolicyId: null,
-  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, extraWorkspaceMonthlyInr: 0, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
+  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
 });
 
 const money = (amount: number | null | undefined) =>
@@ -147,7 +147,6 @@ export default function WorkspacePlansPage() {
       pricing: {
         ...draft.pricing,
         includedWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.includedWorkspaces,
-        extraWorkspaceMonthlyInr: draft.defaultMode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
         additionalIndustryMonthlyInr: draft.defaultMode === 'mixed_industry'
           ? draft.pricing.additionalIndustryMonthlyInr : 0,
       },
@@ -162,7 +161,6 @@ export default function WorkspacePlansPage() {
       return;
     }
     if (!validAmount(planToSave.pricing.baseMonthlyInr)
-      || !validAmount(planToSave.pricing.extraWorkspaceMonthlyInr)
       || !validAmount(planToSave.pricing.additionalIndustryMonthlyInr)
       || !validAmount(planToSave.pricing.monthlySubscriptionCreditsInr ?? 0)
       || !Number.isInteger(planToSave.pricing.includedWorkspaces)
@@ -286,14 +284,6 @@ export default function WorkspacePlansPage() {
                   {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces}
                 </dd>
               </div>
-              {plan.defaultMode !== 'single' && (
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-[var(--text-muted)]">Extra workspace / month</dt>
-                  <dd className="font-semibold text-[var(--text-primary)]">
-                    {money(plan.pricing.extraWorkspaceMonthlyInr)}
-                  </dd>
-                </div>
-              )}
               {plan.defaultMode === 'mixed_industry' && (
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-[var(--text-muted)]">Extra industry / month</dt>
@@ -393,7 +383,7 @@ export default function WorkspacePlansPage() {
         </Widget>
 
         <Widget colSpan={12} title="Workspace allowances and add-ons"
-          subtitle="Choose allowed workspace structures and their additional monthly charges."
+          subtitle="Choose how many workspaces the subscription includes and any additional industry charge."
           icon={Building2} accent="#7c3aed" padding="md">
           <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClass + ' md:col-span-2'}>Workspace setup
@@ -405,7 +395,6 @@ export default function WorkspacePlansPage() {
                     pricing: {
                       ...draft.pricing,
                       includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces,
-                      extraWorkspaceMonthlyInr: mode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
                       additionalIndustryMonthlyInr: mode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0,
                     },
                   });
@@ -418,12 +407,7 @@ export default function WorkspacePlansPage() {
                 <input className={fieldClass} type="number" required min="1" max="1000" step="1" disabled={saving}
                   value={draft.pricing.includedWorkspaces}
                   onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} />
-                <span className={helpClass}>Extra workspace fees start after this allowance.</span>
-              </label>
-              <label className={labelClass}>Monthly fee per extra workspace (₹)
-                <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
-                  value={draft.pricing.extraWorkspaceMonthlyInr ?? ''}
-                  onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
+                <span className={helpClass}>Workspace creation stops at this plan limit.</span>
               </label>
             </>}
             {draft.defaultMode === 'mixed_industry' && <label className={labelClass + ' md:col-span-2'}>Monthly fee per additional industry (₹)
