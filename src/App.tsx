@@ -41,7 +41,6 @@ const EMPTY_ORG_SETTINGS: OrganizationSettings = {
 
 // UI components imports
 import { useTheme } from './shared/theme/ThemeContext';
-import ProfileMenu from './components/ProfileMenu';
 import Sidebar from './components/Sidebar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import DashboardView from './features/dashboard';
@@ -998,7 +997,7 @@ export default function App() {
 
   return (
     <>
-      <div className="grid grid-cols-[auto_1fr] h-screen w-screen overflow-hidden bg-slate-50/50 dark:bg-[var(--bg)]">
+      <div className="flex h-dvh w-screen min-w-0 overflow-hidden bg-[var(--sidebar-bg)] text-[var(--text-primary)]">
       {/* Sidebar Rail */}
       <Sidebar
         activeTab={activeTab}
@@ -1010,10 +1009,13 @@ export default function App() {
         industry={orgSettings.industry}
         businessType={orgSettings.businessType}
         industryProfile={effectiveIndustryProfile}
+        accountUser={kcUser}
+        accountRole={dbRole}
+        onLogout={logout}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}
-      <main className="flex flex-col min-w-0 overflow-hidden relative">
+      <main className="relative isolate z-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-[var(--bg-base)]">
         {can('workspace.read') && !can('workspace.write') && <div className="px-6 py-2 text-sm bg-slate-100 text-slate-600">Viewer access: workspace data is read-only.</div>}
         {liveCallBanner && (
           <div className="absolute top-0 left-0 right-0 z-50 bg-emerald-600 text-white text-xs font-semibold px-4 py-2 flex items-center justify-center gap-2 animate-pulse">
@@ -1086,7 +1088,6 @@ export default function App() {
               onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
               onClear={() => setNotifications([])}
             />
-            <ProfileMenu kcUser={kcUser} dbRole={dbRole} logout={logout} />
           </div>
         </header>
 

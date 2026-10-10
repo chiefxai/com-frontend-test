@@ -2,7 +2,8 @@ import { useAuthorization, canAccessTab } from '../lib/authorization';
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
 import SidebarFrame from './ui/SidebarFrame';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
+import SidebarBrand from './ui/SidebarBrand';
+import ProfileMenu, { type ProfileMenuProps } from './ProfileMenu';
 import {
   LayoutDashboard,
   Users,
@@ -48,6 +49,9 @@ interface SidebarProps {
   industry: string;
   businessType?: string;
   industryProfile?: IndustryProfile;
+  accountUser: ProfileMenuProps['kcUser'];
+  accountRole: string | null;
+  onLogout: () => void;
 }
 
 // Synthetic key for the "Dashboard" group's own expand/collapse + flyout
@@ -198,6 +202,9 @@ export default function Sidebar({
   industry,
   businessType,
   industryProfile,
+  accountUser,
+  accountRole,
+  onLogout,
 }: SidebarProps) {
   const industryContext = useIndustry({ industry, businessType });
   const { can } = useAuthorization();
@@ -205,7 +212,11 @@ export default function Sidebar({
   const { isEnabled } = useFeatureFlags();
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = localStorage.getItem('sidebar-collapsed');
+      return stored === null ? window.innerWidth < 768 : stored === 'true';
+    } catch { return window.innerWidth < 768; }
   });
 
   const toggleCollapsed = () => {
@@ -216,6 +227,14 @@ export default function Sidebar({
     });
     // Close any open flyout when toggling
     setFlyoutGroup(null);
+    setFlyoutRect(null);
+  };
+
+  const closeMobileNavigation = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setCollapsed(true);
+      try { localStorage.setItem('sidebar-collapsed', 'true'); } catch {}
+    }
   };
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -329,39 +348,28 @@ export default function Sidebar({
     return !flagKey || isEnabled(flagKey);
   });
 
+  // Match Platform Admin's accessible, low-chrome navigation styling.
   const navBtnCls = (isActive: boolean) =>
-    `w-full flex items-center rounded-[9px] text-sm font-medium transition-all duration-150 group ${
-      collapsed ? 'justify-center px-0 py-3' : 'px-4 py-3'
-    } ${isActive ? 'shadow-none ring-1 ring-inset ring-cyan-300/10' : 'hover:bg-white/5'}`;
-
-  const navBtnStyle = (isActive: boolean): React.CSSProperties =>
-    isActive
-      ? {
-          background: 'linear-gradient(90deg, rgba(24,200,242,0.16), rgba(22,119,255,0.14), rgba(123,44,255,0.12))',
-          color: 'var(--text-primary)',
-          boxShadow: 'inset 3px 0 0 #18C8F2, inset 0 0 0 1px rgba(22,119,255,0.14)',
-        }
-      : { color: 'var(--text-secondary)' };
-
-  const iconCls = (isActive: boolean) =>
-    `h-4 w-4 shrink-0 ${collapsed ? '' : 'mr-3'}`;
-
-  const iconStyle = (isActive: boolean): React.CSSProperties =>
-    isActive ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' };
-
-  const subBtnCls = (isActive: boolean) =>
-    `w-full flex items-center px-4 py-3 rounded-[9px] text-sm font-medium transition-all duration-150 group ${
-      isActive ? 'shadow-none ring-1 ring-inset ring-[var(--accent)]/10' : 'hover:bg-[var(--bg-subtle)]'
+    `group flex h-11 w-full items-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+      collapsed ? 'justify-center' : 'gap-3 px-3'
+    } ${
+      isActive
+        ? 'bg-[var(--accent-subtle)] font-semibold text-[var(--accent)]'
+        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
     }`;
 
-  const subBtnStyle = (isActive: boolean): React.CSSProperties =>
-    isActive
-      ? {
-          background: 'linear-gradient(90deg, rgba(24,200,242,0.16), rgba(123,44,255,0.12))',
-          color: 'var(--text-primary)',
-          boxShadow: 'inset 2px 0 0 #7B2CFF, inset 0 0 0 1px rgba(123,44,255,0.14)',
-        }
-      : { color: 'var(--text-secondary)' };
+  const iconCls = (_isActive: boolean) =>
+    'h-[18px] w-[18px] shrink-0';
+
+  const iconStyle = (isActive: boolean): React.CSSProperties =>
+    ({ color: isActive ? 'var(--accent)' : 'var(--text-muted)' });
+
+  const subBtnCls = (isActive: boolean) =>
+    `flex h-10 w-full items-center rounded-lg px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
+      isActive
+        ? 'bg-[var(--accent-subtle)] font-semibold text-[var(--accent)]'
+        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+    }`;
 
   const renderGroup = (group: SidebarGroup) => {
     const GroupIcon = group.icon;
@@ -373,18 +381,22 @@ export default function Sidebar({
     const groupBtn = (
       <button
         id={`nav-${group.tabId}`}
+        type="button"
+        aria-label={collapsed ? group.label : undefined}
+        aria-expanded={flyoutOpen || isExpanded}
+        aria-haspopup={collapsed ? 'menu' : undefined}
         onClick={(e) => {
           toggleGroup(group.tabId, e.currentTarget);
-          if (!collapsed) setActiveSubTab(group.subItems[0].id, group.tabId);
+          if (!collapsed) { setActiveSubTab(group.subItems[0].id, group.tabId); closeMobileNavigation(); }
         }}
         className={navBtnCls(isGroupActive)}
-        style={navBtnStyle(isGroupActive)}
+        
       >
         <GroupIcon className={iconCls(isGroupActive)} style={iconStyle(isGroupActive)} />
         {!collapsed && (
           <>
             <span className="flex-1 text-left truncate min-w-0">{group.label}</span>
-            <ChevronIcon className="h-3.5 w-3.5 shrink-0" style={{ color: isGroupActive ? '#ffffff99' : 'var(--text-muted)' }} />
+            <ChevronIcon className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
           </>
         )}
       </button>
@@ -404,7 +416,7 @@ export default function Sidebar({
             activeTab={activeTab}
             activeSubTab={activeSubTab}
             anchorRect={flyoutRect}
-            onSelect={(subId) => { setActiveSubTab(subId, group.tabId); setFlyoutGroup(null); setFlyoutRect(null); }}
+            onSelect={(subId) => { setActiveSubTab(subId, group.tabId); setFlyoutGroup(null); setFlyoutRect(null); closeMobileNavigation(); }}
             onClose={() => { setFlyoutGroup(null); setFlyoutRect(null); }}
           />
         )}
@@ -419,9 +431,9 @@ export default function Sidebar({
                 <button
                   key={sub.id}
                   id={`nav-${group.tabId}-${sub.id}`}
-                  onClick={() => setActiveSubTab(sub.id, group.tabId)}
+                  onClick={() => { setActiveSubTab(sub.id, group.tabId); closeMobileNavigation(); }}
                   className={subBtnCls(isSubActive)}
-                  style={subBtnStyle(isSubActive)}
+                  
                 >
                   <SubIcon className="h-4 w-4 mr-3 shrink-0" style={iconStyle(isSubActive)} />
                   <span className="truncate min-w-0 flex-1 text-left">{sub.label}</span>
@@ -435,43 +447,32 @@ export default function Sidebar({
   };
 
   return (
-    <SidebarFrame
-      id="sidebar-container"
-      collapsed={collapsed}
-      onToggleCollapse={toggleCollapsed}
-      collapsedWidth="w-16"
-      expandedWidth="w-64"
-      className="font-sans transition-all duration-200 ease-in-out"
-      style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)', color: 'var(--text-primary)' }}
-    >
-      {/* Product brand and organization identity */}
-      <div
-        className={`shrink-0 ${collapsed ? 'px-2 py-3' : 'px-4 pt-4 pb-0'}`}
-        style={collapsed ? { borderBottom: '1px solid var(--sidebar-border)' } : undefined}
+    <>
+      <SidebarFrame
+        id="sidebar-container"
+        ariaLabel="Organization sidebar"
+        collapsed={collapsed}
+        collapsedWidth="w-[64px]"
+        expandedWidth="w-[268px]"
+        className={`font-sans transition-[width] duration-200 ease-out ${
+          collapsed ? '' : 'max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:shadow-2xl'
+        }`}
+        style={{ background: 'var(--sidebar-bg)', color: 'var(--text-primary)' }}
       >
-        <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
-        <img
-          src={chiefVoiceLogo}
-          alt="ChiefVoice"
-          className="h-9 w-9 shrink-0 rounded-lg object-contain"
+        <SidebarBrand
+          collapsed={collapsed}
+          onToggle={toggleCollapsed}
+          title="Chief Voice"
+          subtitle={organizationName || 'Organization'}
+          navId="organization-nav"
         />
-        {!collapsed && (
-          <div className="min-w-0">
-            <div className="text-sm font-bold leading-tight tracking-wide" style={{ color: 'var(--text-primary)' }}>Chief Voice</div>
-          </div>
-        )}
-        </div>
-        {!collapsed && (
-          <div className="-mx-4 mt-3 border-y px-4 py-2" style={{ borderColor: 'var(--sidebar-border)' }}>
-            <div className="truncate text-xs font-medium" style={{ color: 'var(--text-secondary)' }} title={organizationName}>
-              {organizationName || 'Organization'}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Navigation */}
-      <nav className={`flex-1 overflow-y-auto space-y-1.5 ${collapsed ? 'px-2 py-6' : 'px-4 pt-4 pb-6'}`}>
+      <nav id="organization-nav" aria-label="Organization navigation"
+        className={`min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-3 ${collapsed ? 'px-2' : 'px-3'}`}>
+        {!collapsed && <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+          Workspace
+        </p>}
 
         {/* Dashboard uses the SAME collapsed group flyout as Campaign. */}
         {dashboardSubItems.length > 0 && (() => {
@@ -495,14 +496,13 @@ export default function Sidebar({
               aria-haspopup={collapsed ? 'menu' : undefined}
               onClick={event => toggleGroup(DASHBOARD_GROUP_KEY, event.currentTarget)}
               className={navBtnCls(isGroupActive)}
-              style={navBtnStyle(isGroupActive)}
             >
               <LayoutDashboard className={iconCls(isGroupActive)} style={iconStyle(isGroupActive)} />
               {!collapsed && (
                 <>
                   <span className="flex-1 text-left truncate min-w-0">Dashboard</span>
                   <ChevronIcon className="h-3.5 w-3.5 shrink-0"
-                    style={{ color: isGroupActive ? '#ffffff99' : 'var(--text-muted)' }} />
+                    style={{ color: 'var(--text-muted)' }} />
                 </>
               )}
             </button>
@@ -521,6 +521,7 @@ export default function Sidebar({
                   anchorRect={flyoutRect}
                   onSelect={id => {
                     setActiveTab(id);
+                    closeMobileNavigation();
                     setFlyoutGroup(null);
                     setFlyoutRect(null);
                   }}
@@ -543,11 +544,12 @@ export default function Sidebar({
                         id={'nav-dashboard-group-' + sub.id}
                         onClick={() => {
                           setActiveTab(sub.id);
+                          closeMobileNavigation();
                           setFlyoutGroup(null);
                           setFlyoutRect(null);
                         }}
                         className={subBtnCls(isActive)}
-                        style={subBtnStyle(isActive)}
+                        
                       >
                         <SubIcon className="h-4 w-4 mr-3 shrink-0" style={iconStyle(isActive)} />
                         <span className="truncate min-w-0 flex-1 text-left">{sub.label}</span>
@@ -571,9 +573,10 @@ export default function Sidebar({
             <button
               key={item.id}
               id={`nav-${item.id}`}
-              onClick={() => { setActiveTab(item.id); setFlyoutGroup(null); }}
+              type="button"
+              aria-label={collapsed ? item.label : undefined}
+              onClick={() => { setActiveTab(item.id); setFlyoutGroup(null); setFlyoutRect(null); closeMobileNavigation(); }}
               className={navBtnCls(isActive)}
-              style={navBtnStyle(isActive)}
             >
               <Icon className={iconCls(isActive)} style={iconStyle(isActive)} />
               {!collapsed && <span className="truncate min-w-0 flex-1 text-left">{item.label}</span>}
@@ -587,13 +590,43 @@ export default function Sidebar({
         {/* Configuration groups — admin only */}
         {isAdmin && <div className={collapsed ? 'pt-2' : 'pt-3'}>
           {!collapsed && (
-            <p className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Configuration</p>
+            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Configuration</p>
           )}
 
           {configGroups.map((group) => renderGroup(group))}
         </div>}
       </nav>
 
-    </SidebarFrame>
+      <div className={`shrink-0 border-t border-[var(--sidebar-border)] ${collapsed ? 'px-2 py-3' : 'px-3 py-3'}`}>
+        {!collapsed && (
+          <p className="mb-2 flex items-center gap-2 px-2.5 text-[11px] text-[var(--text-muted)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            Organization workspace
+          </p>
+        )}
+        <div className={`flex items-center gap-2 rounded-xl ${collapsed ? 'justify-center' : 'px-1'}`}>
+          <ProfileMenu
+            kcUser={accountUser}
+            dbRole={accountRole}
+            logout={onLogout}
+            placement="top-start"
+            compact={collapsed}
+          />
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-[var(--text-primary)]"
+                title={accountUser?.email || ''}>{accountUser?.email || accountUser?.name || 'Account'}</p>
+              <p className="truncate text-[10px] text-[var(--text-muted)]">{accountRole || 'Account & appearance'}</p>
+            </div>
+          )}
+        </div>
+      </div>
+      </SidebarFrame>
+      {!collapsed && (
+        <button type="button" aria-label="Close organization navigation"
+          onClick={toggleCollapsed}
+          className="fixed inset-0 z-20 bg-black/40 md:hidden" />
+      )}
+    </>
   );
 }

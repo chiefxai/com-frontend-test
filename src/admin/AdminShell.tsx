@@ -1,8 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Building2, Users, ScrollText, Settings, Database,
-  IndianRupee, MessageSquareText, PanelLeftClose, PanelLeftOpen, Layers3,
-  ShieldCheck,
+  IndianRupee, MessageSquareText, Layers3, ShieldCheck,
 } from 'lucide-react';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
@@ -20,7 +19,7 @@ import ProfileMenu from '../components/ProfileMenu';
 import PageHeaderBar from '../components/ui/PageHeaderBar';
 import Tooltip from '../components/ui/Tooltip';
 import { PageHeaderProvider, usePageHeaderContext } from '../lib/PageHeaderContext';
-import chiefVoiceLogo from '../assets/chiefvoice-logo.webp';
+import SidebarBrand from '../components/ui/SidebarBrand';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'overview',        label: 'Overview',                icon: LayoutDashboard },
@@ -65,41 +64,15 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
         aria-label="Platform Admin sidebar"
         className={`admin-sidebar relative z-30 flex h-dvh min-h-0 shrink-0 flex-col overflow-visible transition-[width] duration-200 ease-out ${collapsed ? 'w-[64px]' : 'w-[268px] max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:shadow-2xl'}`}
       >
-        <div className={`flex h-[72px] shrink-0 items-center ${collapsed ? 'flex-col justify-center gap-1 px-2' : 'justify-between gap-2 px-3'}`}>
-          {collapsed ? (
-            <Tooltip label="Expand sidebar" side="right">
-              <button type="button" aria-label="Expand sidebar" aria-expanded={false}
-                aria-controls="platform-admin-nav" onClick={toggleSidebar}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
-                <PanelLeftOpen className="h-5 w-5" />
-              </button>
-            </Tooltip>
-          ) : (
-            <>
-              <Link to="/admin/overview" className="flex min-w-0 items-center gap-2.5 rounded-lg p-1.5 hover:bg-[var(--bg-subtle)]" aria-label="ChiefVoice Platform Admin home">
-                <img src={chiefVoiceLogo} alt="" className="h-8 w-8 shrink-0 object-contain" />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-[var(--text-primary)]">ChiefVoice</span>
-                  <span className="block truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Platform Admin</span>
-                </span>
-              </Link>
-              <Tooltip label="Collapse sidebar" side="right">
-                <button type="button" aria-label="Collapse sidebar" aria-expanded={true}
-                  aria-controls="platform-admin-nav" onClick={toggleSidebar}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
-                  <PanelLeftClose className="h-5 w-5" />
-                </button>
-              </Tooltip>
-            </>
-          )}
-        </div>
+        <SidebarBrand
+          collapsed={collapsed}
+          onToggle={toggleSidebar}
+          title="ChiefVoice"
+          subtitle="Platform Admin"
+          homeTo="/admin/overview"
+          navId="platform-admin-nav"
+        />
 
-        {collapsed && (
-          <Link to="/admin/overview" aria-label="ChiefVoice home" title="ChiefVoice"
-            className="mx-auto mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl hover:bg-[var(--bg-subtle)]">
-            <img src={chiefVoiceLogo} alt="" className="h-7 w-7 object-contain" />
-          </Link>
-        )}
 
         <nav id="platform-admin-nav" aria-label="Platform Admin navigation"
           className={`min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-3 ${collapsed ? 'px-2' : 'px-3'}`}>
@@ -166,7 +139,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
 
       {/* The page title and route content share one uninterrupted canvas,
           like ChatGPT and Google Cloud, instead of two stacked chrome bars. */}
-      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl border-l border-t border-[var(--border)] bg-[var(--bg-base)]">
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-[var(--bg-base)]">
         <PageHeaderProvider>
           <PageHeaderBar integrated />
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[var(--bg-base)]">

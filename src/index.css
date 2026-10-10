@@ -129,15 +129,6 @@ body {
   color: var(--text-primary);
 }
 
-.dark #sidebar-container button {
-  color: var(--text-secondary);
-}
-
-.dark #sidebar-container button:hover {
-  background-color: var(--bg-subtle);
-  color: var(--text-primary);
-}
-
 /* App header */
 .dark header {
   background-color: var(--header-bg) !important;
@@ -282,7 +273,6 @@ table tfoot tr {
 .admin-sidebar {
   background: var(--sidebar-bg);
   color: var(--text-secondary);
-  border-right: 1px solid var(--sidebar-border);
 }
 .admin-nav-active {
   background: var(--bg-subtle);
