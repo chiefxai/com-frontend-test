@@ -170,7 +170,8 @@ export default function CreateWorkspacePage() {
       setError('An organization admin email is required for a policy with automated backups.');
       return;
     }
-    if (selectedWorkspacePlan.pricing.baseMonthlyInr == null || selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr == null) {
+    if (selectedWorkspacePlan.pricing.baseMonthlyInr == null || selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr == null
+      || selectedWorkspacePlan.pricing.extraSeatMonthlyInr == null || selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr == null) {
       setError('Configure the monthly prices for this plan in Admin → Workspace Plans before creating an organization. Enter 0 for any price that does not apply.');
       return;
     }
@@ -211,16 +212,6 @@ export default function CreateWorkspacePage() {
           subscriptionPlan: form.subscriptionPlan,
           workspacePlanId: form.subscriptionPlan,
           workspacePlanVersion,
-          workspacePolicy: {
-            mode: selectedWorkspacePlan.defaultMode,
-            pricing: {
-              baseMonthlyInr: selectedWorkspacePlan.pricing.baseMonthlyInr,
-              includedWorkspaces: selectedWorkspacePlan.pricing.includedWorkspaces,
-              additionalIndustryMonthlyInr: selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr,
-            },
-            planId: selectedWorkspacePlan.id,
-            planVersion: workspacePlanVersion,
-          },
           adminEmail: form.adminEmail,
           adminName: form.adminName,
           featureFlags: selectedFlags,
@@ -313,10 +304,10 @@ export default function CreateWorkspacePage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
           <div className="mb-3">
-            <h2 className="text-sm font-semibold text-slate-800">Subscription plan</h2>
-            <p className="mt-1 text-[11px] text-slate-500">The selected plan sets workspace allowances, monthly pricing, and the retention and backup policy.</p>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Subscription plan</h2>
+            <p className="mt-1 text-[11px] text-[var(--text-secondary)]">The selected plan sets workspace and seat allowances, monthly pricing, industry modules, and the retention and backup policy.</p>
           </div>
             <select value={form.subscriptionPlan} onChange={event=>{
               const plan=workspacePlans.find(item=>item.id===event.target.value);
@@ -324,19 +315,22 @@ export default function CreateWorkspacePage() {
               if(plan) {
                 setSelectedFlags(defaultFeatureFlagsForIndustry(plan.defaultMode==='mixed_industry'?'lending':form.industry));
               }
-            }} aria-label="Workspace plan" disabled={loadingWorkspacePlans || !workspacePlans.length} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:bg-slate-100">
+            }} aria-label="Workspace plan" disabled={loadingWorkspacePlans || !workspacePlans.length} className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-60">
               {workspacePlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
             </select>
-            {selectedWorkspacePlan && <div className="mt-4 rounded-xl border border-cyan-100 bg-cyan-50/60 p-3 text-xs text-slate-600 dark:border-cyan-900 dark:bg-cyan-950/30">
-              <p className="font-semibold text-slate-800">{selectedWorkspacePlan.name} plan details</p>
+            {selectedWorkspacePlan && <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
+              <p className="font-semibold text-[var(--text-primary)]">{selectedWorkspacePlan.name} plan details</p>
               <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
-                <div className="flex justify-between gap-3"><dt>Workspace setup</dt><dd className="font-medium text-slate-800">{planMode === 'single' ? 'Single workspace' : planMode === 'same_industry' ? 'Multiple workspaces · same industry' : 'Multiple workspaces · mixed industries'}</dd></div>
-                <div className="flex justify-between gap-3"><dt>Included workspaces</dt><dd className="font-medium text-slate-800">{planMode === 'single' ? 1 : selectedWorkspacePlan.pricing.includedWorkspaces}</dd></div>
-                <div className="flex justify-between gap-3"><dt>Monthly subscription</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.baseMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>
-                {planMode === 'mixed_industry' && <div className="flex justify-between gap-3"><dt>Additional industry / month</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
-                {selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr != null && <div className="flex justify-between gap-3"><dt>Monthly usage credits</dt><dd className="font-medium text-slate-800">₹{selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr.toFixed(2)}</dd></div>}
+                <div className="flex justify-between gap-3"><dt>Workspace setup</dt><dd className="font-medium text-[var(--text-primary)]">{planMode === 'single' ? 'Single workspace' : planMode === 'same_industry' ? 'Multiple workspaces · same industry' : 'Multiple workspaces · mixed industries'}</dd></div>
+                <div className="flex justify-between gap-3"><dt>Included workspaces</dt><dd className="font-medium text-[var(--text-primary)]">{planMode === 'single' ? 1 : selectedWorkspacePlan.pricing.includedWorkspaces}</dd></div>
+                {planMode !== 'single' && <div className="flex justify-between gap-3"><dt>Additional workspace / month</dt><dd className="font-medium text-[var(--text-primary)]">₹{selectedWorkspacePlan.pricing.extraWorkspaceMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
+                <div className="flex justify-between gap-3"><dt>Included seats</dt><dd className="font-medium text-[var(--text-primary)]">{selectedWorkspacePlan.pricing.includedSeats}</dd></div>
+                <div className="flex justify-between gap-3"><dt>Additional seat / month</dt><dd className="font-medium text-[var(--text-primary)]">₹{selectedWorkspacePlan.pricing.extraSeatMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>
+                <div className="flex justify-between gap-3"><dt>Monthly subscription</dt><dd className="font-medium text-[var(--text-primary)]">₹{selectedWorkspacePlan.pricing.baseMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>
+                {planMode === 'mixed_industry' && <div className="flex justify-between gap-3"><dt>Additional industry / month</dt><dd className="font-medium text-[var(--text-primary)]">₹{selectedWorkspacePlan.pricing.additionalIndustryMonthlyInr?.toFixed(2) ?? 'Not configured'}</dd></div>}
+                {selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr != null && <div className="flex justify-between gap-3"><dt>Monthly usage credits</dt><dd className="font-medium text-[var(--text-primary)]">₹{selectedWorkspacePlan.pricing.monthlySubscriptionCreditsInr.toFixed(2)}</dd></div>}
               </dl>
-              <p className="mt-2 text-[10px] text-slate-500">Workspace setup and prices come from Admin → Subscription Plans. They cannot be changed here.</p>
+              <p className="mt-2 text-[10px] text-[var(--text-muted)]">Workspace setup and prices come from Admin → Subscription Plans. They cannot be changed here.</p>
             </div>}
         </section>
 

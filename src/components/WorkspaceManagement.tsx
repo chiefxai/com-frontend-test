@@ -8,7 +8,7 @@ import FilterBar from './ui/FilterBar';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
 
-interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number}}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
+interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number;maxWorkspaces:number|null}}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
 
 export default function WorkspaceManagement({
@@ -174,11 +174,11 @@ export default function WorkspaceManagement({
           <p className="text-xs text-[var(--text-muted)]">Different industries are provisioned by a platform administrator.</p>
           {setup?.addBranchQuote
             ? <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
-                Included in the subscription: workspace {workspaces.length + 1} of {setup.policy.pricing?.includedWorkspaces ?? workspaces.length + 1}. Monthly subscription price remains ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}. Usage charges and applicable taxes are additional.
+                Workspace {workspaces.length + 1}: {workspaces.length + 1 <= (setup.policy.pricing?.includedWorkspaces ?? 1) ? 'within the included allowance' : 'priced as a workspace add-on'}. Monthly organization price after creation: ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}. Usage charges and applicable taxes are additional.
               </p>
-            : <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                {setup?.policy.pricing && workspaces.length >= setup.policy.pricing.includedWorkspaces
-                  ? `This subscription includes up to ${setup.policy.pricing.includedWorkspaces} workspace${setup.policy.pricing.includedWorkspaces === 1 ? '' : 's'}. Upgrade the subscription to add another workspace.`
+            : <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                {setup?.policy.pricing && setup.policy.pricing.maxWorkspaces !== null && workspaces.length >= setup.policy.pricing.maxWorkspaces
+                  ? `This subscription allows up to ${setup.policy.pricing.maxWorkspaces} workspace${setup.policy.pricing.maxWorkspaces === 1 ? '' : 's'}. Upgrade the subscription to add another workspace.`
                   : 'Ask a platform administrator to configure branch pricing before adding another workspace.'}
               </p>}
           <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">

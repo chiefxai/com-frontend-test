@@ -12,6 +12,7 @@ import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import { useToast } from '../components/ui/Toast';
 import { readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
+import { INDUSTRY_PROFILES } from '../lib/industry/registry';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
   { value: 'single', label: 'One workspace only' },
@@ -21,7 +22,9 @@ const MODES: { value: WorkspaceMode; label: string }[] = [
 
 const blankPlan = (): WorkspacePlan => ({
   id: '', name: '', active: true, defaultMode: 'single', retentionPolicyId: null,
-  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
+  pricing: { baseMonthlyInr: 0, includedWorkspaces: 1, maxWorkspaces: 1, extraWorkspaceMonthlyInr: 0,
+    includedSeats: 1, maxSeats: null, extraSeatMonthlyInr: 0, additionalIndustryMonthlyInr: 0, monthlySubscriptionCreditsInr: 0 },
+  industryModules: Object.fromEntries(Object.values(INDUSTRY_PROFILES).map(profile => [profile.key, profile.modules.map(module => module.key)])),
 });
 
 const money = (amount: number | null | undefined) =>
@@ -147,6 +150,8 @@ export default function WorkspacePlansPage() {
       pricing: {
         ...draft.pricing,
         includedWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.includedWorkspaces,
+        maxWorkspaces: draft.defaultMode === 'single' ? 1 : draft.pricing.maxWorkspaces,
+        extraWorkspaceMonthlyInr: draft.defaultMode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
         additionalIndustryMonthlyInr: draft.defaultMode === 'mixed_industry'
           ? draft.pricing.additionalIndustryMonthlyInr : 0,
       },
@@ -161,12 +166,17 @@ export default function WorkspacePlansPage() {
       return;
     }
     if (!validAmount(planToSave.pricing.baseMonthlyInr)
+      || !validAmount(planToSave.pricing.extraWorkspaceMonthlyInr)
+      || !validAmount(planToSave.pricing.extraSeatMonthlyInr)
       || !validAmount(planToSave.pricing.additionalIndustryMonthlyInr)
       || !validAmount(planToSave.pricing.monthlySubscriptionCreditsInr ?? 0)
       || !Number.isInteger(planToSave.pricing.includedWorkspaces)
       || planToSave.pricing.includedWorkspaces < 1
-      || planToSave.pricing.includedWorkspaces > 1000) {
-      setError('Enter valid non-negative monthly fees and credits, and 1–1,000 included workspaces.');
+      || planToSave.pricing.includedWorkspaces > 1000
+      || (planToSave.pricing.maxWorkspaces !== null && (!Number.isInteger(planToSave.pricing.maxWorkspaces) || planToSave.pricing.maxWorkspaces < planToSave.pricing.includedWorkspaces || planToSave.pricing.maxWorkspaces > 1000))
+      || !Number.isInteger(planToSave.pricing.includedSeats) || planToSave.pricing.includedSeats < 1 || planToSave.pricing.includedSeats > 100000
+      || (planToSave.pricing.maxSeats !== null && (!Number.isInteger(planToSave.pricing.maxSeats) || planToSave.pricing.maxSeats < planToSave.pricing.includedSeats || planToSave.pricing.maxSeats > 100000))) {
+      setError('Enter valid monthly prices, included allowances, and optional maximums.');
       return;
     }
 
@@ -284,6 +294,26 @@ export default function WorkspacePlansPage() {
                   {plan.defaultMode === 'single' ? 1 : plan.pricing.includedWorkspaces}
                 </dd>
               </div>
+              {plan.defaultMode !== 'single' && <div className="flex items-center justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Extra workspace / month</dt>
+                <dd className="font-semibold text-[var(--text-primary)]">{money(plan.pricing.extraWorkspaceMonthlyInr)}</dd>
+              </div>}
+              {plan.defaultMode !== 'single' && <div className="flex items-center justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Maximum workspaces</dt>
+                <dd className="font-semibold text-[var(--text-primary)]">{plan.pricing.maxWorkspaces ?? 'Platform limit'}</dd>
+              </div>}
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Included seats</dt>
+                <dd className="font-semibold text-[var(--text-primary)]">{plan.pricing.includedSeats}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Extra seat / month</dt>
+                <dd className="font-semibold text-[var(--text-primary)]">{money(plan.pricing.extraSeatMonthlyInr)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Maximum seats</dt>
+                <dd className="font-semibold text-[var(--text-primary)]">{plan.pricing.maxSeats ?? 'No maximum'}</dd>
+              </div>
               {plan.defaultMode === 'mixed_industry' && (
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-[var(--text-muted)]">Extra industry / month</dt>
@@ -383,7 +413,7 @@ export default function WorkspacePlansPage() {
         </Widget>
 
         <Widget colSpan={12} title="Workspace allowances and add-ons"
-          subtitle="Choose how many workspaces the subscription includes and any additional industry charge."
+          subtitle="Set the included allowance and a linear price for each additional workspace."
           icon={Building2} accent="#7c3aed" padding="md">
           <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClass + ' md:col-span-2'}>Workspace setup
@@ -395,6 +425,8 @@ export default function WorkspacePlansPage() {
                     pricing: {
                       ...draft.pricing,
                       includedWorkspaces: mode === 'single' ? 1 : draft.pricing.includedWorkspaces,
+                      maxWorkspaces: mode === 'single' ? 1 : (draft.pricing.maxWorkspaces === 1 ? null : draft.pricing.maxWorkspaces),
+                      extraWorkspaceMonthlyInr: mode === 'single' ? 0 : draft.pricing.extraWorkspaceMonthlyInr,
                       additionalIndustryMonthlyInr: mode === 'mixed_industry' ? draft.pricing.additionalIndustryMonthlyInr : 0,
                     },
                   });
@@ -407,7 +439,17 @@ export default function WorkspacePlansPage() {
                 <input className={fieldClass} type="number" required min="1" max="1000" step="1" disabled={saving}
                   value={draft.pricing.includedWorkspaces}
                   onChange={event => updatePricing('includedWorkspaces', Number(event.target.value))} />
-                <span className={helpClass}>Workspace creation stops at this plan limit.</span>
+                <span className={helpClass}>Workspaces above this count use the linear add-on price.</span>
+              </label>
+              <label className={labelClass}>Additional workspace / month (₹)
+                <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
+                  value={draft.pricing.extraWorkspaceMonthlyInr ?? ''}
+                  onChange={event => updatePricing('extraWorkspaceMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
+              </label>
+              <label className={labelClass}>Maximum workspaces (optional)
+                <input className={fieldClass} type="number" min={draft.pricing.includedWorkspaces} max="1000" step="1" disabled={saving}
+                  value={draft.pricing.maxWorkspaces ?? ''} placeholder="No maximum"
+                  onChange={event => updatePricing('maxWorkspaces', event.target.value === '' ? null : Number(event.target.value))} />
               </label>
             </>}
             {draft.defaultMode === 'mixed_industry' && <label className={labelClass + ' md:col-span-2'}>Monthly fee per additional industry (₹)
@@ -416,6 +458,51 @@ export default function WorkspacePlansPage() {
                 onChange={event => updatePricing('additionalIndustryMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
               <span className={helpClass}>Charged per additional distinct industry, not per workspace.</span>
             </label>}
+          </div>
+        </Widget>
+
+        <Widget colSpan={12} title="User seats" subtitle="A seat is one active or invited organization member, counted once across all workspaces."
+          icon={Building2} accent="#0f766e" padding="md">
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className={labelClass}>Included seats
+              <input className={fieldClass} type="number" required min="1" max="100000" step="1" disabled={saving}
+                value={draft.pricing.includedSeats}
+                onChange={event => updatePricing('includedSeats', Number(event.target.value))} />
+            </label>
+            <label className={labelClass}>Additional seat / month (₹)
+              <input className={fieldClass} type="number" required min="0" step="0.01" disabled={saving}
+                value={draft.pricing.extraSeatMonthlyInr ?? ''}
+                onChange={event => updatePricing('extraSeatMonthlyInr', event.target.value === '' ? null : Number(event.target.value))} />
+            </label>
+            <label className={labelClass}>Maximum seats (optional)
+              <input className={fieldClass} type="number" min={draft.pricing.includedSeats} max="100000" step="1" disabled={saving}
+                value={draft.pricing.maxSeats ?? ''} placeholder="No maximum"
+                onChange={event => updatePricing('maxSeats', event.target.value === '' ? null : Number(event.target.value))} />
+            </label>
+          </div>
+        </Widget>
+
+        <Widget colSpan={12} title="Industry modules" subtitle="Choose which industry-specific modules this plan grants. User permissions still apply."
+          icon={Layers3} accent="#7c3aed" padding="md">
+          <div className="grid gap-3 md:grid-cols-2">
+            {Object.values(INDUSTRY_PROFILES).filter(profile => profile.modules.length).map(profile => (
+              <div key={profile.key} className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+                <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">{profile.label}</p>
+                {profile.modules.map(module => {
+                  const checked = (draft.industryModules?.[profile.key] || []).includes(module.key);
+                  return <label key={module.key} className="flex items-center gap-2 py-1 text-xs text-[var(--text-secondary)]">
+                    <input type="checkbox" checked={checked} disabled={saving}
+                      onChange={event => updateDraft({ industryModules: {
+                        ...draft.industryModules,
+                        [profile.key]: event.target.checked
+                          ? [...(draft.industryModules?.[profile.key] || []), module.key]
+                          : (draft.industryModules?.[profile.key] || []).filter(key => key !== module.key),
+                      } })} />
+                    {module.label}
+                  </label>;
+                })}
+              </div>
+            ))}
           </div>
         </Widget>
 
