@@ -332,35 +332,25 @@ export default function CreateWorkspacePage() {
           </div>
         </section>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Industry</label>
-            <select
-              value={form.industry}
-              onChange={(e) => {
-                const industry = e.target.value;
-                setForm(f => ({ ...f, industry }));
-                setSelectedFlags(defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':industry));
-              }}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
-            </select>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-slate-800">Workspace plan</h2>
+            <p className="mt-1 text-[11px] text-slate-500">Choose the plan first; its defaults will be used for the workspace structure and pricing below.</p>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Plan</label>
             <select value={form.subscriptionPlan} onChange={event=>{
               const plan=workspacePlans.find(item=>item.id===event.target.value);
               setForm(current=>({...current,subscriptionPlan:event.target.value}));
               if(plan)setWorkspacePolicy({mode:plan.defaultMode,pricing:{...plan.pricing}});
-            }} disabled={loadingWorkspacePlans || !workspacePlans.length} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:bg-slate-100">
+            }} aria-label="Workspace plan" disabled={loadingWorkspacePlans || !workspacePlans.length} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:bg-slate-100">
               {workspacePlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
             </select>
-          </div>
-        </div>
+        </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-          <h2 className="text-sm font-semibold text-slate-800">Workspace structure and plan pricing</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Workspace structure</h2>
+            <p className="mt-1 text-[11px] text-slate-500">Choose how many workspaces the organization starts with and whether they share one industry.</p>
+          </div>
           {loadingWorkspacePlans && <p className="text-xs text-slate-500">Loading plan defaults…</p>}
           {selectedWorkspacePlan && <div className="rounded-xl border border-cyan-100 bg-cyan-50/60 p-3 text-xs text-slate-600">
             <p className="font-semibold text-slate-800">{selectedWorkspacePlan.name} default pricing</p>
@@ -369,6 +359,22 @@ export default function CreateWorkspacePage() {
             <p className="mt-1 text-[10px] text-slate-500">Plan defaults are managed separately in Admin → Plans &amp; Pricing. This organization receives a pricing snapshot when created.</p>
           </div>}
           <WorkspacePolicyEditor value={workspacePolicy} onChange={value=>{setWorkspacePolicy(value);if(value.mode!==workspacePolicy.mode)setSelectedFlags(defaultFeatureFlagsForIndustry(value.mode==='mixed_industry'?'lending':form.industry));}} primaryIndustry={form.industry} workspaces={[{industry:form.industry},...(workspacePolicy.mode==='single'?[]:initialWorkspaces.map(branch=>({industry:workspacePolicy.mode==='same_industry'?form.industry:branch.industry})))]} showPricingFields={false} />
+          <div className="border-t border-slate-100 pt-4">
+            <label className="block text-xs font-medium text-slate-600" htmlFor="primary-industry">Primary industry</label>
+            <p className="mt-1 text-[11px] text-slate-500">Sets the default industry for this organization and its first workspace.</p>
+            <select
+              id="primary-industry"
+              value={form.industry}
+              onChange={(e) => {
+                const industry = e.target.value;
+                setForm(f => ({ ...f, industry }));
+                setSelectedFlags(defaultFeatureFlagsForIndustry(workspacePolicy.mode==='mixed_industry'?'lending':industry));
+              }}
+              className="mt-2 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              {INDUSTRIES.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
+            </select>
+          </div>
           <label className="block text-xs text-slate-500">First workspace / branch name
             <input maxLength={120} value={firstBranchName} onChange={event=>setFirstBranchName(event.target.value)} placeholder="Head office" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
           </label>
