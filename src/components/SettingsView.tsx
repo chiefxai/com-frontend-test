@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiFetch, getApiBase } from '../lib/api';
+import { deleteStaffMember, updateStaffMemberStatus } from '../lib/staffMemberMutations';
 import { useAuthorization } from '../lib/authorization';
 import { useRefresh } from '../lib/RefreshContext';
 import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../types';
@@ -140,6 +141,7 @@ export default function SettingsView({
 }: SettingsViewProps) {
   const { can, authorization } = useAuthorization();
   const { showToast } = useToast();
+  const [staffMutationId, setStaffMutationId] = useState<string | null>(null);
   const canReadOrganization = can('organization.read');
   const canReadOrgMembers = can('organization.members.read');
   const canManageOrgMembers = can('organization.members.manage');
@@ -822,51 +824,45 @@ export default function SettingsView({
   };
 
 
-  // Remove staff member permanently
+  // Do not change the local member list until the API confirms success.
   const handleRemoveStaff = async (staffId: string, name: string, memberEmail: string, memberRole: string) => {
+    if (staffMutationId) return;
     const isSelf = currentUserEmail && memberEmail.toLowerCase() === currentUserEmail.toLowerCase();
     if (isSelf && memberRole === 'Organization Admin') {
-      alert(
-        `You cannot remove yourself as Org Admin.\n\nTo leave: first reassign the "Organization Admin" role to another team member, then ask them to remove your account.`
-      );
+      alert('Transfer your Organization Admin role before removing your own account.');
       return;
     }
     if (!window.confirm(`Remove ${name} from the team? This cannot be undone.`)) return;
-    setTeamMembers((prev) => prev.filter((m) => m.id !== staffId));
-    apiFetch(`/api/settings/team/${staffId}`, { method: 'DELETE' })
-      .then(async response => {
-        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Failed to remove staff member.');
-        setWorkspaceMembers(rows => rows.filter(row => row.memberId !== staffId));
-      })
-      .catch((err) => {
-        console.error('Failed to remove staff member:', err);
-        void loadWorkspaceMembers().catch(() => {});
-        showToast(err instanceof Error ? err.message : 'Failed to remove staff member.', 'error');
-      });
-  };
-
-  // Deactivate Staff member — optimistic local update + immediate PATCH to backend
-  const handleToggleStaffStatus = (staffId: string) => {
-    const updated = teamMembers.map((m) => {
-      if (m.id === staffId) {
-        return {
-          ...m,
-          status: m.status === 'Active' ? ('Inactive' as const) : ('Active' as const)
-        };
-      }
-      return m;
-    });
-    setTeamMembers(updated);
-    const member = updated.find(m => m.id === staffId);
-    if (member) {
-      apiFetch(`/api/settings/team/${staffId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: member.status }),
-      }).catch(err => console.error('Failed to update staff status:', err));
+    setStaffMutationId(staffId);
+    try {
+      await deleteStaffMember(staffId);
+      setTeamMembers(previous => previous.filter(member => member.id !== staffId));
+      setWorkspaceMembers(previous => previous.filter(member => member.memberId !== staffId));
+      showToast('Member removed.', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to remove team member.', 'error');
+    } finally {
+      setStaffMutationId(null);
     }
   };
 
+  const handleToggleStaffStatus = async (staffId: string) => {
+    if (staffMutationId) return;
+    const member = teamMembers.find(row => row.id === staffId);
+    if (!member) return;
+    const nextStatus = member.status === 'Active' ? 'Inactive' : 'Active';
+    setStaffMutationId(staffId);
+    try {
+      await updateStaffMemberStatus(staffId, nextStatus);
+      setTeamMembers(previous => previous.map(row =>
+        row.id === staffId ? { ...row, status: nextStatus } : row));
+      showToast(nextStatus === 'Active' ? 'Member reactivated.' : 'Member deactivated.', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to update member status.', 'error');
+    } finally {
+      setStaffMutationId(null);
+    }
+  };
   const globalRefresh = useRefresh();
   const handlePageRefresh = () => {
     if (subTab === 'billing') void loadBillingUsage();
@@ -1376,14 +1372,15 @@ export default function SettingsView({
                       align: 'right',
                       cell: (member) => (
                         <button
-                          onClick={() => handleToggleStaffStatus(member.id)}
+                          onClick={() => void handleToggleStaffStatus(member.id)}
+                          disabled={staffMutationId !== null}
                           className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
                             member.status === 'Active'
                               ? 'bg-emerald-50 dark:bg-emerald-500/10 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-emerald-700 dark:text-emerald-400 hover:text-rose-700 dark:hover:text-rose-400 border border-emerald-200 dark:border-emerald-500/30 hover:border-rose-200 dark:hover:border-rose-500/30'
                               : 'bg-[var(--bg-subtle)] dark:bg-[var(--bg-subtle)] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-600 dark:text-[var(--text-secondary)] hover:text-emerald-700 dark:hover:text-emerald-400 border border-[var(--border)] dark:border-[var(--border)]'
                           }`}
                         >
-                          {member.status === 'Active' ? 'Deactivate' : 'Reactivate'}
+                          {staffMutationId === member.id ? 'Saving…' : member.status === 'Active' ? 'Deactivate' : 'Reactivate'}
                         </button>
                       ),
                     } as Column<TeamMember>] : []),
@@ -1397,7 +1394,8 @@ export default function SettingsView({
                         if (!canManageOrgMembers && !member.canDelete) return <span className="text-xs text-[var(--text-muted)]">—</span>;
                         return (
                           <button
-                            onClick={() => handleRemoveStaff(member.id, member.name, member.email, member.role)}
+                            onClick={() => void handleRemoveStaff(member.id, member.name, member.email, member.role)}
+                            disabled={Boolean(isSelfAdmin) || staffMutationId !== null}
                             title={isSelfAdmin ? 'Hand over Org Admin role first, then ask the new admin to remove your account' : undefined}
                             className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all border ${
                               isSelfAdmin
@@ -1405,7 +1403,7 @@ export default function SettingsView({
                                 : 'bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 border-rose-200 dark:border-rose-500/30'
                             }`}
                           >
-                            {isSelfAdmin ? 'Cannot Remove' : 'Remove'}
+                            {staffMutationId === member.id ? 'Removing…' : isSelfAdmin ? 'Cannot Remove' : 'Remove'}
                           </button>
                         );
                       },
