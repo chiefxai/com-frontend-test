@@ -1,7 +1,7 @@
 import { apiFetch } from '../api';
 import type {
   AllocationRule, BillingContact, BillingMutationOptions, BillingOverview, BillingNotification,
-  CursorPage, ManualAllocationOverview, ManualAllocationPreview, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview,
+  CursorPage, ManualAllocationOverview, ManualAllocationPreview, SubscriptionCreditStatus, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview,
 } from './types';
 
 export class BillingApiError extends Error {
@@ -81,6 +81,7 @@ export const billingClient = Object.freeze({
       method: 'POST', headers: mutationHeaders(options), body: form,
     });
   },
+  subscriptionCreditStatus: () => jsonRequest<SubscriptionCreditStatus>('/api/billing/subscription-credit-status'),
   manualAllocationOverview: () => jsonRequest<ManualAllocationOverview>('/api/billing/manual-allocations'),
   manualAllocationPreview: (input: { grantId: string; workspaceId: string; amountUnits: string; expectedPositionVersion: number }) =>
     jsonRequest<ManualAllocationPreview>('/api/billing/manual-allocations/preview', {
