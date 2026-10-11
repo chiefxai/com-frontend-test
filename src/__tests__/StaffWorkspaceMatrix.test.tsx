@@ -1,6 +1,7 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SettingsView from '../components/SettingsView';
 import { setAuthorization } from '../lib/authorization';
 import type { OrganizationSettings, TeamMember, VirtualNumber } from '../types';
@@ -41,13 +42,15 @@ const policies = [
 const response = (data: unknown) => ({ ok: true, json: async () => data }) as Response;
 
 function mount(workspaceId: string, teamMembers: TeamMember[] = members) {
-  return <SettingsView
-    virtualNumbers={[] as VirtualNumber[]} setVirtualNumbers={vi.fn()}
-    teamMembers={teamMembers} setTeamMembers={vi.fn()}
-    orgSettings={orgSettings} setOrgSettings={vi.fn()}
-    activeSubTab="team" activeWorkspaceId={workspaceId}
-    currentUserEmail="admin@example.test"
-  />;
+  return <MemoryRouter>
+    <SettingsView
+      virtualNumbers={[] as VirtualNumber[]} setVirtualNumbers={vi.fn()}
+      teamMembers={teamMembers} setTeamMembers={vi.fn()}
+      orgSettings={orgSettings} setOrgSettings={vi.fn()}
+      activeSubTab="team" activeWorkspaceId={workspaceId}
+      currentUserEmail="admin@example.test"
+    />
+  </MemoryRouter>;
 }
 
 beforeEach(() => {
