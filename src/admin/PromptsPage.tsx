@@ -15,10 +15,10 @@ const requiredVoiceTokens = [
 const editorClass = 'min-h-52 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 font-mono text-xs leading-6 text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] disabled:opacity-60';
 const inputClass = 'h-10 w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]';
 
-function PromptState({ dirty, saved, busy, customized }: { dirty: boolean; saved: boolean; busy: boolean; customized?: boolean }) {
+function PromptState({ dirty, saved, busy, customized, idleLabel }: { dirty: boolean; saved: boolean; busy: boolean; customized?: boolean; idleLabel?: string }) {
   return <span role="status" className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${dirty ? 'text-amber-600 dark:text-amber-400' : saved ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-muted)]'}`}>
     {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : saved ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-    {busy ? 'Saving…' : dirty ? 'Unsaved changes' : saved ? 'Saved' : customized ? 'Customized' : 'Platform default'}
+    {busy ? 'Saving…' : dirty ? 'Unsaved changes' : saved ? 'Saved' : idleLabel || (customized ? 'Customized' : 'Platform default')}
   </span>;
 }
 function ItemStatus({ customized }: { customized: boolean }) {
@@ -154,19 +154,23 @@ export default function PromptsPage() {
   const hasUnsavedChanges = voiceDirty || systemDirty || languageDirty || dialectDirty;
   const missingTokens = requiredVoiceTokens.filter(token => !voiceDraft.includes(token));
   const canLeave = () => !hasUnsavedChanges || window.confirm('You have unsaved prompt changes. Discard them?');
-  const changeSection = (next: PromptSection) => {
-    if (next === section || !canLeave()) return;
+  const discardUnsavedDrafts = () => {
     setVoiceDraft(data.voice.find(p => p.callType === activeVoice)?.prompt || '');
     setSystemDraft(data.system.find(p => p.id === activeSystem)?.systemPrompt || '');
     setLanguageDraft(currentLanguage?.prompt || '');
     setDialectDraft(currentDialect?.prompt || '');
     setExamplesDraft(currentDialect?.examples.join('\n') || '');
     setSaved(null);
+  };
+  const changeSection = (next: PromptSection) => {
+    if (next === section || !canLeave()) return;
+    discardUnsavedDrafts();
     setSection(next);
   };
 
   const selectVoice = (type: 'INBOUND' | 'OUTBOUND') => {
     if (type === activeVoice || !canLeave()) return;
+    discardUnsavedDrafts();
     setActiveVoice(type);
     setVoiceDraft(data.voice.find(p => p.callType === type)?.prompt || '');
     setSaved(null);
@@ -174,6 +178,7 @@ export default function PromptsPage() {
 
   const selectSystem = (id: string) => {
     if (id === activeSystem || !canLeave()) return;
+    discardUnsavedDrafts();
     setActiveSystem(id);
     setSystemDraft(data.system.find(p => p.id === id)?.systemPrompt || '');
     setSaved(null);
@@ -255,6 +260,7 @@ export default function PromptsPage() {
 
   const selectLanguage = (language: string) => {
     if (language === activeLanguage || !canLeave()) return;
+    discardUnsavedDrafts();
     setActiveLanguage(language);
     const item = catalog.languages.find(x => x.language === language);
     const dialect = (catalog.dialectsByLanguage[language] || [])[0]?.dialect || '';
@@ -268,6 +274,7 @@ export default function PromptsPage() {
 
   const selectDialect = (dialect: string) => {
     if (dialect === activeDialect || !canLeave()) return;
+    discardUnsavedDrafts();
     setActiveDialect(dialect);
     const d = (catalog.dialectsByLanguage[activeLanguage] || []).find(x => x.dialect === dialect);
     setDialectDraft(d?.prompt || '');
@@ -320,6 +327,7 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to add language');
+      discardUnsavedDrafts();
       setCatalog(body);
       setActiveLanguage(language);
       setLanguageDraft(body.languages?.find((x: LanguagePrompt) => x.language === language)?.prompt || '');
@@ -342,6 +350,7 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to add dialect');
+      discardUnsavedDrafts();
       setCatalog(body);
       const item = body.dialectsByLanguage?.[activeLanguage]?.find((x: DialectPrompt) => x.dialect === dialect);
       setActiveDialect(dialect);
@@ -362,9 +371,9 @@ export default function PromptsPage() {
 
   const systemList = data.system.filter(p => `${p.name} ${p.model} ${p.description}`.toLowerCase().includes(systemSearch.trim().toLowerCase()));
   const sectionOptions = [
-    { id: 'voice' as const, label: 'Voice templates', description: 'Inbound and outbound calls', icon: Volume2, count: data.voice.length },
-    { id: 'language' as const, label: 'Languages & dialects', description: 'Speech and localization', icon: Languages, count: catalog.languages.length },
-    { id: 'system' as const, label: 'System agents', description: 'Post-call processing', icon: Bot, count: data.system.length },
+    { id: 'voice' as const, label: 'Voice templates', icon: Volume2, count: data.voice.length },
+    { id: 'language' as const, label: 'Languages & dialects', icon: Languages, count: catalog.languages.length },
+    { id: 'system' as const, label: 'System agents', icon: Bot, count: data.system.length },
   ];
   const listButtonClass = (active: boolean) => `w-full min-w-0 rounded-xl border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${active
     ? 'border-[var(--accent)]/30 bg-[var(--accent-subtle)] text-[var(--text-primary)]'
@@ -539,7 +548,7 @@ export default function PromptsPage() {
                   <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words border-t border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4 font-mono text-[11px] leading-5 text-[var(--text-secondary)]">{currentVoice.defaultPrompt}</pre>
                 </details>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-4">
-                  <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={Boolean(saving) || !currentVoice.isCustomized}
+                  <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={Boolean(saving) || (!currentVoice.isCustomized && !voiceDirty)}
                     onClick={() => void resetVoice()}>Restore default</Button>
                   <Button type="button" variant="primary" size="sm" icon={Save} loading={saving === 'voice'}
                     disabled={Boolean(saving) || !voiceDirty || missingTokens.length > 0 || !voiceDraft.trim()}
@@ -555,7 +564,7 @@ export default function PromptsPage() {
                     <h3 className="text-sm font-semibold text-[var(--text-primary)]">{activeLanguage} language guidance</h3>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">Guidance shared by agents speaking this language.</p>
                   </div>
-                  <PromptState dirty={languageDirty} saved={saved === 'language'} busy={savingLanguage} customized />
+                  <PromptState dirty={languageDirty} saved={saved === 'language'} busy={savingLanguage} idleLabel="Up to date" />
                 </div>
                 <div>
                   <FieldTitle htmlFor="language-prompt-editor" label="Language prompt"
@@ -612,7 +621,7 @@ export default function PromptsPage() {
                           className={editorClass + ' min-h-28'} />
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <PromptState dirty={dialectDirty} saved={saved === 'dialect'} busy={savingDialect} customized />
+                        <PromptState dirty={dialectDirty} saved={saved === 'dialect'} busy={savingDialect} idleLabel="Up to date" />
                         <Button type="button" variant="primary" size="sm" icon={Save} loading={savingDialect}
                           disabled={!dialectDirty || savingLanguage || savingDialect}
                           onClick={() => void saveDialect()}>Save dialect</Button>
@@ -650,7 +659,7 @@ export default function PromptsPage() {
                   <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words border-t border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4 font-mono text-[11px] leading-5 text-[var(--text-secondary)]">{currentSystem.defaultSystemPrompt}</pre>
                 </details>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-4">
-                  <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={Boolean(saving) || !currentSystem.isCustomized}
+                  <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={Boolean(saving) || (!currentSystem.isCustomized && !systemDirty)}
                     onClick={() => void resetSystem()}>Restore default</Button>
                   <Button type="button" variant="primary" size="sm" icon={Save} loading={saving === 'system'}
                     disabled={Boolean(saving) || !systemDirty || !systemDraft.trim()}
