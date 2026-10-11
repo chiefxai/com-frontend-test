@@ -153,7 +153,8 @@ export default function PromptsPage() {
   const dialectDirty = Boolean(currentDialect && (dialectDraft !== currentDialect.prompt || examplesDraft !== currentDialect.examples.join('\n')));
   const hasUnsavedChanges = voiceDirty || systemDirty || languageDirty || dialectDirty;
   const missingTokens = requiredVoiceTokens.filter(token => !voiceDraft.includes(token));
-  const canLeave = () => !hasUnsavedChanges || window.confirm('You have unsaved prompt changes. Discard them?');
+  const isBusy = Boolean(saving || savingLanguage || savingDialect || adding);
+  const canLeave = () => !isBusy && (!hasUnsavedChanges || window.confirm('You have unsaved prompt changes. Discard them?'));
   const discardUnsavedDrafts = () => {
     setVoiceDraft(data.voice.find(p => p.callType === activeVoice)?.prompt || '');
     setSystemDraft(data.system.find(p => p.id === activeSystem)?.systemPrompt || '');
@@ -390,7 +391,7 @@ export default function PromptsPage() {
               Changes apply to future prompt generation; existing agents keep their saved instructions.
             </p>
           </div>
-          <Button type="button" variant="secondary" size="sm" icon={RotateCcw}
+          <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={isBusy}
             onClick={() => { if (canLeave()) void load(); }}>Refresh prompts</Button>
         </div>
         <div className="mt-3 flex items-start gap-2 rounded-lg bg-[var(--bg-subtle)] px-3 py-2.5 text-[11px] leading-5 text-[var(--text-secondary)]">
