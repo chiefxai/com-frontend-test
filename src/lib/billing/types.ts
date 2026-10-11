@@ -107,6 +107,18 @@ export interface AllocationRule {
 }
 
 /** Manual allocations are grant-specific: never combine currencies or expiries. */
+/** Configured plan allowance and real ledger issuance are deliberately distinct. */
+export interface SubscriptionCreditStatus {
+  planName: string | null;
+  planId: string | null;
+  configuredMonthlyCredits: BillingAmount | null;
+  entitlementSource: 'organization_plan_snapshot' | 'matching_platform_plan_version' | 'unverified_legacy_plan';
+  issuedThisPeriod: BillingAmount | null;
+  currentPeriod: { id: string; status: string; startsAt: string; endsAt: string } | null;
+  state: 'unverified_plan' | 'no_included_credits' | 'awaiting_approved_subscription'
+    | 'awaiting_period_activation' | 'activation_incomplete' | 'issued_to_organization_pool';
+}
+
 export interface ManualAllocationBalance {
   ownerType: 'organization' | 'workspace';
   ownerId: string;
