@@ -1407,7 +1407,7 @@ export default function SettingsView({
                     onClick={() => void loadOrganizationAccess().catch(error =>
                       setOrgAccessError(error instanceof Error ? error.message : 'Could not load workspace access.'))}>
                     Retry workspace access
-                  </Button>
+                  </Button>}
                   {!orgWorkspaces.length && <p className="text-xs text-[var(--text-muted)]">No organization workspaces available.</p>}
                   {orgWorkspaces.map(workspace => {
                     const assignment = orgAssignments[workspace.id]?.find(row => row.memberId === accessMember.id);
