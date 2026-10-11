@@ -58,6 +58,10 @@ export function permissionForRequest(path: string,method: string): string | null
   if (/^\/api\/billing\/payments(?:\/|$)/.test(path) && !read) return 'billing.payment.submit';
   if (/^\/api\/billing\/contacts(?:\/|$)/.test(path) && !read) return 'billing.contacts.manage';
   if (path === '/api/billing/notification-policy' && !read) return 'billing.notifications.manage';
+  if (/^\/api\/billing\/manual-allocations(?:\/|$)/.test(path))
+    return read ? 'billing.organization.read'
+      : path === '/api/billing/manual-allocations/preview' || path === '/api/billing/manual-allocations/transfer'
+        ? 'billing.credit.allocate' : 'billing.credit.allocate';
   if (/^\/api\/billing\/allocation-rules(?:\/|$)/.test(path) && !read) return 'billing.allocation_rules.manage';
   if (/^\/api\/billing\/(?:allocations|transfers)(?:\/|$)/.test(path) && !read) return 'billing.credit.allocate';
   if (/^\/api\/billing\/postpaid-policy(?:\/|$)/.test(path) && !read) return 'billing.postpaid.manage';
