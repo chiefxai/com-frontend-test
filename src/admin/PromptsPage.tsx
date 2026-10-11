@@ -392,24 +392,6 @@ export default function PromptsPage() {
 
   return (
     <div className="space-y-4 pb-6">
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 sm:px-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold tracking-tight text-[var(--text-primary)]">Prompt library</h2>
-            <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
-              Manage the default instructions behind voice agents, language guidance and post-call processing.
-              Voice and language edits affect newly generated instructions; system prompt changes update defaults for subsequent post-call processing.
-            </p>
-          </div>
-          <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={isBusy}
-            onClick={() => { if (canLeave()) void load(); }}>Refresh prompts</Button>
-        </div>
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-[var(--bg-subtle)] px-3 py-2.5 text-[11px] leading-5 text-[var(--text-secondary)]">
-          <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-          Platform-wide changes are audited. Review required template variables before saving; organization-specific overrides take precedence.
-        </div>
-      </div>
-
       {error && (
         <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/5 px-4 py-3 text-xs text-rose-700 dark:text-rose-300">
           <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" />
