@@ -1,7 +1,7 @@
 import { apiFetch } from '../api';
 import type {
   AllocationRule, BillingContact, BillingMutationOptions, BillingOverview, BillingNotification,
-  CursorPage, PaymentRequest, WorkspaceBillingOverview,
+  CursorPage, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview,
 } from './types';
 
 export class BillingApiError extends Error {
@@ -60,7 +60,8 @@ export function createBillingMutation<T>(send: (options: BillingMutationOptions)
 export const billingClient = Object.freeze({
   organizationOverview: () => jsonRequest<BillingOverview>('/api/billing/overview'),
   workspaceOverview: (workspaceId: string) => jsonRequest<WorkspaceBillingOverview>(`/api/billing/workspaces/${encodeURIComponent(workspaceId)}/overview`),
-  payments: (cursor?: string | null, limit = 25) => jsonRequest<CursorPage<PaymentRequest>>(queryPath('/api/billing/payments', cursor, limit)),
+  payments: (cursor?: string | null, limit = 25, type: PaymentHistoryType = 'all') =>
+    jsonRequest<CursorPage<PaymentRequest>>(`${queryPath('/api/billing/payments', cursor, limit)}&type=${encodeURIComponent(type)}`),
   invoices: <T = unknown>(cursor?: string | null, limit = 25) => jsonRequest<CursorPage<T>>(queryPath('/api/billing/invoices', cursor, limit)),
   contacts: () => jsonRequest<BillingContact[]>('/api/billing/contacts'),
   notifications: (cursor?: string | null, limit = 25) => jsonRequest<CursorPage<BillingNotification>>(queryPath('/api/notifications', cursor, limit)),
