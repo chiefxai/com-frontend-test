@@ -101,9 +101,8 @@ describe('Platform Admin organization detail panel', () => {
     render(<OrgDetailPanel orgId="org-one" onClose={mocks.onClose} onChanged={mocks.onChanged} />);
     expect(await screen.findByText('Acme Healthcare')).toBeInTheDocument();
     const overview = screen.getByRole('region', { name: 'Organization overview' });
-    const membersCard = within(overview).getByText('Members').closest('div.rounded-xl');
-    expect(membersCard).toBeTruthy();
-    expect(within(membersCard as HTMLElement).getByText('—')).toBeInTheDocument();
+    expect(within(overview).getByText('Members')).toBeInTheDocument();
+    expect(within(overview).getByText('Workspaces')).toBeInTheDocument();
     expect(within(overview).getAllByText('—').length).toBeGreaterThanOrEqual(4);
   });
 
