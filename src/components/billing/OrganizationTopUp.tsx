@@ -7,7 +7,8 @@ import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/clien
 import type { BillingAmount, BillingOverview, PaymentRequest } from '../../lib/billing/types';
 import DataTable from '../ui/DataTable';
 import KpiCard from '../ui/KpiCard';
-import Widget from '../ui/Widget';
+import { Card, CardHeader } from '../ui/Card';
+import Button from '../ui/Button';
 
 type Quote = { quoteId: string; paymentAmount: BillingAmount; topupCredits: BillingAmount; validUntil: string };
 const TOPUP_PRESETS = [500, 1000, 2500, 5000] as const;
@@ -158,162 +159,238 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     cancelled: 'Cancelled',
   };
 
-  return <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6" id="organization-billing-overview">
-    {(view === 'plan' || view === 'payments') && can('billing.organization.read') && <Widget title="Additional workspace billing" subtitle="Manage purchase approvals and monthly workspace renewals." icon={CreditCard}  padding="none">
-      <WorkspaceAddonPurchases canSubmit={canSubmit}/>
-    </Widget>}
-    {view === 'dashboard' && (
-      <Widget
-        title="Credit balances & recent payments"
-        subtitle="Prepaid usage credit balances and payment activity for the organization."
-        icon={Wallet}
-        padding="md"
-        action={
-          <button type="button" onClick={() => void refresh()}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)]">
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </button>
-        }
-      >
-        <div className="grid grid-cols-12 gap-3 pt-1 sm:gap-4">
-          <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} icon={Wallet} iconPosition="top-left"
-            label="Subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'}
-            sub="Usage credits provided through your subscription; may expire." />
-          <KpiCard colSpan={6} span={{ xs: 12, sm: 6, lg: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
-            label="Added credits" value={overview ? sumBalance(topupCredits) : '—'}
-            sub="Extra prepaid credits available after payment approval." />
-        </div>
-        {overviewError && (
-          <p role="alert" className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-            Credit balances are unavailable: {overviewError}
+  return (
+    <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5" id="organization-billing-overview">
+      {view === 'dashboard' && (
+        <>
+          <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-7 sm:!p-5">
+            <CardHeader title="Available usage credits" subtitle="Credits that can pay for metered usage"
+              icon={Wallet} action={
+                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>
+                  Refresh
+                </Button>
+              } />
+            <div className="grid grid-cols-12 gap-3">
+              <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
+                label="Subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'}
+                sub="Included with your plan" />
+              <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
+                label="Added credits" value={overview ? sumBalance(topupCredits) : '—'}
+                sub="Approved top-up payments" />
+            </div>
+            {overviewError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">Credits unavailable: {overviewError}</p>}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate?.('credits')}>View credits</Button>
+              {canTopup && <Button type="button" variant="primary" size="sm" icon={Plus}
+                onClick={() => onNavigate?.('topup')}>Add credits</Button>}
+            </div>
+            <p className="mt-3 text-[11px] text-[var(--text-muted)]">New credits appear only after payment approval.</p>
+          </Card>
+          <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-5 sm:!p-5">
+            <CardHeader title="Recent payments" subtitle="Latest organization payment requests"
+              icon={Clock3} action={
+                <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate?.('payments')}>
+                  View all
+                </Button>
+              } />
+            {recentPayments.length ? (
+              <ul className="divide-y divide-[var(--border)]">
+                {recentPayments.slice(0, 4).map(payment => (
+                  <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">
+                        {payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">{new Date(payment.submittedAt).toLocaleDateString('en-IN')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold tabular-nums text-[var(--text-primary)]">{formatMoney(payment.expectedAmount)}</p>
+                      <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{statuses[payment.status] || payment.status}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-5 text-xs text-[var(--text-muted)]">{historyError ? 'Payment history is temporarily unavailable.' : 'No payment requests yet.'}</p>
+            )}
+          </Card>
+        </>
+      )}
+
+      {(view === 'credits' || view === 'topup') && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Credit balances" subtitle="Subscription and purchased usage credits"
+            icon={Wallet} action={
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>
+                  Refresh
+                </Button>
+                {canSubmit && view === 'credits' && <Button type="button" variant="primary" size="sm" icon={Plus}
+                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>
+                  Add credits
+                </Button>}
+              </div>
+            } />
+          <div className="grid grid-cols-12 gap-3">
+            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
+              label="Available subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'}
+              sub="Provided with your subscription" />
+            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
+              label="Available top-up credits" value={overview ? sumBalance(topupCredits) : '—'}
+              sub="Added after approval" />
+            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
+              label="Subscription period" value={overview?.activePeriod?.status || 'Not available'}
+              sub={overview?.activePeriod?.endsAt
+                ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}`
+                : 'Current subscription'} />
+          </div>
+          {overviewError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">Credit ledger unavailable: {overviewError}</p>}
+          {canSubmit && initialLoadComplete && !canTopup && <p role="status" className="mt-3 text-xs text-[var(--text-muted)]">
+            Adding credits is unavailable until the billing ledger and payment review flow are enabled.
+          </p>}
+          {!canSubmit && <p className="mt-3 text-xs text-[var(--text-muted)]">
+            Only administrators with payment-submission permission can add credits.
+          </p>}
+        </Card>
+      )}
+
+      {canTopup && (view === 'topup' || showForm) && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Add usage credits" icon={Plus}
+            subtitle="Transfer the payment externally, then submit your receipt for approval." />
+          <div className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)]/50 px-3.5 py-3">
+            <p className="text-xs font-semibold text-[var(--text-primary)]">How payment verification works</p>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+              1. Choose your amount. 2. Complete a bank or UPI transfer. 3. Upload proof and submit.
+              Credits are added only after the platform team approves the payment. ₹1 paid provides ₹1 usage credit.
+            </p>
+          </div>
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-[var(--text-primary)]" htmlFor="billing-topup-amount">Top-up amount (INR)</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {TOPUP_PRESETS.map(value => (
+                  <button key={value} type="button" aria-pressed={amount === String(value)}
+                    onClick={() => { setAmount(String(value)); resetQuote(); }}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${amount === String(value)
+                      ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
+                    ₹{value.toLocaleString('en-IN')}
+                  </button>
+                ))}
+              </div>
+              <input id="billing-topup-amount" required value={amount}
+                onChange={event => { setAmount(event.target.value); resetQuote(); }}
+                placeholder="Enter amount" inputMode="decimal"
+                className="mt-2 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] sm:max-w-sm" />
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">Minimum ₹1; maximum ₹999,999.99.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Bank or UPI reference
+                <input required value={reference}
+                  onChange={event => { setReference(event.target.value); setPaymentKey(newBillingIdempotencyKey()); setError(''); }}
+                  placeholder="Enter UTR / transaction ID"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]" />
+              </label>
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Payment receipt
+                <input required type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={event => { setProof(event.target.files?.[0] || null); setPaymentKey(newBillingIdempotencyKey()); setError(''); }}
+                  className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-2 text-xs text-[var(--text-primary)]" />
+                <span className="mt-1 block text-[11px] font-normal text-[var(--text-muted)]">PDF or image, up to 10 MB</span>
+              </label>
+            </div>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+              Note (optional)
+              <textarea rows={2} maxLength={2000} value={note}
+                onChange={event => { setNote(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }}
+                className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3 text-sm text-[var(--text-primary)]" />
+            </label>
+            {error && <p role="alert" className="text-xs text-rose-600 dark:text-rose-300">{error}</p>}
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-4">
+              <Button type="button" size="sm" variant="secondary" disabled={busy}
+                onClick={() => { setShowForm(false); if (view === 'topup') onNavigate?.('credits'); }}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm" loading={busy} disabled={Boolean(success)}>
+                {quote ? 'Retry payment submission' : 'Submit for verification'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {success && (
+        <Card padding="sm" className="col-span-12 border-emerald-300/60">
+          <p role="status" className="flex items-start gap-2 text-xs text-[var(--text-secondary)]">
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-emerald-600" />{success}
           </p>
-        )}
-        <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">
-          Credits are available for usage; they are not the monthly subscription price.
-          Submitting a top-up payment does not increase this balance until it is approved.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={() => onNavigate?.('credits')}
-            className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-subtle)]">
-            View credit details
-          </button>
-          {canTopup && (
-            <button type="button" onClick={() => onNavigate?.('topup')}
-              className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90">
-              Add credits
-            </button>
-          )}
-        </div>
+        </Card>
+      )}
 
-        <div className="mt-5 border-t border-[var(--border)] pt-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Recent payments</h3>
-            <button type="button" onClick={() => onNavigate?.('payments')}
-              className="text-xs font-semibold text-[var(--accent)] hover:underline">View payment history</button>
+      {view === 'payments' && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Payment history" subtitle="Verify whether credit and workspace payments were approved"
+            icon={Clock3} action={
+              <div className="flex flex-wrap items-center gap-2">
+                <select aria-label="Payment type" value={historyFilter}
+                  onChange={event => setHistoryFilter(event.target.value as 'topup' | 'all')}
+                  className="h-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 text-xs text-[var(--text-primary)]">
+                  <option value="topup">Top-up payments</option>
+                  <option value="all">All payments</option>
+                </select>
+                <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
+                  onClick={() => void refresh()}>Refresh</Button>
+              </div>
+            } />
+          {historyError && <p role="alert" className="mb-3 text-xs text-rose-600 dark:text-rose-300">{historyError}</p>}
+          <DataTable<PaymentRequest> bare resizable loading={historyLoading}
+            columns={[
+              { key: 'date', header: 'Date', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
+              { key: 'type', header: 'Type', cell: payment => payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose },
+              { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold tabular-nums">{formatMoney(payment.expectedAmount)}</span> },
+              { key: 'status', header: 'Status', cell: payment => (
+                <span className="inline-flex rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+                  {statuses[payment.status] || payment.status}
+                </span>
+              ) },
+            ]}
+            rows={displayedHistory} rowKey={payment => payment.id}
+            emptyMessage={historyError ? 'Payment history is unavailable.' : 'No matching payments on this page.'} />
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+            <p className="text-[11px] text-[var(--text-muted)]">Page {cursorStack.length} · up to 10 payments per page</p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" size="sm"
+                disabled={historyLoading || cursorStack.length <= 1}
+                onClick={() => {
+                  const previous = cursorStack.slice(0, -1);
+                  setCursorStack(previous);
+                  void loadHistory(previous[previous.length - 1]);
+                }}>Previous</Button>
+              <Button type="button" variant="secondary" size="sm"
+                disabled={historyLoading || !nextCursor}
+                onClick={() => {
+                  if (!nextCursor) return;
+                  setCursorStack(current => [...current, nextCursor]);
+                  void loadHistory(nextCursor);
+                }}>Next</Button>
+            </div>
           </div>
-          {recentPayments.length ? (
-            <ul className="mt-2 divide-y divide-[var(--border)]">
-              {recentPayments.slice(0, 3).map(payment => (
-                <li key={payment.id} className="flex flex-col gap-2 py-3 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                  <span className="min-w-0 flex-1 text-[var(--text-secondary)]">
-                    <span className="block font-medium text-[var(--text-primary)]">{payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose}</span>
-                    <span className="mt-0.5 block text-[11px] text-[var(--text-muted)]">{new Date(payment.submittedAt).toLocaleDateString('en-IN')}</span>
-                  </span>
-                  <span className="font-semibold tabular-nums text-[var(--text-primary)]">{formatMoney(payment.expectedAmount)}</span>
-                  <span className="w-fit rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-                    {statuses[payment.status] || payment.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="mt-3 text-xs text-[var(--text-muted)]">No payments have been recorded yet.</p>}
-        </div>
-      </Widget>
-    )}
-    {(view === 'credits' || view === 'topup') && <>
+          {historyFilter === 'topup' && <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+            Pagination follows all payments. Use Next to browse older requests.
+          </p>}
+        </Card>
+      )}
 
-    <Widget title="Organization credits & payments" subtitle="Check available usage credits, add credits, and track submitted payments." icon={Wallet}  padding="md" action={<div className="flex items-center gap-2"><button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>{canSubmit && <button type="button" onClick={() => { setShowForm(current => !current); setError(''); }} disabled={!canTopup} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-4 w-4" /> Top up</button>}</div>}>
-      <div className="grid grid-cols-12 gap-4 pt-2">
-        <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Available subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'} sub="Issued with your subscription, subject to expiry." icon={Wallet} iconBg="var(--accent-subtle)" iconColor="var(--accent)" />
-        <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Available top-up credits" value={overview ? sumBalance(topupCredits) : '—'} sub="Purchased credits added after payment approval." icon={ArrowDownToLine} iconBg="var(--accent-subtle)" iconColor="var(--accent)" />
-        <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Subscription period" value={overview?.activePeriod?.status || 'Not available'} sub={overview?.activePeriod?.endsAt ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}` : 'Your subscription billing details.'} icon={CreditCard} iconBg="#e0f2fe" iconColor="#0369a1" />
-      </div>
-      {overviewError && <p role="status" className="mt-3 text-xs text-amber-700">Credit ledger unavailable: {overviewError}. The figures below may use the separate legacy billing view.</p>}
-      {canSubmit && initialLoadComplete && !canTopup && <p role="status" className="mt-3 text-xs text-[var(--text-muted)]">Top-up submissions are unavailable until the billing ledger and payment review flow are enabled.</p>}
-      {!canSubmit && <p className="mt-3 text-xs text-slate-500">Top-up submission is available to organization owners, organization admins and billing admins with payment-submission permission.</p>}
-    </Widget>
-
-    {canTopup && (showForm || view === 'topup') && <Widget title="Request additional usage credits" subtitle="Pay by bank transfer or UPI outside this page, then upload proof. ₹1 paid provides ₹1 of usage credits; your subscription plan stays unchanged." icon={Plus}  padding="md">
-      <p className="mb-4 text-xs text-amber-700">Submitting proof does not add credits. A platform admin must verify and approve the payment.</p>
-      <form onSubmit={submit} className="space-y-4">
-        <div>
-          <p className="text-xs font-medium text-[var(--text-secondary)]">Choose an amount</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {TOPUP_PRESETS.map(value => <button key={value} type="button" aria-pressed={amount === String(value)}
-              onClick={() => { setAmount(String(value)); resetQuote(); }}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${amount === String(value)
-                ? 'border-[var(--accent)] bg-[var(--accent)] text-white'
-                : 'border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:border-[var(--accent)]'}`}>
-              ₹{value.toLocaleString('en-IN')}
-            </button>)}
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-xs font-medium text-[var(--text-secondary)]">Top-up amount (₹)
-            <input required value={amount} onChange={e => { setAmount(e.target.value); resetQuote(); }}
-              placeholder="1000.00" inputMode="decimal" className="mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-            <span className="mt-1 block text-[11px] font-normal text-slate-500">₹1 to ₹999,999.99, up to two decimal places.</span>
-          </label>
-          <label className="block text-xs font-medium text-[var(--text-secondary)]">Bank or UPI transaction reference
-            <input required value={reference} onChange={e => { setReference(e.target.value); setPaymentKey(newBillingIdempotencyKey()); setError(''); }}
-              placeholder="UTR or payment reference" className="mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]" />
-          </label>
-        </div>
-        <label className="block text-xs font-medium text-[var(--text-secondary)]">Payment receipt
-          <input required type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-            onChange={e => { setProof(e.target.files?.[0] || null); setPaymentKey(newBillingIdempotencyKey()); setError(''); }} className="mt-1 block w-full text-xs" />
-          <span className="mt-1 block text-[11px] font-normal text-slate-500">PDF, JPG, PNG or WEBP; maximum 10 MB.</span>
-        </label>
-        <label className="block text-xs font-medium text-[var(--text-secondary)]">Payment note (optional)
-          <textarea value={note} onChange={e => { setNote(e.target.value); setPaymentKey(newBillingIdempotencyKey()); }} maxLength={2000} rows={2}
-            className="mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]" />
-        </label>
-        {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
-        <div className="flex items-center justify-end gap-3">
-          <button type="button" onClick={() => { setShowForm(false); if (view === 'topup') onNavigate?.('credits'); }} disabled={busy} className="px-3 py-2 text-sm text-slate-500">Cancel</button>
-          <button type="submit" disabled={busy || Boolean(success)} className="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">
-            {busy ? 'Submitting…' : quote ? 'Retry payment submission' : 'Submit for verification'}
-          </button>
-        </div>
-      </form>
-    </Widget>}
-
-    </>}
-    {success && <Widget showHeader={false} padding="md" className="border-emerald-200 bg-emerald-50"><p role="status" className="text-xs font-medium text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />{success}</p></Widget>}
-    {view === 'payments' && <Widget title="Payment history" subtitle="Track top-up verification and other organization payments." icon={Clock3} accent="#64748b" padding="md" action={<select aria-label="Payment type" value={historyFilter} onChange={e => setHistoryFilter(e.target.value as 'topup' | 'all')} className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-primary)]">
-          <option value="topup">Top-up payments</option><option value="all">All payments</option>
-        </select>}>
-      {historyError && <p role="alert" className="mt-3 text-xs text-rose-700">{historyError}</p>}
-      <div className="mt-4">
-        <DataTable<PaymentRequest> bare resizable loading={historyLoading} columns={[
-          { key: 'date', header: 'Date', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
-          { key: 'type', header: 'Type', cell: payment => payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose },
-          { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold">{formatMoney(payment.expectedAmount)}</span> },
-          { key: 'status', header: 'Status', cell: payment => statuses[payment.status] || payment.status },
-        ]} rows={displayedHistory} rowKey={payment => payment.id} emptyMessage="No matching payments on this page." />
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="text-xs text-slate-500">Page {cursorStack.length} · up to 10 payments per page</span>
-        <div className="flex gap-2">
-          <button type="button" disabled={historyLoading || cursorStack.length <= 1} onClick={() => {
-            const previous = cursorStack.slice(0, -1); setCursorStack(previous); void loadHistory(previous[previous.length - 1]);
-          }} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] disabled:opacity-40">Previous</button>
-          <button type="button" disabled={historyLoading || !nextCursor} onClick={() => {
-            if (!nextCursor) return; setCursorStack(current => [...current, nextCursor]); void loadHistory(nextCursor);
-          }} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] disabled:opacity-40">Next</button>
-        </div>
-      </div>
-      {historyFilter === 'topup' && <p className="mt-2 text-[11px] text-slate-500">Pagination follows all payments. Some pages may have no top-ups; use Next to browse older requests.</p>}
-    </Widget>}
-  </div>;
+      {(view === 'plan' || view === 'payments') && can('billing.organization.read') && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Additional workspace billing" subtitle="Invoices, payment approval, and renewals"
+            icon={CreditCard} />
+          <WorkspaceAddonPurchases canSubmit={canSubmit} />
+        </Card>
+      )}
+    </div>
+  );
 }
