@@ -93,6 +93,8 @@ interface WorkspaceMemberAssignment {
   workspaceRole: string | null;
   assignmentStatus: string | null;
   roleSource: string | null;
+  /** Null inherits member grants; an array overrides features in this workspace only. */
+  featureFlags?: string[] | null;
 }
 
 function ProviderBadge({ provider }: { provider: string }) {
@@ -429,6 +431,9 @@ export default function SettingsView({
   const [staffRoleFilter, setStaffRoleFilter] = useState('');
   const [staffStatusFilter, setStaffStatusFilter] = useState('');
   const [accessSaving, setAccessSaving] = useState('');
+  const [workspaceFeatureEditor, setWorkspaceFeatureEditor] = useState<{
+    workspaceId: string; memberId: string; value: string[];
+  } | null>(null);
   const [orgAccessError, setOrgAccessError] = useState('');
   const loadOrganizationAccess = React.useCallback(async () => {
     const response = await apiFetch('/api/settings/organization/workspace-access');
@@ -449,6 +454,7 @@ export default function SettingsView({
   const updateOrgAccess = async (memberId: string, workspaceId: string, role: string) => {
     setAccessSaving(workspaceId);
     setOrgAccessError('');
+    setWorkspaceFeatureEditor(null);
     try {
       const response = await apiFetch(`/api/settings/organization/workspace-access/${encodeURIComponent(workspaceId)}/${encodeURIComponent(memberId)}`, {
         method: role ? 'PUT' : 'DELETE',
@@ -460,6 +466,28 @@ export default function SettingsView({
     } catch (error) {
       setOrgAccessError(error instanceof Error ? error.message : 'Could not update workspace access.');
     } finally { setAccessSaving(''); }
+  };
+
+  const saveWorkspaceFeatureAccess = async (memberId: string, workspaceId: string, keys: string[] | null) => {
+    setAccessSaving(workspaceId);
+    setOrgAccessError('');
+    try {
+      const response = await apiFetch(
+        `/api/settings/organization/workspace-access/${encodeURIComponent(workspaceId)}/${encodeURIComponent(memberId)}/features`,
+        keys === null ? { method: 'DELETE' } : {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ featureFlags: keys }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not update workspace features.');
+      await loadOrganizationAccess();
+      setWorkspaceFeatureEditor(null);
+    } catch (error) {
+      setOrgAccessError(error instanceof Error ? error.message : 'Could not update workspace features.');
+    } finally {
+      setAccessSaving('');
+    }
   };
 
   // One shared right-sidebar navigation flow. Switching related records replaces
@@ -1164,11 +1192,33 @@ export default function SettingsView({
                     {
                       key: 'role',
                       header: 'Role',
-                      cell: (member) => (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400">
-                          {member.role}
-                        </span>
-                      ),
+                      cell: member => {
+                        // One Role column. Display the selected workspace's role
+                        // when filtering by workspace; otherwise show the org role.
+                        const scoped = staffWorkspaceFilter
+                          ? orgAssignments[staffWorkspaceFilter]?.find(row => row.memberId === member.id)
+                          : workspaceMembers.find(row => row.memberId === member.id);
+                        if (!canReadOrgMembers && canManageWorkspaceMembers && scoped) {
+                          const assigned = scoped.assignmentStatus === 'Active';
+                          return <select aria-label={`Role for ${member.name || member.email}`}
+                            value={assigned ? scoped.workspaceRole || '' : ''}
+                            disabled={scoped.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.id}
+                            onChange={event => void updateWorkspaceMemberRole(scoped, event.target.value)}
+                            className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-primary)]">
+                            <option value="">No workspace access</option>
+                            <option value="Workspace Admin">Workspace Admin</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Member">Member</option>
+                            <option value="Viewer">Viewer</option>
+                          </select>;
+                        }
+                        const role = staffWorkspaceFilter
+                          ? scoped?.assignmentStatus === 'Active' ? scoped.workspaceRole : 'No access'
+                          : member.role;
+                        return <span className="inline-flex items-center rounded-lg bg-[var(--accent-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--accent)]">
+                          {role || 'No access'}
+                        </span>;
+                      },
                     },
                     {
                       key: 'access',
@@ -1239,33 +1289,6 @@ export default function SettingsView({
                     </div>,
                   });
                   if (!canReadOrgMembers) columns.splice(2);
-                  if (canManageWorkspaceMembers) columns.splice(canReadOrgMembers ? 2 : columns.length, 0, {
-                    key: 'workspaceRole',
-                    header: 'Workspace Role',
-                    cell: member => {
-                      const assignment = workspaceMembers.find(row => row.memberId === member.id);
-                      if (!assignment) return <span className="text-xs text-slate-400">No workspace access</span>;
-                      const assigned = assignment.assignmentStatus === 'Active';
-                      return (
-                        <div className="flex min-w-48 items-center gap-2">
-                          <select
-                            aria-label={`Workspace role for ${member.name || member.email || member.id}`}
-                            value={assigned ? assignment.workspaceRole || '' : ''}
-                            disabled={assignment.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.id}
-                            onChange={event => updateWorkspaceMemberRole(assignment, event.target.value)}
-                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-50"
-                          >
-                            <option value="">No workspace access</option>
-                            <option value="Workspace Admin">Workspace Admin</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Member">Member</option>
-                            <option value="Viewer">Viewer</option>
-                          </select>
-                          {savingWorkspaceMember === member.id && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-600" />}
-                        </div>
-                      );
-                    },
-                  });
                   return (
                     <DataTable
                       bare
@@ -1334,10 +1357,15 @@ export default function SettingsView({
                       ? workspaceFeatureAllowed.filter(key => workspaceKeys.has(key))
                       : [];
                     const workspaceAdmin = role === 'Workspace Admin';
-                    const individualKeys = new Set(accessMember.featureFlags || []);
+                    const override = assignment?.featureFlags ?? null;
+                    const individualKeys = new Set(override ?? accessMember.featureFlags ?? []);
                     const features = active && policy
-                      ? eligible.filter(key => orgKeys.has(key) && (workspaceAdmin || individualKeys.has(key)))
+                      ? eligible.filter(key => orgKeys.has(key) && ((workspaceAdmin && override === null) || individualKeys.has(key)))
                       : [];
+                    const editingFeatures = workspaceFeatureEditor?.workspaceId === workspace.id
+                      && workspaceFeatureEditor.memberId === accessMember.id;
+                    const canEditFeatures = canManageOrgMembers && !['Owner','Organization Admin','Super Admin'].includes(accessMember.role)
+                      && accessMember.status === 'Active' && workspace.status === 'Active';
                     return <div key={workspace.id} className="space-y-3 rounded-xl border border-[var(--border)] p-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -1353,7 +1381,37 @@ export default function SettingsView({
                         </select>
                       </div>
                       {active && <div className="border-t border-[var(--border)] pt-3">
-                        <p className="mb-2 text-[11px] font-semibold text-[var(--text-secondary)]">Available features ({features.length})</p>
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                            Feature access ({features.length}) · {override === null ? 'Inherited' : 'Custom for this workspace'}
+                          </p>
+                          {canEditFeatures && <div className="flex items-center gap-2">
+                            <Button type="button" size="sm" variant="secondary" disabled={Boolean(accessSaving)}
+                              onClick={() => setWorkspaceFeatureEditor(editingFeatures ? null : {
+                                workspaceId: workspace.id, memberId: accessMember.id, value: features,
+                              })}>{editingFeatures ? 'Cancel editing' : 'Manage features'}</Button>
+                            {override !== null && <Button type="button" size="sm" variant="ghost" disabled={Boolean(accessSaving)}
+                              onClick={() => void saveWorkspaceFeatureAccess(accessMember.id, workspace.id, null)}>
+                              Inherit grants
+                            </Button>}
+                          </div>}
+                        </div>
+                        {editingFeatures && <div className="mb-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
+                          <FeatureAccessSelector
+                            label={`Features in ${workspace.name}`}
+                            description="Only this member's features in this workspace are changed. Other workspaces keep their own settings."
+                            availableKeys={eligible}
+                            value={workspaceFeatureEditor.value}
+                            onChange={value => setWorkspaceFeatureEditor(current => current ? { ...current, value } : null)}
+                            disabled={Boolean(accessSaving)}
+                          />
+                          <div className="flex justify-end">
+                            <Button type="button" variant="primary" size="sm" loading={accessSaving === workspace.id}
+                              onClick={() => void saveWorkspaceFeatureAccess(accessMember.id, workspace.id, workspaceFeatureEditor.value)}>
+                              Save workspace features
+                            </Button>
+                          </div>
+                        </div>}
                         {workspaceFeatureLoading
                           ? <p className="text-xs text-[var(--text-muted)]">Loading feature grants…</p>
                           : !policy
@@ -1369,7 +1427,7 @@ export default function SettingsView({
                       </div>}
                     </div>;
                   })}
-                  <p className="text-[11px] text-[var(--text-muted)]">Feature access reflects organization grants, workspace feature policies, and staff grants. Changes to workspace roles save immediately; the backend protects the last workspace administrator.</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">Each workspace can have different feature grants for the same person. Inherited grants keep existing behavior; customized grants override this member's feature access only in the selected workspace. Organization and workspace policies remain upper limits. Workspace roles save immediately and the backend protects the last Workspace Admin.</p>
                 </div>
               </SlideOver>}
               {showOwnerTransfer && (
