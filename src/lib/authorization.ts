@@ -27,12 +27,12 @@ export function legacyAuthorization(role: string): Authorization {
   const manager = role === 'Manager' || role === 'Sales Manager';
   return { organizationRole: role,workspaceRole: orgAdmin || billingOnly ? null : workspaceAdmin ? 'Workspace Admin' : manager ? 'Manager' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
     permissions: ['notifications.read',
-      ...(!billingOnly && !orgAdmin ? ['workspace.read'] : []),
-      ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.write','workspace.call'] : []),
-      ...(!billingOnly && (workspaceAdmin || manager) ? ['workspace.members.manage'] : []),
-      ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.share.propose'] : []),
-      ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.share.copy'] : []),
-      ...(workspaceAdmin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
+      ...(!billingOnly ? ['workspace.read'] : []),
+      ...(!viewer && !billingOnly ? ['workspace.write','workspace.call'] : []),
+      ...(!billingOnly && (orgAdmin || workspaceAdmin || manager) ? ['workspace.members.manage'] : []),
+      ...(!viewer && !billingOnly ? ['workspace.share.propose'] : []),
+      ...(!viewer && !billingOnly ? ['workspace.share.copy'] : []),
+      ...(orgAdmin || workspaceAdmin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
       ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read','billing.organization.read','billing.payment.submit','billing.contacts.manage','billing.notifications.manage','billing.credit.allocate','billing.allocation_rules.manage','billing.postpaid.manage'] : []),
       ...(billingOnly ? ['organization.read','billing.read','billing.organization.read','billing.payment.submit'] : []),
     ] };
