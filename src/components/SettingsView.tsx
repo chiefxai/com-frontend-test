@@ -414,15 +414,9 @@ export default function SettingsView({
 
   const vobizChannel = connectedChannels.find((c) => c.type === 'vobiz');
 
-  // Org-level allowed feature flags (set by super admin at org creation)
-  const [orgAllowedFlags, setOrgAllowedFlags] = useState<string[]>([]);
-  useEffect(() => {
-    if (subTab !== 'team') return;
-    apiFetch('/api/settings/workspace')
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data?.featureFlags)) setOrgAllowedFlags(data.featureFlags); })
-      .catch(() => {});
-  }, [subTab]);
+  // Organization-level feature entitlements come from the organization
+  // catalog, never the currently selected workspace's effective grants.
+  const orgAllowedFlags = workspaceFeatureAllowed;
 
   // Team Member states
   const [newStaffName, setNewStaffName] = useState('');
@@ -1518,7 +1512,7 @@ export default function SettingsView({
                               Inherit grants
                             </Button>}
                           </div>}
-                                                {editingFeatures && <div className="mb-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
+                        {editingFeatures && <div className="mb-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
                           <FeatureAccessSelector
                             label={`Features in ${workspace.name}`}
                             description="Only this member's features in this workspace are changed. Other workspaces keep their own settings."
