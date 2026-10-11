@@ -438,6 +438,11 @@ export default function SettingsView({
   const roleWorkspaceId = staffWorkspaceFilter || currentWorkspaceId;
   const [staffRoleFilter, setStaffRoleFilter] = useState('');
   const [staffStatusFilter, setStaffStatusFilter] = useState('');
+  useEffect(() => {
+    // Avoid applying a previous workspace's role filter after switching.
+    setStaffWorkspaceFilter('');
+    setStaffRoleFilter('');
+  }, [currentWorkspaceId]);
   const [accessSaving, setAccessSaving] = useState('');
   const [workspaceFeatureEditor, setWorkspaceFeatureEditor] = useState<{
     workspaceId: string; memberId: string; value: string[];
@@ -458,7 +463,7 @@ export default function SettingsView({
   React.useEffect(() => {
     if (!['team','numbers','workspaces'].includes(subTab) || !canReadOrgMembers) return;
     void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Unable to load workspace access.'));
-  }, [subTab, canReadOrgMembers, loadOrganizationAccess]);
+  }, [subTab, canReadOrgMembers, loadOrganizationAccess, currentWorkspaceId]);
   const updateOrgAccess = async (memberId: string, workspaceId: string, role: string) => {
     setAccessSaving(workspaceId);
     setOrgAccessError('');
@@ -571,7 +576,7 @@ export default function SettingsView({
   useEffect(() => {
     if (subTab !== 'team' || !canManageWorkspaceMembers) return;
     loadWorkspaceMembers().catch(error => setWorkspaceMembersError(error.message || 'Could not load workspace role assignments'));
-  }, [subTab, canManageWorkspaceMembers, loadWorkspaceMembers]);
+  }, [subTab, canManageWorkspaceMembers, loadWorkspaceMembers, currentWorkspaceId]);
 
   const updateWorkspaceMemberRole = async (member: WorkspaceMemberAssignment, role: string) => {
     setSavingWorkspaceMember(member.memberId);
