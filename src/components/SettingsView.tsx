@@ -537,6 +537,7 @@ export default function SettingsView({
 
   const memberWorkspaceFeatures = (member: TeamMember, workspaceId: string) => {
     if (workspaceFeatureLoading || workspaceFeatureError || orgAccessError) return null;
+    if (!Object.prototype.hasOwnProperty.call(orgAssignments, workspaceId)) return null;
     const policy = workspaceFeatureRows.find(row => row.id === workspaceId);
     const assignment = orgAssignments[workspaceId]?.find(row => row.memberId === member.id);
     return effectiveWorkspaceMemberKeys(workspaceFeatureAllowed, policy, assignment, member.featureFlags);
@@ -577,6 +578,9 @@ export default function SettingsView({
     setSelectedWorkspaceDetails(null);
     setSelectedNumberDetails(null);
     setAccessMember(null);
+    setWorkspaceFeatureEditor(null);
+    setWorkspacePolicyEditor(null);
+    setWorkspacePolicySaveError('');
     setDetailHistory([]);
   };
   const backDetails = () => {
@@ -1287,7 +1291,7 @@ export default function SettingsView({
                         const effective = memberWorkspaceFeatures(member, roleWorkspaceId);
                         const workspaceName = orgWorkspaces.find(row => row.id === roleWorkspaceId)?.name || 'current workspace';
                         return (
-                          <button type="button" onClick={() => { setOrgAccessError(''); openMemberDetails(member); }}
+                          <button type="button" onClick={() => openMemberDetails(member)}
                             title={`View feature permissions for ${member.name || member.email} in ${workspaceName}`}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]">
                             <Flag aria-hidden="true" className="h-3 w-3" />
@@ -1400,7 +1404,18 @@ export default function SettingsView({
                 subtitle="Roles and feature grants are independent for each workspace." maxWidth="max-w-2xl">
                 <div className="space-y-3">
                   {orgAccessError && <p role="alert" className="text-xs text-rose-700">{orgAccessError}</p>}
-                  {workspaceFeatureError && <p role="alert" className="text-xs text-rose-700">Feature access unavailable: {workspaceFeatureError}</p>}
+                  {workspaceFeatureError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-xs text-rose-700">
+                    <span>Workspace feature policies unavailable: {workspaceFeatureError}</span>
+                    <Button type="button" size="sm" variant="secondary"
+                      disabled={workspaceFeatureLoading} onClick={() => void loadWorkspaceFeatures()}>
+                      Retry loading features
+                    </Button>
+                  </div>}
+                  {orgAccessError && <Button type="button" size="sm" variant="secondary"
+                    onClick={() => void loadOrganizationAccess().catch(error =>
+                      setOrgAccessError(error instanceof Error ? error.message : 'Could not load workspace access.'))}>
+                    Retry workspace access
+                  </Button>
                   {!orgWorkspaces.length && <p className="text-xs text-[var(--text-muted)]">No organization workspaces available.</p>}
                   {orgWorkspaces.map(workspace => {
                     const assignment = orgAssignments[workspace.id]?.find(row => row.memberId === accessMember.id);
