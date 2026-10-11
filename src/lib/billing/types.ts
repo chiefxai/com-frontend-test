@@ -13,6 +13,8 @@ export interface CursorPage<T> {
 export type BillingPeriodStatus = 'scheduled' | 'active' | 'ended' | 'cancelled';
 export type PaymentStatus = 'pending_verification' | 'needs_information' | 'approved' | 'rejected' | 'cancelled';
 export type GrantKind = 'subscription' | 'topup';
+/** Server-side payment history filter (applied before cursor pagination). */
+export type PaymentHistoryType = 'all' | 'topup' | 'workspace' | 'subscription' | 'invoice';
 
 export interface BillingPeriod {
   id: string;
@@ -32,6 +34,9 @@ export interface CreditBalance {
 export interface PaymentRequest {
   id: string;
   purpose: 'subscription' | 'topup' | 'invoice';
+  /** Workspace name is populated only when an invoice belongs to an add-on purchase. */
+  workspaceAddonName?: string | null;
+  invoiceId?: string | null;
   status: PaymentStatus;
   expectedAmount: BillingAmount;
   receivedAmount: BillingAmount | null;
