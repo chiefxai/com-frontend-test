@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:bundle": "node scripts/check-bundle-size.mjs"
   },
   "allowScripts": {
     "@firebase/util@1.15.3": true,
