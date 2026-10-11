@@ -79,7 +79,12 @@ describe('organization billing views', () => {
     });
     const receipt = new File(['proof'], 'receipt.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText(/Payment receipt/i), { target: { files: [receipt] } });
-    fireEvent.click(screen.getByRole('button', { name: 'Submit for verification' }));
+    // jsdom does not set the native file input's value after a synthetic FileList
+    // change, so submit the form directly to test React's receipt validation.
+    const submitButton = screen.getByRole('button', { name: 'Submit for verification' });
+    const form = submitButton.closest('form');
+    expect(form).not.toBeNull();
+    fireEvent.submit(form!);
     await waitFor(() => expect(mocks.submitPaymentWithProof).toHaveBeenCalledWith(
       expect.objectContaining({ purpose: 'topup', paymentReference: 'UTR-456' }),
       receipt, expect.objectContaining({ idempotencyKey: 'test-idempotency-key' }),
