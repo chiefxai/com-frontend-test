@@ -55,7 +55,17 @@ export interface OrgDetail {
   billingPeriodEnd: string | null;
   createdAt: string;
   settings: Record<string, unknown>;
-  counts: { leads: number; workflows: number; campaigns: number; members: number };
+  // Counts are scoped to this organization. Newer backends also report
+  // workspaces and AI voice agents; keep them optional during rollout so
+  // older servers display an unavailable marker rather than a false zero.
+  counts: {
+    leads: number;
+    workflows: number;
+    campaigns: number;
+    members: number;
+    workspaces?: number;
+    agents?: number;
+  };
   members: { id: string; name: string; email: string; role: string; status: string; hasAccount: boolean; createdAt: string }[];
   recentCalls: { id: string; callerNumber: string; agentName: string; durationSeconds: number; sentiment: string | null; recordingUrl: string | null; createdAt: string }[];
   recentActivity: { id: string; actorEmail: string | null; action: string; metadata: Record<string, unknown>; createdAt: string }[];
