@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Cpu, Phone, RefreshCw, RotateCcw, Settings2, Zap } from 'lucide-react';
+import { Cpu, Eye, Pencil, Phone, RefreshCw, RotateCcw, Settings2, Zap } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import Widget from '../components/ui/Widget';
-import { Card, CardHeader } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
+import StudioEntityCard from '../components/ui/StudioEntityCard';
+import Modal from '../components/ui/Modal';
 import KpiCard from '../components/ui/KpiCard';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -143,6 +144,7 @@ export default function CostPage() {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<{ key: string; mode: 'view' | 'edit' } | null>(null);
 
   const loadProviders = useCallback(async () => {
     setLoadingProviders(true);
@@ -303,20 +305,51 @@ export default function CostPage() {
     !(pairedGemini && (provider.key === GEMINI_LIVE_KEY || provider.key === GEMINI_POST_KEY))
     && isDirty(provider)).length + (geminiDirty ? 1 : 0);
 
-  const renderProvider = (provider: CostProvider) => (
-    <ProviderRow
-      key={provider.key}
-      provider={provider}
-      dirty={isDirty(provider)}
-      saving={savingKey === provider.key}
-      blocked={Boolean(savingKey)}
-      saved={savedKey === provider.key}
-      error={saveErrors[provider.key]}
-      onChange={patch => updateLocal(provider.key, patch)}
-      onReset={() => resetProvider(provider.key)}
-      onSave={() => void saveProvider(provider)}
-    />
-  );
+  const selectedProvider = selected?.key && selected.key !== GEMINI_SAVE_KEY
+    ? providers.find(provider => provider.key === selected.key) : undefined;
+  const selectedGemini = selected?.key === GEMINI_SAVE_KEY && geminiLive && geminiPost;
+
+  // Never silently discard pricing drafts or close while a save is pending.
+  const closeDetails = () => {
+    if (savingKey) return;
+    if (selected?.mode === 'edit') {
+      const dirty = selected.key === GEMINI_SAVE_KEY
+        ? geminiDirty : Boolean(selectedProvider && isDirty(selectedProvider));
+      if (dirty && !window.confirm('Discard unsaved provider pricing changes?')) return;
+      if (dirty) {
+        if (selected.key === GEMINI_SAVE_KEY) resetGemini();
+        else if (selectedProvider) resetProvider(selectedProvider.key);
+      }
+    }
+    setSelected(null);
+  };
+
+  const renderProviderCard = (provider: CostProvider) => {
+    const price = effectiveCost(provider);
+    return (
+      <StudioEntityCard key={provider.key} title={provider.label}
+        subtitle={provider.key} icon={provider.kind === 'call' ? Phone : Cpu}
+        badge={<Badge color={provider.active ? 'green' : 'slate'}>{provider.active ? 'Active' : 'Inactive'}</Badge>}
+        footer={
+          <>
+            <Button type="button" size="sm" variant="secondary" icon={Eye}
+              onClick={() => setSelected({ key: provider.key, mode: 'view' })}>View</Button>
+            <Button type="button" size="sm" variant="primary" icon={Pencil}
+              onClick={() => setSelected({ key: provider.key, mode: 'edit' })}>Edit</Button>
+          </>
+        }>
+        <div className="grid grid-cols-2 gap-2">
+          <PricingMetric label="Rate incl. tax" value={price.amount} />
+          <PricingMetric label="Billing unit" value={price.unit} />
+          <PricingMetric label="Tax" value={`${provider.taxPercent ?? 0}%`} />
+          <PricingMetric label="Pricing" value={provider.kind === 'call' ? 'Calling' : (provider.pricingMode === 'token' ? 'Tokens' : 'Time')} />
+        </div>
+        <p className="mt-auto text-[11px] text-[var(--text-muted)]">
+          {provider.kind === 'call' ? 'Telephony provider' : 'AI processing provider'}
+        </p>
+      </StudioEntityCard>
+    );
+  };
 
   return (
     <div className="grid grid-cols-12 items-start gap-4 md:gap-5">
@@ -333,27 +366,20 @@ export default function CostPage() {
         label="Provider rate entries" value={loadingProviders ? '—' : savedProviders.length}
         sub="Stored rate configurations" icon={Settings2} />
 
-      <Card padding="sm" className="col-span-12 sm:!px-5 sm:!py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)]">
-              <Settings2 className="h-[18px] w-[18px]" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Manage provider rates</h2>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
-                Configure calling and AI rates independently. Updates apply to future usage;
-                past billing keeps the rates recorded at the time.
-              </p>
-            </div>
-          </div>
+      <div className="col-span-12 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-2xl text-xs leading-5 text-[var(--text-secondary)]">
+            Browse the same compact cards used in Agent Studio. Choose <strong>View</strong> for full
+            rate details or <strong>Edit</strong> to update pricing. Saved changes affect future
+            usage; historical bills keep their original rates.
+          </p>
           {dirtyCount > 0 && (
-            <span role="status" className="shrink-0 rounded-lg border border-amber-300/60 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            <span role="status" className="rounded-lg border border-amber-300/60 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
               {dirtyCount} unsaved {dirtyCount === 1 ? 'configuration' : 'configurations'}
             </span>
           )}
         </div>
-      </Card>
+      </div>
 
       {loadingProviders ? (
         <Card padding="lg" className="col-span-12">
@@ -370,47 +396,144 @@ export default function CostPage() {
         </Card>
       ) : (
         <>
-          <Widget colSpan={6} span={{ xs: 12, lg: 6 }} title="Call providers"
-            subtitle="Phone and telephony billing rates" icon={Phone}
-            padding="md" bodyOverflow="visible" bodyClassName="space-y-3" className="!h-auto">
-            <section aria-label="Call provider pricing" className="space-y-3">
-              {callProviders.length > 0
-                ? callProviders.map(renderProvider)
-                : <EmptyState icon={Phone} heading="No call provider configured"
-                    message="Call providers are registered by the backend." />}
-            </section>
-          </Widget>
-
-          <Widget colSpan={6} span={{ xs: 12, lg: 6 }} title="AI providers"
-            subtitle="Voice and post-call processing rates" icon={Cpu}
-            padding="md" bodyOverflow="visible" bodyClassName="space-y-3" className="!h-auto">
-            <section aria-label="AI provider pricing" className="space-y-3">
-              {pairedGemini && geminiLive && geminiPost && (
-                <GeminiPricingCard
-                  live={geminiLive}
-                  post={geminiPost}
-                  dirty={geminiDirty}
-                  needsSync={geminiNeedsSync}
-                  saving={savingKey === GEMINI_SAVE_KEY}
-                  blocked={Boolean(savingKey)}
-                  saved={savedKey === GEMINI_SAVE_KEY}
-                  error={saveErrors[GEMINI_SAVE_KEY]}
-                  onSharedChange={updateGeminiShared}
-                  onPriceChange={updateLocal}
-                  onReset={resetGemini}
-                  onSave={() => void saveGemini()}
-                />
-              )}
-              {otherAiProviders.map(renderProvider)}
-              {!pairedGemini && otherAiProviders.length === 0
-                && <EmptyState icon={Cpu} heading="No AI provider configured"
-                     message="AI providers are registered by the backend." />}
-            </section>
-          </Widget>
+          <section aria-label="Call provider pricing" className="col-span-12 space-y-3">
+            <div className="flex items-center gap-2">
+              <Phone aria-hidden="true" className="h-4 w-4 text-[var(--accent)]" />
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Call providers</h2>
+              <span className="rounded-md bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">{callProviders.length}</span>
+            </div>
+            {callProviders.length ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {callProviders.map(renderProviderCard)}
+              </div>
+            ) : <EmptyState icon={Phone} heading="No call provider configured" message="Call providers are registered by the backend." />}
+          </section>
+          <section aria-label="AI provider pricing" className="col-span-12 space-y-3">
+            <div className="flex items-center gap-2">
+              <Cpu aria-hidden="true" className="h-4 w-4 text-[var(--accent)]" />
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">AI providers</h2>
+              <span className="rounded-md bg-[var(--bg-subtle)] px-2 py-0.5 text-[10px] text-[var(--text-muted)]">{otherAiProviders.length + (pairedGemini ? 1 : 0)}</span>
+            </div>
+            {(pairedGemini || otherAiProviders.length > 0) ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {pairedGemini && geminiLive && geminiPost && (
+                  <StudioEntityCard key={GEMINI_SAVE_KEY} title="Gemini AI" subtitle="Live Voice · Post-Call Agents"
+                    icon={Cpu} badge={<Badge color={geminiLive.active ? 'green' : 'slate'}>{geminiLive.active ? 'Active' : 'Inactive'}</Badge>}
+                    footer={
+                      <>
+                        <Button type="button" size="sm" variant="secondary" icon={Eye}
+                          onClick={() => setSelected({ key: GEMINI_SAVE_KEY, mode: 'view' })}>View</Button>
+                        <Button type="button" size="sm" variant="primary" icon={Pencil}
+                          onClick={() => setSelected({ key: GEMINI_SAVE_KEY, mode: 'edit' })}>Edit</Button>
+                      </>
+                    }>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PricingMetric label="Live Voice" value={effectiveCost(geminiLive).amount} />
+                      <PricingMetric label="Post-Call" value={effectiveCost(geminiPost).amount} />
+                      <PricingMetric label="Billing unit" value={effectiveCost(geminiLive).unit} />
+                      <PricingMetric label="Tax" value={`${geminiLive.taxPercent ?? 0}%`} />
+                    </div>
+                    <p className="mt-auto text-[11px] text-[var(--text-muted)]">Two model rates · shared billing settings</p>
+                  </StudioEntityCard>
+                )}
+                {otherAiProviders.map(renderProviderCard)}
+              </div>
+            ) : <EmptyState icon={Cpu} heading="No AI provider configured" message="AI providers are registered by the backend." />}
+          </section>
         </>
       )}
+
+      <Modal open={Boolean(selected)} onClose={closeDetails} maxWidth="max-w-2xl"
+        title={selected?.mode === 'view' ? 'Provider details' : 'Edit provider pricing'}
+        subtitle={selected?.key === GEMINI_SAVE_KEY ? 'Gemini AI · Live Voice and Post-Call Agents' : selectedProvider?.label}
+        footer={selected ? (
+          <>
+            <Button type="button" size="sm" variant="secondary" disabled={Boolean(savingKey)} onClick={closeDetails}>
+              Close
+            </Button>
+            {selected.mode === 'view' && (
+              <Button type="button" size="sm" variant="primary" icon={Pencil}
+                onClick={() => setSelected({ ...selected, mode: 'edit' })}>Edit pricing</Button>
+            )}
+          </>
+        ) : undefined}>
+        {selected?.mode === 'view' ? (
+          selectedGemini ? (
+            <div className="space-y-4">
+              <p className="text-xs leading-5 text-[var(--text-secondary)]">
+                Gemini uses two separate rates with shared tax, pricing basis and availability settings.
+                Effective rates below include configured tax.
+              </p>
+              <section className="rounded-xl border border-[var(--border)] p-4">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Live Voice</h3>
+                <PricingDetailRow label="Provider key" value={geminiLive!.key} />
+                <PricingDetailRow label="Base rate" value={formatInr(geminiLive!.pricingMode === 'token' ? geminiLive!.ratePer1kTokens ?? 0 : geminiLive!.timeRateAmount ?? 0)} />
+                <PricingDetailRow label="Rate including tax" value={`${effectiveCost(geminiLive!).amount} / ${effectiveCost(geminiLive!).unit}`} />
+              </section>
+              <section className="rounded-xl border border-[var(--border)] p-4">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Post-Call Agents</h3>
+                <PricingDetailRow label="Provider key" value={geminiPost!.key} />
+                <PricingDetailRow label="Base rate" value={formatInr(geminiPost!.pricingMode === 'token' ? geminiPost!.ratePer1kTokens ?? 0 : geminiPost!.timeRateAmount ?? 0)} />
+                <PricingDetailRow label="Rate including tax" value={`${effectiveCost(geminiPost!).amount} / ${effectiveCost(geminiPost!).unit}`} />
+              </section>
+              <section className="rounded-xl border border-[var(--border)] p-4">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Shared settings</h3>
+                <PricingDetailRow label="Pricing basis" value={geminiLive!.pricingMode === 'token' ? 'Token based' : 'Time based'} />
+                <PricingDetailRow label="Billing unit" value={effectiveCost(geminiLive!).unit} />
+                <PricingDetailRow label="Tax" value={`${geminiLive!.taxPercent ?? 0}%`} />
+                <PricingDetailRow label="Availability" value={geminiLive!.active ? 'Active' : 'Inactive'} />
+                {geminiLive!.updatedAt && <PricingDetailRow label="Last saved" value={new Date(geminiLive!.updatedAt).toLocaleString()} />}
+                {geminiNeedsSync && <p role="status" className="mt-3 text-xs text-amber-600">Previously saved Gemini settings differ; edit and save to synchronize.</p>}
+              </section>
+            </div>
+          ) : selectedProvider ? (
+            <div className="space-y-2 rounded-xl border border-[var(--border)] p-4">
+              <PricingDetailRow label="Provider" value={selectedProvider.label} />
+              <PricingDetailRow label="Provider key" value={selectedProvider.key} />
+              <PricingDetailRow label="Category" value={selectedProvider.kind === 'call' ? 'Telephony' : 'AI processing'} />
+              <PricingDetailRow label="Status" value={selectedProvider.active ? 'Active' : 'Inactive'} />
+              <PricingDetailRow label="Pricing basis" value={selectedProvider.kind === 'call' ? 'Call duration' : selectedProvider.pricingMode === 'token' ? 'Tokens' : 'Time'} />
+              <PricingDetailRow label="Base rate" value={formatInr(selectedProvider.kind === 'call' ? selectedProvider.rateAmount ?? 0 : selectedProvider.pricingMode === 'token' ? selectedProvider.ratePer1kTokens ?? 0 : selectedProvider.timeRateAmount ?? 0)} />
+              <PricingDetailRow label="Billing unit" value={effectiveCost(selectedProvider).unit} />
+              <PricingDetailRow label="Tax" value={`${selectedProvider.taxPercent ?? 0}%`} />
+              <PricingDetailRow label="Effective rate" value={`${effectiveCost(selectedProvider).amount} / ${effectiveCost(selectedProvider).unit}`} />
+              {selectedProvider.updatedAt && <PricingDetailRow label="Last saved" value={new Date(selectedProvider.updatedAt).toLocaleString()} />}
+            </div>
+          ) : <p className="text-xs text-[var(--text-muted)]">Provider is no longer available.</p>
+        ) : selectedGemini ? (
+          <GeminiPricingCard
+            live={geminiLive!} post={geminiPost!} dirty={geminiDirty} needsSync={geminiNeedsSync}
+            saving={savingKey === GEMINI_SAVE_KEY} blocked={Boolean(savingKey)}
+            saved={savedKey === GEMINI_SAVE_KEY} error={saveErrors[GEMINI_SAVE_KEY]}
+            onSharedChange={updateGeminiShared} onPriceChange={updateLocal}
+            onReset={resetGemini} onSave={() => void saveGemini()}
+          />
+        ) : selectedProvider ? (
+          <ProviderRow provider={selectedProvider} dirty={isDirty(selectedProvider)}
+            saving={savingKey === selectedProvider.key} blocked={Boolean(savingKey)}
+            saved={savedKey === selectedProvider.key} error={saveErrors[selectedProvider.key]}
+            onChange={patch => updateLocal(selectedProvider.key, patch)}
+            onReset={() => resetProvider(selectedProvider.key)}
+            onSave={() => void saveProvider(selectedProvider)}
+          />
+        ) : <p className="text-xs text-[var(--text-muted)]">Provider is no longer available.</p>}
+      </Modal>
     </div>
   );
+}
+
+function PricingMetric({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0 rounded-[9px] bg-[var(--bg-subtle)] p-2.5 text-center">
+    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+    <p className="mt-1 truncate text-xs font-bold tabular-nums text-[var(--text-primary)]" title={value}>{value}</p>
+  </div>;
+}
+
+function PricingDetailRow({ label, value }: { label: string; value: string }) {
+  return <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)]/60 py-2 text-xs last:border-0">
+    <span className="text-[var(--text-muted)]">{label}</span>
+    <span className="max-w-full break-words text-right font-semibold text-[var(--text-primary)]">{value}</span>
+  </div>;
 }
 
 /* Gemini is one form in the UI, with two distinct persisted model rates. */

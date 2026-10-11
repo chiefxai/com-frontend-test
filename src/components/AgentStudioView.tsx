@@ -10,6 +10,7 @@ import PageShell from './ui/PageShell';
 import AwsCreateLayout from './ui/AwsCreateLayout';
 import IconButton from './ui/IconButton';
 import ActionMenu from './ui/ActionMenu';
+import StudioEntityCard from './ui/StudioEntityCard';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -476,53 +477,35 @@ export default function AgentStudioView() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
               {agents.map(agent => (
-                <div
+                <StudioEntityCard
                   key={agent.id}
-                  className="relative flex flex-col rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] hover:border-indigo-300 hover:shadow-md transition-all group overflow-hidden"
+                  title={agent.name}
+                  icon={Bot}
+                  subtitle={<span className="flex items-center gap-1"><Mic aria-hidden="true" className="h-3 w-3" />{agent.activeVoice}</span>}
+                  badge={<span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${(agent.active ?? true)
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>
+                    {(agent.active ?? true) ? 'ACTIVE' : 'PAUSED'}
+                  </span>}
+                  actions={
+                    <ActionMenu
+                      tooltipLabel="Options"
+                      triggerIcon={MoreVertical}
+                      triggerVariant="ghost"
+                      loading={togglingId === agent.id || deletingId === agent.id}
+                      items={[
+                        {
+                          key: 'toggle',
+                          label: (agent.active ?? true) ? 'Disable Agent' : 'Enable Agent',
+                          icon: (agent.active ?? true) ? ToggleLeft : ToggleRight,
+                          onClick: () => handleToggleActive(agent),
+                        },
+                        { key: 'edit', label: 'Edit', icon: Edit2, onClick: () => openEdit(agent) },
+                        { key: 'delete', label: 'Delete', icon: Trash2, danger: true, onClick: () => handleDelete(agent.id) },
+                      ]}
+                    />
+                  }
                 >
-                  {/* Top accent bar */}
-                  <div className="h-1 w-full bg-gradient-to-r from-indigo-500 to-purple-500" />
-
-                  <div className="p-5 flex flex-col gap-4 flex-1">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-11 w-11 rounded-[9px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm">
-                          <Bot className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-bold text-slate-800 truncate leading-tight">{agent.name}</p>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                              (agent.active ?? true) ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--bg-subtle)] text-slate-400'
-                            }`}>
-                              {(agent.active ?? true) ? 'ACTIVE' : 'PAUSED'}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
-                            <Mic className="h-3 w-3" /> {agent.activeVoice}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="shrink-0">
-                        <ActionMenu
-                          tooltipLabel="Options"
-                          triggerIcon={MoreVertical}
-                          triggerVariant="ghost"
-                          loading={togglingId === agent.id || deletingId === agent.id}
-                          items={[
-                            {
-                              key: 'toggle',
-                              label: (agent.active ?? true) ? 'Disable Agent' : 'Enable Agent',
-                              icon: (agent.active ?? true) ? ToggleLeft : ToggleRight,
-                              onClick: () => handleToggleActive(agent),
-                            },
-                            { key: 'edit', label: 'Edit', icon: Edit2, onClick: () => openEdit(agent) },
-                            { key: 'delete', label: 'Delete', icon: Trash2, danger: true, onClick: () => handleDelete(agent.id) },
-                          ]}
-                        />
-                      </div>
-                    </div>
 
                     {/* Delivery sliders summary */}
                     <div className="grid grid-cols-3 gap-2">
@@ -577,8 +560,7 @@ export default function AgentStudioView() {
                         )
                       )}
                     </div>
-                  </div>
-                </div>
+                </StudioEntityCard>
               ))}
             </div>
           )}

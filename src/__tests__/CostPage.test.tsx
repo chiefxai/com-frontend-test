@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import CostPage from '../admin/CostPage';
 
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn() }));
@@ -36,15 +36,21 @@ describe('Platform Admin Providers & Pricing cards', () => {
     render(<CostPage />);
     expect(await screen.findByRole('region', { name: 'Call provider pricing' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'AI provider pricing' })).toBeInTheDocument();
-    expect(screen.getByText('Manage provider rates')).toBeInTheDocument();
+    expect(screen.getByText(/Browse the same compact cards used in Agent Studio/)).toBeInTheDocument();
     expect(screen.getByText('Vobiz')).toBeInTheDocument();
     expect(screen.getByText('Gemini AI')).toBeInTheDocument();
     expect(screen.getByText('Provider rate entries')).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Vobiz' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Gemini AI' })).toBeInTheDocument();
+    expect(within(screen.getByRole('article', { name: 'Vobiz' })).getByRole('button', { name: 'View' })).toBeInTheDocument();
+    expect(within(screen.getByRole('article', { name: 'Vobiz' })).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
   it('saves an edited call-provider rate using the existing endpoint', async () => {
     render(<CostPage />);
-    const rate = await screen.findByRole('spinbutton', { name: 'Rate (INR)' });
+    const card = await screen.findByRole('article', { name: 'Vobiz' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
+    const rate = screen.getByRole('spinbutton', { name: 'Rate (INR)' });
     fireEvent.change(rate, { target: { value: '3.75' } });
     expect(screen.getByText(/unsaved configuration/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -56,7 +62,9 @@ describe('Platform Admin Providers & Pricing cards', () => {
 
   it('saves both Gemini model rates via their existing sequential endpoints', async () => {
     render(<CostPage />);
-    const input = await screen.findByRole('spinbutton', { name: 'Gemini Live Voice price (INR)' });
+    const card = await screen.findByRole('article', { name: 'Gemini AI' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
+    const input = screen.getByRole('spinbutton', { name: 'Gemini Live Voice price (INR)' });
     fireEvent.change(input, { target: { value: '2.25' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Gemini' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith(
@@ -70,6 +78,44 @@ describe('Platform Admin Providers & Pricing cards', () => {
       '/api/platform/cost-providers/gemini',
       '/api/platform/cost-providers/gemini-postcall',
     ]);
+  });
+
+  it('opens full read-only provider details from View and lets users switch to Edit', async () => {
+    render(<CostPage />);
+    const card = await screen.findByRole('article', { name: 'Vobiz' });
+    fireEvent.click(within(card).getByRole('button', { name: 'View' }));
+    expect(screen.getByText('Provider details')).toBeInTheDocument();
+    expect(screen.getByText('Provider key')).toBeInTheDocument();
+    expect(screen.getByText('Effective rate')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit pricing' }));
+    expect(screen.getByRole('spinbutton', { name: 'Rate (INR)' })).toBeInTheDocument();
+  });
+
+  it('asks before discarding unsaved pricing changes in the editor', async () => {
+    render(<CostPage />);
+    const card = await screen.findByRole('article', { name: 'Vobiz' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
+    const input = screen.getByRole('spinbutton', { name: 'Rate (INR)' });
+    fireEvent.change(input, { target: { value: '9.25' } });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(confirm).toHaveBeenCalledWith('Discard unsaved provider pricing changes?');
+    expect(screen.getByRole('spinbutton', { name: 'Rate (INR)' })).toHaveValue(9.25);
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByText('Edit provider pricing')).not.toBeInTheDocument();
+    expect(within(card).getByText('₹2.36')).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+
+  it('shows both Gemini rate details in View without exposing editing inputs', async () => {
+    render(<CostPage />);
+    const card = await screen.findByRole('article', { name: 'Gemini AI' });
+    fireEvent.click(within(card).getByRole('button', { name: 'View' }));
+    expect(screen.getByText('Shared settings')).toBeInTheDocument();
+    expect(screen.getByText('Post-Call Agents')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
   it('can retry failed provider rate loading', async () => {
