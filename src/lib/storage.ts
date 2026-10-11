@@ -22,3 +22,20 @@ export const saveToStorage = <T>(key: string, value: T): void => {
     if (scoped) localStorage.setItem(scoped, JSON.stringify(value));
   } catch { /* Storage is optional; backend remains authoritative. */ }
 };
+
+/**
+ * Sign-out privacy cleanup: remove every workspace-local cache owned by this
+ * identity, including data from workspaces not currently selected.
+ * Shared theme preference is intentionally preserved.
+ */
+export function clearScopedStorageForUser(userId: string | null | undefined): void {
+  if (!userId) return;
+  const prefix = `chiefx_scoped:${encodeURIComponent(userId)}:`;
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(prefix)) localStorage.removeItem(key);
+    }
+  } catch { /* Storage is optional; sign-out must still be allowed. */ }
+  if (cacheScope?.startsWith(`${encodeURIComponent(userId)}:`)) cacheScope = null;
+}

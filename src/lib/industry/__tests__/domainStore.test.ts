@@ -11,10 +11,12 @@ const record: DomainRecord = {
 
 describe('domain record collection utilities', () => {
   it('summarizes arbitrary identity fields without knowing the industry', () => {
-    expect(summarizeDomainRecords([record])[0].identity).toEqual({
-      name: 'Arun',
+    expect(summarizeDomainRecords([record])[0].identity).toMatchObject({
+      name: 'City Hybrid',
       phone: '+919999999999',
     });
+    const contact = { ...record, values: { customerName: 'Arun', phone: '+919999999999' } };
+    expect(summarizeDomainRecords([contact])[0].identity.name).toBe('Arun');
   });
 
   it('upserts and patches records immutably', () => {

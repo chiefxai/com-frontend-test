@@ -762,7 +762,7 @@ export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinut
             </button>
           }
         >
-          <div className="w-full mt-1" className="min-h-[240px] h-[clamp(240px,32vw,300px)]">
+          <div className="w-full mt-1 min-h-[240px] h-[clamp(240px,32vw,300px)]">
             {campaignSuccessRate.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={campaignSuccessRate} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>

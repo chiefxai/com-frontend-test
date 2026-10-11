@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Cpu, Eye, Pencil, Phone, RefreshCw, RotateCcw, Settings2, Zap } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { Card } from '../components/ui/Card';
+import { Card, CardHeader } from '../components/ui/Card';
 import StudioEntityCard from '../components/ui/StudioEntityCard';
 import Modal from '../components/ui/Modal';
 import KpiCard from '../components/ui/KpiCard';

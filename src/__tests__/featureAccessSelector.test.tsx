@@ -28,7 +28,7 @@ function ControlledAccess({ keys = allowed, initial = [] }: { keys?: string[]; i
 }
 
 function openPicker() {
-  fireEvent.click(screen.getByRole('button', { name: /feature access.*select feature/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Feature Access /i }));
   return screen.getByRole('dialog', { name: 'Feature Access options' });
 }
 

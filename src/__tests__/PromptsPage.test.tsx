@@ -16,8 +16,8 @@ const voice = [
   { callType: 'OUTBOUND', prompt: validPrompt + ' Outbound', defaultPrompt: validPrompt + ' Outbound', isCustomized: false },
 ];
 const system = [
-  { id: 'sentiment', name: 'Sentiment analyst', description: 'Classifies calls', model: 'gemini', systemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', defaultSystemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', isCustomized: false, tools: [], runsOn: 'After a call' },
-  { id: 'summary', name: 'Summary agent', description: 'Writes notes', model: 'gemini', systemPrompt: 'Summarize.', defaultSystemPrompt: 'Summarize.', isCustomized: false, tools: [], runsOn: 'After a call' },
+  { id: 'sentiment-analyzer', name: 'Sentiment analyst', description: 'Classifies calls', model: 'gemini', systemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', defaultSystemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', isCustomized: false, tools: [], runsOn: 'After a call' },
+  { id: 'call-summarizer', name: 'Summary agent', description: 'Writes notes', model: 'gemini', systemPrompt: 'Summarize.', defaultSystemPrompt: 'Summarize.', isCustomized: false, tools: [], runsOn: 'After a call' },
 ];
 const catalog = {
   languages: [
@@ -34,8 +34,22 @@ const response = (body: unknown) => ({ ok: true, json: async () => body });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.apiFetch.mockImplementation(async (path: string) => path === '/api/platform/prompts/languages-dialects'
-    ? response(catalog) : response({ voice, system }));
+  mocks.apiFetch.mockImplementation(async (path: string, options?: { method?: string; body?: string }) => {
+    if (path === '/api/platform/prompts/languages-dialects') return response(catalog);
+    if (path.startsWith('/api/platform/prompts/voice/') && options?.method === 'PUT') {
+      const callType = path.split('/').pop();
+      const original = voice.find(item => item.callType === callType)!;
+      const body = JSON.parse(options.body || '{}');
+      return response({ ...original, prompt: body.prompt || original.defaultPrompt, isCustomized: Boolean(body.prompt) });
+    }
+    if (path.startsWith('/api/platform/prompts/system/') && options?.method === 'PUT') {
+      const id = path.split('/').pop();
+      const original = system.find(item => item.id === id)!;
+      const body = JSON.parse(options.body || '{}');
+      return response({ ...original, systemPrompt: body.systemPrompt || original.defaultSystemPrompt, isCustomized: Boolean(body.systemPrompt) });
+    }
+    return response({ voice, system });
+  });
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 

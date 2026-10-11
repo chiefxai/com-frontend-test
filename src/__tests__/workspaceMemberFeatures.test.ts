@@ -57,3 +57,16 @@ describe('per-workspace staff feature access', () => {
       { ...member, workspaceRole: 'Workspace Admin' }, [])).toEqual(['leads', 'reports']);
   });
 });
+
+describe('effective counts track the selected workspace', () => {
+  it('counts policy-constrained grants instead of organization defaults', () => {
+    const org = ['leads', 'reports', 'agent_studio'];
+    const a = { enabledFeatures: ['leads', 'reports'] };
+    const b = { enabledFeatures: ['reports', 'agent_studio'] };
+    const onA = { workspaceRole: 'Member', assignmentStatus: 'Active', featureFlags: ['leads'] };
+    const onB = { workspaceRole: 'Member', assignmentStatus: 'Active', featureFlags: ['reports', 'agent_studio'] };
+    expect(effectiveWorkspaceMemberKeys(org, a, onA, ['leads', 'reports'])?.length).toBe(1);
+    expect(effectiveWorkspaceMemberKeys(org, b, onB, ['leads'])?.length).toBe(2);
+    expect(effectiveWorkspaceMemberKeys(org, b, { ...onB, featureFlags: [] }, ['reports'])?.length).toBe(0);
+  });
+});

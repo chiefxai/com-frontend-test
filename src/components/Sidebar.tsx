@@ -327,7 +327,7 @@ export default function Sidebar({
   const allMenuItems = [
     { id: 'leads',        label: labels.lead.plural,             icon: UserPlus },
     { id: 'pipeline',     label: labels.pipeline.plural,          icon: Target },
-    { id: 'contacts',     label: isHealthcare ? 'Patients' : `${labels.contact.plural} Directory`, icon: Contact },
+    { id: 'contacts',     label: isHealthcare ? 'Patients' : `${labels.contact.singular} Directory`, icon: Contact },
     { id: 'workflows',    label: 'Workflow Builder',  icon: GitBranch },
     { id: 'call-logs',    label: 'Call Logs',         icon: History },
     { id: 'inbox',        label: 'Unified Inbox',     icon: Inbox },

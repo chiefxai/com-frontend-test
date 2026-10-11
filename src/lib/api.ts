@@ -5,6 +5,7 @@ import { getAuthorization, permissionForRequest } from './authorization';
 // token before each request.
 
 import { getSessionToken, getSessionTokenSync } from '../features/auth/session';
+import { resolveApiRequestUrl } from './apiRequestUrl';
 
 // ── Token access ─────────────────────────────────────────────────────────────
 
@@ -113,9 +114,9 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   // wrapper in main.tsx. This guarantees every apiFetch() call, including
   // /api/platform/whoami, goes to the configured backend with the Bearer
   // header attached.
-  const requestUrl = /^https?:\/\//i.test(url)
-    ? url
-    : `${getApiBase()}${url.startsWith('/') ? url : `/${url}`}`;
+  // Never forward a bearer token to an arbitrary absolute URL, even when
+  // a caller accidentally passes one instead of a relative API path.
+  const requestUrl = resolveApiRequestUrl(url, getApiBase(), window.location.origin);
 
   const access = getAuthorization();
   const permission = permissionForRequest(new URL(requestUrl,'http://local').pathname,(options.method || 'GET').toUpperCase());

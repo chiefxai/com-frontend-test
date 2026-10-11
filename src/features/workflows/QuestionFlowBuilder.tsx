@@ -110,7 +110,7 @@ function variablesToNodes(variables: WorkflowVariable[]): { nodes: QuestionFlowN
   }
 
   const { nodes: qNodes, edges: qEdges, height } = layoutVariables(variables, 250, 180, startId, endId);
-  const lastQ = qNodes.findLast?.(n => n.type === 'question') ?? qNodes[qNodes.length - 1];
+  const lastQ = qNodes.slice().reverse().find(n => n.type === 'question') ?? qNodes[qNodes.length - 1];
   const extraEdges: QuestionFlowEdge[] = [];
   if (lastQ && !qEdges.some(e => e.source === lastQ.id && e.target === endId)) {
     extraEdges.push({ id: uid('e'), source: lastQ.id, target: endId });

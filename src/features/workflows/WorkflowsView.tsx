@@ -459,7 +459,7 @@ export default function WorkflowsView({ flows, setFlows, openFlowId, onOpenFlow,
                   className="w-full h-full resize-none font-mono text-xs leading-relaxed outline-none border-0 bg-transparent"
                   style={{ color: 'var(--text-primary)', caretColor: '#d97706' }}
                   value={jsonStr}
-                  onChange={e => { setJsonEditText(e.target.value); setJsonError(null); }}
+                  onChange={e => { setJsonEditText(e.target.value); }}
                   spellCheck={false}
                 />
               </div>

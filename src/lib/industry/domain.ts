@@ -26,7 +26,7 @@ export interface IndustryDomainModel {
   relationships: Array<{
     from: string;
     to: string;
-    type: 'one_to_one' | 'one_to_many' | 'many_to_many';
+    type: 'one_to_one' | 'one_to_many' | 'many_to_one' | 'many_to_many';
     label?: string;
   }>;
 }
