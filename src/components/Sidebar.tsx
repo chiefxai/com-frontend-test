@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
 import SidebarFrame from './ui/SidebarFrame';
 import SidebarBrand from './ui/SidebarBrand';
+import CommonDropdown from './ui/CommonDropdown';
+import NotificationBell, { type AppNotification } from './NotificationBell';
 import ProfileMenu, { type ProfileMenuProps } from './ProfileMenu';
 import {
   LayoutDashboard,
@@ -39,7 +41,22 @@ import { TAB_TO_FLAG } from '../features/feature-flags/registry';
 import { useIndustry } from '../lib/industry';
 import type { IndustryProfile } from '../lib/industry/types';
 
+export interface WorkspaceOption {
+  orgId: string;
+  workspaceId?: string;
+  workspace?: { id: string; name: string; industry?: string; branchName?: string; status?: string };
+  role: string;
+  organization: { id: string; name: string; workspaceName: string; industry?: string; status?: string };
+}
+
 interface SidebarProps {
+  workspaces: WorkspaceOption[];
+  activeWorkspaceId: string;
+  workspaceName?: string;
+  onWorkspaceChange: (workspace: WorkspaceOption) => void;
+  notifications: AppNotification[];
+  onMarkAllNotificationsRead: () => void;
+  onClearNotifications: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   activeSubTab: string;
@@ -193,6 +210,13 @@ function GroupFlyout({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Sidebar({
+  workspaces,
+  activeWorkspaceId,
+  workspaceName,
+  onWorkspaceChange,
+  notifications,
+  onMarkAllNotificationsRead,
+  onClearNotifications,
   activeTab,
   setActiveTab,
   activeSubTab,
@@ -206,6 +230,10 @@ export default function Sidebar({
   accountRole,
   onLogout,
 }: SidebarProps) {
+  const selectedWorkspace = workspaces.find(row => (row.workspaceId || row.orgId) === activeWorkspaceId);
+  const currentWorkspaceName = selectedWorkspace?.workspace?.name
+    || selectedWorkspace?.organization.workspaceName
+    || workspaceName || organizationName || 'Workspaces';
   const industryContext = useIndustry({ industry, businessType });
   const { can } = useAuthorization();
   const isAdmin = can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
@@ -462,12 +490,83 @@ export default function Sidebar({
         <SidebarBrand
           collapsed={collapsed}
           onToggle={toggleCollapsed}
-          title="Chief Voice"
+          title="ChiefVoice"
           subtitle={organizationName || 'Organization'}
           navId="organization-nav"
         />
 
       {/* Navigation */}
+
+        {/* Keep the workspace selector with navigation, just like the admin shell. */}
+        <div className={collapsed ? 'shrink-0 px-2 pb-2' : 'shrink-0 px-3 pb-2'}>
+          {!collapsed && (
+            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Current workspace
+            </p>
+          )}
+          <CommonDropdown
+            className="w-full [&>button]:w-full"
+            trigger={(
+              <span
+                className={`flex h-11 w-full items-center rounded-xl text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${collapsed ? 'justify-center' : 'gap-3 px-3'}`}
+                title={collapsed ? currentWorkspaceName : undefined}
+              >
+                <Building2 aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
+                {collapsed ? <span className="sr-only">Switch workspace</span> : (
+                  <>
+                    <span className="min-w-0 flex-1 truncate text-left">{currentWorkspaceName}</span>
+                    <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+                  </>
+                )}
+              </span>
+            )}
+            align="left"
+            side="bottom"
+            width="min(18rem, calc(100vw - 16px))"
+            maxHeight="min(70vh, 420px)"
+            closeOnSelect
+            contentClassName="p-1"
+          >
+            <div className="border-b border-[var(--border)] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Your Workspaces
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {workspaces.map(workspace => {
+                const id = workspace.workspaceId || workspace.orgId;
+                const active = id === activeWorkspaceId;
+                const unavailable = workspace.organization.status === 'Suspended'
+                  || (workspace.workspace?.status && workspace.workspace.status !== 'Active');
+                const workspaceIndustry = workspace.workspace?.industry || workspace.organization.industry;
+                const industryLabel = workspaceIndustry?.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="menuitem"
+                    disabled={Boolean(unavailable)}
+                    aria-current={active ? 'true' : undefined}
+                    onClick={() => { if (!active) onWorkspaceChange(workspace); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-emerald-500' : 'bg-[var(--text-muted)]'}`} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold text-[var(--text-primary)]">
+                        {workspace.workspace?.name || workspace.organization.workspaceName}
+                      </span>
+                      {unavailable && <span className="block truncate text-[10px] text-[var(--text-muted)]">Unavailable</span>}
+                      {industryLabel && <span className="block truncate text-[10px] text-[var(--text-muted)]">{industryLabel}</span>}
+                    </span>
+                    {active && <span className="text-[9px] font-bold text-[var(--accent)]">ACTIVE</span>}
+                  </button>
+                );
+              })}
+              {!workspaces.length && (
+                <div className="px-3 py-3 text-xs text-[var(--text-muted)]">No workspaces found.</div>
+              )}
+            </div>
+          </CommonDropdown>
+        </div>
+
       <nav id="organization-nav" aria-label="Organization navigation"
         className={`min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-3 ${collapsed ? 'px-2' : 'px-3'}`}>
         {!collapsed && <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
@@ -604,7 +703,7 @@ export default function Sidebar({
             Organization workspace
           </p>
         )}
-        <div className={`flex items-center gap-2 rounded-xl ${collapsed ? 'justify-center' : 'px-1'}`}>
+        <div className={`flex rounded-xl ${collapsed ? 'flex-col-reverse items-center gap-1' : 'items-center gap-2 px-1'}`}>
           <ProfileMenu
             kcUser={accountUser}
             dbRole={accountRole}
@@ -619,6 +718,12 @@ export default function Sidebar({
               <p className="truncate text-[10px] text-[var(--text-muted)]">{accountRole || 'Account & appearance'}</p>
             </div>
           )}
+          <NotificationBell
+            placement="sidebar"
+            notifications={notifications}
+            onMarkAllRead={onMarkAllNotificationsRead}
+            onClear={onClearNotifications}
+          />
         </div>
       </div>
       </SidebarFrame>

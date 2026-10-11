@@ -41,7 +41,7 @@ const EMPTY_ORG_SETTINGS: OrganizationSettings = {
 
 // UI components imports
 import { useTheme } from './shared/theme/ThemeContext';
-import Sidebar from './components/Sidebar';
+import Sidebar, { type WorkspaceOption } from './components/Sidebar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import DashboardView from './features/dashboard';
 import WorkflowsView from './features/workflows/WorkflowsView';
@@ -64,10 +64,8 @@ import ComplianceView from './components/ComplianceView';
 import KnowledgeBaseView from './components/KnowledgeBaseView';
 import AuditLogView from './components/AuditLogView';
 import EnquiriesView from './components/EnquiriesView';
-import NotificationBell, { AppNotification } from './components/NotificationBell';
+import type { AppNotification } from './components/NotificationBell';
 
-import { Building2, ChevronDown } from 'lucide-react';
-import CommonDropdown from './components/ui/CommonDropdown';
 
 // Debounced sync: collapses multiple rapid state changes into one POST.
 // Without this, setting 8 state vars at load triggers 8 simultaneous syncs.
@@ -218,13 +216,7 @@ export default function App() {
   const [orgSettings, setOrgSettings] = useState<OrganizationSettings>(() =>
     loadFromStorage<OrganizationSettings>('chiefx_org', EMPTY_ORG_SETTINGS)
   );
-  const [workspaces, setWorkspaces] = useState<Array<{
-    orgId: string;
-    workspaceId?: string;
-    workspace?: { id: string; name: string; industry?: string; branchName?: string; status?: string };
-    role: string;
-    organization: { id: string; name: string; workspaceName: string; industry?: string; status?: string };
-  }>>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [multipleWorkspacesEnabled, setMultipleWorkspacesEnabled] = useState(false);
   const [workspaceSharingEnabled, setWorkspaceSharingEnabled] = useState(false);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
@@ -1012,10 +1004,25 @@ export default function App() {
         accountUser={kcUser}
         accountRole={dbRole}
         onLogout={logout}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId || orgSettings.id}
+        workspaceName={orgSettings.workspaceName}
+        onWorkspaceChange={workspace => {
+          const workspaceId = workspace.workspaceId || workspace.orgId;
+          sessionStorage.setItem('chiefx_active_org_id', workspace.orgId);
+          sessionStorage.setItem('chiefx_active_workspace_id', workspaceId);
+          localStorage.setItem('chiefx_active_org_id', workspace.orgId);
+          localStorage.setItem('chiefx_active_workspace_id', workspaceId);
+          setActiveWorkspaceId(workspaceId);
+          window.location.reload();
+        }}
+        notifications={notifications}
+        onMarkAllNotificationsRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+        onClearNotifications={() => setNotifications([])}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}
-      <main className="relative isolate z-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-[var(--bg-base)]">
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-[var(--bg-base)]">
         {can('workspace.read') && !can('workspace.write') && <div className="px-6 py-2 text-sm bg-slate-100 text-slate-600">Viewer access: workspace data is read-only.</div>}
         {liveCallBanner && (
           <div className="absolute top-0 left-0 right-0 z-50 bg-emerald-600 text-white text-xs font-semibold px-4 py-2 flex items-center justify-center gap-2 animate-pulse">
@@ -1023,79 +1030,11 @@ export default function App() {
             {liveCallBanner.message}
           </div>
         )}
-        {/* Global Floating Header */}
-        <header className="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between gap-4 px-5 md:px-8 shrink-0 relative z-50">
-          <CommonDropdown
-            trigger={(
-              <span className="flex h-10 max-w-[min(20rem,60vw)] items-center gap-2 rounded-lg border px-3 text-left transition-colors hover:bg-[var(--bg-subtle)]" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface)' }}>
-                <Building2 className="h-4 w-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
-                <span className="min-w-0 truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {workspaces.find(row => (row.workspaceId || row.orgId) === (activeWorkspaceId || orgSettings.id))?.workspace?.name || orgSettings.workspaceName || orgSettings.name || 'Workspaces'}
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
-              </span>
-            )}
-            align="left"
-            side="bottom"
-            width="min(18rem, calc(100vw - 16px))"
-            maxHeight="min(70vh, 420px)"
-            closeOnSelect
-            contentClassName="p-1"
-          >
-            <div className="border-b px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>Your Workspaces</div>
-            <div className="max-h-64 overflow-y-auto">
-              {workspaces.map(workspace => {
-                const workspaceId = workspace.workspaceId || workspace.orgId;
-                const active = workspaceId === (activeWorkspaceId || orgSettings.id);
-                const unavailable = workspace.organization.status === 'Suspended' || (workspace.workspace?.status && workspace.workspace.status !== 'Active');
-                const industry = workspace.workspace?.industry || workspace.organization.industry;
-                const industryLabel = industry?.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
-                return (
-                  <button
-                    key={workspaceId}
-                    disabled={Boolean(unavailable)}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      if (!active) {
-                        sessionStorage.setItem('chiefx_active_org_id', workspace.orgId);
-                        sessionStorage.setItem('chiefx_active_workspace_id', workspaceId);
-                        localStorage.setItem('chiefx_active_org_id', workspace.orgId);
-                        localStorage.setItem('chiefx_active_workspace_id', workspaceId);
-                        setActiveWorkspaceId(workspaceId);
-                        window.location.reload();
-                      }
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-subtle)]"
-                  >
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-cyan-400' : 'bg-slate-500'}`} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{workspace.workspace?.name || workspace.organization.workspaceName}</span>
-                      {unavailable && <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>Unavailable</span>}
-                      {industryLabel && <span className="block truncate text-[10px]" style={{ color: 'var(--text-muted)' }}>{industryLabel}</span>}
-                    </span>
-                    {active && <span className="text-[9px] font-bold" style={{ color: 'var(--accent)' }}>ACTIVE</span>}
-                  </button>
-                );
-              })}
-              {!workspaces.length && <div className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>No workspaces found.</div>}
-            </div>
-          </CommonDropdown>
-
-          <div className="flex items-center space-x-3">
-            <NotificationBell
-              notifications={notifications}
-              onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-              onClear={() => setNotifications([])}
-            />
-          </div>
-        </header>
-
         {/* Selected view — 12-col grid host */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           <RefreshProvider onRefresh={refreshData}>
             <PageHeaderProvider>
-              <PageHeaderBar />
+              <PageHeaderBar integrated />
               <div className="flex-1 overflow-hidden flex flex-col min-h-0 relative">
                 {visitedTabsForRender.map(tab => (
                   <div
