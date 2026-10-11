@@ -10,21 +10,24 @@ interface SearchInputProps {
 
 export default function SearchInput({ value, onChange, placeholder = 'Search…', className = '' }: SearchInputProps) {
   return (
-    <div className={`relative flex items-center ${className}`}>
-      <Search className="absolute left-3 h-3.5 w-3.5 text-[var(--text-muted)] pointer-events-none" />
+    <div className={`relative flex w-full min-w-0 items-center ${className}`}>
+      <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 h-4 w-4 text-[var(--text-muted)]" />
       <input
-        type="text"
+        type="search"
+        aria-label={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-8.5 pr-7 py-1.5 text-sm rounded-[9px] border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-slate-400 dark:placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]/20 focus:border-[var(--brand-blue)] transition-all"
+        className="h-10 w-full min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] pl-10 pr-10 text-[13px] text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] hover:border-[var(--text-muted)]/50 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] [&::-webkit-search-cancel-button]:hidden"
       />
       {value && (
         <button
+          type="button"
+          aria-label="Clear search"
           onClick={() => onChange('')}
-          className="absolute right-2 p-0.5 text-slate-400 hover:text-slate-600 dark:text-[var(--text-muted)] dark:hover:text-[var(--text-primary)] rounded"
+          className="absolute right-2 flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
         >
-          <X className="h-3 w-3" />
+          <X aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
