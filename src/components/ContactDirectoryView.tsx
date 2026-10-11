@@ -358,7 +358,7 @@ export default function ContactDirectoryView({
           ? { ...draftLead, id: created.id }
           : created;
         if (primaryObjectKey && setDomainRecords) {
-          setDomainRecords((records) => [{ id: newLead.id, objectKey: primaryObjectKey, stageKey: null, values: body, createdAt: newLead.createdAt }, ...records]);
+          setDomainRecords((records) => [{ id: newLead.id, objectKey: primaryObjectKey, stageKey: null, values: { ...body }, createdAt: newLead.createdAt }, ...records]);
         } else {
           setLeads([newLead, ...leads]);
         }

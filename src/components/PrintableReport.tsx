@@ -14,6 +14,7 @@ interface DialTaskCallResult {
   intent: string;
   summary: string;
   recordingUrl?: string;
+  conversationOutcome?: CallLog['conversationOutcome'];
 }
 
 interface DialTask {

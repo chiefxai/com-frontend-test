@@ -6,12 +6,13 @@ import Widget from './ui/Widget';
 import Modal from './ui/Modal';
 import ActionMenu from './ui/ActionMenu';
 import type { IndustryProfile } from '../lib/industry';
+import type { DomainFieldType } from '../lib/industry/domain';
 
 interface ObjectField {
   id: string;
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'currency' | 'date' | 'boolean' | 'select' | 'phone' | 'email';
+  type: DomainFieldType | 'textarea';
   options: string[];
   required: boolean;
 }
