@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, Building2, Cloud, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw, Bot } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { fetchPlatformOrgDetail } from '../lib/platformOrgDetail';
+import LoadingState from '../components/ui/LoadingIndicator';
 import { OrgDetail } from './types';
 import { callCostInr, formatInr } from '../lib/pricing';
 import SlideOver from '../components/ui/SlideOver';
@@ -28,6 +30,9 @@ function DetailField({ label, children }: { label: string; children: React.React
 export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: string; onClose: () => void; onChanged: () => void }) {
   const [detail, setDetail] = useState<OrgDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  // Ignore requests that resolve after another organization was selected.
+  const detailRequestSequence = useRef(0);
   const [editing, setEditing] = useState(false);
   const [activeSection, setActiveSection] = useState<DetailSection>('overview');
   const [editForm, setEditForm] = useState({ name: '', workspaceName: '', industry: '', subscriptionPlan: '', aiMinutesLimit: '', billingMethod: 'pay_as_you_go', chargeScope: 'ai_only' });
@@ -148,23 +153,33 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   };
 
   const load = () => {
+    const requestSequence = ++detailRequestSequence.current;
     setLoading(true);
-    apiFetch(`/api/platform/organizations/${orgId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setDetail(d);
+    setDetailError(null);
+    void fetchPlatformOrgDetail(orgId)
+      .then((data) => {
+        if (detailRequestSequence.current !== requestSequence) return;
+        setDetail(data);
         setEditForm({
-          name: d.name || '',
-          workspaceName: d.workspaceName || '',
-          industry: d.industry || '',
-          subscriptionPlan: d.subscriptionPlan || '',
-          aiMinutesLimit: d.aiMinutesLimit != null ? String(d.aiMinutesLimit) : '',
-          billingMethod: d.billingMethod || 'pay_as_you_go',
-          chargeScope: d.chargeScope || 'ai_only'
+          name: data.name || '',
+          workspaceName: data.workspaceName || '',
+          industry: data.industry || '',
+          subscriptionPlan: data.subscriptionPlan || '',
+          aiMinutesLimit: data.aiMinutesLimit != null ? String(data.aiMinutesLimit) : '',
+          billingMethod: data.billingMethod || 'pay_as_you_go',
+          chargeScope: data.chargeScope || 'ai_only',
         });
       })
-      .catch(error => setActionError(error instanceof Error ? error.message : 'Unable to load organization details.'))
-      .finally(() => setLoading(false));
+      .catch(error => {
+        if (detailRequestSequence.current !== requestSequence) return;
+        // A failed request must never leave stale editable organization data.
+        setDetail(null);
+        setEditing(false);
+        setDetailError(error instanceof Error ? error.message : 'Unable to load organization details.');
+      })
+      .finally(() => {
+        if (detailRequestSequence.current === requestSequence) setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -178,6 +193,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     loadFlags();
     loadNumbers();
     loadGcpProject();
+    return () => { detailRequestSequence.current += 1; };
   }, [orgId]);
 
   const handleSaveEdit = async () => {
@@ -260,7 +276,24 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     <SlideOver open onClose={onClose} title="Organization details">
       <div className="-mx-6 -my-5 flex min-h-full flex-col bg-[var(--bg-surface)] text-[var(--text-primary)]">
         {!detail ? (
-          <div className="flex items-center justify-center h-64 text-[var(--text-muted)]"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…</div>
+          loading ? (
+            <LoadingState variant="section" label="Loading organization details…" description="Fetching the selected organization's information." />
+          ) : (
+            <div className="flex min-h-64 flex-col items-center justify-center gap-4 p-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600">
+                <Ban className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="max-w-sm space-y-1.5">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Organization details unavailable</h3>
+                <p role="alert" className="text-xs leading-5 text-[var(--text-secondary)]">
+                  {detailError || 'The organization details could not be loaded.'}
+                </p>
+              </div>
+              <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={load}>
+                Retry loading details
+              </Button>
+            </div>
+          )
         ) : (
           <>
             <header className="sticky -top-5 z-30 border-b border-[var(--border)] bg-[var(--bg-surface)] px-4 pt-4 shadow-sm sm:px-6">
@@ -323,10 +356,10 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {([
-                  ['Members', detail.counts.members, Users],
-                  ['Workspaces', detail.counts.workspaces ?? '—', Building2],
-                  ['Workflows', detail.counts.workflows, Settings2],
-                  ['AI Agents', detail.counts.agents ?? '—', Bot],
+                  ['Members', detail.counts?.members ?? '—', Users],
+                  ['Workspaces', detail.counts?.workspaces ?? '—', Building2],
+                  ['Workflows', detail.counts?.workflows ?? '—', Settings2],
+                  ['AI Agents', detail.counts?.agents ?? '—', Bot],
                 ] as const).map(([label, count, Icon]) => (
                   <Card key={label} padding="sm" className="min-w-0">
                     <div className="flex items-center gap-2 text-[var(--text-muted)]">

@@ -55,14 +55,13 @@ export interface OrgDetail {
   billingPeriodEnd: string | null;
   createdAt: string;
   settings: Record<string, unknown>;
-  // Counts are scoped to this organization. Newer backends also report
-  // workspaces and AI voice agents; keep them optional during rollout so
-  // older servers display an unavailable marker rather than a false zero.
-  counts: {
-    leads: number;
-    workflows: number;
-    campaigns: number;
-    members: number;
+  // A successful but partially populated backend response may omit counts.
+  // Missing values are unavailable, not zero. The UI displays "—".
+  counts?: {
+    leads?: number;
+    workflows?: number;
+    campaigns?: number;
+    members?: number;
     workspaces?: number;
     agents?: number;
   };
