@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, ArrowDownToLine, Clock3, CreditCard, FileText, PhoneCall, Plus, ReceiptText, Wallet } from 'lucide-react';
+import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet } from 'lucide-react';
 import Widget from '../ui/Widget';
 import KpiCard from '../ui/KpiCard';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
