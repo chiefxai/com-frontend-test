@@ -341,37 +341,65 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
               <OrganizationWorkspaceSetup key={orgId} orgId={orgId} />
 
               <div className={PANEL_CLASS}>
-                <CardHeader title="Billing" subtitle="Current billing method and charges" icon={CreditCard} accent="#0d9488" />
-                <div className="flex items-center justify-between text-sm mb-2"><span className="text-[var(--text-secondary)]">Method</span><span className="font-semibold text-[var(--text-primary)]">{detail.billingMethod === 'recharge_based' ? 'Recharge based' : 'Pay as you go'}</span></div>
-                <div className="flex items-center justify-between text-sm mb-2"><span className="text-[var(--text-secondary)]">Charge scope</span><span className="font-semibold text-[var(--text-primary)]">{detail.chargeScope === 'ai_and_call_provider' ? 'AI + Call Provider' : 'AI only'}</span></div>
+                <CardHeader title="Billing" subtitle="How this organization is charged and what it has spent" icon={CreditCard} accent="#2563eb" />
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 px-3.5 py-3">
+                    <p className="text-[11px] font-medium text-[var(--text-muted)]">Billing method</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                      {detail.billingMethod === 'recharge_based' ? 'Prepaid / recharge' : 'Pay as you go'}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                      {detail.billingMethod === 'recharge_based' ? 'Call charges use an available prepaid balance.' : 'Usage is billed as charges are recorded.'}
+                    </p>
+                  </div>
+                  <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 px-3.5 py-3">
+                    <p className="text-[11px] font-medium text-[var(--text-muted)]">Charge scope</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+                      {detail.chargeScope === 'ai_and_call_provider' ? 'AI + phone provider' : 'AI only'}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-secondary)]">
+                      {detail.chargeScope === 'ai_and_call_provider' ? 'Includes AI processing and phone-provider costs.' : 'Only AI usage is charged by the platform.'}
+                    </p>
+                  </div>
+                </div>
                 {detail.billingMethod === 'recharge_based' && (
-                  <>
-                    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">Available balance</div>
-                          <div className="mt-1 text-2xl font-bold text-emerald-950">₹{Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0).toFixed(2)}</div>
-                        </div>
-                        <div className="rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">Recharge</div>
+                  <div className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3.5 sm:p-4">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium text-[var(--text-secondary)]">Available prepaid balance</p>
+                        <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-[var(--text-primary)]">
+                          {formatInr(Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0))}
+                        </p>
                       </div>
-                      <div className="mt-2 text-[10px] text-[var(--text-secondary)]">
-                        {Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0) > 0
-                          ? 'Calls can use this prepaid balance.'
-                          : 'No available balance. Calls should remain blocked until the organization is recharged.'}
-                      </div>
+                      <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">
+                        Shared organization balance
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        placeholder="Recharge amount"
-                        value={rechargeAmount}
-                        onChange={(e) => setRechargeAmount(e.target.value)}
-                        disabled={rechargeBusy}
-                        className={FIELD_CLASS + " flex-1"}
-                      />
-                      <button
+                    <p className="text-xs leading-5 text-[var(--text-muted)]">
+                      {Number(detail.rechargeAvailableInr ?? detail.rechargeBalanceInr ?? 0) > 0
+                        ? 'Available balance can be used for calls. Active call reservations are already excluded.'
+                        : 'No available balance. Calls may be blocked until the balance is replenished.'}
+                    </p>
+                    <div className="border-t border-[var(--border)] pt-3">
+                      <h5 className="text-xs font-semibold text-[var(--text-primary)]">Add prepaid balance</h5>
+                      <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">
+                        Platform adjustment: funds are credited immediately, without a payment-review request.
+                      </p>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <label className="block min-w-0 flex-1 text-xs font-medium text-[var(--text-secondary)]">
+                          Amount (INR)
+                          <input
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            placeholder="e.g. 1000"
+                            value={rechargeAmount}
+                            onChange={event => setRechargeAmount(event.target.value)}
+                            disabled={rechargeBusy}
+                            className={FIELD_CLASS + ' mt-1.5 h-10'}
+                          />
+                        </label>
+<button type="button"
                         disabled={rechargeBusy || Number(rechargeAmount) <= 0}
                         onClick={async () => {
                           const amount = Number(rechargeAmount);
@@ -395,12 +423,13 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                             setRechargeBusy(false);
                           }
                         }}
-                        className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                      >{rechargeBusy ? 'Recharging…' : 'Recharge'}</button>
+                        className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] px-4 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >{rechargeBusy ? 'Adding…' : 'Add balance'}</button>
+                      </div>
                     </div>
-                  </>
+                  </div>
                 )}
-                <div className="mt-6 border-t border-slate-100 pt-4">
+                <div className="mt-5 border-t border-[var(--border)] pt-4">
                   <OrgBillingConsole orgId={orgId} onRecharge={() => { load(); onChanged(); }} />
                 </div>
               </div>
