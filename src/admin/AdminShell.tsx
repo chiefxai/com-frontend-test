@@ -27,7 +27,7 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'users',           label: 'Users',                   icon: Users },
   { path: 'activity',        label: 'Activity',                icon: ScrollText },
   { path: 'cost',            label: 'Cost & Pricing',          icon: IndianRupee },
-  { path: 'workspace-plans', label: 'Workspace Plans',         icon: Layers3 },
+  { path: 'workspace-plans', label: 'Subscription Plans',      icon: Layers3 },
   { path: 'payment-reviews', label: 'Payment Reviews',         icon: ShieldCheck },
   { path: 'settings',        label: 'Features',                icon: Settings },
   { path: 'data-retention',  label: 'Data Retention & Backup', icon: Database },
@@ -151,7 +151,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               <Route path="users" element={<PageWrap title="Users" section="Users"><UsersPage /></PageWrap>} />
               <Route path="activity" element={<PageWrap title="Activity" section="Activity"><ActivityPage /></PageWrap>} />
               <Route path="cost" element={<PageWrap title="Cost & Pricing" section="Cost & Pricing"><CostPage /></PageWrap>} />
-              <Route path="workspace-plans" element={<PageWrap title="Workspace Plans" section="Workspace Plans"><WorkspacePlansPage /></PageWrap>} />
+              <Route path="workspace-plans" element={<PageWrap title="Subscription Plans" section="Subscription Plans"><WorkspacePlansPage /></PageWrap>} />
               <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
               <Route path="settings" element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
               <Route path="data-retention" element={<PageWrap title="Data Retention & Backup" section="Data Retention & Backup"><DataRetentionPage /></PageWrap>} />

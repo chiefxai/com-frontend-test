@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Archive, Database, Pencil, Plus, ShieldCheck, Trash2, HardDrive, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
@@ -108,7 +107,13 @@ export default function DataRetentionPage() {
   useEffect(() => {
     if (!header) return;
     header.setHeader({
-      title: 'Data Retention & Backup',
+      title: (
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="text-[10px] font-medium text-[var(--text-muted)]">Admin</span>
+          <span className="text-[var(--border)]">/</span>
+          <span className="truncate">Data Retention & Backup</span>
+        </span>
+      ),
       action: <IconButton icon={Plus} label="Create retention and backup policy"
         disabled={loading || busy || !catalog || backendNeedsUpdate} onClick={addPolicy} />,
     });
@@ -199,15 +204,8 @@ export default function DataRetentionPage() {
       policy.name + ' deleted.');
   };
 
-  const defaultPolicy = catalog?.policies.find(row => row.id === catalog.defaultPolicyId);
   return (
     <div className="w-full min-w-0 space-y-5">
-      <p className="max-w-3xl text-xs leading-relaxed text-[var(--text-muted)]">
-        Create reusable retention and backup policies, then assign one to each Subscription Plan.
-        Every plan includes both retention and backup rules, with one platform default as the fallback.
-        New organizations inherit their selected plan's policy snapshot;
-        existing organization configurations do not change when a template is edited.
-      </p>
       {backendNeedsUpdate && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
           The platform backend has not yet been updated with policy catalog support. Existing defaults are shown read-only;
@@ -299,14 +297,6 @@ export default function DataRetentionPage() {
           })}
         </div>
       ) : <EmptyState icon={ShieldCheck} heading="No policies found" message="Create a policy to get started." />}
-      {defaultPolicy && (
-        <p className="text-[11px] text-[var(--text-muted)]">
-          Platform default: <strong className="text-[var(--text-secondary)]">{defaultPolicy.name}</strong>.
-          Assign policies to <Link to="/admin/workspace-plans" className="font-semibold text-[var(--accent)] hover:underline">Subscription Plans</Link>.
-          Automated backups use each organization's admin email, not a shared recipient.
-        </p>
-      )}
-
       {draft && (
         <Modal open maxWidth="max-w-4xl"
           title={editingId ? 'Edit retention & backup policy' : 'Create retention & backup policy'}
