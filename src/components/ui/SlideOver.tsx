@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { X } from 'lucide-react';
 
 const WIDTH_STORAGE_KEY = 'chiefvoice-right-sidebar-width';
@@ -46,6 +47,10 @@ export default function SlideOver({
   className = '',
   zIndex = 'z-[300]',
 }: SlideOverProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
+  const subtitleId = useId();
+  useDialogFocus(open, panelRef, onClose);
   const [width, setWidth] = useState(savedWidth);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -76,13 +81,6 @@ export default function SlideOver({
 
   const stopResize = () => { dragRef.current = null; };
 
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   return (
@@ -91,6 +89,14 @@ export default function SlideOver({
       onClick={onClose}
     >
       <div
+        ref={panelRef}
+        data-chief-dialog
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? headingId : undefined}
+        aria-describedby={subtitle ? subtitleId : undefined}
+        aria-label={title ? undefined : 'Details panel'}
+        tabIndex={-1}
         className={`relative w-full h-full flex flex-col overflow-hidden shadow-2xl ${className}`}
         style={{ background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', width: `min(${width}px, 90vw)`, maxWidth: '90vw' }}
         onClick={(e) => e.stopPropagation()}
@@ -134,17 +140,19 @@ export default function SlideOver({
           >
             <div className="min-w-0">
               {title && (
-                <h3 className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                <h3 id={headingId} className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                <p id={subtitleId} className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {subtitle}
                 </p>
               )}
             </div>
             <button
+              type="button"
+              aria-label="Close panel"
               onClick={onClose}
               className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-colors"
               style={{ color: 'var(--text-muted)' }}

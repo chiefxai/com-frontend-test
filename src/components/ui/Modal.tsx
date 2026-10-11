@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useId, useRef } from 'react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -29,14 +30,9 @@ export default function Modal({
   zIndex = 'z-[300]',
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [open, onClose]);
+  const headingId = useId();
+  const subtitleId = useId();
+  useDialogFocus(open, panelRef, onClose);
 
   if (!open) return null;
 
@@ -47,6 +43,13 @@ export default function Modal({
     >
       <div
         ref={panelRef}
+        data-chief-dialog
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? headingId : undefined}
+        aria-describedby={subtitle ? subtitleId : undefined}
+        aria-label={title ? undefined : 'Dialog'}
+        tabIndex={-1}
         className={`relative w-full ${maxWidth} max-h-[90vh] flex flex-col rounded-[18px] shadow-2xl overflow-hidden ${className}`}
         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
         onClick={(e) => e.stopPropagation()}
@@ -59,17 +62,19 @@ export default function Modal({
           >
             <div className="min-w-0">
               {title && (
-                <h3 className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                <h3 id={headingId} className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                <p id={subtitleId} className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {subtitle}
                 </p>
               )}
             </div>
             <button
+              type="button"
+              aria-label="Close dialog"
               onClick={onClose}
               className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-colors"
               style={{ color: 'var(--text-muted)' }}
