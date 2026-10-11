@@ -16,7 +16,7 @@ const formatMoney = (amount: BillingAmount) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })
     .format(Number(amount.units) / 10 ** amount.scale);
 
-export type BillingPanel = 'dashboard' | 'credits' | 'topup' | 'payments' | 'plan' | 'usage';
+export type BillingPanel = 'dashboard' | 'credits' | 'topup' | 'payments' | 'plan' | 'usage' | 'allocation';
 
 /** Never call a generic invoice payment a workspace add-on without invoice metadata. */
 export function paymentTypeLabel(payment: PaymentRequest): string {
@@ -27,7 +27,9 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 }
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void }) {
-  const {can} = useAuthorization();
+  const { can, authorization } = useAuthorization();
+  const canAllocate = can('billing.credit.allocate')
+    && ['Owner', 'Organization Admin'].includes(authorization?.organizationRole || '');
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
   const [overviewError, setOverviewError] = React.useState('');
@@ -233,6 +235,8 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                 <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>
                   Refresh
                 </Button>
+                {canAllocate && view === 'credits' && onNavigate && <Button type="button" variant="secondary" size="sm"
+                  icon={Wallet} onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
                 {canSubmit && view === 'credits' && <Button type="button" variant="primary" size="sm" icon={Plus}
                   disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>
                   Add credits
