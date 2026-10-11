@@ -20,6 +20,7 @@ interface Props {
   notifications: AppNotification[];
   onMarkAllRead: () => void;
   onClear: () => void;
+  placement?: 'header' | 'sidebar';
 }
 
 function typeIcon(type: string) {
@@ -35,7 +36,8 @@ function timeAgo(ts: number) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-export default function NotificationBell({ notifications, onMarkAllRead, onClear }: Props) {
+export default function NotificationBell({ notifications, onMarkAllRead, onClear, placement = 'header' }: Props) {
+  const [menuPosition, setMenuPosition] = useState({ left: 8, bottom: 80 });
   const [open, setOpen] = useState(false);
   const [billingNotifications, setBillingNotifications] = useState<AppNotification[]>([]);
   const [loadingBilling, setLoadingBilling] = useState(false);
@@ -112,9 +114,23 @@ export default function NotificationBell({ notifications, onMarkAllRead, onClear
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => { setOpen(o => !o); if (!open) { onMarkAllRead(); void loadBillingNotifications(); } }}
-        className="relative flex items-center justify-center h-8 w-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        type="button"
+        onClick={event => {
+          if (!open && placement === 'sidebar') {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const width = Math.min(320, window.innerWidth - 16);
+            setMenuPosition({
+              left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+              bottom: window.innerHeight - rect.top + 8,
+            });
+          }
+          setOpen(o => !o);
+          if (!open) { onMarkAllRead(); void loadBillingNotifications(); }
+        }}
+        className={`relative flex items-center justify-center rounded-xl text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${placement === 'sidebar' ? 'h-11 w-11' : 'h-8 w-8'}`}
         aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Bell className="h-4 w-4" />
         {unread > 0 && (
@@ -125,7 +141,14 @@ export default function NotificationBell({ notifications, onMarkAllRead, onClear
       </button>
 
       {open && (
-        <div className="theme-dropdown absolute right-0 top-10 w-80 rounded-2xl shadow-2xl border z-50 flex flex-col overflow-hidden">
+        <div
+          role="dialog"
+          aria-label="Notifications"
+          className={`theme-dropdown z-[100] flex flex-col overflow-hidden rounded-2xl border shadow-2xl ${placement === 'sidebar' ? 'fixed w-[min(20rem,calc(100vw-1rem))]' : 'absolute right-0 top-10 w-80'}`}
+          style={placement === 'sidebar'
+            ? { left: menuPosition.left, bottom: menuPosition.bottom, maxHeight: `calc(100dvh - ${menuPosition.bottom + 8}px)` }
+            : undefined}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <span className="text-sm font-semibold text-slate-800">Notifications</span>
@@ -144,7 +167,7 @@ export default function NotificationBell({ notifications, onMarkAllRead, onClear
           </div>
 
           {/* List */}
-          <div className="overflow-y-auto max-h-80">
+          <div className="min-h-0 overflow-y-auto max-h-80">
             {loadingBilling && <div className="flex items-center justify-center gap-2 py-3 text-[11px] text-slate-400"><Loader2 className="h-3 w-3 animate-spin" /> Loading billing alerts…</div>}
             {billingError && <div className="px-4 py-2 text-[11px] text-rose-600">{billingError}<button onClick={() => void loadBillingNotifications()} className="ml-2 underline">Retry</button></div>}
             {!loadingBilling && !billingError && allNotifications.length === 0 ? (
