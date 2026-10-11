@@ -254,7 +254,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </Card>
       )}
 
-      {canTopup && (view === 'topup' || showForm) && (
+      {canTopup && !success && (view === 'topup' || showForm) && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
           <CardHeader title="Add usage credits" icon={Plus}
             subtitle="Transfer the payment externally, then submit your receipt for approval." />
