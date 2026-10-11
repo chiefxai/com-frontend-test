@@ -26,6 +26,7 @@ import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../ty
 import { COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
+import WorkspaceFeaturePolicyEditor from './ui/WorkspaceFeaturePolicyEditor';
 import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys } from '../lib/workspaceMemberFeatures';
 import { getStaffWorkspaceRole } from '../lib/staffWorkspaceRoles';
 import Button from './ui/Button';
@@ -162,9 +163,6 @@ export default function SettingsView({
   const [workspaceFeatureAllowed, setWorkspaceFeatureAllowed] = useState<string[]>([]);
   const [workspaceFeatureLoading, setWorkspaceFeatureLoading] = useState(false);
   const [workspaceFeatureError, setWorkspaceFeatureError] = useState('');
-  const [workspacePolicyEditor, setWorkspacePolicyEditor] = useState<{
-    workspaceId: string; value: string[];
-  } | null>(null);
   const [workspacePolicySaving, setWorkspacePolicySaving] = useState<string | null>(null);
   const [workspacePolicySaveError, setWorkspacePolicySaveError] = useState('');
   const loadWorkspaceFeatures = React.useCallback(async () => {
@@ -482,7 +480,7 @@ export default function SettingsView({
   };
 
   const saveWorkspacePolicy = async (workspaceId: string, keys: string[]) => {
-    if (!canManageOrganization || workspacePolicySaving) return;
+    if (!canManageOrganization || workspacePolicySaving) return false;
     setWorkspacePolicySaving(workspaceId);
     setWorkspacePolicySaveError('');
     try {
@@ -496,12 +494,13 @@ export default function SettingsView({
       await loadWorkspaceFeatures();
       // An in-progress member edit must not contain options that are now disallowed.
       setWorkspaceFeatureEditor(null);
-      setWorkspacePolicyEditor(null);
       showToast('Workspace feature policy saved.', 'success');
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not update workspace features.';
       setWorkspacePolicySaveError(message);
       showToast(message, 'error');
+      return false;
     } finally {
       setWorkspacePolicySaving(null);
     }
@@ -573,7 +572,6 @@ export default function SettingsView({
     setSelectedNumberDetails(null);
     setAccessMember(null);
     setWorkspaceFeatureEditor(null);
-    setWorkspacePolicyEditor(null);
     setWorkspacePolicySaveError('');
     setDetailHistory([]);
   };
@@ -1426,7 +1424,6 @@ export default function SettingsView({
                     ) ?? [];
                     const editingFeatures = workspaceFeatureEditor?.workspaceId === workspace.id
                       && workspaceFeatureEditor.memberId === accessMember.id;
-                    const editingPolicy = workspacePolicyEditor?.workspaceId === workspace.id;
                     const canEditFeatures = canManageOrgMembers && !['Owner','Organization Admin','Super Admin'].includes(accessMember.role)
                       && accessMember.status === 'Active' && workspace.status === 'Active'
                       && Boolean(policy) && !workspaceFeatureLoading && !workspaceFeatureError;
@@ -1446,52 +1443,19 @@ export default function SettingsView({
                           <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
                         </select>
                       </div>
-                      <div className="border-t border-[var(--border)] pt-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                            Workspace feature policy · {policy ? `${eligible.length} allowed` : 'Unavailable'}
-                          </p>
-                          {canEditPolicy && (
-                            <Button type="button" size="sm" variant="secondary"
-                              disabled={Boolean(workspacePolicySaving) || Boolean(accessSaving)}
-                              onClick={() => {
-                                setWorkspaceFeatureEditor(null);
-                                setWorkspacePolicySaveError('');
-                                setWorkspacePolicyEditor(editingPolicy ? null : {
-                                  workspaceId: workspace.id, value: eligible,
-                                });
-                              }}>
-                              {editingPolicy ? 'Cancel policy edit' : 'Configure workspace features'}
-                            </Button>
-                          )}
-                        </div>
-                        {editingPolicy && <div className="mt-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
-                          <FeatureAccessSelector
-                            label={`Allowed features in ${workspace.name}`}
-                            description="This policy is the maximum feature access for everyone in this workspace. Grant individual permissions separately."
-                            availableKeys={workspaceFeatureAllowed}
-                            value={workspacePolicyEditor?.value || []}
-                            onChange={value => setWorkspacePolicyEditor(current => current ? { ...current, value } : null)}
-                            disabled={Boolean(workspacePolicySaving)}
-                          />
-                          {workspacePolicySaveError && <p role="alert" className="text-xs text-rose-600">{workspacePolicySaveError}</p>}
-                          <div className="flex justify-end">
-                            <Button type="button" size="sm" variant="primary" loading={workspacePolicySaving === workspace.id}
-                              onClick={() => void saveWorkspacePolicy(workspace.id, workspacePolicyEditor?.value || [])}>
-                              Save workspace policy
-                            </Button>
-                          </div>
-                        </div>}
-                        {!workspaceFeatureLoading && !workspaceFeatureError && policy && eligible.length === 0 && (
-                          <p role="status" className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
-                            No product features are enabled in this workspace. {workspaceFeatureAllowed.length
-                              ? canManageOrganization
-                                ? 'Configure workspace features above before assigning them to staff.'
-                                : 'Ask an organization administrator to enable workspace features.'
-                              : 'The organization has no enabled features; contact your platform administrator.'}
-                          </p>
-                        )}
-                      </div>
+                      {policy && !workspaceFeatureError && (
+                        <WorkspaceFeaturePolicyEditor
+                          key={workspace.id}
+                          workspaceName={workspace.name}
+                          availableKeys={workspaceFeatureAllowed}
+                          enabledKeys={eligible}
+                          canEdit={canEditPolicy}
+                          loading={workspaceFeatureLoading}
+                          saving={workspacePolicySaving === workspace.id}
+                          error={workspacePolicySaveError}
+                          onSave={keys => saveWorkspacePolicy(workspace.id, keys)}
+                        />
+                      )}
                       {active && <div className="border-t border-[var(--border)] pt-3">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
@@ -1501,7 +1465,6 @@ export default function SettingsView({
                             {eligible.length > 0 && <Button type="button" size="sm" variant="secondary"
                               disabled={Boolean(accessSaving) || Boolean(workspacePolicySaving)}
                               onClick={() => {
-                                setWorkspacePolicyEditor(null);
                                 setWorkspaceFeatureEditor(editingFeatures ? null : {
                                   workspaceId: workspace.id, memberId: accessMember.id, value: features,
                                 });
