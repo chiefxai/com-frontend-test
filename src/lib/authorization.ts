@@ -22,7 +22,6 @@ export function useAuthorization() {
 export function legacyAuthorization(role: string): Authorization {
   const orgAdmin = ['Organization Admin','Owner','Super Admin'].includes(role);
   const workspaceAdmin = role === 'Workspace Admin';
-  const admin = orgAdmin || workspaceAdmin;
   const viewer = ['Viewer','Customer'].includes(role);
   const billingOnly = role === 'Billing Admin';
   return { organizationRole: role,workspaceRole: orgAdmin || billingOnly ? null : workspaceAdmin ? 'Workspace Admin' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
