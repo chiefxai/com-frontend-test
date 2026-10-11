@@ -54,7 +54,7 @@ describe('CollectionNavigator', () => {
     );
     expect(screen.getByText('No matches found')).toBeTruthy();
     expect(screen.queryByText('No campaigns yet')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    fireEvent.click(screen.getByText('Clear search'));
     expect(onChange).toHaveBeenCalledWith('');
   });
 });
