@@ -28,7 +28,7 @@ import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
 import WorkspaceFeaturePolicyEditor from './ui/WorkspaceFeaturePolicyEditor';
 import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys } from '../lib/workspaceMemberFeatures';
-import { getStaffWorkspaceRole } from '../lib/staffWorkspaceRoles';
+import { getStaffWorkspaceRole, organizationScopedRole } from '../lib/staffWorkspaceRoles';
 import Button from './ui/Button';
 import { useToast } from './ui/Toast';
 import IconButton from './ui/IconButton';
@@ -589,8 +589,11 @@ export default function SettingsView({
 
   const staffMemberRole = (member: TeamMember) => getStaffWorkspaceRole(
     member.id, roleWorkspaceId, orgAssignments, currentWorkspaceId,
-    workspaceMembers, !canReadOrgMembers,
+    workspaceMembers, !canReadOrgMembers, member.role,
   );
+  const visibleInWorkspace = (member: TeamMember, workspaceId: string) =>
+    Boolean(organizationScopedRole(member.role))
+    || assignedWorkspaces(member.id).some(workspace => workspace.id === workspaceId);
 
   const [savingWorkspaceMember, setSavingWorkspaceMember] = useState<string | null>(null);
   const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
@@ -1191,7 +1194,7 @@ export default function SettingsView({
                     selects={canReadOrgMembers ? [
                       { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: value => { setStaffWorkspaceFilter(value); setStaffRoleFilter(''); }, options: [{ label: 'All staff · current workspace roles', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
                       { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers
-                        .filter(member => !staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter))
+                        .filter(member => !staffWorkspaceFilter || visibleInWorkspace(member, staffWorkspaceFilter))
                         .map(member => staffMemberRole(member)))).map(role => ({ label: role, value: role }))] },
                       { key: 'Status', label: 'Status', value: staffStatusFilter, onChange: setStaffStatusFilter, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
                     ] : []}
@@ -1200,7 +1203,7 @@ export default function SettingsView({
                     resultCount={canReadOrgMembers
                       ? {
                           filtered: teamMembers.filter(member =>
-                            (!staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter)) &&
+                            (!staffWorkspaceFilter || visibleInWorkspace(member, staffWorkspaceFilter)) &&
                             (!staffRoleFilter || staffMemberRole(member) === staffRoleFilter) &&
                             (!staffStatusFilter || member.status === staffStatusFilter)).length,
                           total: teamMembers.length,
@@ -1226,7 +1229,7 @@ export default function SettingsView({
                     assignedLeadsCount: 0,
                   }));
                   const filteredStaff = matrixMembers.filter(member =>
-                    (!staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter)) &&
+                    (!staffWorkspaceFilter || visibleInWorkspace(member, staffWorkspaceFilter)) &&
                     (!staffRoleFilter || staffMemberRole(member) === staffRoleFilter) &&
                     (!staffStatusFilter || member.status === staffStatusFilter));
                   const columns: Column<TeamMember>[] = [
@@ -1254,7 +1257,7 @@ export default function SettingsView({
                         const scoped = canReadOrgMembers
                           ? orgAssignments[roleWorkspaceId]?.find(row => row.memberId === member.id)
                           : workspaceMembers.find(row => row.memberId === member.id);
-                        if (!canReadOrgMembers && canManageWorkspaceMembers && scoped) {
+                        if (!organizationScopedRole(member.role) && !canReadOrgMembers && canManageWorkspaceMembers && scoped) {
                           const assigned = scoped.assignmentStatus === 'Active';
                           return <select aria-label={`Role for ${member.name || member.email}`}
                             value={assigned ? scoped.workspaceRole || '' : ''}
@@ -1280,14 +1283,17 @@ export default function SettingsView({
                       cell: member => {
                         // This must reflect the exact workspace in the Role
                         // column, not the person's organization-wide defaults.
-                        const effective = memberWorkspaceFeatures(member, roleWorkspaceId);
+                        const effective = organizationScopedRole(member.role)
+                          ? null : memberWorkspaceFeatures(member, roleWorkspaceId);
                         const workspaceName = orgWorkspaces.find(row => row.id === roleWorkspaceId)?.name || 'current workspace';
                         return (
                           <button type="button" onClick={() => openMemberDetails(member)}
                             title={`View feature permissions for ${member.name || member.email} in ${workspaceName}`}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]">
                             <Flag aria-hidden="true" className="h-3 w-3" />
-                            {effective === null ? 'Unavailable' : `${effective.length} enabled`}
+                            {organizationScopedRole(member.role)
+                              ? 'Organization scope'
+                              : effective === null ? 'Unavailable' : `${effective.length} enabled`}
                           </button>
                         );
                       },
@@ -1411,8 +1417,9 @@ export default function SettingsView({
                   {!orgWorkspaces.length && <p className="text-xs text-[var(--text-muted)]">No organization workspaces available.</p>}
                   {orgWorkspaces.map(workspace => {
                     const assignment = orgAssignments[workspace.id]?.find(row => row.memberId === accessMember.id);
+                    const organizationRoleLabel = organizationScopedRole(accessMember.role);
                     const active = assignment?.assignmentStatus === 'Active' && accessMember.status === 'Active';
-                    const role = active ? assignment?.workspaceRole || '' : '';
+                    const role = organizationRoleLabel || (active ? assignment?.workspaceRole || '' : '');
                     const policy = workspaceFeatureRows.find(row => row.id === workspace.id);
                     const workspaceKeys = new Set(policy?.enabledFeatures || []);
                     const eligible = policy
@@ -1434,14 +1441,21 @@ export default function SettingsView({
                         <div>
                           <button type="button" onClick={() => openWorkspaceDetails(workspace)}
                             className="text-left text-xs font-semibold text-[var(--accent)] hover:underline">{workspace.name}</button>
-                          <p className="mt-1 text-[11px] text-[var(--text-muted)]">{active ? `Active access · ${role}` : 'No active access'}</p>
+                          <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                            {organizationRoleLabel ? 'Organization-wide administrative role; workspace permissions are separate.'
+                              : active ? `Active workspace assignment · ${role}` : 'No active workspace assignment'}
+                          </p>
                         </div>
-                        <select aria-label={`Workspace role in ${workspace.name}`} value={active ? role : ''}
+                        {organizationRoleLabel ? (
+                          <span className="rounded-lg border border-[var(--border)] bg-[var(--accent-subtle)] px-3 py-2 text-xs font-semibold text-[var(--accent)]">
+                            {organizationRoleLabel}
+                          </span>
+                        ) : (                        <select aria-label={`Workspace role in ${workspace.name}`} value={active ? role : ''}
                           disabled={!canManageOrgMembers || accessSaving === workspace.id || accessMember.status !== 'Active'}
                           onChange={event => void updateOrgAccess(accessMember.id, workspace.id, event.target.value)}
                           className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2.5 py-2 text-xs text-[var(--text-primary)] disabled:opacity-50">
                           <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
-                        </select>
+         )}               </select>
                       </div>
                       {policy && !workspaceFeatureError && (
                         <WorkspaceFeaturePolicyEditor
@@ -1493,9 +1507,9 @@ export default function SettingsView({
                           </div>
                         </div>}
                         {!canEditFeatures && canManageOrgMembers
-                          && ['Owner','Organization Admin','Super Admin'].includes(accessMember.role)
-                          && <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-                            Owner and organization-admin personal overrides are restricted. Their inherited access follows the workspace policy.
+                          && organizationRoleLabel && <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+                            Organization administrator privileges are managed at the organization level;
+                            individual workspace grants are separate and cannot change this role.
                           </p>}
                         {workspaceFeatureLoading
                           ? <p className="text-xs text-[var(--text-muted)]">Loading feature grants…</p>
