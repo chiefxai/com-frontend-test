@@ -1450,12 +1450,14 @@ export default function SettingsView({
                           <span className="rounded-lg border border-[var(--border)] bg-[var(--accent-subtle)] px-3 py-2 text-xs font-semibold text-[var(--accent)]">
                             {organizationRoleLabel}
                           </span>
-                        ) : (                        <select aria-label={`Workspace role in ${workspace.name}`} value={active ? role : ''}
+                        ) : (
+                          <select aria-label={`Workspace role in ${workspace.name}`} value={active ? role : ''}
                           disabled={!canManageOrgMembers || accessSaving === workspace.id || accessMember.status !== 'Active'}
                           onChange={event => void updateOrgAccess(accessMember.id, workspace.id, event.target.value)}
                           className="rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2.5 py-2 text-xs text-[var(--text-primary)] disabled:opacity-50">
                           <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
-         )}               </select>
+                          </select>
+                        )}
                       </div>
                       {policy && !workspaceFeatureError && (
                         <WorkspaceFeaturePolicyEditor
