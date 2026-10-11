@@ -48,7 +48,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.organizationOverview.mockResolvedValue(overview);
   mocks.payments.mockResolvedValue({ rows: [payment], nextCursor: null });
-  mocks.apiFetch.mockResolvedValue({ ok: true, json: async () => ({ topupAvailable: true }) });
+  mocks.apiFetch.mockImplementation(async (path: string) => ({
+    ok: true,
+    json: async () => path === '/api/billing/topup-quotes'
+      ? { quoteId: 'quote-1', paymentAmount: cash('100000'), topupCredits: cash('100000') }
+      : { topupAvailable: true },
+  }));
   mocks.submitPaymentWithProof.mockResolvedValue({ expectedAmount: cash('100000') });
 });
 afterEach(cleanup);
