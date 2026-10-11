@@ -931,6 +931,7 @@ export default function App() {
             activeSubTab={activeSubTab as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api'}
             setActiveSubTab={setActiveSubTab}
             currentUserEmail={kcUser?.email}
+            activeWorkspaceId={activeWorkspaceId || orgSettings.id}
             multipleWorkspacesEnabled={multipleWorkspacesEnabled}
             workspaceSharingEnabled={workspaceSharingEnabled}
             onWorkspaceCreated={async () => {
