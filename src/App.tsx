@@ -2,6 +2,7 @@ import { useAuthorization, getAuthorization, setAuthorization, canAccessTab } fr
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch, getAuthToken, getApiBase } from './lib/api';
+import { useDebouncedSync } from './hooks/useDebouncedSync';
 import { COST_PER_MINUTE_INR_FALLBACK as COST_PER_MINUTE_INR } from './lib/pricing';
 import { loadFromStorage, saveToStorage, setStorageScope } from './lib/storage';
 import { recordToLead } from './lib/objectContacts';
@@ -69,40 +70,6 @@ const AuditLogView = React.lazy(() => import('./components/AuditLogView'));
 const EnquiriesView = React.lazy(() => import('./components/EnquiriesView'));
 
 
-
-// Debounced sync: collapses multiple rapid state changes into one POST.
-// Without this, setting 8 state vars at load triggers 8 simultaneous syncs.
-//
-// Only checked for network-level failures (.catch on a rejected fetch) —
-// never checked res.ok, so a non-2xx response (e.g. a real DB write error)
-// was completely silent: the local state change (a workflow toggle, a
-// team edit, etc.) looked like it worked because the UI updates
-// optimistically, but nothing actually persisted server-side and no error
-// ever surfaced anywhere. Now logs loudly on a failed sync so a stuck
-// backend write is at least visible in the console instead of only ever
-// showing up as "changes don't survive a reload."
-function useDebouncedSync(url: string, data: any, enabled: boolean, delay = 800) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      apiFetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            console.error(`Sync failed ${url}: ${res.status} ${body.error || res.statusText}`);
-          }
-        })
-        .catch(err => console.error(`Sync error ${url}:`, err));
-    }, delay);
-    return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [data, enabled]);
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -691,7 +658,7 @@ export default function App() {
   }, [leads, domainRecords, hasLoaded, primaryObject]);
 
   useEffect(() => { saveToStorage('chiefx_workflows', workflows); }, [workflows]);
-  useDebouncedSync('/api/workflows/sync', workflows, hasLoaded && can('workspace.write'));
+  const workflowsSync = useDebouncedSync('/api/workflows/sync', workflows, hasLoaded && can('workspace.write'));
 
   useEffect(() => { saveToStorage('chiefx_calllogs', callLogs); }, [callLogs]);
   // Call Logs are backend-authoritative. Do not replace/reinsert the whole
@@ -714,7 +681,7 @@ export default function App() {
   // Dialer tasks are server-authoritative; writes use the dedicated create/patch APIs.
 
   useEffect(() => { saveToStorage('chiefx_loans', loans); }, [loans]);
-  useDebouncedSync('/api/loans/sync', loans, hasLoaded && can('workspace.write'));
+  const loansSync = useDebouncedSync('/api/loans/sync', loans, hasLoaded && can('workspace.write'));
 
   // Only org admins / super admins can write to team, numbers, and org settings.
   // DB role is authoritative once loaded; JWT role is the optimistic initial value.
@@ -726,10 +693,11 @@ export default function App() {
   useEffect(() => { saveToStorage('chiefx_team', teamMembers); }, [teamMembers]);
 
   useEffect(() => { saveToStorage('chiefx_question_flows', questionFlows); }, [questionFlows]);
-  useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded && can('workspace.write'));
+  const questionFlowsSync = useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded && can('workspace.write'));
 
   useEffect(() => { saveToStorage('chiefx_org', orgSettings); }, [orgSettings]);
-  useDebouncedSync('/api/settings/workspace', orgSettings, hasLoaded && isAdmin);
+  const workspaceSettingsSync = useDebouncedSync('/api/settings/workspace', orgSettings, hasLoaded && isAdmin);
+  const failedSyncs = [workflowsSync, loansSync, questionFlowsSync, workspaceSettingsSync].filter(sync => sync.error);
 
   // Numbers sync kept separate — needs error handling + revert on conflict
   const numbersTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1029,6 +997,13 @@ export default function App() {
       {/* Main Workspace — fills remaining 12-col grid space */}
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-[var(--bg-base)]">
         {can('workspace.read') && !can('workspace.write') && <div className="px-6 py-2 text-sm bg-slate-100 text-slate-600">Viewer access: workspace data is read-only.</div>}
+        {failedSyncs.length > 0 && (
+          <div role="alert" className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+            <span>Some workspace changes could not be saved. {failedSyncs.map(sync => sync.error).join(' · ')}</span>
+            <button type="button" onClick={() => failedSyncs.forEach(sync => sync.retry())}
+              className="shrink-0 rounded-md border border-amber-400 px-2.5 py-1 font-semibold hover:bg-amber-100">Retry saving</button>
+          </div>
+        )}
         {liveCallBanner && (
           <div className="absolute top-0 left-0 right-0 z-50 bg-emerald-600 text-white text-xs font-semibold px-4 py-2 flex items-center justify-center gap-2 animate-pulse">
             <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
