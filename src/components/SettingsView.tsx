@@ -1401,13 +1401,13 @@ export default function SettingsView({
                             label={`Features in ${workspace.name}`}
                             description="Only this member's features in this workspace are changed. Other workspaces keep their own settings."
                             availableKeys={eligible}
-                            value={workspaceFeatureEditor.value}
+                            value={workspaceFeatureEditor?.value || []}
                             onChange={value => setWorkspaceFeatureEditor(current => current ? { ...current, value } : null)}
                             disabled={Boolean(accessSaving)}
                           />
                           <div className="flex justify-end">
                             <Button type="button" variant="primary" size="sm" loading={accessSaving === workspace.id}
-                              onClick={() => void saveWorkspaceFeatureAccess(accessMember.id, workspace.id, workspaceFeatureEditor.value)}>
+                              onClick={() => void saveWorkspaceFeatureAccess(accessMember.id, workspace.id, workspaceFeatureEditor?.value || [])}>
                               Save workspace features
                             </Button>
                           </div>
