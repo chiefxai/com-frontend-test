@@ -27,6 +27,7 @@ import { COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
 import { visibleWorkspaceFeatureKeys } from '../lib/workspaceMemberFeatures';
+import { getStaffWorkspaceRole } from '../lib/staffWorkspaceRoles';
 import Button from './ui/Button';
 import { useToast } from './ui/Toast';
 import IconButton from './ui/IconButton';
@@ -70,6 +71,7 @@ interface SettingsViewProps {
   activeSubTab?: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api';
   setActiveSubTab?: (sub: string) => void;
   currentUserEmail?: string;
+  activeWorkspaceId?: string;
   multipleWorkspacesEnabled?: boolean;
   workspaceSharingEnabled?: boolean;
   onWorkspaceCreated?: () => Promise<void>;
@@ -128,6 +130,7 @@ export default function SettingsView({
   activeSubTab: activeSubTabProp,
   setActiveSubTab: setActiveSubTabProp,
   currentUserEmail,
+  activeWorkspaceId,
   multipleWorkspacesEnabled = false,
   workspaceSharingEnabled = false,
   onWorkspaceCreated = async () => {},
@@ -429,6 +432,10 @@ export default function SettingsView({
   const [orgAssignments, setOrgAssignments] = useState<Record<string, WorkspaceMemberAssignment[]>>({});
   const [accessMember, setAccessMember] = useState<TeamMember | null>(null);
   const [staffWorkspaceFilter, setStaffWorkspaceFilter] = useState('');
+  // Without an explicit table filter, show the workspace switcher's roles,
+  // not organization-wide roles.
+  const currentWorkspaceId = activeWorkspaceId || orgSettings.id;
+  const roleWorkspaceId = staffWorkspaceFilter || currentWorkspaceId;
   const [staffRoleFilter, setStaffRoleFilter] = useState('');
   const [staffStatusFilter, setStaffStatusFilter] = useState('');
   const [accessSaving, setAccessSaving] = useState('');
@@ -540,15 +547,10 @@ export default function SettingsView({
   const assignedWorkspaces = (memberId: string) => orgWorkspaces.filter(workspace =>
     orgAssignments[workspace.id]?.some(assignment => assignment.memberId === memberId && assignment.assignmentStatus === 'Active'));
 
-  const staffMemberRole = (member: TeamMember) => {
-    if (!canReadOrgMembers) {
-      const scoped = workspaceMembers.find(row => row.memberId === member.id);
-      return scoped?.assignmentStatus === 'Active' ? (scoped.workspaceRole || 'Member') : 'No access';
-    }
-    if (!staffWorkspaceFilter) return member.role;
-    const scoped = orgAssignments[staffWorkspaceFilter]?.find(row => row.memberId === member.id);
-    return scoped?.assignmentStatus === 'Active' ? (scoped.workspaceRole || 'Member') : 'No access';
-  };
+  const staffMemberRole = (member: TeamMember) => getStaffWorkspaceRole(
+    member.id, roleWorkspaceId, orgAssignments, currentWorkspaceId,
+    workspaceMembers, !canReadOrgMembers,
+  );
 
   const [savingWorkspaceMember, setSavingWorkspaceMember] = useState<string | null>(null);
   const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
@@ -1147,7 +1149,7 @@ export default function SettingsView({
                 <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
                   <FilterBar
                     selects={canReadOrgMembers ? [
-                      { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: value => { setStaffWorkspaceFilter(value); setStaffRoleFilter(''); }, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
+                      { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: value => { setStaffWorkspaceFilter(value); setStaffRoleFilter(''); }, options: [{ label: 'All staff · current workspace roles', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
                       { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers
                         .filter(member => !staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter))
                         .map(member => staffMemberRole(member)))).map(role => ({ label: role, value: role }))] },
@@ -1207,10 +1209,10 @@ export default function SettingsView({
                       key: 'role',
                       header: 'Role',
                       cell: member => {
-                        // One Role column. Display the selected workspace's role
-                        // when filtering by workspace; otherwise show the org role.
-                        const scoped = staffWorkspaceFilter
-                          ? orgAssignments[staffWorkspaceFilter]?.find(row => row.memberId === member.id)
+                        // The selected workspace determines the role (including
+                        // when the table's workspace filter has not been set).
+                        const scoped = canReadOrgMembers
+                          ? orgAssignments[roleWorkspaceId]?.find(row => row.memberId === member.id)
                           : workspaceMembers.find(row => row.memberId === member.id);
                         if (!canReadOrgMembers && canManageWorkspaceMembers && scoped) {
                           const assigned = scoped.assignmentStatus === 'Active';
