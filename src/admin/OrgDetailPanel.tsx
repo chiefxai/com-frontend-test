@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, , LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw } from 'lucide-react';
+import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, , LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw, Bot } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { OrgDetail } from './types';
 import { callCostInr, formatInr } from '../lib/pricing';
@@ -324,9 +324,9 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {([
                   ['Members', detail.counts.members, Users],
-                  ['Leads', detail.counts.leads, Building2],
+                  ['Workspaces', detail.counts.workspaces ?? '—', Building2],
                   ['Workflows', detail.counts.workflows, Settings2],
-                  ['Campaigns', detail.counts.campaigns, Activity],
+                  ['AI Agents', detail.counts.agents ?? '—', Bot],
                 ] as const).map(([label, count, Icon]) => (
                   <Card key={label} padding="sm" className="min-w-0">
                     <div className="flex items-center gap-2 text-[var(--text-muted)]">
