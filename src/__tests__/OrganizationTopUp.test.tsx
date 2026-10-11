@@ -73,7 +73,7 @@ describe('organization billing views', () => {
       target: { value: 'UTR-456' },
     });
     const receipt = new File(['proof'], 'receipt.pdf', { type: 'application/pdf' });
-    fireEvent.change(screen.getByLabelText('Payment receipt'), { target: { files: [receipt] } });
+    fireEvent.change(screen.getByLabelText(/Payment receipt/i), { target: { files: [receipt] } });
     fireEvent.click(screen.getByRole('button', { name: 'Submit for verification' }));
     await waitFor(() => expect(mocks.submitPaymentWithProof).toHaveBeenCalledWith(
       expect.objectContaining({ purpose: 'topup', paymentReference: 'UTR-456' }),
