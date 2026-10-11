@@ -1094,8 +1094,9 @@ export default function SettingsView({
                             ? <p className="text-xs text-[var(--text-muted)]">No active members returned for this workspace.</p>
                             : <div className="divide-y divide-[var(--border)]">{assignments.map(member => {
                                 const memberRecord = teamMembers.find(row => row.id === member.memberId);
-                                const memberGrants = memberRecord?.featureFlags;
-                                const isAdmin = member.workspaceRole === 'Workspace Admin';
+                                const override = member.featureFlags ?? null;
+                                const memberGrants = override ?? memberRecord?.featureFlags;
+                                const isAdmin = member.workspaceRole === 'Workspace Admin' && override === null;
                                 const effective = features && (isAdmin || Array.isArray(memberGrants))
                                   ? permittedByWorkspace.filter(key => entitled.has(key) && (isAdmin || memberGrants?.includes(key)))
                                   : null;
@@ -1375,7 +1376,8 @@ export default function SettingsView({
                     const editingFeatures = workspaceFeatureEditor?.workspaceId === workspace.id
                       && workspaceFeatureEditor.memberId === accessMember.id;
                     const canEditFeatures = canManageOrgMembers && !['Owner','Organization Admin','Super Admin'].includes(accessMember.role)
-                      && accessMember.status === 'Active' && workspace.status === 'Active';
+                      && accessMember.status === 'Active' && workspace.status === 'Active'
+                      && Boolean(policy) && !workspaceFeatureLoading && !workspaceFeatureError;
                     return <div key={workspace.id} className="space-y-3 rounded-xl border border-[var(--border)] p-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
