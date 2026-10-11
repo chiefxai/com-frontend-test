@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatInr } from '../lib/pricing';
 import DataTable, { type Column } from '../components/ui/DataTable';
+import KpiCard from '../components/ui/KpiCard';
 
 type BillingConsole = {
   services: { mode: string; aiEnabled: boolean; phoneEnabled: boolean; chargeScope: string };
@@ -63,48 +64,54 @@ export default function OrgBillingConsole({ orgId, onRecharge }: { orgId: string
   useEffect(() => { load(); }, [load]);
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-sm text-slate-400 py-8 justify-center"><Loader2 className="h-4 w-4 animate-spin" /> Loading billing…</div>;
+    return <div role="status" className="flex items-center justify-center gap-2 rounded-xl bg-[var(--bg-subtle)] px-4 py-8 text-xs text-[var(--text-secondary)]">
+      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading billing activity…
+    </div>;
   }
   if (error || !data) {
-    return <div className="text-sm text-rose-600 py-4">{error || 'Billing data unavailable'}</div>;
+    return <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
+      <p className="text-xs text-[var(--text-secondary)]">{error || 'Billing activity is unavailable.'}</p>
+      <button type="button" onClick={load} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-subtle)]">
+        <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
+      </button>
+    </div>;
   }
 
   const overview = data.overview as Record<string, number | string>;
   const isRecharge = overview.billingMethod === 'recharge_based';
-  const tabs = [
-    { id: 'overview' as const, label: 'Overview' },
-    ...(data.services.aiEnabled ? [{ id: 'overview' as const, label: 'AI Billing' }] : []),
-    ...(data.services.phoneEnabled ? [{ id: 'overview' as const, label: 'Phone Billing' }] : []),
-    { id: 'usage' as const, label: 'Usage & Cost' },
-    { id: 'ledger' as const, label: 'Ledger' },
-    { id: 'config' as const, label: 'Configuration' },
-  ];
-
   const uniqueTabs = ['overview', 'usage', 'ledger', 'config'] as const;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-2">
-        {uniqueTabs.map((id) => (
-          <button
-            key={id}
-            type="button"
+    <section aria-label="Billing activity" className="min-w-0 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-[var(--text-primary)]">Billing activity</h4>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">Review usage, charges, transactions and pricing configuration.</p>
+        </div>
+        <button type="button" onClick={load}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+          <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" /> Refresh
+        </button>
+      </div>
+      <nav aria-label="Billing activity views" className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-[var(--bg-subtle)] p-1">
+        {uniqueTabs.map(id => (
+          <button key={id} type="button" aria-pressed={tab === id}
             onClick={() => setTab(id)}
-            className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg ${tab === id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
-          >
-            {id === 'overview' ? 'Billing Overview' : id === 'usage' ? 'Usage & Cost' : id === 'ledger' ? 'Billing Ledger' : 'Configuration'}
+            className={`min-h-9 shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${tab === id
+              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+              : 'text-[var(--text-muted)] hover:bg-[var(--bg-surface)]/60 hover:text-[var(--text-primary)]'}`}>
+            {id === 'overview' ? 'Summary' : id === 'usage' ? 'Usage & costs' : id === 'ledger' ? 'Transactions' : 'Pricing setup'}
           </button>
         ))}
-        <button type="button" onClick={load} className="ml-auto text-[10px] text-slate-400 hover:text-slate-600">Refresh</button>
-      </div>
+      </nav>
 
       {tab === 'overview' && (
         <div className="space-y-4">
-          <p className="text-[11px] text-slate-500">
-            Service profile: <span className="font-semibold text-slate-700">{data.services.mode.replace(/_/g, ' ')}</span>
-            {data.billingPeriod ? ` · Period: ${data.billingPeriod.label} (${data.billingPeriod.timeZone})` : ''}
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+            <span className="rounded-lg bg-[var(--bg-subtle)] px-2.5 py-1.5">Service: <strong className="font-semibold text-[var(--text-primary)]">{data.services.mode.replace(/_/g, ' ')}</strong></span>
+            {data.billingPeriod && <span className="rounded-lg bg-[var(--bg-subtle)] px-2.5 py-1.5">{data.billingPeriod.label} · {data.billingPeriod.timeZone}</span>}
+          </div>
+          <div className="grid grid-cols-12 gap-3">
             {isRecharge ? (
               <>
                 <Kpi label="Balance" value={formatInr(Number(overview.currentBalanceInr) || 0)} />
@@ -123,7 +130,7 @@ export default function OrgBillingConsole({ orgId, onRecharge }: { orgId: string
           </div>
 
           {data.services.aiEnabled && data.aiBilling && (
-            <Section title="AI Billing">
+            <Section title="AI processing rates">
               <Row label="Pricing mode" value={data.aiBilling.pricingMode} />
               <Row label="Source" value={data.aiBilling.source.replace(/_/g, ' ')} />
               {data.aiBilling.pricingMode === 'TIME_BASED' && (
@@ -136,10 +143,10 @@ export default function OrgBillingConsole({ orgId, onRecharge }: { orgId: string
           )}
 
           {data.services.phoneEnabled && data.phoneBilling && (
-            <Section title="Phone Billing">
-              <Row label="This month telephony spend" value={formatInr(data.phoneBilling.currentMonthPhoneSpendInr)} />
+            <Section title="Phone provider costs">
+              <Row label="Recorded phone spend this month" value={formatInr(data.phoneBilling.currentMonthPhoneSpendInr)} />
               {data.phoneBilling.providers.map((p) => (
-                <div key={p.provider} className="text-xs text-slate-600 border-t border-slate-100 pt-2 mt-2">
+                <div key={p.provider} className="mt-2 border-t border-[var(--border)] pt-3 text-xs text-[var(--text-secondary)]">
                   <span className="font-semibold capitalize">{p.provider}</span> — {p.calls} calls, {Math.round(p.durationSeconds / 60)} min, {formatInr(p.providerCostInr)}
                 </div>
               ))}
@@ -201,42 +208,46 @@ export default function OrgBillingConsole({ orgId, onRecharge }: { orgId: string
       )}
 
       {tab === 'config' && (
-        <div className="text-xs text-slate-600 space-y-2">
-          <p>Charge scope: <strong>{data.services.chargeScope === 'ai_and_call_provider' ? 'AI + Phone' : 'AI only'}</strong></p>
-          <p>Billing method: <strong>{isRecharge ? 'Recharge / prepaid' : 'Pay as you go'}</strong></p>
-          <p className="text-slate-400">Pricing overrides and global defaults are managed via platform billing APIs. Historical call costs use snapshots stored at finalize time.</p>
-          {onRecharge && isRecharge && (
-            <p className="text-slate-500">Use the recharge form above the billing console to top up the wallet.</p>
-          )}
+        <div className="space-y-3 rounded-xl border border-[var(--border)] p-4">
+          <Row label="Charge scope" value={data.services.chargeScope === 'ai_and_call_provider' ? 'AI + phone' : 'AI only'} />
+          <Row label="Billing method" value={isRecharge ? 'Prepaid / recharge' : 'Pay as you go'} />
+          <p className="border-t border-[var(--border)] pt-3 text-xs leading-5 text-[var(--text-muted)]">
+            Pricing overrides and global defaults are managed through platform billing. Historical call charges keep the pricing recorded at the time of each call.
+          </p>
+          {onRecharge && isRecharge && <p className="text-xs text-[var(--text-muted)]">Use Add prepaid balance above to adjust the wallet.</p>}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-      <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="text-lg font-bold text-slate-900 mt-1">{value}</div>
-    </div>
+    <KpiCard
+      colSpan={6}
+      span={{ xs: 12, sm: 6, lg: 6 }}
+      label={label}
+      value={value}
+      iconPosition="top-left"
+      className="min-w-0"
+    />
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4">
-      <h5 className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">{title}</h5>
-      <div className="space-y-1">{children}</div>
+    <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 sm:p-4">
+      <h5 className="mb-3 text-xs font-semibold text-[var(--text-primary)]">{title}</h5>
+      <div className="space-y-2.5">{children}</div>
     </div>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-xs gap-4">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-medium text-slate-800 text-right">{value}</span>
+    <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1 text-xs">
+      <span className="min-w-0 text-[var(--text-muted)]">{label}</span>
+      <span className="min-w-0 max-w-full break-words text-right font-semibold text-[var(--text-primary)]">{value}</span>
     </div>
   );
 }
