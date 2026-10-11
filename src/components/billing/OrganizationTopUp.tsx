@@ -1,5 +1,6 @@
 import React from 'react';
 import WorkspaceAddonPurchases from './WorkspaceAddonPurchases';
+import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { useAuthorization } from '../../lib/authorization';
 import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
@@ -227,6 +228,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </>
       )}
 
+      {(view === 'credits' || view === 'plan') && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
       {(view === 'credits' || view === 'topup') && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
           <CardHeader title="Credit balances" subtitle="Subscription and purchased usage credits"
