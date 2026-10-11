@@ -24,6 +24,12 @@ import {
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// These tests exercise the supported legacy Keycloak adapter explicitly.
+// Production continues to select its provider from VITE_AUTH_PROVIDER (Cognito by default).
+vi.hoisted(() => {
+  vi.stubEnv('VITE_AUTH_PROVIDER', 'keycloak');
+});
+
 // ─── Mock the keycloak singleton (features/auth/keycloak.ts) ─────────────────
 // vi.mock factories are hoisted, so the mock object must also be hoisted via
 // vi.hoisted() so it is initialised before the factory runs.
@@ -244,7 +250,7 @@ describe('userFlagsStore', () => {
 
     const listener = vi.fn();
     const unsub = store.subscribe(listener);
-    expect(listener).toHaveBeenCalledWith(['dialer'], true);
+    expect(listener).toHaveBeenCalledWith(['dialer'], true, '', ['dialer']);
     unsub();
   });
 
@@ -265,7 +271,7 @@ describe('userFlagsStore', () => {
     } as Response);
     await fetchPromise;
 
-    expect(listener).toHaveBeenCalledWith(['compliance'], true);
+    expect(listener).toHaveBeenCalledWith(['compliance'], true, '', ['compliance']);
     unsub();
   });
 
@@ -337,7 +343,7 @@ describe('FeatureFlagContext', () => {
     expect(screen.getByTestId('workflows').textContent).toBe('off');
   });
 
-  it('org admin — all DEFAULT_FLAGS enabled after store marks loaded', async () => {
+  it('org admin — only explicitly granted organization features are enabled', async () => {
     setupKc(
       { sub: 'admin-1', email: 'admin@test.com', realm_access: { roles: ['org-admin'] } },
       true
@@ -346,7 +352,7 @@ describe('FeatureFlagContext', () => {
 
     vi.mocked(apiFetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ featureFlags: [] }), // empty = no restriction for admin
+      json: async () => ({ featureFlags: ['reports', 'dialer'], role: 'Organization Admin' }),
     } as Response);
 
     render(
@@ -365,7 +371,7 @@ describe('FeatureFlagContext', () => {
     await waitFor(() => {
       DEFAULT_FLAGS.forEach(f => {
         expect(screen.getByTestId(`flag-${f.key}`).textContent).toBe(
-          f.enabled ? 'on' : 'off'
+          ['reports', 'dialer'].includes(f.key) ? 'on' : 'off'
         );
       });
     });
@@ -445,7 +451,7 @@ describe('FeatureFlagContext', () => {
 
     vi.mocked(apiFetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ featureFlags: [] }),
+      json: async () => ({ featureFlags: ['workflows'], role: 'Organization Admin' }),
     } as Response);
 
     function ToggleFlag() {
@@ -805,7 +811,12 @@ describe('Sidebar', () => {
 
     vi.mocked(apiFetch).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ featureFlags: grantedFlags }),
+      json: async () => ({
+        featureFlags: grantedFlags.length === 0 && kcClaims.realm_access && (kcClaims.realm_access as any).roles?.includes('org-admin')
+          ? DEFAULT_FLAGS.filter(flag => flag.enabled).map(flag => flag.key)
+          : grantedFlags,
+        role: kcClaims.realm_access && (kcClaims.realm_access as any).roles?.includes('org-admin') ? 'Organization Admin' : 'Loan Agent',
+      }),
     } as Response);
 
     const userRole = kcClaims.realm_access
@@ -843,7 +854,7 @@ describe('Sidebar', () => {
   it('org admin — all standard tabs visible', async () => {
     await renderSidebar(
       { sub: 'admin', email: 'a@t.com', realm_access: { roles: ['org-admin'] } },
-      [] // empty = no restriction for admins
+      [] // fixture grants the organization's default enabled features
     );
 
     // Flagged tabs may appear slightly after the subscriber fires — use waitFor

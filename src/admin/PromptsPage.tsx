@@ -205,6 +205,7 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to save voice prompt');
+      if (typeof body?.prompt !== 'string') throw new Error('The server returned an invalid voice prompt response.');
       setData(d => ({ ...d, voice: d.voice.map(p => p.callType === activeVoice ? body : p) }));
       setVoiceDraft(body.prompt);
       setSaved('voice');
@@ -223,6 +224,7 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to reset voice prompt');
+      if (typeof body?.prompt !== 'string') throw new Error('The server returned an invalid voice prompt response.');
       setData(d => ({ ...d, voice: d.voice.map(p => p.callType === activeVoice ? body : p) }));
       setVoiceDraft(body.prompt);
       setSaved('voice');
@@ -241,6 +243,7 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to save system prompt');
+      if (typeof body?.systemPrompt !== 'string') throw new Error('The server returned an invalid system prompt response.');
       setData(d => ({ ...d, system: d.system.map(p => p.id === currentSystem.id ? body : p) }));
       setSystemDraft(body.systemPrompt);
       setSaved('system');
@@ -259,6 +262,7 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to reset system prompt');
+      if (typeof body?.systemPrompt !== 'string') throw new Error('The server returned an invalid system prompt response.');
       setData(d => ({ ...d, system: d.system.map(p => p.id === currentSystem.id ? body : p) }));
       setSystemDraft(body.systemPrompt);
       setSaved('system');

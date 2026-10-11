@@ -34,8 +34,22 @@ const response = (body: unknown) => ({ ok: true, json: async () => body });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.apiFetch.mockImplementation(async (path: string) => path === '/api/platform/prompts/languages-dialects'
-    ? response(catalog) : response({ voice, system }));
+  mocks.apiFetch.mockImplementation(async (path: string, options?: { method?: string; body?: string }) => {
+    if (path === '/api/platform/prompts/languages-dialects') return response(catalog);
+    if (path.startsWith('/api/platform/prompts/voice/') && options?.method === 'PUT') {
+      const callType = path.split('/').pop();
+      const original = voice.find(item => item.callType === callType)!;
+      const body = JSON.parse(options.body || '{}');
+      return response({ ...original, prompt: body.prompt || original.defaultPrompt, isCustomized: Boolean(body.prompt) });
+    }
+    if (path.startsWith('/api/platform/prompts/system/') && options?.method === 'PUT') {
+      const id = path.split('/').pop();
+      const original = system.find(item => item.id === id)!;
+      const body = JSON.parse(options.body || '{}');
+      return response({ ...original, systemPrompt: body.systemPrompt || original.defaultSystemPrompt, isCustomized: Boolean(body.systemPrompt) });
+    }
+    return response({ voice, system });
+  });
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
