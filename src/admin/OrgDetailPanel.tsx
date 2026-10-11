@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw, Bot } from 'lucide-react';
+import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, Building2, Cloud, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw, Bot } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { OrgDetail } from './types';
 import { callCostInr, formatInr } from '../lib/pricing';
