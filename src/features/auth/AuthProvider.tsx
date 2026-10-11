@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type KeycloakType from 'keycloak-js';
 import keycloak from './keycloak';
+import { clearScopedStorageForUser } from '../../lib/storage';
 import { AlertCircle, Layers, RefreshCw } from 'lucide-react';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithRedirect, signOut } from 'firebase/auth';
 import { identityAuth, isIdentityPlatformConfigured } from './firebase';
@@ -169,7 +170,10 @@ function KeycloakAuthProvider({ children }: { children: React.ReactNode }) {
     return keycloak.token ?? '';
   }, []);
 
-  const logout = useCallback(() => { keycloak.logout({ redirectUri: window.location.origin }); }, []);
+  const logout = useCallback(() => {
+    clearScopedStorageForUser(user?.id);
+    keycloak.logout({ redirectUri: window.location.origin });
+  }, [user?.id]);
 
   if (initState === 'loading') return <LoadingSplash />;
   if (initState === 'error') return <ErrorSplash message={errorMsg} hint="Check VITE_KEYCLOAK_URL, VITE_KEYCLOAK_REALM and VITE_KEYCLOAK_CLIENT_ID." />;
@@ -236,7 +240,10 @@ function CognitoAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getToken = useCallback(() => getCognitoToken(), []);
-  const logout = useCallback(() => { void signOutCognito(); }, []);
+  const logout = useCallback(() => {
+    clearScopedStorageForUser(user?.id);
+    void signOutCognito();
+  }, [user?.id]);
   if (initState === 'loading') return <LoadingSplash />;
   if (initState === 'error') return <ErrorSplash message={errorMsg} hint="Check VITE_COGNITO_USER_POOL_ID, VITE_COGNITO_CLIENT_ID, VITE_COGNITO_REGION and VITE_COGNITO_DOMAIN." />;
   return <AuthContext.Provider value={{ ready: true, user, getToken, logout }}>{children}</AuthContext.Provider>;
@@ -294,9 +301,10 @@ function IdentityPlatformProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    clearScopedStorageForUser(user?.id);
     if (!identityAuth) return;
     void signOut(identityAuth).then(() => { window.location.assign('/login'); });
-  }, []);
+  }, [user?.id]);
 
   if (initState === 'loading') return <LoadingSplash />;
   if (initState === 'error') return <ErrorSplash message={errorMsg} hint="Check VITE_IDENTITY_PLATFORM_API_KEY, VITE_IDENTITY_PLATFORM_AUTH_DOMAIN, VITE_IDENTITY_PLATFORM_PROJECT_ID and VITE_IDENTITY_PLATFORM_APP_ID." />;

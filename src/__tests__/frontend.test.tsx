@@ -76,6 +76,7 @@ vi.mock('../lib/storage', () => ({
   saveToStorage: vi.fn((key: string, value: unknown) => {
     storageMap[key] = value;
   }),
+  clearScopedStorageForUser: vi.fn(),
 }));
 
 // Clear shared mock state between every test to prevent cross-test contamination.
