@@ -105,14 +105,9 @@ export default function BillingWorkspace({
   return (
     <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5" id="billing-workspace">
       <Card padding="none" className="col-span-12 min-w-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">Billing & Usage</h2>
-            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{descriptions[view]}</p>
-          </div>
-          <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">
-            {periodLabel}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+          <p className="text-xs font-medium text-[var(--text-secondary)]">{descriptions[view]}</p>
+          <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">{periodLabel}</span>
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
           {sections.map(({ key, label, icon: Icon }) => (
@@ -226,17 +221,17 @@ export default function BillingWorkspace({
           <Card padding="sm" className="col-span-12 sm:!p-5">
             <CardHeader title="Spending & limits" subtitle="Organization spend and selected workspace controls" icon={Wallet} />
             <div className="grid grid-cols-12 gap-3">
-              <KpiCard colSpan={4} iconPosition="top-left" icon={Activity}
+              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Activity}
                 label="Organization usage spend" value={money(workspaceBilling?.periodSpendInr)}
                 sub="Across all workspaces" />
-              <KpiCard colSpan={4} iconPosition="top-left" icon={CreditCard}
+              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
                 label="Selected workspace cap"
                 value={!workspaceBilling ? '—' : workspaceBilling.monthlyBudgetInr == null ? 'No cap' : money(workspaceBilling.monthlyBudgetInr)}
                 sub={workspaceBilling?.workspaceName || 'Selected workspace'} />
-              <KpiCard colSpan={4} iconPosition="top-left" icon={ArrowDownToLine}
+              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
                 label="Workspace cap remaining" value={money(workspaceBilling?.remainingBudgetInr)}
                 sub="From billing service" />
-              {rechargeBased && <KpiCard colSpan={4} iconPosition="top-left" icon={Wallet}
+              {rechargeBased && <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
                 label="Call balance available" value={formatInr(Math.max(0, rechargeBalanceInr - rechargeReservedInr))}
                 sub="After active-call reservations" />}
             </div>
