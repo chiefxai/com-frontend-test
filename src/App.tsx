@@ -5,6 +5,7 @@ import { apiFetch, getAuthToken, getApiBase } from './lib/api';
 import { useDebouncedSync } from './hooks/useDebouncedSync';
 import { COST_PER_MINUTE_INR_FALLBACK as COST_PER_MINUTE_INR } from './lib/pricing';
 import { loadFromStorage, saveToStorage, setStorageScope } from './lib/storage';
+import { identityMatchesSelectedWorkspace, selectAuthorizedWorkspace, workspaceIdentifier } from './lib/workspaceSelection';
 import { recordToLead } from './lib/objectContacts';
 import { RefreshProvider } from './lib/RefreshContext';
 import { PageHeaderProvider } from './lib/PageHeaderContext';
@@ -451,9 +452,8 @@ export default function App() {
         if (cancelled) return;
         setWorkspaces(rows);
         const stored = sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id');
-        const availableRows = rows.filter((row: any) => row.organization?.status !== 'Suspended' && (!row.workspace?.status || row.workspace.status === 'Active'));
-        const selectedRow = availableRows.find((row: any) => (row.workspaceId || row.orgId) === stored) || availableRows[0];
-        const selected = selectedRow?.workspaceId || selectedRow?.orgId || '';
+        const selectedRow = selectAuthorizedWorkspace(rows, stored);
+        const selected = selectedRow ? workspaceIdentifier(selectedRow) : '';
         if (!selected) {
           localStorage.removeItem('chiefx_active_workspace_id');
           localStorage.removeItem('chiefx_active_org_id');
@@ -475,9 +475,7 @@ export default function App() {
           throw new Error(body.error || 'No accessible workspace was found.');
         }
         const session = await identity.json();
-        if (selected && (session.org?.id !== selectedRow.orgId ||
-            (session.workspace?.id && session.workspace.id !== selected) ||
-            (selected !== selectedRow.orgId && !session.workspace?.id))) {
+        if (selectedRow && !identityMatchesSelectedWorkspace(session, selectedRow)) {
           throw new Error('Your workspace selection could not be confirmed.');
         }
         if (cancelled) return;
