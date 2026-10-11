@@ -1,6 +1,6 @@
 import React from 'react';
-import { act, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import OrgDetailPanel from '../admin/OrgDetailPanel';
 import { fetchPlatformOrgDetail, parsePlatformOrgDetail } from '../lib/platformOrgDetail';
 
