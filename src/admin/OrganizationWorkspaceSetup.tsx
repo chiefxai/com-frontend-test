@@ -182,7 +182,7 @@ export default function OrganizationWorkspaceSetup({ orgId }: { orgId: string })
       </p>}
       {!atLimit && !addBranchQuote && <p className="mt-4 text-xs text-[var(--text-muted)]">A new workspace quote is not available for this plan.</p>}
 
-      {showCreate && canCreate && (
+      {showCreate && canCreate && addBranchQuote && (
         <form onSubmit={create} className="mt-4 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3.5">
           <div>
             <h5 className="text-sm font-semibold text-[var(--text-primary)]">Add a workspace</h5>
