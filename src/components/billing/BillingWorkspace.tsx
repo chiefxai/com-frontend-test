@@ -5,6 +5,8 @@ import Button from '../ui/Button';
 import KpiCard from '../ui/KpiCard';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
 import { formatInr } from '../../lib/pricing';
+import { useAuthorization } from '../../lib/authorization';
+import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
 
 export interface WorkspaceBillingSnapshot {
   workspaceId: string;
@@ -61,6 +63,7 @@ const sections: { key: BillingPanel; label: string; icon: React.ElementType }[] 
   { key: 'plan', label: 'Subscription', icon: CreditCard },
   { key: 'usage', label: 'Usage & limits', icon: PhoneCall },
   { key: 'credits', label: 'Credits', icon: Wallet },
+  { key: 'allocation', label: 'Allocation', icon: Wallet },
   { key: 'payments', label: 'Payments', icon: ReceiptText },
 ];
 
@@ -69,6 +72,7 @@ const descriptions: Record<BillingPanel, string> = {
   plan: 'Recurring plan charges and additional workspace billing.',
   usage: 'Recorded call costs and workspace spending controls.',
   credits: 'Available credits from your plan and approved top-ups.',
+  allocation: 'Assign organization-owned credit grants to workspaces and review transfer history.',
   topup: 'Submit a payment receipt for additional usage credits.',
   payments: 'Track payments and verification status.',
 };
@@ -84,6 +88,9 @@ export default function BillingWorkspace({
   onSaveBudget, budgetSaving, budgetError,
 }: BillingWorkspaceProps) {
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
+  const { can, authorization } = useAuthorization();
+  const canAllocate = can('billing.credit.allocate')
+    && ['Owner', 'Organization Admin'].includes(authorization?.organizationRole || '');
   return (
     <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5" id="billing-workspace">
       <Card padding="none" className="col-span-12 min-w-0 overflow-hidden">
@@ -92,7 +99,7 @@ export default function BillingWorkspace({
           <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">{periodLabel}</span>
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
-          {sections.map(({ key, label, icon: Icon }) => (
+          {sections.filter(row => row.key !== 'allocation' || canAllocate).map(({ key, label, icon: Icon }) => (
             <button key={key} type="button" aria-current={view === key ? 'page' : undefined}
               onClick={() => onNavigate(key)}
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${view === key
@@ -229,6 +236,11 @@ export default function BillingWorkspace({
         </>
       )}
 
+      {view === 'allocation' && (canAllocate
+        ? <ManualWorkspaceAllocation />
+        : <p role="alert" className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
+            Only organization administrators can allocate credits to workspaces.
+          </p>)}
       {(view === 'dashboard' || view === 'credits' || view === 'topup' || view === 'payments' || view === 'plan') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate} />
       )}
