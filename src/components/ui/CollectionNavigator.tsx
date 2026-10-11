@@ -47,9 +47,10 @@ export default function CollectionNavigator({
 }: CollectionNavigatorProps) {
   const searching = Boolean(search?.value.trim());
   const noResults = searching && totalCount > 0 && visibleCount === 0;
+  const countLabel = `${totalCount} ${totalCount === 1 ? itemLabel.replace(/s$/, '') : itemLabel}`;
   const count = searching
-    ? `${visibleCount} of ${totalCount} ${itemLabel}`
-    : `${totalCount} ${itemLabel}`;
+    ? `${visibleCount} of ${countLabel}`
+    : countLabel;
 
   return (
     <Widget
