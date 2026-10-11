@@ -26,7 +26,7 @@ import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../ty
 import { COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
-import { visibleWorkspaceFeatureKeys } from '../lib/workspaceMemberFeatures';
+import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys } from '../lib/workspaceMemberFeatures';
 import { getStaffWorkspaceRole } from '../lib/staffWorkspaceRoles';
 import Button from './ui/Button';
 import { useToast } from './ui/Toast';
@@ -140,6 +140,7 @@ export default function SettingsView({
   const canReadOrganization = can('organization.read');
   const canReadOrgMembers = can('organization.members.read');
   const canManageOrgMembers = can('organization.members.manage');
+  const canManageOrganization = can('organization.manage');
   const canManageWorkspaceMembers = can('workspace.members.manage');
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
@@ -155,12 +156,17 @@ export default function SettingsView({
     member: TeamMember | null;
   }>>([]);
 
-  // Workspace feature grants are read-only here: they are combined with
-  // each staff member's organization grants and workspace-specific role.
+  // Workspace-level allowed features are a ceiling for member grants.
+  // Empty policies stay deny-all until an organization administrator updates them.
   const [workspaceFeatureRows, setWorkspaceFeatureRows] = useState<{id:string;name:string;configured:boolean;enabledFeatures:string[]}[]>([]);
   const [workspaceFeatureAllowed, setWorkspaceFeatureAllowed] = useState<string[]>([]);
   const [workspaceFeatureLoading, setWorkspaceFeatureLoading] = useState(false);
   const [workspaceFeatureError, setWorkspaceFeatureError] = useState('');
+  const [workspacePolicyEditor, setWorkspacePolicyEditor] = useState<{
+    workspaceId: string; value: string[];
+  } | null>(null);
+  const [workspacePolicySaving, setWorkspacePolicySaving] = useState<string | null>(null);
+  const [workspacePolicySaveError, setWorkspacePolicySaveError] = useState('');
   const loadWorkspaceFeatures = React.useCallback(async () => {
     setWorkspaceFeatureLoading(true);
     try {
@@ -481,6 +487,32 @@ export default function SettingsView({
     } finally { setAccessSaving(''); }
   };
 
+  const saveWorkspacePolicy = async (workspaceId: string, keys: string[]) => {
+    if (!canManageOrganization || workspacePolicySaving) return;
+    setWorkspacePolicySaving(workspaceId);
+    setWorkspacePolicySaveError('');
+    try {
+      const response = await apiFetch(
+        `/api/settings/organization/workspace-features/${encodeURIComponent(workspaceId)}`,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabledFeatures: keys }) },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not update workspace features.');
+      await loadWorkspaceFeatures();
+      // An in-progress member edit must not contain options that are now disallowed.
+      setWorkspaceFeatureEditor(null);
+      setWorkspacePolicyEditor(null);
+      showToast('Workspace feature policy saved.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not update workspace features.';
+      setWorkspacePolicySaveError(message);
+      showToast(message, 'error');
+    } finally {
+      setWorkspacePolicySaving(null);
+    }
+  };
+
   const saveWorkspaceFeatureAccess = async (memberId: string, workspaceId: string, keys: string[] | null) => {
     setAccessSaving(workspaceId);
     setOrgAccessError('');
@@ -501,6 +533,13 @@ export default function SettingsView({
     } finally {
       setAccessSaving('');
     }
+  };
+
+  const memberWorkspaceFeatures = (member: TeamMember, workspaceId: string) => {
+    if (workspaceFeatureLoading || workspaceFeatureError || orgAccessError) return null;
+    const policy = workspaceFeatureRows.find(row => row.id === workspaceId);
+    const assignment = orgAssignments[workspaceId]?.find(row => row.memberId === member.id);
+    return effectiveWorkspaceMemberKeys(workspaceFeatureAllowed, policy, assignment, member.featureFlags);
   };
 
   // One shared right-sidebar navigation flow. Switching related records replaces
