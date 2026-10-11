@@ -1,7 +1,7 @@
 import { apiFetch } from '../api';
 import type {
   AllocationRule, BillingContact, BillingMutationOptions, BillingOverview, BillingNotification,
-  CursorPage, ManualAllocationOverview, ManualAllocationPreview, SubscriptionCreditStatus, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview, SubscriptionPurchaseResponse, SubscriptionRenewalResponse, SubscriptionUpgradeResponse, SubscriptionGraceResponse,
+  CursorPage, ManualAllocationOverview, ManualAllocationPreview, SubscriptionCreditStatus, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview, SubscriptionPurchaseResponse, SubscriptionRenewalResponse, SubscriptionUpgradeResponse, SubscriptionGraceResponse, SubscriptionGraceRequest,
 } from './types';
 
 export class BillingApiError extends Error {
