@@ -20,16 +20,18 @@ export function useAuthorization() {
 // Only initial-workspace rollout compatibility uses legacy roles. Server
 // permissions become authoritative as soon as the VM has been upgraded.
 export function legacyAuthorization(role: string): Authorization {
-  const admin = ['Organization Admin','Owner','Super Admin','Workspace Admin'].includes(role);
+  const orgAdmin = ['Organization Admin','Owner','Super Admin'].includes(role);
+  const workspaceAdmin = role === 'Workspace Admin';
+  const admin = orgAdmin || workspaceAdmin;
   const viewer = ['Viewer','Customer'].includes(role);
   const billingOnly = role === 'Billing Admin';
-  return { organizationRole: role,workspaceRole: billingOnly ? null : admin ? 'Workspace Admin' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
+  return { organizationRole: role,workspaceRole: orgAdmin || billingOnly ? null : workspaceAdmin ? 'Workspace Admin' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
     permissions: ['notifications.read',
-      ...(!billingOnly ? ['workspace.read'] : []),
-      ...(!viewer && !billingOnly ? ['workspace.write','workspace.call'] : []),
-      ...(!viewer && !billingOnly ? ['workspace.share.propose'] : []),
-      ...(!viewer && !billingOnly ? ['workspace.share.copy'] : []),
-      ...(admin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
+      ...(!billingOnly && !orgAdmin ? ['workspace.read'] : []),
+      ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.write','workspace.call'] : []),
+      ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.share.propose'] : []),
+      ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.share.copy'] : []),
+      ...(workspaceAdmin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
       ...(['Organization Admin','Owner','Super Admin'].includes(role) ? ['organization.read','organization.manage','organization.members.read','organization.members.manage','billing.read','billing.organization.read','billing.payment.submit','billing.contacts.manage','billing.notifications.manage','billing.credit.allocate','billing.allocation_rules.manage','billing.postpaid.manage'] : []),
       ...(billingOnly ? ['organization.read','billing.read','billing.organization.read','billing.payment.submit'] : []),
     ] };
