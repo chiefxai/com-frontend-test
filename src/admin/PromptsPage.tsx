@@ -12,6 +12,14 @@ const requiredVoiceTokens = [
   '{{agent_name}}', '{{company_name}}', '{{industry}}', '{{language}}',
   '{{dialect}}', '{{dialect_profile}}', '{{dialect_examples}}', '{{business_context}}',
 ];
+// Mirror the server's required post-call placeholders for immediate feedback.
+// Server-side validation remains the source of truth when saving.
+const requiredSystemTokens: Record<string, string[]> = {
+  'sentiment-analyzer': ['{transcript}', '{workflowAnswers}'],
+  'call-summarizer': ['{transcript}', '{workflowAnswers}', '{callerNow}'],
+  'workflow-answer-extractor': ['{transcript}', '{questions}'],
+  'follow-up-safety-net': ['{transcript}', '{callerNow}', '{sentiment}', '{summary}'],
+};
 const editorClass = 'min-h-52 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 font-mono text-xs leading-6 text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] disabled:opacity-60';
 const inputClass = 'h-10 w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]';
 
@@ -153,6 +161,8 @@ export default function PromptsPage() {
   const dialectDirty = Boolean(currentDialect && (dialectDraft !== currentDialect.prompt || examplesDraft !== currentDialect.examples.join('\n')));
   const hasUnsavedChanges = voiceDirty || systemDirty || languageDirty || dialectDirty;
   const missingTokens = requiredVoiceTokens.filter(token => !voiceDraft.includes(token));
+  const systemTokens = currentSystem ? (requiredSystemTokens[currentSystem.id] || []) : [];
+  const missingSystemTokens = systemTokens.filter(token => !systemDraft.includes(token));
   const isBusy = Boolean(saving || savingLanguage || savingDialect || adding);
   const canLeave = () => !isBusy && (!hasUnsavedChanges || window.confirm('You have unsaved prompt changes. Discard them?'));
   const discardUnsavedDrafts = () => {
@@ -222,7 +232,7 @@ export default function PromptsPage() {
   };
 
   const saveSystem = async () => {
-    if (!currentSystem || !systemDirty || !systemDraft.trim()) return;
+    if (!currentSystem || !systemDirty || !systemDraft.trim() || missingSystemTokens.length) return;
     setSaving('system'); setSaved(null); setError('');
     try {
       const res = await apiFetch(`/api/platform/prompts/system/${currentSystem.id}`, {
@@ -388,7 +398,7 @@ export default function PromptsPage() {
             <h2 className="text-base font-semibold tracking-tight text-[var(--text-primary)]">Prompt library</h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
               Manage the default instructions behind voice agents, language guidance and post-call processing.
-              Changes apply to future prompt generation; existing agents keep their saved instructions.
+              Voice and language edits affect newly generated instructions; system prompt changes update defaults for subsequent post-call processing.
             </p>
           </div>
           <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={isBusy}
@@ -653,6 +663,22 @@ export default function PromptsPage() {
                     className={editorClass + ' min-h-[350px]'} />
                   <p className="mt-1 text-right text-[10px] tabular-nums text-[var(--text-muted)]">{systemDraft.length.toLocaleString()} characters</p>
                 </div>
+                {systemTokens.length > 0 && (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-semibold text-[var(--text-primary)]">Required input variables</h4>
+                      <span className="text-[11px] tabular-nums text-[var(--text-muted)]">{systemTokens.length - missingSystemTokens.length}/{systemTokens.length} present</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {systemTokens.map(token => (
+                        <code key={token} className={`rounded-md border px-2 py-1 text-[10px] ${missingSystemTokens.includes(token)
+                          ? 'border-rose-400/40 bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                          : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)]'}`}>{token}</code>
+                      ))}
+                    </div>
+                    {!!missingSystemTokens.length && <p role="alert" className="mt-2 text-[11px] text-rose-600 dark:text-rose-300">Restore missing variables before saving this agent's instructions.</p>}
+                  </div>
+                )}
                 <details key={currentSystem.id} className="group rounded-xl border border-[var(--border)]">
                   <summary className="flex cursor-pointer items-center gap-2 px-3.5 py-3 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">
                     <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" /> Compare with platform default
@@ -663,7 +689,7 @@ export default function PromptsPage() {
                   <Button type="button" variant="secondary" size="sm" icon={RotateCcw} disabled={Boolean(saving) || (!currentSystem.isCustomized && !systemDirty)}
                     onClick={() => void resetSystem()}>Restore default</Button>
                   <Button type="button" variant="primary" size="sm" icon={Save} loading={saving === 'system'}
-                    disabled={Boolean(saving) || !systemDirty || !systemDraft.trim()}
+                    disabled={Boolean(saving) || !systemDirty || !systemDraft.trim() || missingSystemTokens.length > 0}
                     onClick={() => void saveSystem()}>Save system prompt</Button>
                 </div>
               </>
