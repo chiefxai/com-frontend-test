@@ -48,7 +48,7 @@ describe('organization billing interface', () => {
     expect(screen.getByText('Recorded usage')).toBeTruthy();
     expect(screen.getByText('Calls recorded')).toBeTruthy();
     expect(screen.getByText('43')).toBeTruthy();
-    expect(screen.getByText(/not a final invoice total/i)).toBeTruthy();
+    expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
     expect(screen.getByTestId('organization-credit-ledger')).toBeTruthy();
   });
 
@@ -63,13 +63,13 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('topup');
   });
 
-  it('offers overview shortcuts to subscription, usage and credits', () => {
+  it('keeps primary billing navigation without an Explore billing card', () => {
     const onNavigate = vi.fn();
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
-    expect(screen.getByText('Explore billing')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Monthly price and workspace renewals/i }));
+    expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Subscription' }));
     expect(onNavigate).toHaveBeenCalledWith('plan');
-    fireEvent.click(screen.getByRole('button', { name: /Check credit balances and payment history/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Credits' }));
     expect(onNavigate).toHaveBeenCalledWith('credits');
   });
 
