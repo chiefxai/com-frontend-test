@@ -716,10 +716,26 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
   // lands on.
   const cancelDialRequestedRef = useRef(false);
 
-  // Outbound numbers this org has actually provisioned (Settings > Numbers)
-  // that can really place a call — Vobiz is wired to real dialing; other
-  // provider labels are display-only for inbound routing.
-  const dialableNumbers = virtualNumbers.filter((n) => /vobiz/i.test(n.provider || ''));
+  // Include Vobiz numbers assigned through the provider-independent connector
+  // inventory. The endpoint is scoped to the active organization/workspace.
+  const [connectorDialNumbers, setConnectorDialNumbers] = useState<Array<{
+    id: string; phoneNumberE164: string; providerKey: string; connectorDisplayName: string; ownerType: string;
+  }>>([]);
+  useEffect(() => {
+    if (!isActive) return;
+    let cancelled = false;
+    apiFetch('/api/telephony/assigned-numbers').then(async response => response.ok ? response.json() : null)
+      .then(body => { if (!cancelled) setConnectorDialNumbers(Array.isArray(body?.numbers) ? body.numbers : []); })
+      .catch(() => { if (!cancelled) setConnectorDialNumbers([]); });
+    return () => { cancelled = true; };
+  }, [isActive]);
+  const dialableNumbers = [
+    ...virtualNumbers.filter((number) => /vobiz/i.test(number.provider || '')),
+    ...connectorDialNumbers.filter(number => number.providerKey === 'vobiz').map(number => ({
+      id: number.id, number: number.phoneNumberE164, provider: 'Vobiz.ai', friendlyName: number.connectorDisplayName,
+      connectorManaged: true as const,
+    })),
+  ].filter((number, index, all) => all.findIndex(candidate => candidate.number === number.number) === index);
   // Backend-persisted (orgSettings.defaultOutboundNumber, via
   // POST /api/settings/org) instead of plain component state — this used
   // to reset to the first dialable number on every page reload, even on
@@ -733,7 +749,8 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
     setOrgSettings?.((prev) => ({ ...prev, defaultOutboundNumber: number }));
   };
   useEffect(() => {
-    if (selectedOutboundNumber || dialableNumbers.length === 0) return;
+    if (dialableNumbers.length === 0) return;
+    if (selectedOutboundNumber && dialableNumbers.some(number => number.number === selectedOutboundNumber)) return;
     // Prefer whatever was saved server-side, as long as it's still a
     // number this org actually has provisioned; otherwise fall back to
     // the first dialable number, same as before this was persisted.
@@ -1836,11 +1853,21 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         taskPage
           ? undefined
           : dialerMode === 'outbound' ? (
+              <div className="flex items-center gap-2">
+              <label className="flex items-center text-xs text-[var(--text-muted)]">Caller ID
+                <select aria-label="Outbound caller ID" className="ml-2 h-9 max-w-64 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 text-xs text-[var(--text-primary)]" value={selectedOutboundNumber} onChange={event => setSelectedOutboundNumber(event.target.value)} disabled={dialableNumbers.length === 0}>
+                  {dialableNumbers.length === 0 && <option value="">No ready outbound number</option>}
+                  {dialableNumbers.map(number => <option key={number.number} value={number.number}>
+                    {number.friendlyName || number.number}{'connectorManaged' in number && number.connectorManaged ? ' · Connector managed' : ''}
+                  </option>)}
+                </select>
+              </label>
               <IconButton
                 icon={Plus}
                 label="New outbound campaign"
                 onClick={() => setShowAssignTask(true)}
               />
+              </div>
             ) : undefined
       }
       toolbar={

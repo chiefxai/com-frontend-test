@@ -44,6 +44,23 @@ interface CreateOrgForm {
   callAuthToken: string;
   callPhoneNumber: string;
   chargeScope: 'ai_only' | 'ai_and_call_provider';
+  telephonySetup: 'customer_owned' | 'platform_managed';
+  platformTelephonyNumberId: string;
+}
+
+interface TelephonyInventoryNumber {
+  id: string;
+  phoneNumberE164: string;
+  displayName?: string | null;
+  inventoryStatus: string;
+  provisioningStatus?: string;
+}
+
+interface TelephonyConnector {
+  id: string;
+  providerKey: string;
+  displayName: string;
+  status: string;
 }
 
 export default function CreateWorkspacePage() {
@@ -61,7 +78,11 @@ export default function CreateWorkspacePage() {
     callAuthToken: '',
     callPhoneNumber: '',
     chargeScope: 'ai_only',
+    telephonySetup: 'customer_owned',
+    platformTelephonyNumberId: '',
   });
+  const [platformTelephonyNumbers, setPlatformTelephonyNumbers] = useState<Array<TelephonyInventoryNumber & { connectorId: string; connectorName: string; providerKey: string; providerName: string }>>([]);
+  const [platformTelephonyAvailable, setPlatformTelephonyAvailable] = useState(false);
   const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
   const [loadingWorkspacePlans, setLoadingWorkspacePlans] = useState(true);
@@ -80,6 +101,49 @@ export default function CreateWorkspacePage() {
   // Plans created before this capability use the platform policy default.
   const planRetentionPolicyId = selectedWorkspacePlan?.retentionPolicyId || retentionCatalog?.defaultPolicyId || '';
   const selectedRetentionPolicy = retentionCatalog?.policies.find(policy => policy.id === planRetentionPolicyId) || null;
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const [providersResponse, connectorsResponse] = await Promise.all([
+          apiFetch('/api/platform/telephony/providers'),
+          apiFetch('/api/platform/telephony/connectors'),
+        ]);
+        // Older backends do not expose connector inventory. Preserve the original form in that case.
+        if (providersResponse.status === 404 || connectorsResponse.status === 404 || !providersResponse.ok || !connectorsResponse.ok) return;
+        const [providerBody, connectorBody] = await Promise.all([
+          providersResponse.json().catch(() => ({})),
+          connectorsResponse.json().catch(() => ({})),
+        ]);
+        const providers = Array.isArray(providerBody.providers) ? providerBody.providers : [];
+        const connectors: TelephonyConnector[] = Array.isArray(connectorBody.connectors) ? connectorBody.connectors : [];
+        const names = new Map<string, string>(providers.map((provider: any) => [provider.providerKey, provider.label || provider.name || provider.providerKey]));
+        // This screen reserves a number for Vobiz outbound routing, the only
+        // connector call path currently wired end to end.
+        const activeConnectors = connectors.filter(connector => connector.status === 'active' && connector.providerKey === 'vobiz');
+        const inventories = await Promise.all(activeConnectors.map(async connector => {
+          const response = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(connector.id)}/numbers`);
+          if (!response.ok) return [];
+          const body = await response.json().catch(() => ({}));
+          const numbers: TelephonyInventoryNumber[] = Array.isArray(body.numbers) ? body.numbers : [];
+          return numbers.filter(number => number.inventoryStatus === 'available' && number.provisioningStatus === 'ready').map(number => ({
+            ...number,
+            connectorId: connector.id,
+            connectorName: connector.displayName,
+            providerKey: connector.providerKey,
+            providerName: names.get(connector.providerKey) || connector.providerKey,
+          }));
+        }));
+        if (!active) return;
+        setPlatformTelephonyNumbers(inventories.flat());
+        setPlatformTelephonyAvailable(true);
+      } catch {
+        // Connector inventory is optional; a failure must not disrupt the existing BYO flow.
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -181,7 +245,11 @@ export default function CreateWorkspacePage() {
         setError('Service account credentials JSON is required.');
         return;
       }
-      if (form.chargeScope === 'ai_and_call_provider' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !form.callPhoneNumber.trim())) {
+      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed' && !form.platformTelephonyNumberId) {
+        setError('Choose an available platform-managed phone number.');
+        return;
+      }
+      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !form.callPhoneNumber.trim())) {
         setError('Call provider credentials and phone number are required when Charge Scope is AI + Call Provider.');
         return;
       }
@@ -220,13 +288,16 @@ export default function CreateWorkspacePage() {
             credentials,
             location: form.gcpLocation,
           },
-          ...(form.chargeScope === 'ai_and_call_provider' ? {
+          ...(form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' ? {
             callProvider: {
               provider: form.callProvider,
               authId: form.callAuthId.trim(),
               authToken: form.callAuthToken.trim(),
               phoneNumber: form.callPhoneNumber.trim(),
             },
+          } : {}),
+          ...(form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed' ? {
+            platformTelephonyNumberId: form.platformTelephonyNumberId,
           } : {}),
           chargeScope: form.chargeScope,
           billingMethod: 'pay_as_you_go',
@@ -377,6 +448,28 @@ export default function CreateWorkspacePage() {
               <p className="text-[11px] text-slate-500 mt-1">Only required when Charge Scope is AI + Call Provider.</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3 dark:bg-[var(--bg-subtle)]">
+              {platformTelephonyAvailable && <fieldset className="space-y-2">
+                <legend className="block text-xs font-medium text-slate-600">Call provider account</legend>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="radio" name="telephonySetup" value="customer_owned" checked={form.telephonySetup === 'customer_owned'} onChange={set('telephonySetup')} />
+                  Customer-owned credentials (current setup)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="radio" name="telephonySetup" value="platform_managed" checked={form.telephonySetup === 'platform_managed'} onChange={set('telephonySetup')} />
+                  Reserve a platform connector number
+                </label>
+              </fieldset>}
+              {form.telephonySetup === 'platform_managed' ? <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1" htmlFor="platform-telephony-number">Available platform number *</label>
+                  <select id="platform-telephony-number" value={form.platformTelephonyNumberId} onChange={event => setForm(current => ({ ...current, platformTelephonyNumberId: event.target.value }))} required className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+                    <option value="">Select a number</option>
+                    {platformTelephonyNumbers.map(number => <option key={number.id} value={number.id}>{number.phoneNumberE164} · {number.providerName} · {number.connectorName}{number.displayName ? ` · ${number.displayName}` : ''}</option>)}
+                  </select>
+                  {!platformTelephonyNumbers.length && <p className="mt-1 text-xs text-slate-500">No available numbers are currently in active platform connector inventory.</p>}
+                </div>
+                <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">This assigns a platform number that an administrator has verified on its provider account. Live routing still requires both telephony connector feature flags.</p>
+              </> : <>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Call Provider *</label>
                 <select value={form.callProvider} onChange={set('callProvider')} className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
@@ -386,17 +479,18 @@ export default function CreateWorkspacePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Auth ID *</label>
-                  <input value={form.callAuthId} onChange={set('callAuthId')} placeholder="Vobiz Auth ID" required autoComplete="off" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input value={form.callAuthId} onChange={set('callAuthId')} placeholder="Vobiz Auth ID" required={form.telephonySetup === 'customer_owned'} autoComplete="off" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Auth Token *</label>
-                  <input type="password" value={form.callAuthToken} onChange={set('callAuthToken')} placeholder="Vobiz Auth Token" required autoComplete="new-password" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input type="password" value={form.callAuthToken} onChange={set('callAuthToken')} placeholder="Vobiz Auth Token" required={form.telephonySetup === 'customer_owned'} autoComplete="new-password" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Provider Phone Number *</label>
-                <input value={form.callPhoneNumber} onChange={set('callPhoneNumber')} placeholder="+14155550123" required autoComplete="off" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                <input value={form.callPhoneNumber} onChange={set('callPhoneNumber')} placeholder="+14155550123" required={form.telephonySetup === 'customer_owned'} autoComplete="off" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
               </div>
+              </>}
             </div>
           </section>
         )}
