@@ -7,7 +7,6 @@ import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
-import WorkspaceAddonPurchases from './billing/WorkspaceAddonPurchases';
 import { newBillingIdempotencyKey } from '../lib/billing/client';
 
 interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number;maxWorkspaces:number|null}}; currentQuote: {totalMonthlyInr:number} | null; purchasesAvailable?:boolean;pendingWorkspacePurchases?:number;addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string;paymentRequired:boolean;monthlyAddonInr:number} | null }
@@ -41,7 +40,6 @@ export default function WorkspaceManagement({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [purchaseKey,setPurchaseKey] = useState(newBillingIdempotencyKey);
-  const [addonRefreshKey,setAddonRefreshKey] = useState(0);
   const canPay = can('billing.payment.submit');
   const paymentRequired = setup?.addBranchQuote?.paymentRequired === true;
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -88,12 +86,11 @@ export default function WorkspaceManagement({
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not create workspace');
       if (!paymentRequired) setWorkspaces(current => [...current, body as WorkspaceRow]);
-      else setAddonRefreshKey(current=>current+1);
       setPurchaseKey(newBillingIdempotencyKey());
       setName('');
       setBranchName('');
       setShowCreateWorkspace(false);
-      setMessage({ type: 'success', text: paymentRequired ? 'Workspace reserved. Submit the payment receipt below; it will be created after approval.' : 'Workspace created and assigned to you as Workspace Admin.' });
+      setMessage({ type: 'success', text: paymentRequired ? 'Workspace reserved. Submit the payment receipt under Billing & Usage → Subscription; it will be created after approval.' : 'Workspace created and assigned to you as Workspace Admin.' });
       // A secondary refresh failure must never make a successful create look
       // unsuccessful (or encourage a duplicate workspace submission).
       try {
@@ -155,11 +152,6 @@ export default function WorkspaceManagement({
         rows={filteredWorkspaces}
         rowKey={workspace => workspace.id}
       />
-      {can('billing.organization.read') && <WorkspaceAddonPurchases canSubmit={canPay} refreshKey={addonRefreshKey} onChange={async()=>{
-        const response = await apiFetch('/api/settings/workspace-policy');
-        if(response.ok){const value=await response.json();setSetup(value);setWorkspaces(value.workspaces);}
-        await onWorkspaceCreated();
-      }}/>}
       {canManage && <Modal
         open={showCreateWorkspace}
         onClose={() => { if (!saving) setShowCreateWorkspace(false); }}
