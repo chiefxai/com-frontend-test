@@ -12,6 +12,14 @@ export function setAuthorization(value: Authorization | null) {
   listeners.forEach(listener => listener());
 }
 export function getAuthorization() { return current; }
+/** Organization-owned credits require both the verified credit-allocation grant
+ * and an organization-wide administrator role. Workspace Admin is distinct.
+ */
+export function canAllocateOrganizationCredits(access: Authorization | null): boolean {
+  return Boolean(access
+    && ['Owner', 'Organization Admin'].includes(access.organizationRole)
+    && access.permissions.includes('billing.credit.allocate'));
+}
 export function can(permission: string) { return current?.permissions.includes(permission) === true; }
 export function useAuthorization() {
   const access = useSyncExternalStore(listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },getAuthorization);

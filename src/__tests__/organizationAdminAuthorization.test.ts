@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
-import { canAccessTab, legacyAuthorization, setAuthorization } from '../lib/authorization';
+import { canAccessTab, legacyAuthorization, setAuthorization, canAllocateOrganizationCredits, permissionForRequest } from '../lib/authorization';
 
 afterEach(() => setAuthorization(null));
 
@@ -19,4 +19,25 @@ it('billing-only members still cannot access workspace modules', () => {
   expect(canAccessTab('leads')).toBe(false);
   expect(canAccessTab('dialer')).toBe(false);
   expect(canAccessTab('settings', 'billing')).toBe(true);
+});
+
+it('reserves credit allocation for verified organization-wide admins, not workspace admins', () => {
+  const sample = {
+    organizationRole: 'Member', workspaceRole: 'Workspace Admin', platformAdmin: false,
+    permissions: ['billing.organization.read', 'billing.credit.allocate'],
+  };
+  expect(canAllocateOrganizationCredits(sample)).toBe(false);
+  expect(canAllocateOrganizationCredits({ ...sample, workspaceRole: 'Manager' })).toBe(false);
+  expect(canAllocateOrganizationCredits({ ...sample, organizationRole: 'Billing Admin', workspaceRole: null })).toBe(false);
+  expect(canAllocateOrganizationCredits({ ...sample, organizationRole: 'Organization Admin', workspaceRole: null })).toBe(true);
+  expect(canAllocateOrganizationCredits({ ...sample, organizationRole: 'Owner', workspaceRole: null })).toBe(true);
+  expect(canAllocateOrganizationCredits({ ...sample, organizationRole: 'Organization Admin', permissions: ['billing.read'] })).toBe(false);
+  expect(canAllocateOrganizationCredits(null)).toBe(false);
+});
+
+it('requires credit allocation permission for every workspace transfer mutation', () => {
+  expect(permissionForRequest('/api/billing/transfers', 'POST')).toBe('billing.credit.allocate');
+  expect(permissionForRequest('/api/billing/manual-allocations/transfer', 'POST')).toBe('billing.credit.allocate');
+  expect(permissionForRequest('/api/billing/allocations/preview', 'POST')).toBe('billing.credit.allocate');
+  expect(permissionForRequest('/api/billing/allocations/preview', 'GET')).toBe('billing.organization.read');
 });
