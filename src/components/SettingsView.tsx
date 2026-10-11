@@ -539,6 +539,16 @@ export default function SettingsView({
   const assignedWorkspaces = (memberId: string) => orgWorkspaces.filter(workspace =>
     orgAssignments[workspace.id]?.some(assignment => assignment.memberId === memberId && assignment.assignmentStatus === 'Active'));
 
+  const staffMemberRole = (member: TeamMember) => {
+    if (!canReadOrgMembers) {
+      const scoped = workspaceMembers.find(row => row.memberId === member.id);
+      return scoped?.assignmentStatus === 'Active' ? (scoped.workspaceRole || 'Member') : 'No access';
+    }
+    if (!staffWorkspaceFilter) return member.role;
+    const scoped = orgAssignments[staffWorkspaceFilter]?.find(row => row.memberId === member.id);
+    return scoped?.assignmentStatus === 'Active' ? (scoped.workspaceRole || 'Member') : 'No access';
+  };
+
   const [savingWorkspaceMember, setSavingWorkspaceMember] = useState<string | null>(null);
   const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
   const [ownerTransferTarget, setOwnerTransferTarget] = useState('');
@@ -1135,8 +1145,10 @@ export default function SettingsView({
                 <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
                   <FilterBar
                     selects={canReadOrgMembers ? [
-                      { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: setStaffWorkspaceFilter, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
-                      { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers.map(member => member.role))).map(role => ({ label: role, value: role }))] },
+                      { key: 'Workspace', label: 'Workspace', value: staffWorkspaceFilter, onChange: value => { setStaffWorkspaceFilter(value); setStaffRoleFilter(''); }, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id }))] },
+                      { key: 'Role', label: 'Role', value: staffRoleFilter, onChange: setStaffRoleFilter, options: [{ label: 'All roles', value: '' }, ...Array.from(new Set(teamMembers
+                        .filter(member => !staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter))
+                        .map(member => staffMemberRole(member)))).map(role => ({ label: role, value: role }))] },
                       { key: 'Status', label: 'Status', value: staffStatusFilter, onChange: setStaffStatusFilter, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
                     ] : []}
                     onClear={() => { setStaffWorkspaceFilter(''); setStaffRoleFilter(''); setStaffStatusFilter(''); }}
@@ -1145,7 +1157,7 @@ export default function SettingsView({
                       ? {
                           filtered: teamMembers.filter(member =>
                             (!staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter)) &&
-                            (!staffRoleFilter || member.role === staffRoleFilter) &&
+                            (!staffRoleFilter || staffMemberRole(member) === staffRoleFilter) &&
                             (!staffStatusFilter || member.status === staffStatusFilter)).length,
                           total: teamMembers.length,
                           label: 'members',
@@ -1171,7 +1183,7 @@ export default function SettingsView({
                   }));
                   const filteredStaff = matrixMembers.filter(member =>
                     (!staffWorkspaceFilter || assignedWorkspaces(member.id).some(workspace => workspace.id === staffWorkspaceFilter)) &&
-                    (!staffRoleFilter || member.role === staffRoleFilter) &&
+                    (!staffRoleFilter || staffMemberRole(member) === staffRoleFilter) &&
                     (!staffStatusFilter || member.status === staffStatusFilter));
                   const columns: Column<TeamMember>[] = [
                     {
@@ -1212,9 +1224,7 @@ export default function SettingsView({
                             <option value="Viewer">Viewer</option>
                           </select>;
                         }
-                        const role = staffWorkspaceFilter
-                          ? scoped?.assignmentStatus === 'Active' ? scoped.workspaceRole : 'No access'
-                          : member.role;
+                        const role = staffMemberRole(member);
                         return <span className="inline-flex items-center rounded-lg bg-[var(--accent-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--accent)]">
                           {role || 'No access'}
                         </span>;
