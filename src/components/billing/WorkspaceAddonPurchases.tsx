@@ -4,12 +4,13 @@ import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
 import type { BillingAmount } from '../../lib/billing/types';
 import Modal from '../ui/Modal';
+import Button from '../ui/Button';
 
 type AddonInvoice = {id:string;status:string;paymentAmount:BillingAmount;dueAt:string|null;paymentStatus:string|null;paymentRequestId:string|null};
 type Addon = {id:string;name:string;status:string;workspaceId:string|null;monthlyAmount:BillingAmount;autoRenew:boolean;periodEndsAt:string|null;graceEndsAt:string|null;invoice:AddonInvoice|null};
 const money = (amount:BillingAmount) => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Number(amount.units)/10 ** amount.scale);
 const date = (value:string|null) => value ? new Date(value).toLocaleDateString('en-IN') : 'After payment approval';
-const fieldClass = 'mt-1 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]';
+const fieldClass = 'mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]';
 
 export default function WorkspaceAddonPurchases({canSubmit=false,refreshKey=0,onChange}:{canSubmit?:boolean;refreshKey?:number;onChange?:()=>Promise<void>}) {
   const [addons,setAddons] = useState<Addon[]>([]);
@@ -87,12 +88,13 @@ export default function WorkspaceAddonPurchases({canSubmit=false,refreshKey=0,on
     finally {setBusy(false);}
   };
 
-  return <section className="space-y-3 border-t border-[var(--border)] p-4">
+  return <section className="space-y-3" aria-label="Workspace add-on invoices">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="text-sm font-semibold text-[var(--text-primary)]">Workspace add-ons</h3>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">Paid workspaces renew monthly through invoices. Usage credits are reserved for product usage.</p></div>
-      <button type="button" disabled={loading || busy} onClick={async()=>{await refresh();await onChange?.();}}
-        className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5"/>Refresh</button>
+      <p className="max-w-xl text-xs leading-5 text-[var(--text-secondary)]">
+        Paid workspace invoices are separate from usage credits and require payment approval.
+      </p>
+      <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
+        disabled={loading || busy} onClick={async()=>{await refresh();await onChange?.();}}>Refresh</Button>
     </div>
     {message && <p role="status" className="text-xs text-emerald-700 dark:text-emerald-300">{message}</p>}
     {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
@@ -101,19 +103,24 @@ export default function WorkspaceAddonPurchases({canSubmit=false,refreshKey=0,on
       const invoice = addon.invoice;
       const waiting = invoice?.paymentStatus === 'pending_verification';
       const payable = invoice && ['open','overdue'].includes(invoice.status);
-      return <div key={addon.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
+      return <div key={addon.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><p className="text-sm font-medium text-[var(--text-primary)]">{addon.name} · {money(addon.monthlyAmount)}/month</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">{addon.name}</p>
+            <p className="mt-1 text-xs font-semibold tabular-nums text-[var(--text-primary)]">{money(addon.monthlyAmount)} / month</p>
             <p className="mt-1 text-xs text-[var(--text-secondary)]">{addon.status === 'pending' ? 'Workspace reserved — payment required before creation' : addon.status === 'suspended' ? 'Access suspended — payment required to resume'
               : addon.periodEndsAt && Date.parse(addon.periodEndsAt) <= Date.now() ? `Grace period — arrange payment before ${date(addon.graceEndsAt)}` : `Paid access until ${date(addon.periodEndsAt)}`}</p>
             {payable && <p className="mt-1 text-xs text-[var(--text-secondary)]">{waiting ? 'Payment awaiting platform verification' : `Invoice due: ${money(invoice.paymentAmount)} · ${date(invoice.dueAt)}`}</p>}
             {addon.periodEndsAt && addon.autoRenew && <p className="mt-1 text-xs text-[var(--text-muted)]">A renewal invoice is issued seven days before expiry. Unpaid access ends after the seven-day grace period on {date(addon.graceEndsAt)}.</p>}
           </div>
           {canSubmit && <div className="flex flex-wrap gap-2">
-            {payable && available && !waiting && <button type="button" disabled={busy} onClick={()=>{setSelected(addon);setProof(null);setReference('');setNote('');setError('');setPaymentKey(newBillingIdempotencyKey());}}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><CreditCard className="h-3.5 w-3.5"/>{['needs_clarification','clarification_requested'].includes(invoice.paymentStatus || '') ? 'Update payment proof' : 'Submit payment'}</button>}
-            <button type="button" disabled={busy || waiting} onClick={()=>void change(addon)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-secondary)] disabled:opacity-50">
-              {addon.status === 'pending' ? 'Cancel purchase' : addon.autoRenew ? 'Stop renewal' : 'Enable renewal'}</button>
+            {payable && available && !waiting && <Button type="button" variant="primary" size="sm" icon={CreditCard}
+              disabled={busy} onClick={()=>{setSelected(addon);setProof(null);setReference('');setNote('');setError('');setPaymentKey(newBillingIdempotencyKey());}}>
+              {['needs_clarification','clarification_requested'].includes(invoice.paymentStatus || '') ? 'Update proof' : 'Submit payment'}
+            </Button>}
+            <Button type="button" variant="secondary" size="sm" disabled={busy || waiting} onClick={()=>void change(addon)}>
+              {addon.status === 'pending' ? 'Cancel purchase' : addon.autoRenew ? 'Stop renewal' : 'Enable renewal'}
+            </Button>
           </div>}
         </div>
       </div>;
@@ -132,7 +139,9 @@ export default function WorkspaceAddonPurchases({canSubmit=false,refreshKey=0,on
         <label className="block text-xs text-[var(--text-secondary)]">Note (optional)
           <textarea maxLength={2000} rows={2} value={note} onChange={e=>{setNote(e.target.value);setPaymentKey(newBillingIdempotencyKey());}} className={fieldClass}/></label>
         {error && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{error}</p>}
-        <button type="submit" disabled={busy || !proof || !reference.trim()} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? 'Submitting…' : 'Submit for verification'}</button>
+        <Button type="submit" variant="primary" size="sm" loading={busy} disabled={!proof || !reference.trim()}>
+          Submit for verification
+        </Button>
       </form>}
     </Modal>
   </section>;
