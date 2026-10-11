@@ -435,22 +435,28 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
               </div>
 
               <div className={PANEL_CLASS}>
-                <CardHeader title="Plan & usage" subtitle="Subscription and accumulated usage" icon={Activity} accent="#2563eb" />
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-[var(--text-secondary)]">Plan</span>
-                  <span className="font-semibold text-[var(--text-primary)]">{detail.subscriptionPlan}</span>
+                <CardHeader title="Plan & usage" subtitle="Subscription and accumulated AI usage" icon={Activity} accent="#2563eb" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3">
+                    <p className="text-[11px] font-medium text-[var(--text-secondary)]">AI call time</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--text-primary)]">{detail.aiMinutesUsed}</p>
+                    <p className="mt-1 text-[10px] text-[var(--text-muted)]">Minutes recorded</p>
+                  </div>
+                  <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3">
+                    <p className="text-[11px] font-medium text-[var(--text-secondary)]">AI voice cost</p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--text-primary)]">{formatInr(detail.totalCostInr)}</p>
+                    <p className="mt-1 text-[10px] text-[var(--text-muted)]">Recorded charges</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-[var(--text-secondary)]">AI minutes</span>
-                  <span className="font-semibold text-[var(--text-primary)]">{detail.aiMinutesUsed}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-[var(--text-secondary)]">AI voice cost</span>
-                  <span className="font-semibold text-[var(--text-primary)]">{formatInr(detail.totalCostInr)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--text-secondary)]">Signed up</span>
-                  <span className="text-[var(--text-secondary)]">{new Date(detail.createdAt).toLocaleDateString()}</span>
+                <div className="mt-3 divide-y divide-[var(--border)] rounded-xl border border-[var(--border)] px-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 py-3 text-xs">
+                    <span className="text-[var(--text-muted)]">Subscription plan</span>
+                    <span className="font-semibold text-[var(--text-primary)]">{detail.subscriptionPlan}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 py-3 text-xs">
+                    <span className="text-[var(--text-muted)]">Signed up</span>
+                    <span className="font-medium text-[var(--text-primary)]">{new Date(detail.createdAt).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
 
