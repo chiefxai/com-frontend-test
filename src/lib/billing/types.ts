@@ -106,6 +106,52 @@ export interface AllocationRule {
   basisPoints?: number;
 }
 
+/** Manual allocations are grant-specific: never combine currencies or expiries. */
+export interface ManualAllocationBalance {
+  ownerType: 'organization' | 'workspace';
+  ownerId: string;
+  kind: GrantKind;
+  available: BillingAmount;
+  held: BillingAmount;
+}
+export interface ManualAllocationGrant {
+  id: string;
+  kind: GrantKind;
+  expiresAt: string | null;
+  available: BillingAmount;
+  held: BillingAmount;
+  positionVersion: number;
+}
+export interface ManualAllocationHistory {
+  id: string;
+  grantId: string;
+  workspaceId: string;
+  workspaceName: string;
+  amount: BillingAmount;
+  createdAt: string;
+  actorId: string | null;
+}
+export interface ManualAllocationOverview {
+  uninitialized: boolean;
+  writable?: boolean;
+  transfersEnabled: boolean;
+  workspaces: { id: string; name: string; status: string }[];
+  balances: ManualAllocationBalance[];
+  grants: ManualAllocationGrant[];
+  history: ManualAllocationHistory[];
+}
+export interface ManualAllocationPreview {
+  grantId: string;
+  workspaceId: string;
+  workspaceName: string;
+  kind: GrantKind;
+  amount: BillingAmount;
+  remaining: BillingAmount;
+  expiresAt: string | null;
+  expectedPositionVersion: number;
+  transfersEnabled: boolean;
+}
+
 export interface BillingMutationOptions {
   /** Keep the same key when retrying the same user action. */
   idempotencyKey: string;
