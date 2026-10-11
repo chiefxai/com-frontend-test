@@ -45,6 +45,7 @@ import PageShell from './ui/PageShell';
 import AwsCreateLayout from './ui/AwsCreateLayout';
 import BreadcrumbTitle from './ui/BreadcrumbTitle';
 import Widget from './ui/Widget';
+import CollectionNavigator from './ui/CollectionNavigator';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
 import SearchInput from './ui/SearchInput';
@@ -430,12 +431,28 @@ export default function DialerSimulator({
 
 
   const [campaignSearch, setCampaignSearch] = useState('');
+  const [inboundNumberSearch, setInboundNumberSearch] = useState('');
   const taskPage = showAssignTask;
   useEffect(() => {
     if (!isActive || dialerMode !== 'outbound') setShowAssignTask(false);
   }, [isActive, dialerMode]);
 
   const activeVirtualNumbers = virtualNumbers;
+
+  // Keep the same search and empty-state behavior in both shared collection navigators.
+  const normalizedCampaignSearch = campaignSearch.trim().toLowerCase();
+  const filteredCampaignTasks = tasks.filter((task) => (
+    !normalizedCampaignSearch
+    || task.name.toLowerCase().includes(normalizedCampaignSearch)
+    || (task.workflowName || task.workflowRunMetadata?.workflowName || '').toLowerCase().includes(normalizedCampaignSearch)
+  ));
+  const normalizedNumberSearch = inboundNumberSearch.trim().toLowerCase();
+  const filteredInboundNumbers = activeVirtualNumbers.filter((number) => (
+    !normalizedNumberSearch
+    || number.number.toLowerCase().includes(normalizedNumberSearch)
+    || (number.friendlyName || '').toLowerCase().includes(normalizedNumberSearch)
+    || (number.provider || '').toLowerCase().includes(normalizedNumberSearch)
+  ));
 
   // Real inbound call history — sourced from `callLogs` (populated from the
   // backend's `call_logs` table, tagged `direction` by the Vobiz
@@ -1933,59 +1950,50 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
               </div>
             </div>
           ) : (
-            <Widget
-              colSpan={3}
+            <CollectionNavigator
               title="Campaigns"
+              description="Your outbound runs, all in one place."
               icon={Megaphone}
-              className="!col-span-12 lg:!col-span-3 xl:!col-span-3 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden" bodyClassName="h-full"
+              totalCount={tasks.length}
+              visibleCount={filteredCampaignTasks.length}
+              sectionLabel="All campaigns"
+              itemLabel="runs"
+              search={{ value: campaignSearch, onChange: setCampaignSearch, placeholder: 'Search campaigns...' }}
+              emptyTitle="No campaigns yet"
+              emptyDescription="Create your first campaign to start dialing and track its progress here."
+              emptyAction={
+                <button
+                  type="button"
+                  onClick={() => setShowAssignTask(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--accent)] px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                >
+                  <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                  New campaign
+                </button>
+              }
               action={
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-[var(--text-muted)]">{tasks.length} runs</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
-                      className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
-                      aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
-                    >
-                      <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsSimulatorNavigatorCollapsed(true)}
-                      className="hidden lg:flex h-9 w-9 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors"
-                      aria-label="Collapse campaigns"
-                      title="Collapse campaigns"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
+                    className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+                    aria-label={isCampaignNavigatorOpen ? 'Collapse campaigns' : 'Expand campaigns'}
+                  >
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isCampaignNavigatorOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSimulatorNavigatorCollapsed(true)}
+                    className="hidden lg:flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+                    aria-label="Collapse campaigns"
+                    title="Collapse campaigns"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </>
               }
             >
-              <div className={`h-full flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
-                <div className="px-3 pb-3 border-b border-[var(--border)]">
-                  <SearchInput
-                    value={campaignSearch}
-                    onChange={setCampaignSearch}
-                    placeholder="Search campaigns..."
-                  />
-                </div>
-
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">All campaigns</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">{tasks.length}</span>
-                </div>
-
-                <div className="space-y-1.5 max-h-[52vh] lg:max-h-[62vh] overflow-y-auto px-2 pb-2">
-                  {tasks
-                    .filter((task) => {
-                      const q = campaignSearch.trim().toLowerCase();
-                      if (!q) return true;
-                      return task.name.toLowerCase().includes(q)
-                        || (task.workflowName || task.workflowRunMetadata?.workflowName || '').toLowerCase().includes(q);
-                    })
-                    .map((task) => {
+              {filteredCampaignTasks.map((task) => {
                       const isActive = task.id === selectedTaskId;
                       const completed = Object.values(task.callResults).filter((r) => r.status === 'Completed').length;
                       const total = task.leadIds.length;
@@ -2074,17 +2082,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                         </div>
                       );
                     })}
-
-                  {tasks.length === 0 && (
-                    <div className="px-3 py-10 text-center">
-                      <Megaphone className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">No campaigns yet</p>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-1">Create your first outbound campaign.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Widget>
+            </CollectionNavigator>
           )}
         </aside>
 
@@ -2416,7 +2414,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           }
         >
           {/* Unified inbound workspace: receiving numbers + call history */}
-          <aside className={`transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
+          <aside className={`h-full min-h-0 transition-all duration-200 ${isCampaignNavigatorOpen ? 'fixed inset-y-0 left-0 z-50 w-[min(88vw,360px)] p-3 pt-20 lg:static lg:z-auto lg:w-auto lg:p-0 lg:pt-0' : 'hidden lg:block'} ${isSimulatorNavigatorCollapsed ? 'lg:col-span-1 xl:col-span-1' : 'lg:col-span-3 xl:col-span-3'}`}>
             {isSimulatorNavigatorCollapsed ? (
               <div className="hidden lg:flex h-full min-h-0 flex-col items-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm py-3 gap-3">
               <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]" aria-hidden="true">NAV</span>
@@ -2451,18 +2449,23 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                 </div>
               </div>
             ) : (
-              <Widget
-                colSpan={3}
+              <CollectionNavigator
                 title="Inbound numbers"
+                description="Numbers ready to receive calls."
                 icon={PhoneForwarded}
-                className="!col-span-12 lg:!col-span-3 xl:!col-span-3 h-full min-h-0 lg:sticky lg:top-4 border-[var(--border)] shadow-sm overflow-hidden"
+                totalCount={activeVirtualNumbers.length}
+                visibleCount={filteredInboundNumbers.length}
+                sectionLabel="Connected numbers"
+                itemLabel="numbers"
+                search={{ value: inboundNumberSearch, onChange: setInboundNumberSearch, placeholder: 'Search numbers...' }}
+                emptyTitle="No inbound numbers"
+                emptyDescription="Add a virtual number in Administration to receive inbound calls."
                 action={
-                  <div className="flex items-center gap-1.5">
-                    <Badge color="blue" className="font-mono">{activeVirtualNumbers.length} Online</Badge>
+                  <>
                     <button
                       type="button"
                       onClick={() => setIsCampaignNavigatorOpen((open) => !open)}
-                      className="lg:hidden h-8 w-8 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-secondary)]"
+                      className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
                       aria-label={isCampaignNavigatorOpen ? 'Collapse inbound numbers' : 'Expand inbound numbers'}
                       title={isCampaignNavigatorOpen ? 'Collapse inbound numbers' : 'Expand inbound numbers'}
                     >
@@ -2471,35 +2474,16 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                     <button
                       type="button"
                       onClick={() => setIsSimulatorNavigatorCollapsed(true)}
-                      className="hidden lg:flex h-9 w-9 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-[var(--accent)] transition-colors"
+                      className="hidden lg:flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
                       aria-label="Collapse inbound numbers"
                       title="Collapse inbound numbers"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                  </div>
+                  </>
                 }
               >
-                <div className={`flex flex-col ${isCampaignNavigatorOpen ? 'flex' : 'hidden lg:flex'}`}>
-                  <div className="px-3 pb-3 border-b border-[var(--border)]">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0">
-                        <PhoneIncoming className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Receiving lines</p>
-                        <p className="text-[11px] text-[var(--text-secondary)] truncate">Numbers configured for inbound calls</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between px-3 py-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Connected numbers</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">{activeVirtualNumbers.length}</span>
-                  </div>
-
-                  <div className="space-y-1.5 max-h-[52vh] lg:max-h-[62vh] overflow-y-auto px-2 pb-2">
-                    {activeVirtualNumbers.map((vNum) => (
+                    {filteredInboundNumbers.map((vNum) => (
                       <div
                         key={vNum.id}
                         className="w-full text-left rounded-xl border border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-subtle)] p-3 transition-all"
@@ -2521,16 +2505,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                       </div>
                     ))}
 
-                    {activeVirtualNumbers.length === 0 && (
-                      <div className="px-3 py-10 text-center">
-                        <PhoneForwarded className="h-7 w-7 mx-auto text-[var(--text-muted)] mb-2" />
-                        <p className="text-xs font-semibold text-[var(--text-primary)]">No inbound numbers</p>
-                        <p className="text-[10px] text-[var(--text-muted)] mt-1">Add a virtual number under Administration to receive calls.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Widget>
+              </CollectionNavigator>
             )}
           </aside>
 
