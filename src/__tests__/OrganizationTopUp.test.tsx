@@ -1,0 +1,99 @@
+import React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import OrganizationTopUp from '../components/billing/OrganizationTopUp';
+
+const mocks = vi.hoisted(() => ({
+  organizationOverview: vi.fn(),
+  payments: vi.fn(),
+  submitPaymentWithProof: vi.fn(),
+  apiFetch: vi.fn(),
+}));
+
+vi.mock('../lib/billing/client', () => ({
+  billingClient: {
+    organizationOverview: mocks.organizationOverview,
+    payments: mocks.payments,
+    submitPaymentWithProof: mocks.submitPaymentWithProof,
+  },
+  newBillingIdempotencyKey: () => 'test-idempotency-key',
+}));
+vi.mock('../lib/api', () => ({ apiFetch: mocks.apiFetch }));
+vi.mock('../lib/authorization', () => ({ useAuthorization: () => ({ can: () => true }) }));
+vi.mock('../components/billing/WorkspaceAddonPurchases', () => ({
+  default: () => <div data-testid="workspace-invoices">Workspace invoices</div>,
+}));
+
+const cash = (units: string) => ({ asset: 'INR', scale: 2, units });
+const payment = {
+  id: 'payment-1', purpose: 'topup' as const, status: 'pending_verification' as const,
+  expectedAmount: cash('120000'), receivedAmount: null,
+  submittedAt: '2026-10-09T12:00:00.000Z', reviewedAt: null, informationRequest: null,
+};
+const overview = {
+  orgId: 'org-1', billingMethod: 'recharge_based' as const,
+  activePeriod: { id: 'period-1', startsAt: '2026-10-01', endsAt: '2026-11-01',
+    status: 'active' as const, termsVersion: 1 },
+  nextPeriod: null,
+  balances: [
+    { kind: 'subscription' as const, available: cash('300000'), held: cash('0'), expiresAt: null },
+    { kind: 'topup' as const, available: cash('150000'), held: cash('0'), expiresAt: null },
+  ],
+  recentPayments: [payment],
+  outstandingInvoices: [],
+  subscriptionTerms: null,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.organizationOverview.mockResolvedValue(overview);
+  mocks.payments.mockResolvedValue({ rows: [payment], nextCursor: null });
+  mocks.apiFetch.mockResolvedValue({ ok: true, json: async () => ({ topupAvailable: true }) });
+  mocks.submitPaymentWithProof.mockResolvedValue({ expectedAmount: cash('100000') });
+});
+afterEach(cleanup);
+
+describe('organization billing views', () => {
+  it('shows the available credit sources and a recent payment status without implying approval', async () => {
+    const onNavigate = vi.fn();
+    render(<OrganizationTopUp view="dashboard" canSubmit onNavigate={onNavigate} />);
+    expect(await screen.findByText('Available usage credits')).toBeInTheDocument();
+    expect(await screen.findByText('₹3,000.00')).toBeInTheDocument();
+    expect(screen.getByText('₹1,500.00')).toBeInTheDocument();
+    expect(await screen.findByText('Awaiting admin verification')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'View credits' }));
+    expect(onNavigate).toHaveBeenCalledWith('credits');
+  });
+
+  it('keeps the credit top-up form gated and hides it after a successful receipt submission', async () => {
+    const onNavigate = vi.fn();
+    render(<OrganizationTopUp view="topup" canSubmit onNavigate={onNavigate} />);
+    fireEvent.click(await screen.findByRole('button', { name: '₹1,000' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Bank or UPI reference' }), {
+      target: { value: 'UTR-456' },
+    });
+    const receipt = new File(['proof'], 'receipt.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('Payment receipt'), { target: { files: [receipt] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit for verification' }));
+    await waitFor(() => expect(mocks.submitPaymentWithProof).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: 'topup', paymentReference: 'UTR-456' }),
+      receipt, expect.objectContaining({ idempotencyKey: 'test-idempotency-key' }),
+    ));
+    expect(await screen.findByText(/Credits are added only after approval/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
+  });
+
+  it('does not offer a top-up form when payment submission is disabled', async () => {
+    render(<OrganizationTopUp view="topup" canSubmit={false} />);
+    expect(await screen.findByText(/Only administrators with payment-submission permission/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the payment history and workspace-renewal view together', async () => {
+    render(<OrganizationTopUp view="payments" canSubmit />);
+    expect(await screen.findByText('Payment history')).toBeInTheDocument();
+    expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
+    expect(await screen.findByText('Awaiting admin verification')).toBeInTheDocument();
+  });
+});

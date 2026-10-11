@@ -63,6 +63,21 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('topup');
   });
 
+  it('offers overview shortcuts to subscription, usage and credits', () => {
+    const onNavigate = vi.fn();
+    render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
+    expect(screen.getByText('Explore billing')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Monthly price and workspace renewals/i }));
+    expect(onNavigate).toHaveBeenCalledWith('plan');
+    fireEvent.click(screen.getByRole('button', { name: /Check credit balances and payment history/i }));
+    expect(onNavigate).toHaveBeenCalledWith('credits');
+  });
+
+  it('keeps Add credits hidden for viewers without submission permission', () => {
+    render(<BillingWorkspace {...defaults} canSubmitPayment={false} />);
+    expect(screen.queryByRole('button', { name: 'Add credits' })).not.toBeInTheDocument();
+  });
+
   it('keeps organization spending distinct from the selected workspace cap and preserves save', () => {
     const onSaveBudget = vi.fn();
     const onBudgetDraftChange = vi.fn();
