@@ -89,6 +89,49 @@ describe('organization billing views', () => {
     expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
   });
 
+  it('includes workspace add-on payments by default and labels unrelated invoices correctly', async () => {
+    const workspacePayment = {
+      ...payment, id: 'pay-addon', purpose: 'invoice' as const,
+      invoiceId: 'invoice-workspace', workspaceAddonName: 'Mumbai',
+      expectedAmount: cash('5000'),
+    };
+    const invoicePayment = {
+      ...payment, id: 'pay-general', purpose: 'invoice' as const,
+      invoiceId: 'invoice-other', workspaceAddonName: null,
+    };
+    mocks.payments.mockResolvedValue({
+      rows: [workspacePayment, invoicePayment, payment], nextCursor: null,
+    });
+    render(<OrganizationTopUp view="payments" canSubmit />);
+    expect(await screen.findByText('Workspace add-on')).toBeInTheDocument();
+    expect(screen.getByText('Mumbai')).toBeInTheDocument();
+    expect(screen.getByText('Invoice payment')).toBeInTheDocument();
+    expect(screen.getByText('Credit top-up')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Payment type' })).toHaveValue('all');
+    expect(mocks.payments).toHaveBeenCalledWith(null, 10, 'all');
+    // Only payment requests are in this table: open invoices remain in the card below.
+    expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
+  });
+
+  it('filters workspace invoices on the server before pagination and preserves type on Next', async () => {
+    const workspacePayment = {
+      ...payment, id: 'pay-addon', purpose: 'invoice' as const,
+      invoiceId: 'invoice-workspace', workspaceAddonName: 'Mumbai',
+    };
+    mocks.payments.mockImplementation(async (cursor: string | null, _limit: number, type: string) => ({
+      rows: type === 'workspace' ? [workspacePayment] : [payment],
+      nextCursor: type === 'workspace' && !cursor ? 'next-workspace-page' : null,
+    }));
+    render(<OrganizationTopUp view="payments" canSubmit />);
+    await screen.findByText('Credit top-up');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Payment type' }), { target: { value: 'workspace' } });
+    expect(await screen.findByText('Workspace add-on')).toBeInTheDocument();
+    expect(screen.queryByText('Credit top-up')).not.toBeInTheDocument();
+    expect(mocks.payments).toHaveBeenCalledWith(null, 10, 'workspace');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(mocks.payments).toHaveBeenCalledWith('next-workspace-page', 10, 'workspace'));
+  });
+
   it('keeps the payment history and workspace-renewal view together', async () => {
     render(<OrganizationTopUp view="payments" canSubmit />);
     expect(await screen.findByText('Payment history')).toBeInTheDocument();
