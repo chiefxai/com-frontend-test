@@ -16,7 +16,7 @@ const voice = [
   { callType: 'OUTBOUND', prompt: validPrompt + ' Outbound', defaultPrompt: validPrompt + ' Outbound', isCustomized: false },
 ];
 const system = [
-  { id: 'sentiment', name: 'Sentiment analyst', description: 'Classifies calls', model: 'gemini', systemPrompt: 'Analyze calls.', defaultSystemPrompt: 'Analyze calls.', isCustomized: false, tools: [], runsOn: 'After a call' },
+  { id: 'sentiment', name: 'Sentiment analyst', description: 'Classifies calls', model: 'gemini', systemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', defaultSystemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', isCustomized: false, tools: [], runsOn: 'After a call' },
   { id: 'summary', name: 'Summary agent', description: 'Writes notes', model: 'gemini', systemPrompt: 'Summarize.', defaultSystemPrompt: 'Summarize.', isCustomized: false, tools: [], runsOn: 'After a call' },
 ];
 const catalog = {
@@ -74,7 +74,7 @@ describe('Platform Admin prompt library', () => {
     expect(screen.getByRole('textbox', { name: 'Prompt instructions' })).toBeInTheDocument();
     confirm.mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: /System agents/ }));
-    expect(screen.getByRole('textbox', { name: 'System instructions' })).toHaveValue('Analyze calls.');
+    expect(screen.getByRole('textbox', { name: 'System instructions' })).toHaveValue('Analyze calls. {transcript} {workflowAnswers}');
   });
 
   it('uses a searchable system-agent list without affecting saved instructions', async () => {
@@ -86,6 +86,18 @@ describe('Platform Admin prompt library', () => {
     expect(screen.queryByRole('button', { name: /Sentiment analyst/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Summary agent/i }));
     expect(screen.getByRole('textbox', { name: 'System instructions' })).toHaveValue('Summarize.');
+  });
+
+  it('prevents system prompt saves when post-call variables are missing', async () => {
+    render(<PromptsPage />);
+    await screen.findByRole('navigation', { name: 'Prompt categories' });
+    fireEvent.click(screen.getByRole('button', { name: /System agents/ }));
+    const editor = screen.getByRole('textbox', { name: 'System instructions' });
+    expect(screen.getByText('2/2 present')).toBeInTheDocument();
+    fireEvent.change(editor, { target: { value: 'Analyze calls without input.' } });
+    expect(screen.getByText('0/2 present')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save system prompt' })).toBeDisabled();
+    expect(screen.getByText(/Restore missing variables/)).toBeInTheDocument();
   });
 
   it('adds languages in an inline form, not a browser prompt', async () => {
