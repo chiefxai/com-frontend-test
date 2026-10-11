@@ -490,7 +490,7 @@ export default function Sidebar({
         <SidebarBrand
           collapsed={collapsed}
           onToggle={toggleCollapsed}
-          title="ChiefVoice"
+          title="Chief Connect"
           subtitle={organizationName || 'Organization'}
           navId="organization-nav"
         />

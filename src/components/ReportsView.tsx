@@ -185,7 +185,7 @@ function daysAgo(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK, orgName = 'ChiefVoice', industry }: ReportsViewProps) {
+export default function ReportsView({ callLogs, dialerTasks, leads, costPerMinuteInr = COST_PER_MINUTE_INR_FALLBACK, orgName = 'Chief Connect', industry }: ReportsViewProps) {
   const isLending = !industry || industry === 'lending';
   const [direction, setDirection] = useState<DirectionFilter>('all');
   const [granularity] = useState<Granularity>('day');

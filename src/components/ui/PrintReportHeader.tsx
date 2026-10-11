@@ -230,7 +230,7 @@ export default function PrintReportHeader({
         <div>
           <img
             src={chiefVoiceLogo}
-            alt="ChiefVoice"
+            alt="Chief Connect"
             style={{
               width: 110,
               height: 110,

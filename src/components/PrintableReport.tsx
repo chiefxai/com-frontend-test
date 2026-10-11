@@ -384,7 +384,7 @@ export default function PrintableReport({
 
           {/* Footer */}
           <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: '14px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>ChiefVoice AI CRM · Confidential</span>
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>Chief Connect AI CRM · Confidential</span>
             <span style={{ fontSize: 10, color: '#94a3b8' }}>Generated {new Date().toLocaleString()}</span>
           </div>
         </div>

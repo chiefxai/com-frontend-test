@@ -792,7 +792,7 @@ export default function CompanyProfileView({
 
                     <div className="space-y-2">
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        To activate AI campaigns and disbursements, ChiefVoice requires a passing rating of <strong>70%</strong> based on valid identifiers.
+                        To activate AI campaigns and disbursements, Chief Connect requires a passing rating of <strong>70%</strong> based on valid identifiers.
                       </p>
                       <button
                         type="button"

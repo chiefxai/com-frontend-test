@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">ChiefVoice</title>
-  <desc id="desc">ChiefVoice gradient waveform mark</desc>
+  <title id="title">Chief Connect</title>
+  <desc id="desc">Chief Connect gradient waveform mark</desc>
   <defs>
     <linearGradient id="top" x1="38" y1="50" x2="214" y2="116" gradientUnits="userSpaceOnUse">
       <stop stop-color="#1554FF"/>

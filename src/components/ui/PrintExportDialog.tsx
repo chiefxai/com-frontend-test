@@ -349,7 +349,7 @@ export function PrintExportDialog({
     <div class="chiefvoice-export-print-root" style="width:100%;margin:0;padding:0;background:#fff;">
       <section class="chiefvoice-export-page chiefvoice-export-cover" style="width:${pageW}mm;height:${pageH}mm;min-height:${pageH}mm;max-height:${pageH}mm;box-sizing:border-box;padding:10mm;margin:0;overflow:hidden;background:#fff;break-after:page;page-break-after:always;">
         <div class="chiefvoice-export-cover-inner">
-          <img src="${chiefVoiceLogo}" alt="ChiefVoice">
+          <img src="${chiefVoiceLogo}" alt="Chief Connect">
           <h1>${title}</h1>
           <p>Filter applied: ${formatRange(fromDate, toDate)}</p>
         </div>
@@ -588,7 +588,7 @@ export function PrintExportDialog({
       ) : <>
       <section data-export-preview-page className={`${previewTheme === 'dark' ? 'dark' : ''} overflow-hidden`} style={{ ...previewPaperStyle, ...EXPORT_THEME_VARS[previewTheme], backgroundColor: 'var(--bg-base)' }}>
                 <div style={{ width: pageW * mmToPx, height: pageH * mmToPx, transform: `scale(${previewScale})`, transformOrigin: 'top left', background: 'var(--bg-surface)', boxSizing: 'border-box', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center', padding:40, color:'var(--text-primary)' }}>
-                  <img src={chiefVoiceLogo} alt="ChiefVoice" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
+                  <img src={chiefVoiceLogo} alt="Chief Connect" style={{ display:'block', width:88, height:88, objectFit:'contain', margin:'0 auto 24px' }} />
                   <h1 style={{ textAlign:'center', fontSize:28, margin:'0 0 10px', color:'var(--text-primary)' }}>{title}</h1>
                   <p style={{ textAlign:'center', fontSize:14, color:'var(--text-secondary)', margin:0 }}>Filter applied: {formatRange(fromDate,toDate)}</p>
                 </div>

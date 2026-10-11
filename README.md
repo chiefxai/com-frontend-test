@@ -1,6 +1,6 @@
-# ChiefVoice CRM — Frontend
+# Chief Connect CRM — Frontend
 
-Vite + React + TypeScript frontend for the ChiefVoice CRM platform. The frontend is a standalone application that communicates with the CRM backend over HTTP.
+Vite + React + TypeScript frontend for the Chief Connect CRM platform. The frontend is a standalone application that communicates with the CRM backend over HTTP.
 
 ## Tech stack
 

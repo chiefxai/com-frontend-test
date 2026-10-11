@@ -8,7 +8,7 @@ describe('shared organization and platform admin sidebar header', () => {
   it('keeps the logo as the expand button in the collapsed rail', () => {
     const onToggle = vi.fn();
     const { container } = render(
-      <SidebarBrand collapsed onToggle={onToggle} title="ChiefVoice" subtitle="Organization" navId="organization-nav" />
+      <SidebarBrand collapsed onToggle={onToggle} title="Chief Connect" subtitle="Organization" navId="organization-nav" />
     );
 
     const button = screen.getByRole('button', { name: 'Expand sidebar' });
@@ -24,7 +24,7 @@ describe('shared organization and platform admin sidebar header', () => {
   it('shows a right-aligned collapse button with a static logo for organizations', () => {
     const onToggle = vi.fn();
     const { container } = render(
-      <SidebarBrand collapsed={false} onToggle={onToggle} title="ChiefVoice" subtitle="Acme" navId="organization-nav" />
+      <SidebarBrand collapsed={false} onToggle={onToggle} title="Chief Connect" subtitle="Acme" navId="organization-nav" />
     );
 
     const logo = container.querySelector('img');
@@ -43,11 +43,11 @@ describe('shared organization and platform admin sidebar header', () => {
     const onToggle = vi.fn();
     const { container } = render(
       <MemoryRouter>
-        <SidebarBrand collapsed={false} onToggle={onToggle} title="ChiefVoice" subtitle="Platform Admin" homeTo="/admin/overview" navId="platform-admin-nav" />
+        <SidebarBrand collapsed={false} onToggle={onToggle} title="Chief Connect" subtitle="Platform Admin" homeTo="/admin/overview" navId="platform-admin-nav" />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('link', { name: 'ChiefVoice home' }).getAttribute('href')).toBe('/admin/overview');
+    expect(screen.getByRole('link', { name: 'Chief Connect home' }).getAttribute('href')).toBe('/admin/overview');
     expect(container.querySelector('img')?.closest('button')).toBeNull();
     const button = screen.getByRole('button', { name: 'Collapse sidebar' });
     expect(button.getAttribute('aria-controls')).toBe('platform-admin-nav');

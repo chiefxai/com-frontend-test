@@ -67,7 +67,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
         <SidebarBrand
           collapsed={collapsed}
           onToggle={toggleSidebar}
-          title="ChiefVoice"
+          title="Chief Connect"
           subtitle="Platform Admin"
           homeTo="/admin/overview"
           navId="platform-admin-nav"
