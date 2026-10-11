@@ -93,7 +93,7 @@ export default function OrganizationWorkspaceSetup({ orgId }: { orgId: string })
   const canCreate = !atLimit && Boolean(addBranchQuote) && !requiresPayment;
 
   return (
-    <Card padding="sm" className="min-w-0 sm:!p-5">
+    <Card padding="none" className="min-w-0 p-4 sm:p-5">
       <CardHeader
         title="Subscription workspaces"
         subtitle="Workspaces and allowances on this organization's plan"
