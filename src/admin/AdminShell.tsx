@@ -26,7 +26,7 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'organizations',   label: 'Organizations',           icon: Building2 },
   { path: 'users',           label: 'Users',                   icon: Users },
   { path: 'activity',        label: 'Activity',                icon: ScrollText },
-  { path: 'cost',            label: 'Cost & Pricing',          icon: IndianRupee },
+  { path: 'cost',            label: 'Providers & Pricing',          icon: IndianRupee },
   { path: 'workspace-plans', label: 'Subscription Plans',      icon: Layers3 },
   { path: 'payment-reviews', label: 'Payment Reviews',         icon: ShieldCheck },
   { path: 'settings',        label: 'Features',                icon: Settings },
@@ -150,7 +150,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               <Route path="organizations/create" element={<PageWrap title="Create Workspace" section="Organizations" backTo="/admin/organizations"><CreateWorkspacePage /></PageWrap>} />
               <Route path="users" element={<PageWrap title="Users" section="Users"><UsersPage /></PageWrap>} />
               <Route path="activity" element={<PageWrap title="Activity" section="Activity"><ActivityPage /></PageWrap>} />
-              <Route path="cost" element={<PageWrap title="Cost & Pricing" section="Cost & Pricing"><CostPage /></PageWrap>} />
+              <Route path="cost" element={<PageWrap title="Providers & Pricing" section="Providers & Pricing"><CostPage /></PageWrap>} />
               <Route path="workspace-plans" element={<PageWrap title="Subscription Plans" section="Subscription Plans"><WorkspacePlansPage /></PageWrap>} />
               <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
               <Route path="settings" element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />

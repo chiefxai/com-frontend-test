@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Cpu, Phone, RefreshCw, RotateCcw, Settings2, Zap } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import Widget from '../components/ui/Widget';
+import { Card, CardHeader } from '../components/ui/Card';
 import KpiCard from '../components/ui/KpiCard';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -93,7 +94,7 @@ async function persistCostProvider(provider: CostProvider): Promise<CostProvider
   if (!response.ok) throw new Error(data.error || 'Unable to save provider pricing.');
   return data as CostProvider;
 }
-const FIELD_CLASS = 'w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60';
+const FIELD_CLASS = 'h-10 w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] disabled:cursor-not-allowed disabled:opacity-60';
 
 function providerSnapshot(provider: CostProvider): string {
   return JSON.stringify({
@@ -318,80 +319,96 @@ export default function CostPage() {
   );
 
   return (
-    <div className="grid grid-cols-12 gap-4 md:gap-5">
-      <KpiCard colSpan={3} label="Effective call rate" value={loadingProviders ? '—' : callRate}
-        sub="Per minute · tax included" icon={Zap} iconBg="#f59e0b1a" iconColor="#d97706" />
-      <KpiCard colSpan={3} label="Active call providers" value={loadingProviders ? '—' : activeCallProviders.length}
-        icon={Phone} iconBg="#0d94881a" iconColor="#0d9488" />
-      <KpiCard colSpan={3} label="Active AI providers" value={loadingProviders ? '—' : activeAiProviderCount}
-        icon={Cpu} iconBg="#4a3aa71a" iconColor="#4a3aa7" />
-      <KpiCard colSpan={3} label="Provider rate entries" value={loadingProviders ? '—' : savedProviders.length}
-        sub="Stored pricing configurations" icon={Settings2} iconBg="#4a3aa71a" iconColor="#4a3aa7" />
+    <div className="grid grid-cols-12 items-start gap-4 md:gap-5">
+      <KpiCard colSpan={3} iconPosition="top-left"
+        label="Effective call rate" value={loadingProviders ? '—' : callRate}
+        sub="Per minute · tax included" icon={Zap} iconBg="var(--accent-subtle)" iconColor="var(--accent)" />
+      <KpiCard colSpan={3} iconPosition="top-left"
+        label="Active call providers" value={loadingProviders ? '—' : activeCallProviders.length}
+        sub="Enabled phone integrations" icon={Phone} />
+      <KpiCard colSpan={3} iconPosition="top-left"
+        label="Active AI providers" value={loadingProviders ? '—' : activeAiProviderCount}
+        sub="Enabled AI integrations" icon={Cpu} />
+      <KpiCard colSpan={3} iconPosition="top-left"
+        label="Provider rate entries" value={loadingProviders ? '—' : savedProviders.length}
+        sub="Stored rate configurations" icon={Settings2} />
 
-      <Widget colSpan={12} title="Provider pricing"
-        subtitle="Configure telephony and Gemini AI rates in one place."
-        icon={Zap} accent="#2563eb" padding="none"
-        action={dirtyCount > 0
-          ? <span role="status" className="rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:text-amber-300">
+      <Card padding="sm" className="col-span-12 sm:!px-5 sm:!py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)]">
+              <Settings2 className="h-[18px] w-[18px]" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Manage provider rates</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--text-secondary)]">
+                Configure calling and AI rates independently. Updates apply to future usage;
+                past billing keeps the rates recorded at the time.
+              </p>
+            </div>
+          </div>
+          {dirtyCount > 0 && (
+            <span role="status" className="shrink-0 rounded-lg border border-amber-300/60 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
               {dirtyCount} unsaved {dirtyCount === 1 ? 'configuration' : 'configurations'}
             </span>
-          : undefined}>
-        <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3">
-          <p className="text-xs text-[var(--text-muted)]">
-            Manage call pricing and AI pricing together. Changes apply to future usage;
-            historical billing entries keep their original rates.
-          </p>
+          )}
         </div>
-        {loadingProviders
-          ? <div role="status" className="flex items-center justify-center gap-2 py-12 text-sm text-[var(--text-muted)]">
-              <RefreshCw className="h-4 w-4 animate-spin" /> Loading provider rates…
-            </div>
-          : providersError
-            ? <div role="alert" className="flex flex-wrap items-center gap-3 p-5 text-xs text-rose-700">
-                <span>{providersError}</span>
-                <Button type="button" size="sm" onClick={() => void loadProviders()}>Retry</Button>
-              </div>
-            : <div className="grid grid-cols-1 items-start gap-5 p-4 xl:grid-cols-2">
-                <section className="min-w-0 space-y-3" aria-label="Call provider pricing">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-[var(--text-secondary)]" />
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Call provider</h3>
-                  </div>
-                  {callProviders.length > 0
-                    ? callProviders.map(renderProvider)
-                    : <EmptyState icon={Phone} heading="No call provider configured"
-                        message="Call providers are registered by the backend." />}
-                </section>
-                <section className="min-w-0 space-y-3" aria-label="AI provider pricing">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="h-4 w-4 text-[var(--text-secondary)]" />
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">AI provider</h3>
-                  </div>
-                  {pairedGemini && geminiLive && geminiPost && (
-                    <GeminiPricingCard
-                      live={geminiLive}
-                      post={geminiPost}
-                      dirty={geminiDirty}
-                      needsSync={geminiNeedsSync}
-                      saving={savingKey === GEMINI_SAVE_KEY}
-                      blocked={Boolean(savingKey)}
-                      saved={savedKey === GEMINI_SAVE_KEY}
-                      error={saveErrors[GEMINI_SAVE_KEY]}
-                      onSharedChange={updateGeminiShared}
-                      onPriceChange={updateLocal}
-                      onReset={resetGemini}
-                      onSave={() => void saveGemini()}
-                    />
-                  )}
-                  {otherAiProviders.map(renderProvider)}
-                  {!pairedGemini && otherAiProviders.length === 0
-                    && <EmptyState icon={Cpu} heading="No AI provider configured"
-                         message="AI providers are registered by the backend." />}
-                </section>
-              </div>}
-      </Widget>
+      </Card>
 
+      {loadingProviders ? (
+        <Card padding="lg" className="col-span-12">
+          <div role="status" className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--text-muted)]">
+            <RefreshCw aria-hidden="true" className="h-4 w-4 animate-spin" /> Loading provider rates…
+          </div>
+        </Card>
+      ) : providersError ? (
+        <Card padding="md" className="col-span-12">
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-xs text-rose-600 dark:text-rose-300">
+            <span>{providersError}</span>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void loadProviders()}>Retry</Button>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <Widget colSpan={6} span={{ xs: 12, lg: 6 }} title="Call providers"
+            subtitle="Phone and telephony billing rates" icon={Phone}
+            padding="md" bodyOverflow="visible" bodyClassName="space-y-3" className="!h-auto">
+            <section aria-label="Call provider pricing" className="space-y-3">
+              {callProviders.length > 0
+                ? callProviders.map(renderProvider)
+                : <EmptyState icon={Phone} heading="No call provider configured"
+                    message="Call providers are registered by the backend." />}
+            </section>
+          </Widget>
 
+          <Widget colSpan={6} span={{ xs: 12, lg: 6 }} title="AI providers"
+            subtitle="Voice and post-call processing rates" icon={Cpu}
+            padding="md" bodyOverflow="visible" bodyClassName="space-y-3" className="!h-auto">
+            <section aria-label="AI provider pricing" className="space-y-3">
+              {pairedGemini && geminiLive && geminiPost && (
+                <GeminiPricingCard
+                  live={geminiLive}
+                  post={geminiPost}
+                  dirty={geminiDirty}
+                  needsSync={geminiNeedsSync}
+                  saving={savingKey === GEMINI_SAVE_KEY}
+                  blocked={Boolean(savingKey)}
+                  saved={savedKey === GEMINI_SAVE_KEY}
+                  error={saveErrors[GEMINI_SAVE_KEY]}
+                  onSharedChange={updateGeminiShared}
+                  onPriceChange={updateLocal}
+                  onReset={resetGemini}
+                  onSave={() => void saveGemini()}
+                />
+              )}
+              {otherAiProviders.map(renderProvider)}
+              {!pairedGemini && otherAiProviders.length === 0
+                && <EmptyState icon={Cpu} heading="No AI provider configured"
+                     message="AI providers are registered by the backend." />}
+            </section>
+          </Widget>
+        </>
+      )}
     </div>
   );
 }
@@ -422,18 +439,15 @@ function GeminiPricingCard({
   const postPrice = effectiveCost(post);
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-semibold text-[var(--text-primary)]">Gemini AI</h4>
+    <Card padding="none" className="min-w-0 overflow-hidden">
+      <div className="border-b border-[var(--border)] px-4 py-4">
+        <CardHeader title="Gemini AI" icon={Cpu} border={false}
+          subtitle="Live Voice and Post-Call Agents share billing settings."
+          action={<div className="flex flex-wrap items-center justify-end gap-2">
             <Badge color={live.active ? 'green' : 'slate'}>{live.active ? 'Active' : 'Inactive'}</Badge>
-            {dirty && <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-300">Unsaved</span>}
-          </div>
-          <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-            Separate Live Voice and Post-Call Agent prices with shared billing settings.
-          </p>
-        </div>
+            {dirty && <span role="status" className="text-[11px] font-semibold text-amber-600 dark:text-amber-300">Unsaved</span>}
+          </div>}
+        />
       </div>
       {needsSync && <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
         Previously saved Gemini billing settings differ. The Live Voice settings are shown;
@@ -536,7 +550,7 @@ function GeminiPricingCard({
       {saved && !dirty && <p role="status" className="border-t border-[var(--border)] px-4 py-2 text-xs text-emerald-700">
         Both Gemini prices and shared billing settings saved successfully.
       </p>}
-    </div>
+    </Card>
   );
 }
 
@@ -556,19 +570,23 @@ function ProviderRow({
   const price = effectiveCost(provider);
   const invalid = !validProvider(provider);
   return (
-    <div className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{provider.label}</h3>
+    <Card padding="none" className="min-w-0 overflow-hidden">
+      <div className="border-b border-[var(--border)] px-4 py-4">
+        <CardHeader
+          title={provider.label}
+          icon={provider.kind === 'call' ? Phone : Cpu}
+          subtitle={<span className="font-mono text-[11px]">{provider.key}</span>}
+          border={false}
+          action={<div className="flex flex-wrap items-center justify-end gap-2">
             <Badge color={provider.active ? 'green' : 'slate'}>{provider.active ? 'Active' : 'Inactive'}</Badge>
-            {dirty && <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-300">Unsaved</span>}
-          </div>
-          <p className="mt-0.5 font-mono text-[11px] text-[var(--text-muted)]">{provider.key}</p>
-        </div>
-        {provider.updatedAt && <span className="text-[11px] text-[var(--text-muted)]">
-          Last saved {new Date(provider.updatedAt).toLocaleDateString()}
-        </span>}
+            {dirty && <span role="status" className="text-[11px] font-semibold text-amber-600 dark:text-amber-300">Unsaved</span>}
+          </div>}
+        />
+        {provider.updatedAt && (
+          <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+            Last saved {new Date(provider.updatedAt).toLocaleDateString()}
+          </p>
+        )}
       </div>
 
       <fieldset className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2" disabled={blocked}>
@@ -658,7 +676,7 @@ function ProviderRow({
       {saved && !dirty && <p role="status" className="border-t border-[var(--border)] px-4 py-2 text-xs text-emerald-700">
         Provider pricing saved successfully.
       </p>}
-    </div>
+    </Card>
   );
 }
 
