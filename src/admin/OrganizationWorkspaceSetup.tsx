@@ -7,7 +7,7 @@ type Setup = {
   policy: WorkspacePolicyDraft & { primaryIndustry: string; planId?: string | null };
   workspaces: { id: string; name: string; industry: string }[];
   currentQuote: { totalMonthlyInr: number; seatCount: number } | null;
-  addBranchQuote: { totalMonthlyInr: number } | null;
+  addBranchQuote: { totalMonthlyInr: number; paymentRequired:boolean } | null;
 };
 
 export default function OrganizationWorkspaceSetup({ orgId }: { orgId: string }) {
@@ -69,7 +69,8 @@ export default function OrganizationWorkspaceSetup({ orgId }: { orgId: string })
       </select>
       {atLimit ? <p className="text-xs text-amber-600">This subscription has reached its workspace limit.</p>
         : estimate !== undefined && <p className="text-xs text-[var(--text-secondary)]">Estimate after adding: ₹{estimate.toFixed(2)} / month, plus usage and applicable taxes.</p>}
-      <button disabled={busy || !setup.currentQuote || atLimit} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Create workspace</button>
+      {setup.addBranchQuote?.paymentRequired && <p className="text-xs text-amber-700 dark:text-amber-300">This workspace requires an approved add-on payment. The organization billing administrator can purchase it from workspace settings.</p>}
+      <button disabled={busy || !setup.addBranchQuote || atLimit || setup.addBranchQuote?.paymentRequired} className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Create workspace</button>
     </form>
   </section>;
 }

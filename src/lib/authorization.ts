@@ -52,6 +52,8 @@ export function permissionForRequest(path: string,method: string): string | null
   if (/^\/api\/notifications(?:\/|$)/.test(path)) return 'notifications.read';
   if (/^\/api\/billing\/workspaces\/[^/]+\/(?:overview|usage|ledger)$/.test(path) && read) return 'billing.workspace.read';
   if (path === '/api/billing/topup-quotes' && !read) return 'billing.payment.submit';
+  if (/^\/api\/billing\/workspace-addons(?:\/|$)/.test(path) && !read) return 'billing.payment.submit';
+  if (path === '/api/billing/workspace-addons' && read) return 'billing.organization.read';
   if (/^\/api\/billing\/payments(?:\/|$)/.test(path) && !read) return 'billing.payment.submit';
   if (/^\/api\/billing\/contacts(?:\/|$)/.test(path) && !read) return 'billing.contacts.manage';
   if (path === '/api/billing/notification-policy' && !read) return 'billing.notifications.manage';

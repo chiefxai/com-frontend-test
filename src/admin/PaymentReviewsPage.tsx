@@ -17,8 +17,9 @@ const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) => {
   const paise = (digits % factor).toString().padStart(amount.scale, '0');
   return `${amount.asset === 'INR' ? '₹' : amount.asset + ' '}${rupees}${amount.scale ? '.' + paise : ''}`;
 };
-const paymentPurpose = (purpose: PlatformPaymentReview['purpose']) =>
-  purpose === 'topup' ? 'Add usage credits (top-up)' : purpose === 'subscription' ? 'Subscription' : 'Invoice payment';
+const paymentPurpose = (payment: PlatformPaymentReview) => payment.workspaceAddon
+  ? `Workspace add-on: ${payment.workspaceAddon.name}`
+  : payment.purpose === 'topup' ? 'Add usage credits (top-up)' : payment.purpose === 'subscription' ? 'Subscription' : 'Invoice payment';
 
 export default function PaymentReviewsPage() {
   const [rows, setRows] = useState<PlatformPaymentReview[]>([]);
@@ -98,7 +99,9 @@ export default function PaymentReviewsPage() {
         ? outcome.funding?.status === 'active'
           ? `Top-up approved. ${formatAmount(selected.expectedAmount)} in usage credits was issued to this organization's credit pool.`
           : 'Top-up approved. Verify credit funding status before communicating the new balance.'
-        : `Payment ${decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'sent for clarification'}.`);
+        : decision === 'approve' && selected.workspaceAddon
+          ? `Workspace payment approved for ${selected.workspaceAddon.name}. Its paid access period has been activated.`
+          : `Payment ${decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'sent for clarification'}.`);
       setSelected(null);
       setPendingAction(null);
       await load();
@@ -135,7 +138,7 @@ export default function PaymentReviewsPage() {
       columns={[
         { key: 'organization', header: 'Organization', cell: row => <span className="font-mono text-xs">{row.orgId}</span> },
         { key: 'reference', header: 'Reference', cell: row => row.paymentReference || '—' },
-        { key: 'purpose', header: 'Purpose', cell: row => paymentPurpose(row.purpose) },
+        { key: 'purpose', header: 'Purpose', cell: row => paymentPurpose(row) },
         { key: 'expected', header: 'Expected amount', cell: row => <span className="font-semibold">{formatAmount(row.expectedAmount)}</span>, align: 'right' },
         { key: 'status', header: 'Status', cell: row => row.status },
         { key: 'submitted', header: 'Submitted', cell: row => <span className="whitespace-nowrap text-xs">{new Date(row.submittedAt).toLocaleString()}</span> },
@@ -152,7 +155,7 @@ export default function PaymentReviewsPage() {
     {cursor && <button type="button" disabled={loading} onClick={() => void load(cursor, true)}
       className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">Load more</button>}
     {selected && <div className="space-y-4 rounded-xl border border-[var(--border)] p-5">
-      <h3 className="font-semibold">Review {paymentPurpose(selected.purpose)} · {formatAmount(selected.expectedAmount)}</h3>
+      <h3 className="font-semibold">Review {paymentPurpose(selected)} · {formatAmount(selected.expectedAmount)}</h3>
       <p className="text-sm">Organization: {selected.orgId} · Reference: {selected.paymentReference || '—'} ·
         Version: {selected.version}</p>
       <p className="text-sm">Expected: {formatAmount(selected.expectedAmount)}. Check the bank record independently.</p>

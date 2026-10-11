@@ -57,6 +57,7 @@ export interface PlatformPaymentReview {
   proofAvailable: boolean;
   submittedAt: string;
   reviewedAt: string | null;
+  workspaceAddon?: {name:string;invoiceId:string};
 }
 
 export async function listPlatformPaymentReviews(

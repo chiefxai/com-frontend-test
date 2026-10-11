@@ -1473,6 +1473,7 @@ export default function SettingsView({
                 action={<div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => setBillingPanel('usage')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Call usage</button>
                   <button type="button" onClick={() => setBillingPanel('plan')} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)]">Subscription</button>
+                  {can('billing.payment.submit') && <button type="button" onClick={() => setBillingPanel('topup')} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white">Top up credits</button>}
                 </div>}>
                 <div className="grid grid-cols-12 gap-4 pt-2">
                   <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Monthly subscription"

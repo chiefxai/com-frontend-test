@@ -7,8 +7,10 @@ import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import Modal from './ui/Modal';
 import IconButton from './ui/IconButton';
+import WorkspaceAddonPurchases from './billing/WorkspaceAddonPurchases';
+import { newBillingIdempotencyKey } from '../lib/billing/client';
 
-interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number;maxWorkspaces:number|null}}; currentQuote: {totalMonthlyInr:number} | null; addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string} | null }
+interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number;maxWorkspaces:number|null}}; currentQuote: {totalMonthlyInr:number} | null; purchasesAvailable?:boolean;pendingWorkspacePurchases?:number;addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string;paymentRequired:boolean;monthlyAddonInr:number} | null }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
 
 export default function WorkspaceManagement({
@@ -38,6 +40,10 @@ export default function WorkspaceManagement({
   const [branchName, setBranchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [purchaseKey,setPurchaseKey] = useState(newBillingIdempotencyKey);
+  const [addonRefreshKey,setAddonRefreshKey] = useState(0);
+  const canPay = can('billing.payment.submit');
+  const paymentRequired = setup?.addBranchQuote?.paymentRequired === true;
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -74,17 +80,20 @@ export default function WorkspaceManagement({
     setSaving(true);
     setMessage(null);
     try {
-      const response = await apiFetch('/api/settings/workspaces', {
+      const response = await apiFetch(paymentRequired ? '/api/billing/workspace-addons' : '/api/settings/workspaces', {
         method: 'POST',
+        ...(paymentRequired ? {headers:{'Idempotency-Key':purchaseKey}} : {}),
         body: JSON.stringify({ name: name.trim(), industry, branchName: branchName.trim() || null, pricingAcceptanceToken:setup.addBranchQuote.token }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not create workspace');
-      setWorkspaces(current => [...current, body as WorkspaceRow]);
+      if (!paymentRequired) setWorkspaces(current => [...current, body as WorkspaceRow]);
+      else setAddonRefreshKey(current=>current+1);
+      setPurchaseKey(newBillingIdempotencyKey());
       setName('');
       setBranchName('');
       setShowCreateWorkspace(false);
-      setMessage({ type: 'success', text: 'Workspace created and assigned to you as Workspace Admin.' });
+      setMessage({ type: 'success', text: paymentRequired ? 'Workspace reserved. Submit the payment receipt below; it will be created after approval.' : 'Workspace created and assigned to you as Workspace Admin.' });
       // A secondary refresh failure must never make a successful create look
       // unsuccessful (or encourage a duplicate workspace submission).
       try {
@@ -92,7 +101,7 @@ export default function WorkspaceManagement({
         if (policyResponse.ok) setSetup(await policyResponse.json());
         await onWorkspaceCreated();
       } catch {
-        setMessage({ type: 'success', text: 'Workspace created. Refresh the page if related workspace data has not updated yet.' });
+        setMessage({ type: 'success', text: paymentRequired ? 'Purchase recorded. Refresh to see its payment invoice.' : 'Workspace created. Refresh the page if related workspace data has not updated yet.' });
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Could not create workspace.' });
@@ -131,7 +140,7 @@ export default function WorkspaceManagement({
         emptyMessage={workspaces.length ? 'No workspaces match this search.' : 'No workspaces available.'}
         columns={[
           { key: 'workspace', header: 'Workspace', cell: (workspace: WorkspaceRow) =>
-            <button type="button" onClick={() => onSelectWorkspace?.(workspace)}
+            <button type="button" disabled={workspace.status !== 'Active'} onClick={() => onSelectWorkspace?.(workspace)}
               className="text-left font-semibold text-[var(--accent)] hover:underline"
               aria-label={`View workspace ${workspace.name}`}>{workspace.name}</button> },
           { key: 'branch', header: 'Branch / Industry', cell: (workspace: WorkspaceRow) =>
@@ -146,17 +155,22 @@ export default function WorkspaceManagement({
         rows={filteredWorkspaces}
         rowKey={workspace => workspace.id}
       />
+      {can('billing.organization.read') && <WorkspaceAddonPurchases canSubmit={canPay} refreshKey={addonRefreshKey} onChange={async()=>{
+        const response = await apiFetch('/api/settings/workspace-policy');
+        if(response.ok){const value=await response.json();setSetup(value);setWorkspaces(value.workspaces);}
+        await onWorkspaceCreated();
+      }}/>}
       {canManage && <Modal
         open={showCreateWorkspace}
         onClose={() => { if (!saving) setShowCreateWorkspace(false); }}
         title="Create Workspace"
-        subtitle="Create a workspace within the limit included in the organization subscription."
+        subtitle="Included workspaces are created immediately. Paid add-ons require payment approval."
         maxWidth="max-w-lg"
       >
         <form onSubmit={createWorkspace} className="space-y-4">
           <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
             <span>Workspace name</span>
-            <input required maxLength={120} autoFocus value={name} onChange={event => setName(event.target.value)}
+            <input required maxLength={120} autoFocus value={name} onChange={event => {setName(event.target.value);setPurchaseKey(newBillingIdempotencyKey());}}
               placeholder="Sales - Mumbai"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
           </label>
@@ -167,29 +181,31 @@ export default function WorkspaceManagement({
           </label>
           <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
             <span>Branch (optional)</span>
-            <input maxLength={160} value={branchName} onChange={event => setBranchName(event.target.value)}
+            <input maxLength={160} value={branchName} onChange={event => {setBranchName(event.target.value);setPurchaseKey(newBillingIdempotencyKey());}}
               placeholder="Mumbai"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
           </label>
           <p className="text-xs text-[var(--text-muted)]">Different industries are provisioned by a platform administrator.</p>
           {setup?.addBranchQuote
             ? <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
-                Workspace {workspaces.length + 1}: {workspaces.length + 1 <= (setup.policy.pricing?.includedWorkspaces ?? 1) ? 'within the included allowance' : 'priced as a workspace add-on'}. Monthly organization price after creation: ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}. Usage charges and applicable taxes are additional.
+                Workspace {workspaces.length + 1}: {workspaces.length + 1 <= (setup.policy.pricing?.includedWorkspaces ?? 1) ? 'within the included allowance' : 'priced as a workspace add-on'}. Total monthly organization estimate across subscription and add-on invoices: ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}. Usage charges and applicable taxes are additional.
               </p>
             : <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                 {setup?.policy.pricing && setup.policy.pricing.maxWorkspaces !== null && workspaces.length >= setup.policy.pricing.maxWorkspaces
                   ? `This subscription allows up to ${setup.policy.pricing.maxWorkspaces} workspace${setup.policy.pricing.maxWorkspaces === 1 ? '' : 's'}. Upgrade the subscription to add another workspace.`
                   : 'Ask a platform administrator to configure branch pricing before adding another workspace.'}
               </p>}
+          {paymentRequired && <p className="text-xs text-[var(--text-secondary)]">Pay ₹{setup?.addBranchQuote?.monthlyAddonInr.toFixed(2)} per month for this workspace. The first month starts after payment approval. Monthly renewal invoices follow; usage credits cannot pay this fee.</p>}
+          {paymentRequired && (!canPay || !setup?.purchasesAvailable) && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{!canPay ? 'An organization billing administrator must purchase this add-on.' : 'Workspace payments are currently unavailable. Contact your platform administrator.'}</p>}
           <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
             <button type="button" disabled={saving} onClick={() => setShowCreateWorkspace(false)}
               className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
               Cancel
             </button>
-            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !name.trim()}
+            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !name.trim() || (paymentRequired && (!canPay || !setup?.purchasesAvailable))}
               className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-              {saving ? 'Creating…' : 'Create Workspace'}
+              {saving ? 'Preparing…' : paymentRequired ? 'Prepare payment invoice' : 'Create Workspace'}
             </button>
           </div>
         </form>
