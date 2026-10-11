@@ -25,7 +25,7 @@ export function StartNode({ data }: NodeProps) {
 }
 
 export function QuestionNode({ data }: NodeProps) {
-  const d = data as NodeData;
+  const d = data as unknown as NodeData;
   const options: QuestionOption[] = d.options || [];
 
   return (

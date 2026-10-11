@@ -151,7 +151,7 @@ function toRFEdges(edges: QuestionFlowEdge[]): Edge[] {
 }
 
 function fromRFNodes(rfNodes: Node[]): QuestionFlowNode[] {
-  return rfNodes.map(n => ({ ...(n.data as QuestionFlowNode), position: n.position }));
+  return rfNodes.map(n => ({ ...(n.data as unknown as QuestionFlowNode), position: n.position }));
 }
 
 function fromRFEdges(rfEdges: Edge[]): QuestionFlowEdge[] {
@@ -317,7 +317,7 @@ export default function QuestionFlowBuilder({ flow, allFlows, onChange }: Props)
   const duplicateNode = (id: string) => {
     const source = rfNodes.find(n => n.id === id);
     if (!source) return;
-    const data = source.data as QuestionFlowNode;
+    const data = source.data as unknown as QuestionFlowNode;
     const newId = uid('n');
     const duplicated: QuestionFlowNode = {
       ...data,
@@ -433,7 +433,7 @@ export default function QuestionFlowBuilder({ flow, allFlows, onChange }: Props)
           <>
             <div className="absolute inset-0 z-40" onClick={() => setSelectedNodeId(null)} />
             <NodeEditor
-              node={selectedNode.data as QuestionFlowNode}
+              node={selectedNode.data as unknown as QuestionFlowNode}
               allNodes={fromRFNodes(rfNodes)}
               onChange={onNodeEditorChange}
               onClose={() => setSelectedNodeId(null)}

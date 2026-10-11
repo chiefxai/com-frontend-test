@@ -283,7 +283,7 @@ interface DialTask {
       // and flips this same row to "Completed" once that redial actually
       // reaches them — see callId, which lets the row track which
       // specific call_logs entry it's currently reflecting.
-      status: 'Pending' | 'Calling' | 'Completed' | 'No Answer' | 'Skipped' | 'Callback Scheduled';
+      status: 'Pending' | 'Calling' | 'Completed' | 'No Answer' | 'Answering Machine' | 'Skipped' | 'Callback Scheduled';
       duration: number;
       // Backend-constructed results (autoDialEngine.js, callFinalizer.js's
       // task-patch) never populate these two — only ever set when this
@@ -1079,7 +1079,12 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
   // player always showed "No recording available" even though the call
   // really was recorded: this function only ever wrote the local
   // simulated timer/transcript, never the real Supabase-hosted recording URL.
-  const handleHangupCall = (realCallLog?: { recordingUrl?: string; duration?: number; sentiment?: string; summary?: string; callId?: string; transcript?: { speaker: 'AI' | 'Customer'; text: string; timestamp: string }[]; answers?: { label?: string; question: string; answer: string }[]; status?: string; callbackTime?: string; callAnswered?: boolean }) => {
+  const handleHangupCall = (realCallLog?: { recordingUrl?: string; duration?: number; sentiment?: string; summary?: string; callId?: string; transcript?: { speaker: 'AI' | 'Customer'; text: string; timestamp: string }[]; answers?: { label?: string; question: string; answer: string }[]; status?: string; callbackTime?: string; callAnswered?: boolean;
+    callbackReason?: CallLog['callbackReason'];
+    conversationOutcome?: CallLog['conversationOutcome'];
+    callbackStatus?: CallLog['callbackStatus'];
+    enquiryStatus?: CallLog['enquiryStatus'];
+  }) => {
     if (!activeLead) return;
     setCallState('completed');
 
