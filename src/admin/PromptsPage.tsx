@@ -1,8 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, ChevronDown, Cpu, Loader2, RotateCcw, Save, Sparkles, Volume2 } from 'lucide-react';
+import { AlertCircle, Bot, Check, ChevronDown, ChevronRight, Cpu, Languages, Loader2, Plus, RotateCcw, Save, Search, ShieldCheck, Sparkles, Volume2, X } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import Widget from '../components/ui/Widget';
+import Button from '../components/ui/Button';
+import EmptyState from '../components/ui/EmptyState';
 
+type PromptSection = 'voice' | 'language' | 'system';
+type SavedSection = 'voice' | 'language' | 'dialect' | 'system';
+
+const requiredVoiceTokens = [
+  '{{agent_name}}', '{{company_name}}', '{{industry}}', '{{language}}',
+  '{{dialect}}', '{{dialect_profile}}', '{{dialect_examples}}', '{{business_context}}',
+];
+const editorClass = 'min-h-52 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 font-mono text-xs leading-6 text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] disabled:opacity-60';
+const inputClass = 'h-10 w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]';
+
+function PromptState({ dirty, saved, busy, customized }: { dirty: boolean; saved: boolean; busy: boolean; customized?: boolean }) {
+  return <span role="status" className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${dirty ? 'text-amber-600 dark:text-amber-400' : saved ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--text-muted)]'}`}>
+    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : saved ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+    {busy ? 'Saving…' : dirty ? 'Unsaved changes' : saved ? 'Saved' : customized ? 'Customized' : 'Platform default'}
+  </span>;
+}
+function ItemStatus({ customized }: { customized: boolean }) {
+  return <span className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${customized ? 'bg-[var(--accent-subtle)] text-[var(--accent)]' : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>
+    {customized ? 'Custom' : 'Default'}
+  </span>;
+}
+function FieldTitle({ label, description, htmlFor }: { label: string; description?: string; htmlFor: string }) {
+  return <div className="mb-2">
+    <label htmlFor={htmlFor} className="text-xs font-semibold text-[var(--text-primary)]">{label}</label>
+    {description && <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">{description}</p>}
+  </div>;
+}
 type VoicePrompt = {
   callType: 'INBOUND' | 'OUTBOUND';
   prompt: string;
@@ -36,13 +65,20 @@ type LanguageDialectCatalog = {
 
 export default function PromptsPage() {
   const [data, setData] = useState<PromptPayload>({ voice: [], system: [] });
+  const [section, setSection] = useState<PromptSection>('voice');
+  const [systemSearch, setSystemSearch] = useState('');
+  const [showAddLanguage, setShowAddLanguage] = useState(false);
+  const [showAddDialect, setShowAddDialect] = useState(false);
+  const [newLanguage, setNewLanguage] = useState('');
+  const [newDialect, setNewDialect] = useState('');
+  const [adding, setAdding] = useState<'language' | 'dialect' | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeVoice, setActiveVoice] = useState<'INBOUND' | 'OUTBOUND'>('INBOUND');
   const [activeSystem, setActiveSystem] = useState<string | null>(null);
   const [voiceDraft, setVoiceDraft] = useState('');
   const [systemDraft, setSystemDraft] = useState('');
   const [saving, setSaving] = useState<'voice' | 'system' | null>(null);
-  const [saved, setSaved] = useState<'voice' | 'system' | null>(null);
+  const [saved, setSaved] = useState<SavedSection | null>(null);
   const [error, setError] = useState('');
   const [catalog, setCatalog] = useState<LanguageDialectCatalog>({ languages: [], dialectsByLanguage: {} });
   const [activeLanguage, setActiveLanguage] = useState('');
@@ -109,20 +145,42 @@ export default function PromptsPage() {
     [data.system, activeSystem]
   );
 
+  const currentLanguage = catalog.languages.find(x => x.language === activeLanguage) || null;
+  const currentDialect = (catalog.dialectsByLanguage[activeLanguage] || []).find(x => x.dialect === activeDialect) || null;
+  const voiceDirty = Boolean(currentVoice && voiceDraft !== currentVoice.prompt);
+  const systemDirty = Boolean(currentSystem && systemDraft !== currentSystem.systemPrompt);
+  const languageDirty = Boolean(currentLanguage && languageDraft !== currentLanguage.prompt);
+  const dialectDirty = Boolean(currentDialect && (dialectDraft !== currentDialect.prompt || examplesDraft !== currentDialect.examples.join('\n')));
+  const hasUnsavedChanges = voiceDirty || systemDirty || languageDirty || dialectDirty;
+  const missingTokens = requiredVoiceTokens.filter(token => !voiceDraft.includes(token));
+  const canLeave = () => !hasUnsavedChanges || window.confirm('You have unsaved prompt changes. Discard them?');
+  const changeSection = (next: PromptSection) => {
+    if (next === section || !canLeave()) return;
+    setVoiceDraft(data.voice.find(p => p.callType === activeVoice)?.prompt || '');
+    setSystemDraft(data.system.find(p => p.id === activeSystem)?.systemPrompt || '');
+    setLanguageDraft(currentLanguage?.prompt || '');
+    setDialectDraft(currentDialect?.prompt || '');
+    setExamplesDraft(currentDialect?.examples.join('\n') || '');
+    setSaved(null);
+    setSection(next);
+  };
+
   const selectVoice = (type: 'INBOUND' | 'OUTBOUND') => {
+    if (type === activeVoice || !canLeave()) return;
     setActiveVoice(type);
     setVoiceDraft(data.voice.find(p => p.callType === type)?.prompt || '');
     setSaved(null);
   };
 
   const selectSystem = (id: string) => {
+    if (id === activeSystem || !canLeave()) return;
     setActiveSystem(id);
     setSystemDraft(data.system.find(p => p.id === id)?.systemPrompt || '');
     setSaved(null);
   };
 
   const saveVoice = async () => {
-    if (!currentVoice) return;
+    if (!currentVoice || !voiceDirty || missingTokens.length || !voiceDraft.trim()) return;
     setSaving('voice'); setSaved(null); setError('');
     try {
       const res = await apiFetch(`/api/platform/prompts/voice/${activeVoice}`, {
@@ -158,7 +216,7 @@ export default function PromptsPage() {
   };
 
   const saveSystem = async () => {
-    if (!currentSystem) return;
+    if (!currentSystem || !systemDirty || !systemDraft.trim()) return;
     setSaving('system'); setSaved(null); setError('');
     try {
       const res = await apiFetch(`/api/platform/prompts/system/${currentSystem.id}`, {
@@ -195,10 +253,8 @@ export default function PromptsPage() {
 
 
 
-  const currentLanguage = catalog.languages.find(x => x.language === activeLanguage) || null;
-  const currentDialect = (catalog.dialectsByLanguage[activeLanguage] || []).find(x => x.dialect === activeDialect) || null;
-
   const selectLanguage = (language: string) => {
+    if (language === activeLanguage || !canLeave()) return;
     setActiveLanguage(language);
     const item = catalog.languages.find(x => x.language === language);
     const dialect = (catalog.dialectsByLanguage[language] || [])[0]?.dialect || '';
@@ -211,6 +267,7 @@ export default function PromptsPage() {
   };
 
   const selectDialect = (dialect: string) => {
+    if (dialect === activeDialect || !canLeave()) return;
     setActiveDialect(dialect);
     const d = (catalog.dialectsByLanguage[activeLanguage] || []).find(x => x.dialect === dialect);
     setDialectDraft(d?.prompt || '');
@@ -219,7 +276,7 @@ export default function PromptsPage() {
   };
 
   const saveLanguage = async () => {
-    if (!currentLanguage) return;
+    if (!currentLanguage || !languageDirty || !languageDraft.trim()) return;
     setSavingLanguage(true); setError('');
     try {
       const res = await apiFetch(`/api/platform/prompts/languages/${encodeURIComponent(activeLanguage)}`, {
@@ -227,13 +284,15 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to save language prompt');
-      setCatalog(body); setSaved('voice');
+      setCatalog(body);
+      setLanguageDraft(body.languages?.find((x: LanguagePrompt) => x.language === activeLanguage)?.prompt ?? languageDraft);
+      setSaved('language');
     } catch (e: any) { setError(e.message || 'Failed to save language prompt'); }
     finally { setSavingLanguage(false); }
   };
 
   const saveDialect = async () => {
-    if (!currentDialect) return;
+    if (!currentDialect || !dialectDirty) return;
     setSavingDialect(true); setError('');
     try {
       const res = await apiFetch(`/api/platform/prompts/languages/${encodeURIComponent(activeLanguage)}/dialects/${encodeURIComponent(activeDialect)}`, {
@@ -242,36 +301,57 @@ export default function PromptsPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to save dialect prompt');
-      setCatalog(body); setSaved('voice');
+      setCatalog(body);
+      const updated = body.dialectsByLanguage?.[activeLanguage]?.find((x: DialectPrompt) => x.dialect === activeDialect);
+      setDialectDraft(updated?.prompt ?? dialectDraft);
+      setExamplesDraft((updated?.examples || examplesDraft.split('\n')).join('\n'));
+      setSaved('dialect');
     } catch (e: any) { setError(e.message || 'Failed to save dialect prompt'); }
     finally { setSavingDialect(false); }
   };
 
   const addLanguage = async () => {
-    const language = prompt('New language name');
-    if (!language?.trim()) return;
+    const language = newLanguage.trim();
+    if (!language || adding || !canLeave()) return;
+    setAdding('language'); setError('');
     try {
       const res = await apiFetch('/api/platform/prompts/languages', {
-        method: 'POST', body: JSON.stringify({ language: language.trim() }),
+        method: 'POST', body: JSON.stringify({ language }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to add language');
-      setCatalog(body); selectLanguage(language.trim());
+      setCatalog(body);
+      setActiveLanguage(language);
+      setLanguageDraft(body.languages?.find((x: LanguagePrompt) => x.language === language)?.prompt || '');
+      setActiveDialect('');
+      setDialectDraft('');
+      setExamplesDraft('');
+      setNewLanguage('');
+      setShowAddLanguage(false);
+      setSaved(null);
     } catch (e: any) { setError(e.message || 'Failed to add language'); }
+    finally { setAdding(null); }
   };
-
   const addDialect = async () => {
-    if (!activeLanguage) return;
-    const dialect = prompt(`New dialect for ${activeLanguage}`);
-    if (!dialect?.trim()) return;
+    const dialect = newDialect.trim();
+    if (!activeLanguage || !dialect || adding || !canLeave()) return;
+    setAdding('dialect'); setError('');
     try {
       const res = await apiFetch(`/api/platform/prompts/languages/${encodeURIComponent(activeLanguage)}/dialects`, {
-        method: 'POST', body: JSON.stringify({ dialect: dialect.trim(), prompt: '' }),
+        method: 'POST', body: JSON.stringify({ dialect, prompt: '' }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || 'Failed to add dialect');
-      setCatalog(body); selectDialect(dialect.trim());
+      setCatalog(body);
+      const item = body.dialectsByLanguage?.[activeLanguage]?.find((x: DialectPrompt) => x.dialect === dialect);
+      setActiveDialect(dialect);
+      setDialectDraft(item?.prompt || '');
+      setExamplesDraft((item?.examples || []).join('\n'));
+      setNewDialect('');
+      setShowAddDialect(false);
+      setSaved(null);
     } catch (e: any) { setError(e.message || 'Failed to add dialect'); }
+    finally { setAdding(null); }
   };
 
   if (loading) {
