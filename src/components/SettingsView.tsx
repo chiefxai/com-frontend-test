@@ -1411,15 +1411,17 @@ export default function SettingsView({
                     const eligible = policy
                       ? workspaceFeatureAllowed.filter(key => workspaceKeys.has(key))
                       : [];
-                    const workspaceAdmin = role === 'Workspace Admin';
                     const override = assignment?.featureFlags ?? null;
-                    const features = active && policy
-                      ? visibleWorkspaceFeatureKeys(workspaceFeatureAllowed,eligible,accessMember.featureFlags,override,workspaceAdmin)
-                      : [];
+                    const features = effectiveWorkspaceMemberKeys(
+                      workspaceFeatureAllowed, policy, assignment, accessMember.featureFlags,
+                    ) ?? [];
                     const editingFeatures = workspaceFeatureEditor?.workspaceId === workspace.id
                       && workspaceFeatureEditor.memberId === accessMember.id;
+                    const editingPolicy = workspacePolicyEditor?.workspaceId === workspace.id;
                     const canEditFeatures = canManageOrgMembers && !['Owner','Organization Admin','Super Admin'].includes(accessMember.role)
                       && accessMember.status === 'Active' && workspace.status === 'Active'
+                      && Boolean(policy) && !workspaceFeatureLoading && !workspaceFeatureError;
+                    const canEditPolicy = canManageOrganization && workspace.status === 'Active'
                       && Boolean(policy) && !workspaceFeatureLoading && !workspaceFeatureError;
                     return <div key={workspace.id} className="space-y-3 rounded-xl border border-[var(--border)] p-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1435,23 +1437,73 @@ export default function SettingsView({
                           <option value="">No access</option><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option><option value="Member">Member</option><option value="Viewer">Viewer</option>
                         </select>
                       </div>
+                      <div className="border-t border-[var(--border)] pt-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                            Workspace feature policy · {policy ? `${eligible.length} allowed` : 'Unavailable'}
+                          </p>
+                          {canEditPolicy && (
+                            <Button type="button" size="sm" variant="secondary"
+                              disabled={Boolean(workspacePolicySaving) || Boolean(accessSaving)}
+                              onClick={() => {
+                                setWorkspaceFeatureEditor(null);
+                                setWorkspacePolicySaveError('');
+                                setWorkspacePolicyEditor(editingPolicy ? null : {
+                                  workspaceId: workspace.id, value: eligible,
+                                });
+                              }}>
+                              {editingPolicy ? 'Cancel policy edit' : 'Configure workspace features'}
+                            </Button>
+                          )}
+                        </div>
+                        {editingPolicy && <div className="mt-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
+                          <FeatureAccessSelector
+                            label={`Allowed features in ${workspace.name}`}
+                            description="This policy is the maximum feature access for everyone in this workspace. Grant individual permissions separately."
+                            availableKeys={workspaceFeatureAllowed}
+                            value={workspacePolicyEditor?.value || []}
+                            onChange={value => setWorkspacePolicyEditor(current => current ? { ...current, value } : null)}
+                            disabled={Boolean(workspacePolicySaving)}
+                          />
+                          {workspacePolicySaveError && <p role="alert" className="text-xs text-rose-600">{workspacePolicySaveError}</p>}
+                          <div className="flex justify-end">
+                            <Button type="button" size="sm" variant="primary" loading={workspacePolicySaving === workspace.id}
+                              onClick={() => void saveWorkspacePolicy(workspace.id, workspacePolicyEditor?.value || [])}>
+                              Save workspace policy
+                            </Button>
+                          </div>
+                        </div>}
+                        {!workspaceFeatureLoading && !workspaceFeatureError && policy && eligible.length === 0 && (
+                          <p role="status" className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                            No product features are enabled in this workspace. {workspaceFeatureAllowed.length
+                              ? canManageOrganization
+                                ? 'Configure workspace features above before assigning them to staff.'
+                                : 'Ask an organization administrator to enable workspace features.'
+                              : 'The organization has no enabled features; contact your platform administrator.'}
+                          </p>
+                        )}
+                      </div>
                       {active && <div className="border-t border-[var(--border)] pt-3">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                           <p className="text-[11px] font-semibold text-[var(--text-secondary)]">
                             Feature access ({features.length}) · {override === null ? 'Inherited' : 'Custom for this workspace'}
                           </p>
                           {canEditFeatures && <div className="flex items-center gap-2">
-                            <Button type="button" size="sm" variant="secondary" disabled={Boolean(accessSaving)}
-                              onClick={() => setWorkspaceFeatureEditor(editingFeatures ? null : {
-                                workspaceId: workspace.id, memberId: accessMember.id, value: features,
-                              })}>{editingFeatures ? 'Cancel editing' : 'Manage features'}</Button>
-                            {override !== null && <Button type="button" size="sm" variant="ghost" disabled={Boolean(accessSaving)}
+                            {eligible.length > 0 && <Button type="button" size="sm" variant="secondary"
+                              disabled={Boolean(accessSaving) || Boolean(workspacePolicySaving)}
+                              onClick={() => {
+                                setWorkspacePolicyEditor(null);
+                                setWorkspaceFeatureEditor(editingFeatures ? null : {
+                                  workspaceId: workspace.id, memberId: accessMember.id, value: features,
+                                });
+                              }}>{editingFeatures ? 'Cancel editing' : 'Manage features'}</Button>}
+                            {override !== null && <Button type="button" size="sm" variant="ghost"
+                              disabled={Boolean(accessSaving) || Boolean(workspacePolicySaving)}
                               onClick={() => void saveWorkspaceFeatureAccess(accessMember.id, workspace.id, null)}>
                               Inherit grants
                             </Button>}
                           </div>}
-                        </div>
-                        {editingFeatures && <div className="mb-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
+                                                {editingFeatures && <div className="mb-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
                           <FeatureAccessSelector
                             label={`Features in ${workspace.name}`}
                             description="Only this member's features in this workspace are changed. Other workspaces keep their own settings."
@@ -1467,6 +1519,11 @@ export default function SettingsView({
                             </Button>
                           </div>
                         </div>}
+                        {!canEditFeatures && canManageOrgMembers
+                          && ['Owner','Organization Admin','Super Admin'].includes(accessMember.role)
+                          && <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+                            Owner and organization-admin personal overrides are restricted. Their inherited access follows the workspace policy.
+                          </p>}
                         {workspaceFeatureLoading
                           ? <p className="text-xs text-[var(--text-muted)]">Loading feature grants…</p>
                           : !policy
