@@ -440,3 +440,97 @@ div[class~="bg-white"][class~="border"][class*="rounded-"] {
   background: rgba(22, 119, 255, 0.18);
   color: var(--text-primary);
 }
+
+/* ── Unified Chief Connect navigation and action loader ──────────── */
+.cv-loading-state {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-primary);
+  isolation: isolate;
+}
+.cv-loading-state--page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background: var(--bg-base);
+}
+.cv-loading-state--section {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 220px;
+  width: 100%;
+}
+.cv-loading-state--inline {
+  display: inline-flex;
+  flex-direction: row;
+  min-height: 0;
+  width: auto;
+  gap: 8px;
+  padding: 0;
+  text-align: left;
+}
+.cv-loading-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 98px;
+  height: 98px;
+  margin-bottom: 2px;
+}
+.cv-loading-state--section .cv-loading-art { width: 74px; height: 74px; }
+.cv-loading-state--inline .cv-loading-art { width: 20px; height: 20px; margin: 0; }
+.cv-loading-glow {
+  position: absolute;
+  inset: 9%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(24, 200, 242, .12) 0%, rgba(22, 119, 255, .10) 38%, rgba(123, 44, 255, .06) 61%, transparent 72%);
+  box-shadow: 0 0 44px rgba(22, 119, 255, .08);
+  animation: cv-loader-breathe 2.3s ease-in-out infinite;
+  pointer-events: none;
+}
+.cv-loading-state--inline .cv-loading-glow { display: none; }
+.cv-loading-icon { position: relative; display: block; overflow: visible; color: var(--brand-blue); }
+.cv-loading-icon[data-tone="current"] { color: inherit; }
+.cv-loading-orbit { transform-origin: 32px 32px; animation: cv-loader-rotate 1.65s linear infinite; }
+.cv-loading-orbit--reverse { animation-direction: reverse; animation-duration: 2.4s; }
+.cv-loading-network { animation: cv-loader-network 2.1s ease-in-out infinite; transform-origin: 32px 32px; }
+.cv-loading-node { animation: cv-loader-node 1.65s ease-in-out infinite; }
+.cv-loading-node--two { animation-delay: .22s; }
+.cv-loading-node--three { animation-delay: .44s; }
+.cv-loading-copy { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.cv-loading-state--inline .cv-loading-copy { align-items: flex-start; }
+.cv-loading-title {
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: .01em;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.cv-loading-description { font-size: 11px; line-height: 1.5; max-width: 290px; color: var(--text-muted); }
+.cv-loading-state--inline .cv-loading-title { font-size: 12px; }
+@keyframes cv-loader-rotate { to { transform: rotate(360deg); } }
+@keyframes cv-loader-breathe {
+  0%, 100% { opacity: .68; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.09); }
+}
+@keyframes cv-loader-network {
+  0%, 100% { opacity: .7; transform: scale(.96); }
+  50% { opacity: 1; transform: scale(1.045); }
+}
+@keyframes cv-loader-node {
+  0%, 100% { opacity: .65; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-loading-glow,
+  .cv-loading-orbit,
+  .cv-loading-network,
+  .cv-loading-node { animation: none !important; }
+}
