@@ -1281,22 +1281,20 @@ export default function SettingsView({
                     {
                       key: 'access',
                       header: 'Feature Access',
-                      cell: (member) => !canManageOrgMembers
-                        || member.role === 'Organization Admin' || member.role === 'Super Admin' ? (
-                        <button type="button" onClick={() => openMemberDetails(member)}
-                          className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--accent)] hover:underline">
-                          <Flag className="h-3 w-3" /> View workspace features
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => openFlagEditor(member)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]"
-                        >
-                          <Flag className="h-3 w-3" />
-                          {(member.featureFlags || []).length} granted
-                        </button>
-                      ),
+                      cell: member => {
+                        // This must reflect the exact workspace in the Role
+                        // column, not the person's organization-wide defaults.
+                        const effective = memberWorkspaceFeatures(member, roleWorkspaceId);
+                        const workspaceName = orgWorkspaces.find(row => row.id === roleWorkspaceId)?.name || 'current workspace';
+                        return (
+                          <button type="button" onClick={() => { setOrgAccessError(''); openMemberDetails(member); }}
+                            title={`View feature permissions for ${member.name || member.email} in ${workspaceName}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]">
+                            <Flag aria-hidden="true" className="h-3 w-3" />
+                            {effective === null ? 'Unavailable' : `${effective.length} enabled`}
+                          </button>
+                        );
+                      },
                     },
                     {
                       key: 'status',
@@ -1399,7 +1397,7 @@ export default function SettingsView({
               {accessMember && <SlideOver open onClose={closeDetails}
                 title={<span className="flex items-center gap-2">{detailHistory.length > 0 && <IconButton icon={ArrowLeft} variant="secondary" label="Back to previous details" onClick={backDetails} />}
                   {accessMember.name || accessMember.email}</span>}
-                subtitle="Workspace memberships, roles, and effective feature grants." maxWidth="max-w-2xl">
+                subtitle="Roles and feature grants are independent for each workspace." maxWidth="max-w-2xl">
                 <div className="space-y-3">
                   {orgAccessError && <p role="alert" className="text-xs text-rose-700">{orgAccessError}</p>}
                   {workspaceFeatureError && <p role="alert" className="text-xs text-rose-700">Feature access unavailable: {workspaceFeatureError}</p>}
