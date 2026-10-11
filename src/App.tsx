@@ -343,9 +343,10 @@ export default function App() {
   const refreshData = useCallback(async () => {
     if (!kcUser) return;
     try {
-      const allowed = (permission: string,path: string) => {
+      const allowed = (permission: string | string[],path: string) => {
         const access = getAuthorization();
-        if (access && !access.permissions.includes(permission)) return Promise.resolve(null);
+        const permissions = Array.isArray(permission) ? permission : [permission];
+        if (access && !permissions.some(key => access.permissions.includes(key))) return Promise.resolve(null);
         return apiFetch(path).then(r => r.ok ? r.json() : null).catch(() => null);
       };
       const [
@@ -366,7 +367,7 @@ export default function App() {
         allowed('workspace.read', '/api/call-logs'),
         allowed('workspace.read', '/api/loans'),
         allowed('workspace.read', '/api/settings/numbers'),
-        allowed('organization.members.read', '/api/settings/team'),
+        allowed(['organization.members.read','workspace.members.manage'], '/api/settings/team'),
         allowed('workspace.read', '/api/settings/workspace'),
         allowed('workspace.read', '/api/dialer-tasks'),
         allowed('billing.read', '/api/billing'),

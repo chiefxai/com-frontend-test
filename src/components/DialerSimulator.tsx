@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { Lead, CallLog, VirtualNumber, TeamMember, ContactGroup, OrganizationSettings } from '../types';
 import { QuestionFlow } from '../features/workflows/types';
+import { escapeCSVField } from '../shared/lib/csvSafe';
 import PageShell from './ui/PageShell';
 import AwsCreateLayout from './ui/AwsCreateLayout';
 import BreadcrumbTitle from './ui/BreadcrumbTitle';
@@ -359,10 +360,7 @@ export default function DialerSimulator({
   const [isSimulatorNavigatorCollapsed, setIsSimulatorNavigatorCollapsed] = useState(false);
 
   const downloadOutboundCampaignCsv = (task: DialTask) => {
-    const escapeCsv = (value: unknown) => {
-      const text = value == null ? '' : String(value);
-      return `"${text.replace(/"/g, '""')}"`;
-    };
+    const escapeCsv = (value: unknown) => escapeCSVField(value);
 
     const answerKeys = Array.from(new Set(
       Object.values(task.callResults).flatMap((result) => Object.keys(result.answers || {}))
@@ -1232,7 +1230,7 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
 
     try {
       // Call Gemini API server
-      const res = await fetch('/api/simulate-call', {
+      const res = await apiFetch('/api/simulate-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1250,6 +1248,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
       });
 
       const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `Call simulation failed (${res.status}).`);
       if (data.success) {
         let aiReply = data.reply;
         setCurrentSentiment(data.sentiment);

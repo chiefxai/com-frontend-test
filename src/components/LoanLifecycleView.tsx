@@ -18,6 +18,7 @@ import {
 import PageShell from './ui/PageShell';
 import Widget from './ui/Widget';
 import { Loan, LoanDocument, Lead } from '../types';
+import { apiFetch } from '../lib/api';
 
 interface LoanLifecycleViewProps {
   loans: Loan[];
@@ -68,21 +69,21 @@ export default function LoanLifecycleView({
   const triggerAIOCRCompliance = async (loanId: string, document: LoanDocument) => {
     setIsOCRProcessing(true);
     try {
-      const loan = loans.find((l) => l.id === loanId);
-      const lead = leads.find((l) => l.id === loan?.leadId);
-      const res = await fetch('/api/gemini/verify-doc', {
+      if (!document.fileContent?.trim()) {
+        throw new Error('No document text is attached. Upload or extract the actual document content before analysis.');
+      }
+      const res = await apiFetch('/api/gemini/verify-doc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           docType: document.type,
           docName: document.name,
-          fileContent: document.type === 'Paystub'
-            ? `${loan?.leadName || 'Applicant'}, Net Wages: ${lead?.financialInfo?.monthlyIncome ?? 'Unknown'}, Employer Name: ${lead?.financialInfo?.employer || 'Unknown'}`
-            : `${loan?.leadName || 'Applicant'}, Phone: ${lead?.phone || 'Unknown'}`
+          fileContent: document.fileContent
         })
       });
 
       const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `Document analysis failed (${res.status}).`);
       if (data.success) {
         // Update document ocrData inside target loan
         const updated = loans.map((loan) => {
@@ -127,7 +128,7 @@ export default function LoanLifecycleView({
       }
     } catch (err) {
       console.error(err);
-      alert('Simulation server offline.');
+      alert(`Document was not verified: ${err instanceof Error ? err.message : 'document analysis is unavailable.'}`);
     } finally {
       setIsOCRProcessing(false);
     }
@@ -334,7 +335,7 @@ export default function LoanLifecycleView({
                     <div className="flex items-start justify-between">
                       <div>
                         <h5 className="text-xs font-bold text-slate-700">{activeDoc.name}</h5>
-                        <p className="text-[9px] text-slate-400">Underwriting review channel: {activeDoc.type}</p>
+                        <p className="text-[9px] text-slate-400">Underwriting review channel: {activeDoc.type} · AI extraction requires document text and remains Needs Review</p>
                       </div>
                       {activeDoc.status !== 'Verified' && (
                         <button

@@ -236,7 +236,7 @@ export default function Sidebar({
     || workspaceName || organizationName || 'Workspaces';
   const industryContext = useIndustry({ industry, businessType });
   const { can } = useAuthorization();
-  const isAdmin = can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
+  const isAdmin = can('workspace.settings.manage') || can('organization.members.read') || can('workspace.members.manage') || can('billing.read');
   const { isEnabled } = useFeatureFlags();
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {

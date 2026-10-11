@@ -32,6 +32,7 @@ import FilterBar from './ui/FilterBar';
 import Badge from './ui/Badge';
 import { formatPhone } from '../lib/phone';
 import { newClientId } from '../lib/ids';
+import { apiFetch } from '../lib/api';
 
 interface LeadManagementViewProps {
   leads: Lead[];
@@ -195,12 +196,13 @@ export default function LeadManagementView({
   const triggerAILeadScoring = async (lead: Lead) => {
     setIsScoringLoading(true);
     try {
-      const res = await fetch('/api/gemini/score-lead', {
+      const res = await apiFetch('/api/gemini/score-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lead })
       });
       const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `Lead scoring failed (${res.status}).`);
       if (data.success) {
         // Update state
         const updatedLeads = leads.map((l) => {
@@ -227,7 +229,7 @@ export default function LeadManagementView({
       }
     } catch (err) {
       console.error(err);
-      alert('Simulation offline: Defaulted to standard algorithms.');
+      alert(`AI lead scoring is unavailable. No score was changed. ${err instanceof Error ? err.message : ''}`);
     } finally {
       setIsScoringLoading(false);
     }

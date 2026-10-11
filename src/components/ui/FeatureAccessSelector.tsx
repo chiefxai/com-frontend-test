@@ -185,7 +185,7 @@ export default function FeatureAccessSelector({
             {features.length === 0
               ? 'No features available'
               : selectedCount === 0
-                ? 'Select feature groups or individual features'
+                ? `No features granted (0 of ${features.length})`
                 : selectedCount + ' of ' + features.length + ' permissions selected'}
           </span>
         </span>

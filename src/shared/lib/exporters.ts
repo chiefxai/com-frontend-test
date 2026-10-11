@@ -1,3 +1,5 @@
+import { buildCSV } from './csvSafe';
+
 /**
  * Shared document export utilities.
  *
@@ -8,23 +10,6 @@
  */
 
 // ── CSV ──────────────────────────────────────────────────────────────────────
-
-function escapeCSVField(value: unknown): string {
-  const str = value == null ? '' : String(value);
-  // RFC 4180: quote if the field contains comma, double-quote, or newline.
-  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
-
-export function buildCSV(headers: string[], rows: unknown[][]): string {
-  const lines = [
-    headers.map(escapeCSVField).join(','),
-    ...rows.map(row => row.map(escapeCSVField).join(',')),
-  ];
-  return lines.join('\r\n');
-}
 
 export function downloadCSV(filename: string, headers: string[], rows: unknown[][]): void {
   const csv = buildCSV(headers, rows);

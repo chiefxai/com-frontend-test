@@ -24,10 +24,12 @@ export function legacyAuthorization(role: string): Authorization {
   const workspaceAdmin = role === 'Workspace Admin';
   const viewer = ['Viewer','Customer'].includes(role);
   const billingOnly = role === 'Billing Admin';
-  return { organizationRole: role,workspaceRole: orgAdmin || billingOnly ? null : workspaceAdmin ? 'Workspace Admin' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
+  const manager = role === 'Manager' || role === 'Sales Manager';
+  return { organizationRole: role,workspaceRole: orgAdmin || billingOnly ? null : workspaceAdmin ? 'Workspace Admin' : manager ? 'Manager' : viewer ? 'Viewer' : 'Member',platformAdmin: false,
     permissions: ['notifications.read',
       ...(!billingOnly && !orgAdmin ? ['workspace.read'] : []),
       ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.write','workspace.call'] : []),
+      ...(!billingOnly && (workspaceAdmin || manager) ? ['workspace.members.manage'] : []),
       ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.share.propose'] : []),
       ...(!viewer && !billingOnly && !orgAdmin ? ['workspace.share.copy'] : []),
       ...(workspaceAdmin ? ['workspace.delete','workspace.settings.manage','workspace.members.manage','workspace.audit.read'] : []),
@@ -38,6 +40,8 @@ export function legacyAuthorization(role: string): Authorization {
 export function permissionForRequest(path: string,method: string): string | null {
   const read = ['GET','HEAD','OPTIONS'].includes(method);
   path = path.toLowerCase().replace(/\/+$/,'');
+  if (path === '/api/settings/team' && method === 'POST') return null; // Backend allows organization or scoped workspace member managers.
+  if (/^\/api\/settings\/team\/[^/]+$/.test(path) && method === 'DELETE') return null; // Backend checks creator and workspace hierarchy.
   if (['/api/auth/me','/api/auth/roles','/api/settings/me'].includes(path)) return null;
   if (path === '/api/settings/workspace-policy') return 'organization.read';
   if (path === '/api/settings/workspaces') return read ? 'organization.read' : 'organization.manage';
@@ -75,7 +79,7 @@ export function permissionForRequest(path: string,method: string): string | null
 }
 export function canAccessTab(tab: string,subTab?: string) {
   if (tab === 'settings') {
-    if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('billing.read');
+    if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('workspace.members.manage') || can('billing.read');
     if (subTab === 'workspaces' || subTab === 'numbers') return can('organization.read') || can('organization.manage') || can('workspace.settings.manage');
     return (subTab === 'billing' ? can('billing.read') || can('billing.organization.read') || can('billing.workspace.read') : can(subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage'))
       || (subTab === 'team' && can('workspace.members.manage'));

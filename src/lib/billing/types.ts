@@ -57,6 +57,7 @@ export interface BillingInvoice {
 export interface BillingOverview {
   orgId: string;
   billingMethod: 'recharge_based' | 'pay_as_you_go';
+  monthlySubscriptionCredits: BillingAmount;
   activePeriod: BillingPeriod | null;
   nextPeriod: BillingPeriod | null;
   balances: CreditBalance[];

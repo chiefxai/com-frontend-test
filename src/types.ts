@@ -157,8 +157,9 @@ export interface LoanDocument {
   id: string;
   name: string;
   type: 'ID Proof' | 'Paystub' | 'Bank Statement' | 'Tax Return';
-  status: 'Uploaded' | 'OCR Processing' | 'Verified' | 'Rejected';
+  status: 'Uploaded' | 'OCR Processing' | 'Needs Review' | 'Verified' | 'Rejected';
   fileSize?: string;
+  fileContent?: string;
   ocrData?: {
     extractedName?: string;
     extractedIncome?: number;
@@ -228,6 +229,7 @@ export interface TeamMember {
   performanceScore: number;
   assignedLeadsCount: number;
   featureFlags?: string[];
+  canDelete?: boolean;
 }
 
 export interface OrganizationSettings {
