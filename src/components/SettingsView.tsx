@@ -44,6 +44,7 @@ import FilterBar from './ui/FilterBar';
 import BillingWorkspace from './billing/BillingWorkspace';
 import WorkspaceManagement from './WorkspaceManagement';
 import WorkspaceSharing from './WorkspaceSharing';
+import { showWorkspaceManagement } from '../lib/workspaceNavigation';
 import type { BillingPanel } from './billing/OrganizationTopUp';
 
 interface SettingsViewProps {
@@ -154,6 +155,9 @@ export default function SettingsView({
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
   const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
+  // Customers with one purchased workspace reach their phone numbers directly.
+  const multiWorkspaceUi = showWorkspaceManagement(multipleWorkspacesEnabled);
+  const effectiveWorkspacePanel = multiWorkspaceUi ? workspacePanel : 'numbers';
   const [selectedWorkspaceDetails, setSelectedWorkspaceDetails] = useState<{ id: string; name: string; status: string; industry?: string; branchName?: string | null } | null>(null);
   const [selectedNumberDetails, setSelectedNumberDetails] = useState<VirtualNumber | null>(null);
   const [workspaceDetailsTab, setWorkspaceDetailsTab] = useState<'overview' | 'members' | 'numbers'>('overview');
@@ -208,6 +212,7 @@ export default function SettingsView({
   const [numberProvider, setNumberProvider] = useState('');
   const [numberStatus, setNumberStatus] = useState('');
   const [numberWorkspace, setNumberWorkspace] = useState('');
+  const numberWorkspaceFilter = multiWorkspaceUi ? numberWorkspace : '';
   const numberWorkspaceId = (number: VirtualNumber) => {
     const record = number as VirtualNumber & { workspaceId?: string | null; workspace_id?: string | null };
     return record.workspaceId || record.workspace_id || '';
@@ -216,18 +221,21 @@ export default function SettingsView({
     (!numberSearch || `${number.number} ${number.friendlyName || ''}`.toLowerCase().includes(numberSearch.toLowerCase().trim())) &&
     (!numberProvider || number.provider === numberProvider) &&
     (!numberStatus || number.status === numberStatus) &&
-    (!numberWorkspace || (numberWorkspace === '__unknown__' ? !numberWorkspaceId(number) : numberWorkspaceId(number) === numberWorkspace)));
+    (!numberWorkspaceFilter || (numberWorkspaceFilter === '__unknown__' ? !numberWorkspaceId(number) : numberWorkspaceId(number) === numberWorkspaceFilter)));
   const exportFilteredNumbers = () => {
     const csvField = (value: unknown) => {
       const content = String(value ?? '').replace(/^[\s]*[=+\-@]/, match => "'" + match);
       return `"${content.replace(/"/g, '""')}"`;
     };
-    const rows = [['Number','Label','Provider','Status','Workspace','Incoming Calls','Outgoing Calls'],
-      ...filteredNumbers.map(number => [
-        number.number, number.friendlyName, number.provider, number.status,
-        orgWorkspaces.find(workspace => workspace.id === numberWorkspaceId(number))?.name || 'Unknown',
-        number.incomingCallCount, number.outgoingCallCount,
-      ])];
+    const rows = [[
+      'Number', 'Label', 'Provider', 'Status',
+      ...(multiWorkspaceUi ? ['Workspace'] : []),
+      'Incoming Calls', 'Outgoing Calls',
+    ], ...filteredNumbers.map(number => [
+      number.number, number.friendlyName, number.provider, number.status,
+      ...(multiWorkspaceUi ? [orgWorkspaces.find(workspace => workspace.id === numberWorkspaceId(number))?.name || 'Unknown'] : []),
+      number.incomingCallCount, number.outgoingCallCount,
+    ])];
     const csv = '\uFEFF' + rows.map(row => row.map(csvField).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -886,19 +894,21 @@ export default function SettingsView({
                       <span className="text-[var(--border)]">/</span>
                       <span className="truncate text-sm font-semibold">{billingPanel === 'plan' ? 'Subscription' : billingPanel === 'usage' ? 'Usage' : billingPanel === 'payments' ? 'Payments' : billingPanel === 'topup' ? 'Add Credits' : 'Credits'}</span>
                     </>
-                : workspacePanel === 'overview'
-                  ? <span className="truncate text-sm font-semibold">Workspaces & Numbers</span>
-                  : <>
+                : !multiWorkspaceUi
+                  ? <span className="truncate text-sm font-semibold">Phone Numbers</span>
+                  : effectiveWorkspacePanel === 'overview'
+                    ? <span className="truncate text-sm font-semibold">Workspaces & Numbers</span>
+                    : <>
                       <button type="button" onClick={() => setWorkspacePanel('overview')} className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]">Workspaces & Numbers</button>
                       <span className="text-[var(--border)]">/</span>
-                      <span className="truncate text-sm font-semibold">{workspacePanel === 'numbers' ? 'Virtual Numbers' : 'Sharing'}</span>
+                      <span className="truncate text-sm font-semibold">{effectiveWorkspacePanel === 'numbers' ? 'Virtual Numbers' : 'Sharing'}</span>
                     </>}
             </span>
           : <BreadcrumbTitle group="Administration" page={subTab === 'team' ? 'Staff & Teams' : 'API Keys'} />
       }
       titleSuffix={subTab === 'billing' && billingPanel !== 'dashboard'
         ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Billing & Usage" onClick={() => setBillingPanel('dashboard')} />
-        : (subTab === 'numbers' || subTab === 'workspaces') && workspacePanel !== 'overview'
+        : (subTab === 'numbers' || subTab === 'workspaces') && multiWorkspaceUi && effectiveWorkspacePanel !== 'overview'
           ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Workspaces & Numbers" onClick={() => setWorkspacePanel('overview')} />
           : undefined}
       subtitle={subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' ? undefined : subTab === 'team' ? 'Manage staff and access.' : undefined}
@@ -909,7 +919,7 @@ export default function SettingsView({
           {/* Compact workspace landing page with focused number and sharing views. */}
           {(subTab === 'numbers' || subTab === 'workspaces') && (
             <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
-              <Widget showHeader={false} padding="sm">
+              {multiWorkspaceUi && <Widget showHeader={false} padding="sm">
                 <div role="tablist" aria-label="Workspace management views" className="flex flex-wrap gap-2">
                   {([
                     { key: 'overview', label: 'Workspaces' },
@@ -924,8 +934,8 @@ export default function SettingsView({
                       {item.label}
                     </button>)}
                 </div>
-              </Widget>
-              {workspacePanel === 'overview' && <>
+              </Widget>}
+              {effectiveWorkspacePanel === 'overview' && <>
                 <WorkspaceManagement enabled={multipleWorkspacesEnabled} onWorkspaceCreated={async () => { await onWorkspaceCreated(); await loadOrganizationAccess(); await loadOrganizationNumbers(); }}
                   memberCounts={Object.fromEntries(orgWorkspaces.map(row => [row.id, canReadOrgMembers && !orgAccessError && orgAssignments[row.id] ? orgAssignments[row.id].filter(member => member.assignmentStatus === 'Active' && member.memberStatus.toLowerCase() === 'active').length : undefined]).filter(([, count]) => count !== undefined))}
                   numberCounts={Object.fromEntries(visibleNumbers.filter(number => numberWorkspaceId(number)).reduce((counts, number) => {
@@ -937,19 +947,19 @@ export default function SettingsView({
                   onSelectWorkspace={workspace => { openWorkspaceDetails(workspace); }} />
 
               </>}
-              {workspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
-              {workspacePanel === 'numbers' && <>
+              {effectiveWorkspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
+              {effectiveWorkspacePanel === 'numbers' && <>
               {organizationNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{organizationNumbersError} Only numbers in the currently selected workspace are shown.</p>}
               <Widget showHeader={false} padding="none">
                 <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
                   <FilterBar
                     search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
                     selects={[
-                      { key: 'Workspace', label: 'Workspace', value: numberWorkspace, onChange: setNumberWorkspace, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id })), { label: 'Unknown association', value: '__unknown__' }] },
+                      ...(multiWorkspaceUi ? [{ key: 'Workspace', label: 'Workspace', value: numberWorkspaceFilter, onChange: setNumberWorkspace, options: [{ label: 'All workspaces', value: '' }, ...orgWorkspaces.map(workspace => ({ label: workspace.name, value: workspace.id })), { label: 'Unknown association', value: '__unknown__' }] }] : []),
                       { key: 'Provider', label: 'Provider', value: numberProvider, onChange: setNumberProvider, options: [{ label: 'All providers', value: '' }, ...Array.from(new Set(visibleNumbers.map(number => number.provider))).map(provider => ({ label: provider, value: provider }))] },
                       { key: 'Status', label: 'Status', value: numberStatus, onChange: setNumberStatus, options: [{ label: 'All statuses', value: '' }, { label: 'Active', value: 'Active' }, { label: 'Inactive', value: 'Inactive' }] },
                     ]}
-                    hasActiveFilters={Boolean(numberSearch.trim() || numberWorkspace || numberProvider || numberStatus)}
+                    hasActiveFilters={Boolean(numberSearch.trim() || numberWorkspaceFilter || numberProvider || numberStatus)}
                     onClear={() => { setNumberSearch(''); setNumberWorkspace(''); setNumberProvider(''); setNumberStatus(''); }}
                     resultCount={{ filtered: filteredNumbers.length, total: visibleNumbers.length, label: 'numbers' }}
                     actions={<>
@@ -961,7 +971,7 @@ export default function SettingsView({
                     </>}
                   />
                 </div>
-                {visibleNumbers.some(number => !numberWorkspaceId(number)) &&
+                {multiWorkspaceUi && visibleNumbers.some(number => !numberWorkspaceId(number)) &&
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
                 {visibleNumbers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -1024,7 +1034,7 @@ export default function SettingsView({
                       bare
                       resizable
                       paginated
-                      columns={columns}
+                      columns={multiWorkspaceUi ? columns : columns.filter(column => column.key !== 'workspace')}
                       rows={filteredNumbers}
                       rowKey={(num) => num.id}
                     />
@@ -1179,7 +1189,7 @@ export default function SettingsView({
                         <div><dt className="text-[var(--text-muted)]">Outgoing calls</dt><dd className="mt-1 font-semibold text-[var(--text-primary)]">{selectedNumberDetails.outgoingCallCount}</dd></div>
                       </dl>
                     </Widget>}
-                    {selectedNumberDetails && <Widget title={workspace ? workspace.name : 'Workspace association'} padding="md" icon={Briefcase}>
+                    {multiWorkspaceUi && selectedNumberDetails && <Widget title={workspace ? workspace.name : 'Workspace association'} padding="md" icon={Briefcase}>
                       {workspace
                         ? <p className="text-xs text-[var(--text-secondary)]">{workspace.status} workspace · {assignments.length} active member(s)</p>
                         : <p className="text-xs text-[var(--text-muted)]">No known workspace association. Membership cannot be inferred from this number.</p>}
