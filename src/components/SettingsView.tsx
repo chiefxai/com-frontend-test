@@ -1512,6 +1512,7 @@ export default function SettingsView({
                               Inherit grants
                             </Button>}
                           </div>}
+                        </div>
                         {editingFeatures && <div className="mb-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
                           <FeatureAccessSelector
                             label={`Features in ${workspace.name}`}
