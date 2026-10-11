@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import type KeycloakType from 'keycloak-js';
 import keycloak from './keycloak';
 import { clearScopedStorageForUser } from '../../lib/storage';
-import { AlertCircle, Layers, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import LoadingState from '../../components/ui/LoadingIndicator';
 import { GoogleAuthProvider, getRedirectResult, onAuthStateChanged, signInWithRedirect, signOut } from 'firebase/auth';
 import { identityAuth, isIdentityPlatformConfigured } from './firebase';
 import { configureCognito, getCognitoProfile, getCognitoToken, getCognitoUser, isCognitoConfigured, signInWithCognito, signOutCognito } from './cognito';
@@ -99,14 +100,7 @@ function extractCognitoUser(user: any, claims: Record<string, any>): AuthUser {
 }
 
 function LoadingSplash() {
-  return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
-      <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/40 animate-pulse">
-        <Layers className="h-7 w-7 text-white" />
-      </div>
-      <p className="text-slate-400 text-sm font-medium animate-pulse">Connecting to identity provider…</p>
-    </div>
-  );
+  return <LoadingState variant="page" label="Connecting securely…" description="Establishing your account session." />;
 }
 
 function ErrorSplash({ message, hint }: { message: string; hint: string }) {

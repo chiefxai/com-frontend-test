@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Globe2, ShieldAlert, Loader2 } from 'lucide-react';
+import { Globe2, ShieldAlert } from 'lucide-react';
+import LoadingState from './components/ui/LoadingIndicator';
 import { apiFetch } from './lib/api';
 import { useAuth } from './features/auth/AuthProvider';
 import AdminShell from './admin/AdminShell';
@@ -46,11 +47,7 @@ export default function AdminApp() {
   }, [ready, user?.email]);
 
   if (!ready || status === 'checking') {
-    return (
-      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] flex items-center justify-center">
-        <Loader2 className="h-6 w-6 text-slate-500 animate-spin" />
-      </div>
-    );
+    return <LoadingState variant="page" label="Verifying administrator access…" description="Checking your platform permissions." />;
   }
 
   if (status === 'denied') {
