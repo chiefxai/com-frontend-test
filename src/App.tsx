@@ -992,6 +992,7 @@ export default function App() {
         accountRole={dbRole}
         onLogout={logout}
         workspaces={workspaces}
+        multipleWorkspacesEnabled={multipleWorkspacesEnabled}
         activeWorkspaceId={activeWorkspaceId || orgSettings.id}
         workspaceName={orgSettings.workspaceName}
         onWorkspaceChange={workspace => {

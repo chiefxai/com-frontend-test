@@ -39,6 +39,7 @@ import { UserRole } from '../types';
 import { useFeatureFlags } from '../features/feature-flags/FeatureFlagContext';
 import { TAB_TO_FLAG } from '../features/feature-flags/registry';
 import { useIndustry } from '../lib/industry';
+import { shouldShowWorkspaceSwitcher } from '../lib/workspaceNavigation';
 import type { IndustryProfile } from '../lib/industry/types';
 
 export interface WorkspaceOption {
@@ -52,6 +53,8 @@ export interface WorkspaceOption {
 interface SidebarProps {
   workspaces: WorkspaceOption[];
   activeWorkspaceId: string;
+  /** Authenticated subscription capability, not the current workspace count. */
+  multipleWorkspacesEnabled?: boolean;
   workspaceName?: string;
   onWorkspaceChange: (workspace: WorkspaceOption) => void;
   notifications: AppNotification[];
@@ -212,6 +215,7 @@ function GroupFlyout({
 export default function Sidebar({
   workspaces,
   activeWorkspaceId,
+  multipleWorkspacesEnabled = false,
   workspaceName,
   onWorkspaceChange,
   notifications,
@@ -234,6 +238,7 @@ export default function Sidebar({
   const currentWorkspaceName = selectedWorkspace?.workspace?.name
     || selectedWorkspace?.organization.workspaceName
     || workspaceName || organizationName || 'Workspaces';
+  const displayWorkspaceSwitcher = shouldShowWorkspaceSwitcher(multipleWorkspacesEnabled, workspaces);
   const industryContext = useIndustry({ industry, businessType });
   const { can } = useAuthorization();
   const isAdmin = can('workspace.settings.manage') || can('organization.members.read') || can('workspace.members.manage') || can('billing.read');
@@ -356,7 +361,12 @@ export default function Sidebar({
     return !flagKey || isEnabled(flagKey);
   });
   const publicGroups = visibleGroups.filter((g) => !g.adminOnly);
-  const configGroups = visibleGroups.filter((g) => g.adminOnly);
+  const configGroups = visibleGroups.filter((g) => g.adminOnly).map(group =>
+    group.tabId === 'settings' && !multipleWorkspacesEnabled
+      ? { ...group, subItems: group.subItems.map(item =>
+          item.id === 'numbers' ? { ...item, label: 'Phone Numbers' } : item) }
+      : group,
+  );
 
   // "Dashboard" section — groups the two overview-style pages (Executive
   // Desk, Reports) under one collapsible header, same visual treatment as
@@ -497,8 +507,9 @@ export default function Sidebar({
 
       {/* Navigation */}
 
-        {/* Keep the workspace selector with navigation, just like the admin shell. */}
-        <div className={collapsed ? 'shrink-0 px-2 pb-2' : 'shrink-0 px-3 pb-2'}>
+        {/* Only show a switcher if the plan supports multiple workspaces
+            or the signed-in user has other accessible organization memberships. */}
+        {displayWorkspaceSwitcher && <div className={collapsed ? 'shrink-0 px-2 pb-2' : 'shrink-0 px-3 pb-2'}>
           {!collapsed && (
             <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
               Current workspace
@@ -565,12 +576,12 @@ export default function Sidebar({
               )}
             </div>
           </CommonDropdown>
-        </div>
+        </div>}
 
       <nav id="organization-nav" aria-label="Organization navigation"
         className={`min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pb-3 ${collapsed ? 'px-2' : 'px-3'}`}>
         {!collapsed && <p className="px-3 pb-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-          Workspace
+          {multipleWorkspacesEnabled ? 'Workspace' : 'Navigation'}
         </p>}
 
         {/* Dashboard uses the SAME collapsed group flyout as Campaign. */}
