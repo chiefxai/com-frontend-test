@@ -4,7 +4,7 @@ import { useAuthorization } from '../../lib/authorization';
 import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
-import type { BillingAmount, BillingOverview, PaymentRequest } from '../../lib/billing/types';
+import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest } from '../../lib/billing/types';
 import DataTable from '../ui/DataTable';
 import KpiCard from '../ui/KpiCard';
 import { Card, CardHeader } from '../ui/Card';
@@ -17,6 +17,15 @@ const formatMoney = (amount: BillingAmount) =>
     .format(Number(amount.units) / 10 ** amount.scale);
 
 export type BillingPanel = 'dashboard' | 'credits' | 'topup' | 'payments' | 'plan' | 'usage';
+
+/** Never call a generic invoice payment a workspace add-on without invoice metadata. */
+export function paymentTypeLabel(payment: PaymentRequest): string {
+  if (payment.purpose === 'topup') return 'Credit top-up';
+  if (payment.purpose === 'subscription') return 'Subscription payment';
+  if (payment.purpose === 'invoice' && payment.workspaceAddonName) return 'Workspace add-on';
+  return 'Invoice payment';
+}
+
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void }) {
   const {can} = useAuthorization();
   const [showForm, setShowForm] = React.useState(false);
@@ -28,7 +37,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   const [historyLoading, setHistoryLoading] = React.useState(false);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [cursorStack, setCursorStack] = React.useState<(string | null)[]>([null]);
-  const [historyFilter, setHistoryFilter] = React.useState<'all' | 'topup'>('topup');
+  const [historyFilter, setHistoryFilter] = React.useState<PaymentHistoryType>('all');
   const [amount, setAmount] = React.useState('');
   const [reference, setReference] = React.useState('');
   const [proof, setProof] = React.useState<File | null>(null);
@@ -54,7 +63,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   const loadHistory = React.useCallback(async (cursor: string | null = null) => {
     setHistoryLoading(true);
     try {
-      const page = await billingClient.payments(cursor, 10);
+      const page = await billingClient.payments(cursor, 10, historyFilter);
       setHistory(page.rows);
       setNextCursor(page.nextCursor);
       setHistoryError('');
@@ -64,7 +73,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [historyFilter]);
 
   const loadCapabilities = React.useCallback(async () => {
     try {
@@ -80,7 +89,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     setInitialLoadComplete(true);
   }, [loadOverview, loadHistory, loadCapabilities]);
   React.useEffect(() => { void refresh(); }, [refresh]);
-  const displayedHistory = history.filter(item => historyFilter === 'all' || item.purpose === 'topup');
   const recentPayments = overview?.recentPayments || history;
   const balances = overview?.balances || [];
   const subscriptionCredits = balances.filter(balance => balance.kind === 'subscription');
@@ -199,7 +207,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose}
+                        {paymentTypeLabel(payment)}
                       </p>
                       <p className="mt-1 text-[11px] text-[var(--text-muted)]">{new Date(payment.submittedAt).toLocaleDateString('en-IN')}</p>
                     </div>
@@ -332,14 +340,17 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
 
       {view === 'payments' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Payment history" subtitle="Verify whether credit and workspace payments were approved"
+          <CardHeader title="Payment history" subtitle="Credit, subscription, and workspace add-on payment requests"
             icon={Clock3} action={
               <div className="flex flex-wrap items-center gap-2">
                 <select aria-label="Payment type" value={historyFilter}
-                  onChange={event => setHistoryFilter(event.target.value as 'topup' | 'all')}
+                  onChange={event => setHistoryFilter(event.target.value as PaymentHistoryType)}
                   className="h-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 text-xs text-[var(--text-primary)]">
-                  <option value="topup">Top-up payments</option>
                   <option value="all">All payments</option>
+                  <option value="topup">Credit top-ups</option>
+                  <option value="workspace">Workspace add-ons</option>
+                  <option value="subscription">Subscriptions</option>
+                  <option value="invoice">Other invoice payments</option>
                 </select>
                 <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
                   onClick={() => void refresh()}>Refresh</Button>
@@ -349,7 +360,12 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           <DataTable<PaymentRequest> bare resizable loading={historyLoading}
             columns={[
               { key: 'date', header: 'Date', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
-              { key: 'type', header: 'Type', cell: payment => payment.purpose === 'topup' ? 'Credit top-up' : payment.purpose },
+              { key: 'type', header: 'Type', cell: payment => (
+                <span>
+                  <span className="block font-medium text-[var(--text-primary)]">{paymentTypeLabel(payment)}</span>
+                  {payment.workspaceAddonName && <span className="block text-[11px] text-[var(--text-muted)]">{payment.workspaceAddonName}</span>}
+                </span>
+              ) },
               { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold tabular-nums">{formatMoney(payment.expectedAmount)}</span> },
               { key: 'status', header: 'Status', cell: payment => (
                 <span className="inline-flex rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
@@ -357,7 +373,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                 </span>
               ) },
             ]}
-            rows={displayedHistory} rowKey={payment => payment.id}
+            rows={history} rowKey={payment => payment.id}
             emptyMessage={historyError ? 'Payment history is unavailable.' : 'No matching payments on this page.'} />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
             <p className="text-[11px] text-[var(--text-muted)]">Page {cursorStack.length} · up to 10 payments per page</p>
@@ -378,9 +394,9 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                 }}>Next</Button>
             </div>
           </div>
-          {historyFilter === 'topup' && <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            Pagination follows all payments. Use Next to browse older requests.
-          </p>}
+          <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+            Showing submitted payment requests. Open and unpaid workspace invoices remain under Additional workspace billing below.
+          </p>
         </Card>
       )}
 
