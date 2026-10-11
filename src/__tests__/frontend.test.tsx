@@ -909,7 +909,7 @@ describe('Sidebar', () => {
     );
 
     expect(screen.getByText('Reports')).toBeInTheDocument();
-    expect(screen.getByText('Voice Simulator')).toBeInTheDocument();
+    expect(screen.getByText('Campaign')).toBeInTheDocument();
     expect(screen.getByText('Compliance')).toBeInTheDocument();
     expect(screen.queryByText('Workflow Builder')).not.toBeInTheDocument();
   });
@@ -966,8 +966,8 @@ describe('Sidebar', () => {
       'lending'
     );
 
-    expect(screen.getByText('Lead CRM')).toBeInTheDocument();
-    expect(screen.getByText('AI Campaigns')).toBeInTheDocument();
+    expect(screen.getByText('Leads')).toBeInTheDocument();
+    expect(screen.getByText('Campaign')).toBeInTheDocument();
     expect(screen.getByText('Loan Lifecycle')).toBeInTheDocument();
   });
 
