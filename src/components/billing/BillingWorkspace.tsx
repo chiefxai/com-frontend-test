@@ -192,7 +192,7 @@ export default function BillingWorkspace({
           </div>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-[var(--border)] p-4">
-              <p className="text-xs text-[var(--text-muted)]">Included workspaces</p>
+              <p className="text-xs text-[var(--text-muted)]">Workspaces on subscription</p>
               <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{organizationPricing?.workspaceCount ?? '—'}</p>
             </div>
             <div className="rounded-xl border border-[var(--border)] p-4">
