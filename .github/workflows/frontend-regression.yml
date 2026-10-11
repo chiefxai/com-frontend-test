@@ -56,8 +56,8 @@ jobs:
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=critical
 
-  typecheck-audit:
-    name: TypeScript audit (informational)
+  typecheck:
+    name: Frontend TypeScript typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +67,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm exec --yes --package=typescript@5.9.3 -- tsc --noEmit
-        continue-on-error: true
 
   full-test-suite:
     name: All frontend tests
