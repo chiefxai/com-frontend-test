@@ -121,13 +121,8 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               logout={onLogout}
               placement="top-start"
               compact={collapsed}
+              showIdentity={!collapsed}
             />
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-[var(--text-primary)]" title={email}>{email}</p>
-                <p className="text-[10px] text-[var(--text-muted)]">Account & appearance</p>
-              </div>
-            )}
           </div>
         </div>
       </aside>

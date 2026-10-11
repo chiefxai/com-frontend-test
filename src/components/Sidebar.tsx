@@ -710,14 +710,8 @@ export default function Sidebar({
             logout={onLogout}
             placement="top-start"
             compact={collapsed}
+            showIdentity={!collapsed}
           />
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-[var(--text-primary)]"
-                title={accountUser?.email || ''}>{accountUser?.email || accountUser?.name || 'Account'}</p>
-              <p className="truncate text-[10px] text-[var(--text-muted)]">{accountRole || 'Account & appearance'}</p>
-            </div>
-          )}
           <NotificationBell
             placement="sidebar"
             notifications={notifications}
