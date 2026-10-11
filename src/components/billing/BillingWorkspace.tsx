@@ -154,21 +154,7 @@ export default function BillingWorkspace({
               label="Conversation time" value={formatCallTime(workspaceBilling?.aiMinutesUsed)}
               sub="Across all workspaces" />
           </div>
-          <Card padding="sm" className="col-span-12 sm:!p-5">
-            <CardHeader title="Explore billing" subtitle="Find the information or action you need" icon={Wallet} />
-            <div className="grid gap-3 md:grid-cols-3">
-              <BillingLink title="Subscription" description="Monthly price and workspace renewals"
-                icon={CreditCard} onClick={() => onNavigate('plan')} />
-              <BillingLink title="Usage & limits" description="AI, phone costs and workspace cap"
-                icon={PhoneCall} onClick={() => onNavigate('usage')} />
-              <BillingLink title="Credits & payments" description="Check credit balances and payment history"
-                icon={Wallet} onClick={() => onNavigate('credits')} />
-            </div>
-            <p className="mt-4 text-[11px] leading-5 text-[var(--text-muted)]">
-              Subscription and metered usage are separate charges, not a final invoice total.
-              Payment approvals, prepaid credits and applicable taxes are tracked separately.
-            </p>
-          </Card>
+
         </>
       )}
 
