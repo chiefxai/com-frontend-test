@@ -24,7 +24,13 @@ describe('staff mutations require server success', () => {
     await expect(updateStaffMemberStatus('u1', 'Active')).rejects.toThrow('Denied');
   });
   it('surfaces network failures', async () => {
-    mocks.apiFetch.mockRejectedValue(new Error('Offline'));
-    await expect(deleteStaffMember('u1')).rejects.toThrow('Offline');
+    mocks.apiFetch.mockImplementationOnce(async () => { throw new Error('Offline'); });
+    let message = '';
+    try {
+      await deleteStaffMember('u1');
+    } catch (error) {
+      message = error instanceof Error ? error.message : '';
+    }
+    expect(message).toBe('Offline');
   });
 });

@@ -49,6 +49,10 @@ const mockKc = vi.hoisted(() => ({
 }));
 
 vi.mock('../features/auth/keycloak', () => ({ default: mockKc }));
+// Sidebar tests do not exercise theme controls; isolate this unrelated provider.
+vi.mock('../shared/theme/ThemeContext', () => ({
+  useTheme: () => ({ mode: 'light', resolved: 'light', setMode: vi.fn() }),
+}));
 
 // ─── Mock apiFetch ───────────────────────────────────────────────────────────
 
