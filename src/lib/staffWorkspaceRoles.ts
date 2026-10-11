@@ -35,3 +35,13 @@ export function getStaffWorkspaceRole(
     || assignment.memberStatus?.toLowerCase() === 'inactive') return 'No access';
   return assignment.workspaceRole?.trim() || 'No access';
 }
+
+/** Roles that may be assigned from the current workspace's staff matrix. */
+export function workspaceRoleOptions(managerInWorkspace: boolean): string[] {
+  return managerInWorkspace ? ['Member', 'Viewer'] : ['Workspace Admin', 'Manager', 'Member', 'Viewer'];
+}
+
+/** A workspace Manager may not edit managers or workspace administrators. */
+export function canAssignWorkspaceRole(managerInWorkspace: boolean, currentRole: string | null): boolean {
+  return !managerInWorkspace || currentRole === 'Member' || currentRole === 'Viewer';
+}

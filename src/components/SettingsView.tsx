@@ -28,7 +28,8 @@ import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
 import WorkspaceFeaturePolicyEditor from './ui/WorkspaceFeaturePolicyEditor';
 import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys } from '../lib/workspaceMemberFeatures';
-import { getStaffWorkspaceRole, organizationScopedRole } from '../lib/staffWorkspaceRoles';
+import { getStaffWorkspaceRole, organizationScopedRole, workspaceRoleOptions, canAssignWorkspaceRole } from '../lib/staffWorkspaceRoles';
+import { createWorkspaceFeatureDraft, setWorkspaceFeatureDraftKeys, shouldSaveWorkspaceFeatureDraft, type WorkspaceFeatureDraft } from '../lib/workspaceFeatureDraft';
 import Button from './ui/Button';
 import { useToast } from './ui/Toast';
 import IconButton from './ui/IconButton';
@@ -145,7 +146,6 @@ export default function SettingsView({
   const canManageOrganization = can('organization.manage');
   const canManageWorkspaceMembers = can('workspace.members.manage');
   const canCreateTeamMembers = canManageOrgMembers || canManageWorkspaceMembers;
-  const canAssignFeatures = canManageOrgMembers || canManageWorkspaceMembers;
   const managerInWorkspace = authorization?.workspaceRole === 'Manager' && !canManageOrgMembers;
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
@@ -422,26 +422,40 @@ export default function SettingsView({
 
   const vobizChannel = connectedChannels.find((c) => c.type === 'vobiz');
 
-  // Organization-level feature entitlements come from the organization
-  // catalog, never the currently selected workspace's effective grants.
-  const [orgAllowedFlags, setOrgAllowedFlags] = useState<string[]>([]);
+  // Organization entitlements and workspace-assignable grants are different
+  // scopes. Ignore stale workspace fetches when switching contexts.
+  const currentWorkspaceId = activeWorkspaceId || orgSettings.id;
+  const [workspaceAssignableFlags, setWorkspaceAssignableFlags] = useState<string[]>([]);
+  const [workspaceAssignableError, setWorkspaceAssignableError] = useState('');
+  const [workspaceAssignableLoading, setWorkspaceAssignableLoading] = useState(false);
+  const [workspaceAssignableRefresh, setWorkspaceAssignableRefresh] = useState(0);
   useEffect(() => {
-    if (subTab !== 'team') return;
-    if (canManageWorkspaceMembers && !canManageOrgMembers) {
-      apiFetch('/api/settings/workspace/assignable-features')
-        .then(r => r.json())
-        .then(data => { if (Array.isArray(data?.featureFlags)) setOrgAllowedFlags(data.featureFlags); })
-        .catch(() => {});
-      return;
-    }
-    apiFetch('/api/settings/workspace')
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data?.featureFlags)) setOrgAllowedFlags(data.featureFlags); })
-      .catch(() => {});
-  }, [subTab, canManageWorkspaceMembers, canManageOrgMembers]);
-  useEffect(() => {
-    if (canManageOrgMembers) setOrgAllowedFlags(workspaceFeatureAllowed);
-  }, [canManageOrgMembers, workspaceFeatureAllowed]);
+    if (subTab !== 'team' || !canManageWorkspaceMembers || canManageOrgMembers) return;
+    let cancelled = false;
+    setWorkspaceAssignableFlags([]);
+    setWorkspaceAssignableError('');
+    setWorkspaceAssignableLoading(true);
+    apiFetch('/api/settings/workspace/assignable-features')
+      .then(async response => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(body.featureFlags)) {
+          throw new Error(body.error || 'Unable to load assignable features.');
+        }
+        if (!cancelled) setWorkspaceAssignableFlags(body.featureFlags);
+      })
+      .catch(error => {
+        if (!cancelled) setWorkspaceAssignableError(error instanceof Error ? error.message : 'Unable to load assignable features.');
+      })
+      .finally(() => { if (!cancelled) setWorkspaceAssignableLoading(false); });
+    return () => { cancelled = true; };
+  }, [subTab, canManageWorkspaceMembers, canManageOrgMembers, currentWorkspaceId, workspaceAssignableRefresh]);
+  const orgAllowedFlags = canManageOrgMembers ? workspaceFeatureAllowed : workspaceAssignableFlags;
+  const featureChoicesLoading = canManageOrgMembers ? workspaceFeatureLoading : workspaceAssignableLoading;
+  const featureChoicesError = canManageOrgMembers ? workspaceFeatureError : workspaceAssignableError;
+  const retryFeatureChoices = () => {
+    if (canManageOrgMembers) void loadWorkspaceFeatures();
+    else setWorkspaceAssignableRefresh(value => value + 1);
+  };
 
   // Team Member states
   const [newStaffName, setNewStaffName] = useState('');
@@ -459,7 +473,6 @@ export default function SettingsView({
   const [staffWorkspaceFilter, setStaffWorkspaceFilter] = useState('');
   // Without an explicit table filter, show the workspace switcher's roles,
   // not organization-wide roles.
-  const currentWorkspaceId = activeWorkspaceId || orgSettings.id;
   const roleWorkspaceId = staffWorkspaceFilter || currentWorkspaceId;
   const [staffRoleFilter, setStaffRoleFilter] = useState('');
   const [staffStatusFilter, setStaffStatusFilter] = useState('');
@@ -690,42 +703,44 @@ export default function SettingsView({
     }
   };
 
-  // Feature flag editing for existing team members
-  const [editFlagsFor, setEditFlagsFor] = useState<string | null>(null); // member id
-  const [editFlagsValue, setEditFlagsValue] = useState<string[]>([]);
+  // Inline editing always targets the current workspace. Organization admins
+  // manage per-workspace grants through the scoped member details drawer.
+  const [editFlagsFor, setEditFlagsFor] = useState<string | null>(null);
+  const [editFlagsDraft, setEditFlagsDraft] = useState<WorkspaceFeatureDraft | null>(null);
   const [editFlagsError, setEditFlagsError] = useState('');
   const [savingFlags, setSavingFlags] = useState(false);
 
   const openFlagEditor = (member: TeamMember) => {
+    const assignment = workspaceMembers.find(row => row.memberId === member.id);
+    if (!assignment || assignment.assignmentStatus !== 'Active') return;
     setEditFlagsFor(member.id);
-    setEditFlagsValue(member.featureFlags || []);
+    setEditFlagsDraft(createWorkspaceFeatureDraft(assignment.featureFlags));
     setEditFlagsError('');
   };
 
   const handleSaveFlags = async (memberId: string) => {
-    if (savingFlags) return;
+    if (savingFlags || !canManageWorkspaceMembers || canManageOrgMembers) return;
+    // An untouched inherited grant must not be converted into an empty override.
+    if (!shouldSaveWorkspaceFeatureDraft(editFlagsDraft)) {
+      setEditFlagsFor(null);
+      return;
+    }
     setSavingFlags(true);
     setEditFlagsError('');
     try {
-      const flagsPath = canManageOrgMembers
-        ? `/api/settings/team/${memberId}/flags`
-        : `/api/settings/workspace/members/${encodeURIComponent(memberId)}/features`;
-      const res = await apiFetch(flagsPath, {
-        method: canManageOrgMembers ? 'PATCH' : 'PUT',
+      const response = await apiFetch(`/api/settings/workspace/members/${encodeURIComponent(memberId)}/features`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ featureFlags: editFlagsValue }),
+        body: JSON.stringify({ featureFlags: editFlagsDraft!.selectedKeys }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to update feature access.');
-      setTeamMembers(prev => prev.map(member =>
-        member.id === memberId
-          ? { ...member, featureFlags: Array.isArray(data.featureFlags) ? data.featureFlags : editFlagsValue }
-          : member));
-      setWorkspaceMembers(prev => prev.map(member => member.memberId === memberId
-        ? { ...member, featureFlags: Array.isArray(data.featureFlags) ? data.featureFlags : editFlagsValue }
-        : member));
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Failed to update workspace feature access.');
+      const saved = Array.isArray(data.featureFlags) ? data.featureFlags : editFlagsDraft!.selectedKeys;
+      setWorkspaceMembers(previous => previous.map(row =>
+        row.memberId === memberId ? { ...row, featureFlags: saved } : row));
       setEditFlagsFor(null);
-      showToast('Feature access saved successfully.', 'success');
+      setEditFlagsDraft(null);
+      showToast('Workspace feature access saved.', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to update feature access.';
       setEditFlagsError(message);
@@ -1270,7 +1285,7 @@ export default function SettingsView({
                     id: member.memberId,
                     name: member.name || '',
                     email: member.email || '',
-                    role: (member.workspaceRole || member.organizationRole) as UserRole,
+                    role: (organizationScopedRole(member.organizationRole) || member.workspaceRole || member.organizationRole) as UserRole,
                     status: member.memberStatus.toLowerCase() === 'inactive' ? 'Inactive' : 'Active',
                     performanceScore: 0,
                     assignedLeadsCount: 0,
@@ -1307,18 +1322,18 @@ export default function SettingsView({
                         const scoped = canReadOrgMembers
                           ? orgAssignments[roleWorkspaceId]?.find(row => row.memberId === member.id)
                           : workspaceMembers.find(row => row.memberId === member.id);
-                        if (!organizationScopedRole(member.role) && !canReadOrgMembers && canManageWorkspaceMembers && scoped) {
+                        if (!organizationScopedRole(member.role) && !organizationScopedRole(scoped?.organizationRole)
+                          && !canReadOrgMembers && canManageWorkspaceMembers && scoped) {
                           const assigned = scoped.assignmentStatus === 'Active';
+                          const canEditRole = canAssignWorkspaceRole(managerInWorkspace, scoped.workspaceRole);
                           return <select aria-label={`Role for ${member.name || member.email}`}
                             value={assigned ? scoped.workspaceRole || '' : ''}
-                            disabled={scoped.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.id}
+                            disabled={scoped.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.id || !canEditRole}
                             onChange={event => void updateWorkspaceMemberRole(scoped, event.target.value)}
                             className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-primary)]">
                             <option value="">No workspace access</option>
-                            <option value="Workspace Admin">Workspace Admin</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Member">Member</option>
-                            <option value="Viewer">Viewer</option>
+                            {!canEditRole && scoped.workspaceRole && <option value={scoped.workspaceRole}>{scoped.workspaceRole}</option>}
+                            {workspaceRoleOptions(managerInWorkspace).map(choice => <option key={choice} value={choice}>{choice}</option>)}
                           </select>;
                         }
                         const role = staffMemberRole(member);
@@ -1332,22 +1347,27 @@ export default function SettingsView({
                       header: 'Feature Access',
                       cell: member => {
                         const assignment = workspaceMembers.find(row => row.memberId === member.id);
-                        const canEdit = canAssignFeatures && !organizationScopedRole(member.role)
-                          && (canManageOrgMembers || (assignment?.assignmentStatus === 'Active'
-                            && (!managerInWorkspace || ['Member','Viewer'].includes(assignment.workspaceRole || ''))));
-                        return canEdit ? (
-                          <button type="button" onClick={() => openFlagEditor(member)}
+                        const orgRole = organizationScopedRole(member.role) || organizationScopedRole(assignment?.organizationRole);
+                        const effective = canReadOrgMembers && !orgRole ? memberWorkspaceFeatures(member, roleWorkspaceId) : null;
+                        const count = assignment?.featureFlags == null ? null
+                          : assignment.featureFlags.filter(key => orgAllowedFlags.includes(key)).length;
+                        const label = canReadOrgMembers
+                          ? orgRole ? 'View workspace features'
+                            : effective === null ? 'Unavailable' : `${effective.length} granted`
+                          : assignment?.assignmentStatus !== 'Active' ? 'No access'
+                            : count === null ? 'Inherited grants' : `${count} granted`;
+                        if (canReadOrgMembers) {
+                          return <button type="button" onClick={() => openMemberDetails(member)}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]">
-                            <Flag aria-hidden="true" className="h-3 w-3" /> {(member.featureFlags || []).length} granted
-                          </button>
-                        ) : (
-                          <button type="button" onClick={() => openMemberDetails(member)}
-                            title={`View feature permissions for ${member.name || member.email}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]">
-                            <Flag aria-hidden="true" className="h-3 w-3" />
-                            View workspace features
-                          </button>
-                        );
+                            <Flag aria-hidden="true" className="h-3 w-3" /> {label}
+                          </button>;
+                        }
+                        const editable = canManageWorkspaceMembers && !orgRole && assignment?.assignmentStatus === 'Active'
+                          && canAssignWorkspaceRole(managerInWorkspace, assignment.workspaceRole);
+                        return editable ? <button type="button" onClick={() => openFlagEditor(member)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--bg-subtle)]">
+                          <Flag aria-hidden="true" className="h-3 w-3" /> {label}
+                        </button> : <span className="text-[11px] text-[var(--text-muted)]">{label}</span>;
                       },
                     },
                     ...(canReadOrgMembers ? [{
@@ -1399,57 +1419,6 @@ export default function SettingsView({
                       {canManageOrgMembers && <button type="button" onClick={() => { setOrgAccessError(''); openMemberDetails(member); }} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Manage Access</button>}
                     </div>,
                   });
-                  if (!canReadOrgMembers) columns.splice(2);
-                  if (!canReadOrgMembers && managerInWorkspace) columns.push({
-                    key: 'actions', header: 'Actions', align: 'right',
-                    cell: member => member.canDelete
-                      ? <button type="button" onClick={() => handleRemoveStaff(member.id,member.name,member.email,member.role)}
-                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20">Remove</button>
-                      : <span className="text-xs text-[var(--text-muted)]">—</span>,
-                  });
-                  if (!canReadOrgMembers && canAssignFeatures) columns.push({
-                    key: 'featureAccess',
-                    header: 'Feature Access',
-                    cell: member => {
-                      const assignment = workspaceMembers.find(row => row.memberId === member.id);
-                      const editable = canManageWorkspaceMembers && assignment?.assignmentStatus === 'Active'
-                        && (!managerInWorkspace || ['Member','Viewer'].includes(assignment.workspaceRole || ''));
-                      return editable ? (
-                        <button type="button" onClick={() => openFlagEditor(member)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--accent)] hover:bg-[var(--bg-subtle)]">
-                          <Flag className="h-3 w-3" /> {(member.featureFlags || []).length} granted
-                        </button>
-                      ) : <span className="text-xs text-[var(--text-muted)]">View only</span>;
-                    },
-                  });
-                  if (canManageWorkspaceMembers && canReadOrgMembers) columns.splice(2, 0, {
-                    key: 'workspaceRole',
-                    header: 'Workspace Role',
-                    cell: member => {
-                      const assignment = workspaceMembers.find(row => row.memberId === member.id);
-                      if (!assignment) return <span className="text-xs text-slate-400">No workspace access</span>;
-                      const assigned = assignment.assignmentStatus === 'Active';
-                      return (
-                        <div className="flex min-w-48 items-center gap-2">
-                          <select
-                            aria-label={`Workspace role for ${member.name || member.email || member.id}`}
-                            value={assigned ? assignment.workspaceRole || '' : ''}
-                            disabled={assignment.memberStatus.toLowerCase() !== 'active' || savingWorkspaceMember === member.id
-                              || ['Owner','Organization Admin','Super Admin','Billing Admin'].includes(assignment.organizationRole)
-                              || (managerInWorkspace && assignment.assignmentStatus === 'Active' && !['Member','Viewer'].includes(assignment.workspaceRole || ''))}
-                            onChange={event => updateWorkspaceMemberRole(assignment, event.target.value)}
-                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-50"
-                          >
-                            <option value="">No workspace access</option>
-                            {!managerInWorkspace && <><option value="Workspace Admin">Workspace Admin</option><option value="Manager">Manager</option></>}
-                            <option value="Member">Member</option>
-                            <option value="Viewer">Viewer</option>
-                          </select>
-                          {savingWorkspaceMember === member.id && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-600" />}
-                        </div>
-                      );
-                    },
-                  });
                   return (
                     <DataTable
                       bare
@@ -1466,34 +1435,47 @@ export default function SettingsView({
 
 
 
-              {editFlagsFor && canAssignFeatures && (
+              {editFlagsFor && canManageWorkspaceMembers && !canManageOrgMembers && (
                 <Modal
                   open
                   maxWidth="max-w-3xl"
                   onClose={() => { if (!savingFlags) setEditFlagsFor(null); }}
-                  title={`Feature Access — ${teamMembers.find(member => member.id === editFlagsFor)?.name || teamMembers.find(member => member.id === editFlagsFor)?.email || 'Team member'}`}
-                  subtitle="Choose the features this member can access. The organization and workspace policies still determine effective access."
+                  title={`Feature Access — ${workspaceMembers.find(member => member.memberId === editFlagsFor)?.name || 'Team member'}`}
+                  subtitle="Changes apply only to the currently selected workspace."
                   footer={<>
                     <Button type="button" variant="secondary" disabled={savingFlags}
                       onClick={() => setEditFlagsFor(null)}>Cancel</Button>
                     <Button type="button" variant="primary" loading={savingFlags}
+                      disabled={!shouldSaveWorkspaceFeatureDraft(editFlagsDraft) || featureChoicesLoading || Boolean(featureChoicesError)}
                       onClick={() => void handleSaveFlags(editFlagsFor)}>Save access</Button>
                   </>}
                 >
                   <div className="space-y-3">
-                    {editFlagsError && (
-                      <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
-                        {editFlagsError}
-                      </p>
+                    {editFlagsError && <p role="alert" className="text-xs text-rose-700">{editFlagsError}</p>}
+                    {featureChoicesLoading && <p role="status" className="text-xs text-[var(--text-muted)]">Loading available features…</p>}
+                    {featureChoicesError && <div role="alert" className="flex items-center gap-3 text-xs text-rose-700">
+                      <span>{featureChoicesError}</span>
+                      <Button type="button" size="sm" variant="secondary" onClick={retryFeatureChoices}>Retry</Button>
+                    </div>}
+                    {editFlagsDraft?.inherited && !editFlagsDraft.changed ? (
+                      <div className="space-y-2 rounded-xl border border-[var(--border)] p-3">
+                        <p className="text-xs text-[var(--text-secondary)]">This member inherits their default grants. No workspace override will be saved unless you customize it.</p>
+                        <Button type="button" size="sm" variant="secondary"
+                          disabled={featureChoicesLoading || Boolean(featureChoicesError) || orgAllowedFlags.length === 0}
+                          onClick={() => setEditFlagsDraft(current => current ? setWorkspaceFeatureDraftKeys(current, current.selectedKeys) : null)}>
+                          Customize for this workspace
+                        </Button>
+                      </div>
+                    ) : (
+                      <FeatureAccessSelector
+                        label="Workspace feature access"
+                        description="Select the permissions to override in this workspace only."
+                        availableKeys={orgAllowedFlags}
+                        value={editFlagsDraft?.selectedKeys || []}
+                        onChange={keys => setEditFlagsDraft(current => current ? setWorkspaceFeatureDraftKeys(current, keys) : null)}
+                        disabled={savingFlags || featureChoicesLoading || Boolean(featureChoicesError)}
+                      />
                     )}
-                    <FeatureAccessSelector
-                      label="Feature Access"
-                      description="Grant individual modules or use a feature group preset. Organization and workspace policies still limit effective access."
-                      availableKeys={orgAllowedFlags}
-                      value={editFlagsValue}
-                      onChange={setEditFlagsValue}
-                      disabled={savingFlags}
-                    />
                   </div>
                 </Modal>
               )}
@@ -1694,20 +1676,25 @@ export default function SettingsView({
                           </div>
                         </div>
 
+                        {featureChoicesLoading && <p role="status" className="text-xs text-[var(--text-muted)]">Loading available features…</p>}
+                        {featureChoicesError && <div role="alert" className="flex items-center gap-3 text-xs text-rose-700">
+                          <span>{featureChoicesError}</span>
+                          <Button type="button" size="sm" variant="secondary" onClick={retryFeatureChoices}>Retry</Button>
+                        </div>}
                         <FeatureAccessSelector
                           label="Feature Access"
-                          description="Choose the CRM modules this team member should be able to use. Grants cannot exceed the organization's enabled features."
+                          description="Choose CRM modules from the permitted feature catalog."
                           availableKeys={orgAllowedFlags}
                           value={newStaffFeatures}
                           onChange={setNewStaffFeatures}
-                          disabled={addingStaff}
+                          disabled={addingStaff || featureChoicesLoading || Boolean(featureChoicesError)}
                         />
 
                         <div className="flex items-center justify-end gap-3 pt-1">
                           <Button type="button" variant="secondary" size="sm"
                             disabled={addingStaff} onClick={() => setShowAddStaff(false)}>Cancel</Button>
                           <Button type="submit" variant="primary" size="sm" icon={UserPlus}
-                            loading={addingStaff}>Add member</Button>
+                            loading={addingStaff} disabled={featureChoicesLoading || Boolean(featureChoicesError)}>Add member</Button>
                         </div>
                       </form>
                 </Modal>

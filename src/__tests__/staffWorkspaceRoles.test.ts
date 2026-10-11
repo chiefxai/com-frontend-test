@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getStaffWorkspaceRole, organizationScopedRole } from '../lib/staffWorkspaceRoles';
+import { getStaffWorkspaceRole, organizationScopedRole, workspaceRoleOptions, canAssignWorkspaceRole } from '../lib/staffWorkspaceRoles';
 
 const byWorkspace = {
   'north': [
@@ -51,5 +51,20 @@ describe('Staff & Teams workspace Role column', () => {
       'north', [], false, 'Member')).toBe('Workspace Admin');
     expect(organizationScopedRole('Manager')).toBeNull();
     expect(organizationScopedRole('Organization Admin')).toBe('Organization Admin');
+  });
+});
+
+describe('workspace role editor restrictions', () => {
+  it('never offers elevated roles to a workspace manager', () => {
+    expect(workspaceRoleOptions(true)).toEqual(['Member', 'Viewer']);
+    expect(canAssignWorkspaceRole(true, 'Workspace Admin')).toBe(false);
+    expect(canAssignWorkspaceRole(true, 'Manager')).toBe(false);
+    expect(canAssignWorkspaceRole(true, 'Member')).toBe(true);
+    expect(canAssignWorkspaceRole(true, 'Viewer')).toBe(true);
+  });
+
+  it('allows workspace admins to manage workspace role assignments', () => {
+    expect(workspaceRoleOptions(false)).toEqual(['Workspace Admin', 'Manager', 'Member', 'Viewer']);
+    expect(canAssignWorkspaceRole(false, 'Workspace Admin')).toBe(true);
   });
 });
