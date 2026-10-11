@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getStaffWorkspaceRole } from '../lib/staffWorkspaceRoles';
+import { getStaffWorkspaceRole, organizationScopedRole } from '../lib/staffWorkspaceRoles';
 
 const byWorkspace = {
   'north': [
@@ -33,5 +33,23 @@ describe('Staff & Teams workspace Role column', () => {
     const inactive = { north: [{ memberId: 'staff-1', workspaceRole: 'Workspace Admin', assignmentStatus: 'Active', memberStatus: 'Inactive' }] };
     expect(getStaffWorkspaceRole('staff-1', 'north', inactive, 'north')).toBe('No access');
     expect(getStaffWorkspaceRole('staff-3', 'north', {}, 'north')).toBe('No access');
+  });
+
+  it('keeps Organization Admin above workspace-role assignments in every workspace', () => {
+    for (const workspaceId of ['north', 'south', 'new-workspace']) {
+      expect(getStaffWorkspaceRole('staff-1', workspaceId, byWorkspace, workspaceId, [], false, 'Organization Admin'))
+        .toBe('Organization Admin');
+      expect(getStaffWorkspaceRole('staff-1', workspaceId, byWorkspace, workspaceId, [], false, 'Super Admin'))
+        .toBe('Organization Admin');
+    }
+  });
+
+  it('shows Owner as organization-wide and preserves Workspace Admin for ordinary members', () => {
+    expect(getStaffWorkspaceRole('staff-1', 'north', byWorkspace, 'north', [], false, 'Owner')).toBe('Owner');
+    expect(getStaffWorkspaceRole('staff-1', 'north',
+      { north: [{ memberId: 'staff-1', workspaceRole: 'Workspace Admin', assignmentStatus: 'Active' }] },
+      'north', [], false, 'Member')).toBe('Workspace Admin');
+    expect(organizationScopedRole('Manager')).toBeNull();
+    expect(organizationScopedRole('Organization Admin')).toBe('Organization Admin');
   });
 });
