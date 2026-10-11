@@ -13,3 +13,33 @@ export function visibleWorkspaceFeatureKeys(
   return workspaceKeys.filter(key => organization.has(key)
     && ((workspaceOverride === null && isWorkspaceAdmin) || member.has(key)));
 }
+
+export interface WorkspaceFeaturePolicy {
+  enabledFeatures: string[];
+}
+
+export interface WorkspaceFeatureMember {
+  workspaceRole: string | null;
+  assignmentStatus: string | null;
+  memberStatus?: string | null;
+  featureFlags?: string[] | null;
+}
+
+/** Compute a member's *effective* feature keys for exactly one workspace.
+ * null means policy data is unavailable: never misrepresent it as zero.
+ * Empty means the member has no active assignment or has no permitted features.
+ */
+export function effectiveWorkspaceMemberKeys(
+  organizationKeys: string[],
+  workspacePolicy: WorkspaceFeaturePolicy | undefined,
+  assignment: WorkspaceFeatureMember | undefined,
+  inheritedMemberKeys: string[] | undefined,
+): string[] | null {
+  if (!workspacePolicy) return null;
+  if (!assignment || assignment.assignmentStatus?.toLowerCase() !== 'active'
+    || assignment.memberStatus?.toLowerCase() === 'inactive') return [];
+  return visibleWorkspaceFeatureKeys(
+    organizationKeys, workspacePolicy.enabledFeatures, inheritedMemberKeys,
+    assignment.featureFlags ?? null, assignment.workspaceRole === 'Workspace Admin',
+  );
+}
