@@ -159,7 +159,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   };
 
   return <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6" id="organization-billing-overview">
-    {(view === 'plan' || view === 'payments') && can('billing.organization.read') && <Widget title="Additional workspace billing" subtitle="Manage purchase approvals and monthly workspace renewals." icon={CreditCard} accent="#f59e0b" padding="none">
+    {(view === 'plan' || view === 'payments') && can('billing.organization.read') && <Widget title="Additional workspace billing" subtitle="Manage purchase approvals and monthly workspace renewals." icon={CreditCard}  padding="none">
       <WorkspaceAddonPurchases canSubmit={canSubmit}/>
     </Widget>}
     {view === 'dashboard' && (
@@ -232,7 +232,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     )}
     {(view === 'credits' || view === 'topup') && <>
 
-    <Widget title="Organization credits & payments" subtitle="Check available usage credits, add credits, and track submitted payments." icon={Wallet} accent="#f59e0b" padding="md" action={<div className="flex items-center gap-2"><button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>{canSubmit && <button type="button" onClick={() => { setShowForm(current => !current); setError(''); }} disabled={!canTopup} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-4 w-4" /> Top up</button>}</div>}>
+    <Widget title="Organization credits & payments" subtitle="Check available usage credits, add credits, and track submitted payments." icon={Wallet}  padding="md" action={<div className="flex items-center gap-2"><button type="button" onClick={() => void refresh()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)]"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button>{canSubmit && <button type="button" onClick={() => { setShowForm(current => !current); setError(''); }} disabled={!canTopup} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-4 w-4" /> Top up</button>}</div>}>
       <div className="grid grid-cols-12 gap-4 pt-2">
         <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Available subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'} sub="Issued with your subscription, subject to expiry." icon={Wallet} iconBg="var(--accent-subtle)" iconColor="var(--accent)" />
         <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} label="Available top-up credits" value={overview ? sumBalance(topupCredits) : '—'} sub="Purchased credits added after payment approval." icon={ArrowDownToLine} iconBg="var(--accent-subtle)" iconColor="var(--accent)" />
@@ -243,7 +243,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       {!canSubmit && <p className="mt-3 text-xs text-slate-500">Top-up submission is available to organization owners, organization admins and billing admins with payment-submission permission.</p>}
     </Widget>
 
-    {canTopup && (showForm || view === 'topup') && <Widget title="Request additional usage credits" subtitle="Pay by bank transfer or UPI outside this page, then upload proof. ₹1 paid provides ₹1 of usage credits; your subscription plan stays unchanged." icon={Plus} accent="#f59e0b" padding="md">
+    {canTopup && (showForm || view === 'topup') && <Widget title="Request additional usage credits" subtitle="Pay by bank transfer or UPI outside this page, then upload proof. ₹1 paid provides ₹1 of usage credits; your subscription plan stays unchanged." icon={Plus}  padding="md">
       <p className="mb-4 text-xs text-amber-700">Submitting proof does not add credits. A platform admin must verify and approve the payment.</p>
       <form onSubmit={submit} className="space-y-4">
         <div>
