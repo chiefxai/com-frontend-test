@@ -19,7 +19,9 @@ export function useDialogFocus(open: boolean, panelRef: RefObject<HTMLElement | 
     if (!open || !panelRef.current) return;
     const panel = panelRef.current;
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    (getFocusable(panel)[0] || panel).focus();
+    // Place focus on a predictable dismissal control instead of a resize handle.
+    (panel.querySelector<HTMLElement>('[aria-label="Close dialog"], [aria-label="Close panel"]')
+      || getFocusable(panel)[0] || panel).focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       const dialogs = document.querySelectorAll<HTMLElement>('[data-chief-dialog]');
