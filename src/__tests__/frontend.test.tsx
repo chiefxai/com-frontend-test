@@ -968,7 +968,7 @@ describe('Sidebar', () => {
 
     expect(screen.getByText('Leads')).toBeInTheDocument();
     expect(screen.getByText('Campaign')).toBeInTheDocument();
-    expect(screen.getByText('Loan Lifecycle')).toBeInTheDocument();
+    expect(screen.getAllByText('Loan Lifecycle')).toHaveLength(1);
   });
 
   it('retired objects tab never appears regardless of role', async () => {

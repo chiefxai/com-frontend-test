@@ -331,7 +331,6 @@ export default function Sidebar({
     { id: 'workflows',    label: 'Workflow Builder',  icon: GitBranch },
     { id: 'call-logs',    label: 'Call Logs',         icon: History },
     { id: 'inbox',        label: 'Unified Inbox',     icon: Inbox },
-    ...(profile.key === 'lending' ? [{ id: 'loans', label: 'Loan Lifecycle', icon: Layers }] : []),
     { id: 'agent-studio', label: 'Agent Studio',      icon: Sparkles },
     { id: 'compliance',   label: 'Compliance',        icon: ShieldBan },
     { id: 'knowledge',    label: 'Knowledge Base',    icon: BookOpen },
