@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys } from '../lib/workspaceMemberFeatures';
+import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys, organizationAdminWorkspaceFeatures } from '../lib/workspaceMemberFeatures';
 
 describe('per-workspace staff feature access', () => {
   const organization = ['leads', 'reports', 'agent_studio'];
@@ -68,5 +68,20 @@ describe('effective counts track the selected workspace', () => {
     expect(effectiveWorkspaceMemberKeys(org, a, onA, ['leads', 'reports'])?.length).toBe(1);
     expect(effectiveWorkspaceMemberKeys(org, b, onB, ['leads'])?.length).toBe(2);
     expect(effectiveWorkspaceMemberKeys(org, b, { ...onB, featureFlags: [] }, ['reports'])?.length).toBe(0);
+  });
+});
+
+describe('Organization Admin workspace feature counts', () => {
+  it('uses each workspace policy without requiring Workspace Admin membership', () => {
+    const organization = ['leads', 'reports', 'agent_studio'];
+    const workA = { enabledFeatures: ['leads', 'reports'] };
+    const workB = { enabledFeatures: ['reports', 'agent_studio'] };
+    expect(organizationAdminWorkspaceFeatures(organization, workA)).toEqual(['leads','reports']);
+    expect(organizationAdminWorkspaceFeatures(organization, workB)).toEqual(['reports','agent_studio']);
+    expect(organizationAdminWorkspaceFeatures(['reports'], workB)).toEqual(['reports']);
+  });
+  it('preserves unavailable vs deliberate deny-all policies', () => {
+    expect(organizationAdminWorkspaceFeatures(['leads'], undefined)).toBeNull();
+    expect(organizationAdminWorkspaceFeatures(['leads'], { enabledFeatures: [] })).toEqual([]);
   });
 });

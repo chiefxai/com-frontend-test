@@ -28,7 +28,7 @@ import { COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
 import WorkspaceFeaturePolicyEditor from './ui/WorkspaceFeaturePolicyEditor';
-import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys } from '../lib/workspaceMemberFeatures';
+import { visibleWorkspaceFeatureKeys, effectiveWorkspaceMemberKeys, organizationAdminWorkspaceFeatures } from '../lib/workspaceMemberFeatures';
 import { getStaffWorkspaceRole, organizationScopedRole, workspaceRoleOptions, canAssignWorkspaceRole } from '../lib/staffWorkspaceRoles';
 import { createWorkspaceFeatureDraft, setWorkspaceFeatureDraftKeys, shouldSaveWorkspaceFeatureDraft, type WorkspaceFeatureDraft } from '../lib/workspaceFeatureDraft';
 import Button from './ui/Button';
@@ -1344,12 +1344,18 @@ export default function SettingsView({
                       cell: member => {
                         const assignment = workspaceMembers.find(row => row.memberId === member.id);
                         const orgRole = organizationScopedRole(member.role) || organizationScopedRole(assignment?.organizationRole);
-                        const effective = canReadOrgMembers && !orgRole ? memberWorkspaceFeatures(member, roleWorkspaceId) : null;
+                        // Organization Admin is an organization-wide role, not a
+                        // workspace membership. Its effective count follows the
+                        // selected workspace policy and organization entitlements.
+                        const orgPolicy = workspaceFeatureRows.find(row => row.id === roleWorkspaceId);
+                        const effective = !canReadOrgMembers ? null
+                          : workspaceFeatureLoading || workspaceFeatureError || orgAccessError ? null
+                            : orgRole ? organizationAdminWorkspaceFeatures(workspaceFeatureAllowed, orgPolicy)
+                              : memberWorkspaceFeatures(member, roleWorkspaceId);
                         const count = assignment?.featureFlags == null ? null
                           : assignment.featureFlags.filter(key => orgAllowedFlags.includes(key)).length;
                         const label = canReadOrgMembers
-                          ? orgRole ? 'View workspace features'
-                            : effective === null ? 'Unavailable' : `${effective.length} granted`
+                          ? effective === null ? 'Unavailable' : `${effective.length} granted`
                           : assignment?.assignmentStatus !== 'Active' ? 'No access'
                             : count === null ? 'Inherited grants' : `${count} granted`;
                         if (canReadOrgMembers) {

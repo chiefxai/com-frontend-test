@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAuthorization, setAuthorization } from '../lib/authorization';
+import { getStaffWorkspaceRole } from '../lib/staffWorkspaceRoles';
+import { effectiveWorkspaceMemberKeys, organizationAdminWorkspaceFeatures } from '../lib/workspaceMemberFeatures';
 import { selectAuthorizedWorkspace, workspaceIdentifier, identityMatchesSelectedWorkspace } from '../lib/workspaceSelection';
 import { fetchUserFlags, resetUserFlags } from '../features/feature-flags/userFlagsStore';
 
@@ -78,5 +80,29 @@ describe('authenticated workspace bootstrap boundary', () => {
     mocks.apiFetch.mockRejectedValue(new Error('Temporary outage'));
     await fetchUserFlags();
     expect(getAuthorization()).toEqual(verified);
+  });
+});
+
+describe('two-workspace authorization projection', () => {
+  const policyA = { enabledFeatures: ['leads', 'reports'] };
+  const policyB = { enabledFeatures: ['reports', 'agent_studio'] };
+  const orgKeys = ['leads', 'reports', 'agent_studio'];
+  const memberId = 'staff-42';
+  const assignments = {
+    'a-main': [{ memberId, workspaceRole: 'Manager', assignmentStatus: 'Active', memberStatus: 'Active', featureFlags: ['leads'] }],
+    'a-branch': [{ memberId, workspaceRole: 'Viewer', assignmentStatus: 'Active', memberStatus: 'Active', featureFlags: ['reports'] }],
+  };
+  it('changes ordinary staff role and effective grants with workspace selection', () => {
+    expect(getStaffWorkspaceRole(memberId, 'a-main', assignments, 'a-main')).toBe('Manager');
+    expect(effectiveWorkspaceMemberKeys(orgKeys, policyA, assignments['a-main'][0], ['leads'])).toEqual(['leads']);
+    expect(getStaffWorkspaceRole(memberId, 'a-branch', assignments, 'a-branch')).toBe('Viewer');
+    expect(effectiveWorkspaceMemberKeys(orgKeys, policyB, assignments['a-branch'][0], ['leads'])).toEqual(['reports']);
+  });
+  it('keeps Organization Admin organization-wide while counts change per workspace', () => {
+    for (const id of ['a-main', 'a-branch']) {
+      expect(getStaffWorkspaceRole(memberId, id, assignments, id, [], false, 'Organization Admin')).toBe('Organization Admin');
+    }
+    expect(organizationAdminWorkspaceFeatures(orgKeys, policyA)).toEqual(['leads', 'reports']);
+    expect(organizationAdminWorkspaceFeatures(orgKeys, policyB)).toEqual(['reports', 'agent_studio']);
   });
 });
