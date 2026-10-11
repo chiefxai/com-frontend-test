@@ -26,6 +26,7 @@ import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../ty
 import { COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
+import { visibleWorkspaceFeatureKeys } from '../lib/workspaceMemberFeatures';
 import Button from './ui/Button';
 import { useToast } from './ui/Toast';
 import IconButton from './ui/IconButton';
@@ -1098,7 +1099,7 @@ export default function SettingsView({
                                 const memberGrants = override ?? memberRecord?.featureFlags;
                                 const isAdmin = member.workspaceRole === 'Workspace Admin' && override === null;
                                 const effective = features && (isAdmin || Array.isArray(memberGrants))
-                                  ? permittedByWorkspace.filter(key => entitled.has(key) && (isAdmin || memberGrants?.includes(key)))
+                                  ? visibleWorkspaceFeatureKeys([...entitled],permittedByWorkspace,memberRecord?.featureFlags,override,isAdmin)
                                   : null;
                                 return <div key={member.memberId} className="space-y-2 py-3">
                                   <div className="flex items-start justify-between gap-2">
@@ -1362,16 +1363,14 @@ export default function SettingsView({
                     const active = assignment?.assignmentStatus === 'Active' && accessMember.status === 'Active';
                     const role = active ? assignment?.workspaceRole || '' : '';
                     const policy = workspaceFeatureRows.find(row => row.id === workspace.id);
-                    const orgKeys = new Set(workspaceFeatureAllowed);
                     const workspaceKeys = new Set(policy?.enabledFeatures || []);
                     const eligible = policy
                       ? workspaceFeatureAllowed.filter(key => workspaceKeys.has(key))
                       : [];
                     const workspaceAdmin = role === 'Workspace Admin';
                     const override = assignment?.featureFlags ?? null;
-                    const individualKeys = new Set(override ?? accessMember.featureFlags ?? []);
                     const features = active && policy
-                      ? eligible.filter(key => orgKeys.has(key) && ((workspaceAdmin && override === null) || individualKeys.has(key)))
+                      ? visibleWorkspaceFeatureKeys(workspaceFeatureAllowed,eligible,accessMember.featureFlags,override,workspaceAdmin)
                       : [];
                     const editingFeatures = workspaceFeatureEditor?.workspaceId === workspace.id
                       && workspaceFeatureEditor.memberId === accessMember.id;
