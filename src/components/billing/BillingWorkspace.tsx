@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, ArrowRight, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import KpiCard from '../ui/KpiCard';
@@ -76,24 +76,6 @@ const descriptions: Record<BillingPanel, string> = {
 const money = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value) ? '—' : formatInr(value);
 
-function BillingLink({ title, description, icon: Icon, onClick }: {
-  title: string; description: string; icon: React.ElementType; onClick: () => void;
-}) {
-  return (
-    <button type="button" onClick={onClick}
-      className="group flex min-w-0 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3.5 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)]">
-        <Icon aria-hidden="true" className="h-4 w-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-semibold text-[var(--text-primary)]">{title}</span>
-        <span className="mt-0.5 block text-[11px] leading-4 text-[var(--text-muted)]">{description}</span>
-      </span>
-      <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--text-muted)] group-hover:text-[var(--accent)]" />
-    </button>
-  );
-}
-
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
   view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
@@ -140,8 +122,7 @@ export default function BillingWorkspace({
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
 
       {view === 'dashboard' && (
-        <>
-          <div className="col-span-12 grid grid-cols-12 gap-3 md:gap-4">
+        <div className="col-span-12 grid grid-cols-12 gap-3 md:gap-4">
             <KpiCard colSpan={3} iconPosition="top-left" icon={CreditCard}
               label="Subscription / month" value={money(organizationPricing?.totalMonthlyInr)}
               sub="Recurring plan price" />
@@ -153,9 +134,7 @@ export default function BillingWorkspace({
             <KpiCard colSpan={3} iconPosition="top-left" icon={Clock3}
               label="Conversation time" value={formatCallTime(workspaceBilling?.aiMinutesUsed)}
               sub="Across all workspaces" />
-          </div>
-
-        </>
+        </div>
       )}
 
       {view === 'plan' && (
