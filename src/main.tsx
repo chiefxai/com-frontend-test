@@ -1,8 +1,9 @@
 import React, { StrictMode, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import App from './App.tsx';
-import AdminApp from './AdminApp.tsx';
+// Admin and organization bundles are loaded only when their route is opened.
+const App = React.lazy(() => import('./App.tsx'));
+const AdminApp = React.lazy(() => import('./AdminApp.tsx'));
 import ProtectedRoute from './features/auth/ProtectedRoute.tsx';
 import { AuthProvider, useAuth } from './features/auth/AuthProvider.tsx';
 import { signInWithCognito } from './features/auth/cognito';
@@ -98,6 +99,7 @@ createRoot(document.getElementById('root')!).render(
             element={
               <AuthProvider>
                 <FeatureFlagProvider>
+                  <React.Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] text-sm text-[var(--text-muted)]">Loading application…</div>}>
                   <Routes>
                     <Route
                       path="/admin/*"
@@ -132,6 +134,7 @@ createRoot(document.getElementById('root')!).render(
                       }
                     />
                   </Routes>
+                  </React.Suspense>
                 </FeatureFlagProvider>
               </AuthProvider>
             }

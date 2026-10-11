@@ -43,28 +43,31 @@ const EMPTY_ORG_SETTINGS: OrganizationSettings = {
 import { useTheme } from './shared/theme/ThemeContext';
 import Sidebar, { type WorkspaceOption } from './components/Sidebar';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import DashboardView from './features/dashboard';
-import WorkflowsView from './features/workflows/WorkflowsView';
 import { QuestionFlow } from './features/workflows/types';
 import { useFeatureFlags } from './features/feature-flags/FeatureFlagContext';
-import DialerSimulator from './features/dialer';
-import ScheduledCallbacksView from './components/ScheduledCallbacksView';
-import LoanLifecycleView from './components/LoanLifecycleView';
-import SettingsView from './features/settings';
-import LeadsView from './components/LeadsView';
-import PipelineView from './components/PipelineView';
-import ContactDirectoryView from './features/contacts';
-import CallLogsView from './components/CallLogsView';
-import ReportsView from './features/reports';
-import CompanyProfileView from './features/company-profile';
-import CustomObjectsView from './components/CustomObjectsView';
-import UnifiedInboxView from './components/UnifiedInboxView';
-import AgentStudioView from './features/agents';
-import ComplianceView from './components/ComplianceView';
-import KnowledgeBaseView from './components/KnowledgeBaseView';
-import AuditLogView from './components/AuditLogView';
-import EnquiriesView from './components/EnquiriesView';
 import type { AppNotification } from './components/NotificationBell';
+
+// Each feature view is fetched the first time its workspace tab is opened.
+const DashboardView = React.lazy(() => import('./features/dashboard'));
+const WorkflowsView = React.lazy(() => import('./features/workflows/WorkflowsView'));
+const DialerSimulator = React.lazy(() => import('./features/dialer'));
+const ScheduledCallbacksView = React.lazy(() => import('./components/ScheduledCallbacksView'));
+const LoanLifecycleView = React.lazy(() => import('./components/LoanLifecycleView'));
+const SettingsView = React.lazy(() => import('./features/settings'));
+const LeadsView = React.lazy(() => import('./components/LeadsView'));
+const PipelineView = React.lazy(() => import('./components/PipelineView'));
+const ContactDirectoryView = React.lazy(() => import('./features/contacts'));
+const CallLogsView = React.lazy(() => import('./components/CallLogsView'));
+const ReportsView = React.lazy(() => import('./features/reports'));
+const CompanyProfileView = React.lazy(() => import('./features/company-profile'));
+const CustomObjectsView = React.lazy(() => import('./components/CustomObjectsView'));
+const UnifiedInboxView = React.lazy(() => import('./components/UnifiedInboxView'));
+const AgentStudioView = React.lazy(() => import('./features/agents'));
+const ComplianceView = React.lazy(() => import('./components/ComplianceView'));
+const KnowledgeBaseView = React.lazy(() => import('./components/KnowledgeBaseView'));
+const AuditLogView = React.lazy(() => import('./components/AuditLogView'));
+const EnquiriesView = React.lazy(() => import('./components/EnquiriesView'));
+
 
 
 // Debounced sync: collapses multiple rapid state changes into one POST.
@@ -1046,7 +1049,9 @@ export default function App() {
                   >
                     <ActiveTabProvider active={tab === activeTab}>
                       <ErrorBoundary label={tab}>
-                        {renderTabContent(tab)}
+                        <React.Suspense fallback={<div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-[var(--text-muted)]">Loading module…</div>}>
+                          {renderTabContent(tab)}
+                        </React.Suspense>
                       </ErrorBoundary>
                     </ActiveTabProvider>
                   </div>
