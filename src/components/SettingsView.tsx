@@ -3,7 +3,6 @@ import {
   Settings,
   Phone,
   Users,
-  CreditCard,
   Key,
   Trash2,
   ArrowLeft,
@@ -24,7 +23,7 @@ import { apiFetch, getApiBase } from '../lib/api';
 import { useAuthorization } from '../lib/authorization';
 import { useRefresh } from '../lib/RefreshContext';
 import { VirtualNumber, TeamMember, OrganizationSettings, UserRole } from '../types';
-import { COST_PER_MINUTE_INR_FALLBACK, formatInr } from '../lib/pricing';
+import { COST_PER_MINUTE_INR_FALLBACK } from '../lib/pricing';
 import { FEATURE_REGISTRY } from '../features/feature-flags/registry';
 import FeatureAccessSelector from './ui/FeatureAccessSelector';
 import Button from './ui/Button';
