@@ -16,8 +16,8 @@ const voice = [
   { callType: 'OUTBOUND', prompt: validPrompt + ' Outbound', defaultPrompt: validPrompt + ' Outbound', isCustomized: false },
 ];
 const system = [
-  { id: 'sentiment', name: 'Sentiment analyst', description: 'Classifies calls', model: 'gemini', systemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', defaultSystemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', isCustomized: false, tools: [], runsOn: 'After a call' },
-  { id: 'summary', name: 'Summary agent', description: 'Writes notes', model: 'gemini', systemPrompt: 'Summarize.', defaultSystemPrompt: 'Summarize.', isCustomized: false, tools: [], runsOn: 'After a call' },
+  { id: 'sentiment-analyzer', name: 'Sentiment analyst', description: 'Classifies calls', model: 'gemini', systemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', defaultSystemPrompt: 'Analyze calls. {transcript} {workflowAnswers}', isCustomized: false, tools: [], runsOn: 'After a call' },
+  { id: 'call-summarizer', name: 'Summary agent', description: 'Writes notes', model: 'gemini', systemPrompt: 'Summarize.', defaultSystemPrompt: 'Summarize.', isCustomized: false, tools: [], runsOn: 'After a call' },
 ];
 const catalog = {
   languages: [

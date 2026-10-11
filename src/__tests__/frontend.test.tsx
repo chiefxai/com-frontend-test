@@ -839,6 +839,16 @@ describe('Sidebar', () => {
               organizationName="Test Org"
               industry={industry}
               industryProfile={industryProfile}
+              workspaces={[]}
+              activeWorkspaceId=""
+              workspaceName="Test Org"
+              onWorkspaceChange={vi.fn()}
+              notifications={[]}
+              onMarkAllNotificationsRead={vi.fn()}
+              onClearNotifications={vi.fn()}
+              accountUser={null}
+              accountRole={userRole}
+              onLogout={vi.fn()}
             />
           </FeatureFlagProvider>
         </KeycloakProvider>
