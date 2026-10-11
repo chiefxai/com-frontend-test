@@ -7,6 +7,10 @@ import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
 import { formatInr } from '../../lib/pricing';
 import { useAuthorization } from '../../lib/authorization';
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
+import InitialSubscriptionPurchase from './InitialSubscriptionPurchase';
+import SubscriptionRenewal from './SubscriptionRenewal';
+import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
+import SubscriptionGraceRequest from './SubscriptionGraceRequest';
 
 export interface WorkspaceBillingSnapshot {
   workspaceId: string;
@@ -145,6 +149,7 @@ export default function BillingWorkspace({
       )}
 
       {view === 'plan' && (
+        <>
         <Card padding="sm" className="col-span-12 sm:!p-5">
           <CardHeader title="Subscription" subtitle="Recurring organization plan costs" icon={CreditCard}
             action={<Button type="button" size="sm" variant="secondary" icon={Wallet}
@@ -168,6 +173,11 @@ export default function BillingWorkspace({
             Workspace invoices and renewals appear below. Subscription fees are separate from prepaid usage credits.
           </div>
         </Card>
+        <div className="col-span-12"><InitialSubscriptionPurchase canSubmit={canSubmitPayment} /></div>
+        <SubscriptionRenewal canSubmit={canSubmitPayment} />
+        <SubscriptionUpgradePreview />
+        <SubscriptionGraceRequest />
+        </>
       )}
 
       {view === 'usage' && (

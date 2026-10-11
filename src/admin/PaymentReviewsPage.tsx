@@ -17,7 +17,9 @@ const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) => {
   const paise = (digits % factor).toString().padStart(amount.scale, '0');
   return `${amount.asset === 'INR' ? '₹' : amount.asset + ' '}${rupees}${amount.scale ? '.' + paise : ''}`;
 };
-const paymentPurpose = (payment: PlatformPaymentReview) => payment.workspaceAddon
+const paymentPurpose = (payment: PlatformPaymentReview) => payment.subscriptionUpgrade
+  ? `Subscription upgrade: ${payment.subscriptionUpgrade.currentPlan.id} → ${payment.subscriptionUpgrade.targetPlan.id}`
+  : payment.workspaceAddon
   ? `Workspace add-on: ${payment.workspaceAddon.name}`
   : payment.purpose === 'topup' ? 'Add usage credits (top-up)' : payment.purpose === 'subscription' ? 'Subscription' : 'Invoice payment';
 
@@ -159,6 +161,16 @@ export default function PaymentReviewsPage() {
       <p className="text-sm">Organization: {selected.orgId} · Reference: {selected.paymentReference || '—'} ·
         Version: {selected.version}</p>
       <p className="text-sm">Expected: {formatAmount(selected.expectedAmount)}. Check the bank record independently.</p>
+      {selected.subscriptionUpgrade && <section aria-label="Subscription upgrade quote details" className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
+        <h4 className="text-sm font-semibold">Subscription upgrade quote</h4>
+        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+          <div><dt className="text-xs text-[var(--text-muted)]">Current plan</dt><dd>{selected.subscriptionUpgrade.currentPlan.id} · version {selected.subscriptionUpgrade.currentPlan.version}</dd></div>
+          <div><dt className="text-xs text-[var(--text-muted)]">Target plan</dt><dd>{selected.subscriptionUpgrade.targetPlan.id} · version {selected.subscriptionUpgrade.targetPlan.version}</dd></div>
+          <div><dt className="text-xs text-[var(--text-muted)]">Proration amount</dt><dd>{formatAmount(selected.subscriptionUpgrade.prorationAmount)}</dd></div>
+          <div><dt className="text-xs text-[var(--text-muted)]">Incremental included credits</dt><dd>{formatAmount(selected.subscriptionUpgrade.incrementalIncludedCredits)}</dd></div>
+          <div className="sm:col-span-2"><dt className="text-xs text-[var(--text-muted)]">Renewal anchor</dt><dd>{new Date(selected.subscriptionUpgrade.renewalAnchorAt).toLocaleString()}</dd></div>
+        </dl>
+      </section>}
       <button type="button" onClick={() => void openProof()} disabled={!selected.proofAvailable}
         className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
         {selected.proofAvailable ? 'Open private receipt' : 'Receipt unavailable'}

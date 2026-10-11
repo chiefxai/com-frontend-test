@@ -13,6 +13,7 @@ import IconButton from '../components/ui/IconButton';
 import { useToast } from '../components/ui/Toast';
 import { readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
+import SubscriptionTermsPolicyEditor from './SubscriptionTermsPolicyEditor';
 
 const MODES: { value: WorkspaceMode; label: string }[] = [
   { value: 'single', label: 'One workspace only' },
@@ -236,6 +237,7 @@ export default function WorkspacePlansPage() {
   const chosenPolicy = draft ? policyFor(draft) : null;
 
   return <div className="w-full min-w-0 space-y-5 text-[var(--text-primary)]">
+    {editingIndex === null && <SubscriptionTermsPolicyEditor />}
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
       <span>{error}</span>
       {!draft && <Button size="xs" type="button" onClick={() => void load()}>Retry</Button>}

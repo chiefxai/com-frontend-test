@@ -14,6 +14,7 @@ import DataRetentionPage from './DataRetentionPage';
 import CostPage from './CostPage';
 import WorkspacePlansPage from './WorkspacePlansPage';
 import PaymentReviewsPage from './PaymentReviewsPage';
+import SubscriptionGraceRequestsPage from './SubscriptionGraceRequestsPage';
 import PromptsPage from './PromptsPage';
 import ProfileMenu from '../components/ProfileMenu';
 import PageHeaderBar from '../components/ui/PageHeaderBar';
@@ -29,6 +30,7 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'cost',            label: 'Providers & Pricing',          icon: IndianRupee },
   { path: 'workspace-plans', label: 'Subscription Plans',      icon: Layers3 },
   { path: 'payment-reviews', label: 'Payment Reviews',         icon: ShieldCheck },
+  { path: 'grace-requests',  label: 'Grace Requests',           icon: ShieldCheck },
   { path: 'settings',        label: 'Features',                icon: Settings },
   { path: 'data-retention',  label: 'Data Retention & Backup', icon: Database },
   { path: 'prompts',         label: 'Prompts',                 icon: MessageSquareText },
@@ -153,6 +155,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               <Route path="cost" element={<PageWrap title="Providers & Pricing" section="Providers & Pricing"><CostPage /></PageWrap>} />
               <Route path="workspace-plans" element={<PageWrap title="Subscription Plans" section="Subscription Plans"><WorkspacePlansPage /></PageWrap>} />
               <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
+              <Route path="grace-requests" element={<PageWrap title="Subscription Grace Requests" section="Grace Requests"><SubscriptionGraceRequestsPage /></PageWrap>} />
               <Route path="settings" element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
               <Route path="data-retention" element={<PageWrap title="Data Retention & Backup" section="Data Retention & Backup"><DataRetentionPage /></PageWrap>} />
               <Route path="prompts" element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />

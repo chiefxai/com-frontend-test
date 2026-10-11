@@ -170,3 +170,91 @@ export interface BillingMutationOptions {
   idempotencyKey: string;
   expectedVersion?: number;
 }
+
+export interface SubscriptionPurchaseQuote {
+  quoteId: string;
+  purpose: 'purchase';
+  status: string;
+  version: number;
+  plan: { id: string; version: number; terms: Record<string, unknown> } | null;
+  inventory: Record<string, unknown> | null;
+  lines: { code: string; label: string; quantity: number; unitAmount: BillingAmount; amount: BillingAmount }[];
+  subtotal: BillingAmount;
+  discounts: BillingAmount;
+  totalTax: BillingAmount;
+  paymentAmount: BillingAmount;
+  includedCredits: BillingAmount;
+  createdAt: string | null;
+  validUntil: string | null;
+  expired: boolean;
+  payable: boolean;
+}
+
+export interface SubscriptionPurchaseResponse {
+  subscription: { lifecycleStatus: string; accessState: string; planId: string | null; planVersion: number | null };
+  quote: SubscriptionPurchaseQuote | null;
+  payment: { submissionEnabled: boolean; purpose: 'subscription'; submissionPath: '/api/billing/payments' };
+}
+
+export interface SubscriptionRenewalQuote extends Omit<SubscriptionPurchaseQuote, 'purpose'> {
+  purpose: 'renewal';
+  pendingPayment: boolean;
+}
+export interface SubscriptionRenewalResponse {
+  subscription: { lifecycleStatus: string; accessState: string; planId: string | null; planVersion: number | null; version: number; restrictionDeadline: string | null };
+  period: { periodId: string; status: string; startsAt: string; endsAt: string; renewalEligible: boolean; overdue: boolean } | null;
+  quote: SubscriptionRenewalQuote | null;
+  payment: { submissionEnabled: boolean; purpose: 'subscription'; submissionPath: '/api/billing/payments' };
+  graceRequest: { id: string; status: string; periodId: string; requestedUntil: string; grantedUntil: string | null; version: number } | null;
+}
+
+export interface SubscriptionUpgradeQuote {
+  quoteId: string;
+  purpose: 'adjustment';
+  status: string;
+  version: number;
+  plan: { id: string; version: number; terms: Record<string, unknown> };
+  lines: { code: string; label: string; amount: BillingAmount }[];
+  subtotal: BillingAmount;
+  totalTax: BillingAmount;
+  total: BillingAmount;
+  paymentAmount: BillingAmount;
+  includedCredits: BillingAmount;
+  validUntil: string | null;
+  expired: boolean;
+  payable: false;
+  adjustment: { incrementalIncludedCredits: BillingAmount; prorationAmount: BillingAmount; targetRecurringPrice: BillingAmount; effectiveAt: string; renewalAnchorAt: string };
+  payment?: { submissionEnabled: false; submissionPath: null; reason: string };
+}
+export interface SubscriptionUpgradeResponse {
+  subscription: { lifecycleStatus: string; accessState: string; planId: string | null; planVersion: number | null; version: number } | null;
+  quote: SubscriptionUpgradeQuote;
+  payment: { submissionEnabled: false; submissionPath: null; payable: false; reason: string };
+}
+
+export interface SubscriptionGraceRequest {
+  id: string;
+  periodId: string;
+  requestedUntil: string;
+  justification: string;
+  status: 'requested' | 'approved' | 'denied' | 'revoked' | string;
+  grantedUntil: string | null;
+  version: number;
+  createdAt: string;
+}
+export interface SubscriptionGraceEligibility {
+  subscriptionVersion: number;
+  currentPeriodId: string | null;
+  billingAccessState: string;
+  billingSuspensionCause: string | null;
+  currentPeriodEndsAt: string | null;
+  currentRestrictionDeadline: string | null;
+  maxDaysPerPeriod: number;
+  maximumUntil: string | null;
+  requestEligible: boolean;
+  currentRequest: Omit<SubscriptionGraceRequest, 'createdAt' | 'periodId'> | null;
+}
+export interface SubscriptionGraceResponse {
+  items: SubscriptionGraceRequest[];
+  eligibility: SubscriptionGraceEligibility;
+}

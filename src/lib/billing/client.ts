@@ -1,7 +1,7 @@
 import { apiFetch } from '../api';
 import type {
   AllocationRule, BillingContact, BillingMutationOptions, BillingOverview, BillingNotification,
-  CursorPage, ManualAllocationOverview, ManualAllocationPreview, SubscriptionCreditStatus, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview,
+  CursorPage, ManualAllocationOverview, ManualAllocationPreview, SubscriptionCreditStatus, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview, SubscriptionPurchaseResponse, SubscriptionRenewalResponse, SubscriptionUpgradeResponse, SubscriptionGraceResponse,
 } from './types';
 
 export class BillingApiError extends Error {
@@ -82,6 +82,21 @@ export const billingClient = Object.freeze({
     });
   },
   subscriptionCreditStatus: () => jsonRequest<SubscriptionCreditStatus>('/api/billing/subscription-credit-status'),
+  subscriptionPurchase: () => jsonRequest<SubscriptionPurchaseResponse>('/api/billing/subscription-purchase'),
+  provisionInitialSubscriptionQuote: (options: BillingMutationOptions) => jsonRequest<SubscriptionPurchaseResponse>('/api/billing/subscription-purchase/initial-quote', {
+    method: 'POST', headers: mutationHeaders(options), body: JSON.stringify({}),
+  }),
+  subscriptionRenewal: () => jsonRequest<SubscriptionRenewalResponse>('/api/billing/subscription-renewal'),
+  createSubscriptionRenewalQuote: (options: BillingMutationOptions) => jsonRequest<SubscriptionRenewalResponse>('/api/billing/subscription-renewal/quote', {
+    method: 'POST', headers: mutationHeaders(options), body: JSON.stringify({}),
+  }),
+  createSubscriptionUpgradeQuote: (input: { targetPlanId: string; targetPlanVersion: number }, options: BillingMutationOptions) => jsonRequest<SubscriptionUpgradeResponse>('/api/billing/subscription-upgrade/quote', {
+    method: 'POST', headers: mutationHeaders(options), body: JSON.stringify(input),
+  }),
+  subscriptionGraceRequests: () => jsonRequest<SubscriptionGraceResponse>('/api/billing/subscription-grace-requests?status=all'),
+  submitSubscriptionGraceRequest: (input: { periodId: string; requestedUntil: string; justification: string; expectedVersion: number }, options: BillingMutationOptions) => jsonRequest<SubscriptionGraceRequest>('/api/billing/subscription-grace-requests', {
+    method: 'POST', headers: mutationHeaders(options), body: JSON.stringify(input),
+  }),
   manualAllocationOverview: () => jsonRequest<ManualAllocationOverview>('/api/billing/manual-allocations'),
   manualAllocationPreview: (input: { grantId: string; workspaceId: string; amountUnits: string; expectedPositionVersion: number }) =>
     jsonRequest<ManualAllocationPreview>('/api/billing/manual-allocations/preview', {
