@@ -31,7 +31,7 @@ export function subscribe(fn: Listener) {
   _listeners.add(fn);
   // If flags are already loaded, fire immediately so late subscribers sync up.
   if (_loaded) fn(_granted, _loaded, _role, _orgFlags);
-  return () => _listeners.delete(fn);
+  return () => { _listeners.delete(fn); };
 }
 
 function notify() {

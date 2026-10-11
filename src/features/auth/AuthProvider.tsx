@@ -233,7 +233,7 @@ function CognitoAuthProvider({ children }: { children: React.ReactNode }) {
         // Cognito user pool. This complements ID-token claims and ensures
         // the header can display the user's configured name.
         const profile = await getCognitoProfile();
-        setUser(extractCognitoUser(current, { ...claims, ...profile, ...(current.attributes ?? {}) }));
+        setUser(extractCognitoUser(current, { ...claims, ...profile }));
         setInitState('ready');
       } catch (err: any) { setErrorMsg(err?.message ?? 'Could not connect to AWS Cognito.'); setInitState('error'); }
     })();
