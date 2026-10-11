@@ -861,7 +861,7 @@ describe('Sidebar', () => {
 
     await act(async () => {});
     await act(async () => { await store.fetchUserFlags(); });
-    await waitFor(() => screen.getByText('Executive Desk'));
+    await waitFor(() => screen.getByRole('navigation', { name: 'Organization navigation' }));
     return setActiveTab;
   }
 
@@ -886,8 +886,8 @@ describe('Sidebar', () => {
       [] // no grants
     );
 
-    expect(screen.getByText('Executive Desk')).toBeInTheDocument();
-    // Flagged tabs with no grant must be hidden
+    expect(screen.queryByText('Executive Desk')).not.toBeInTheDocument();
+    // Every flagged tab must be hidden when no grant exists
     expect(screen.queryByText('Reports')).not.toBeInTheDocument();
     expect(screen.queryByText('Workflow Builder')).not.toBeInTheDocument();
   });
