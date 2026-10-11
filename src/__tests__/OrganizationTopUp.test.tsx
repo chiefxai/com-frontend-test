@@ -5,6 +5,7 @@ import OrganizationTopUp from '../components/billing/OrganizationTopUp';
 
 const mocks = vi.hoisted(() => ({
   organizationOverview: vi.fn(),
+  subscriptionCreditStatus: vi.fn(),
   payments: vi.fn(),
   submitPaymentWithProof: vi.fn(),
   apiFetch: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../lib/billing/client', () => ({
   billingClient: {
     organizationOverview: mocks.organizationOverview,
+    subscriptionCreditStatus: mocks.subscriptionCreditStatus,
     payments: mocks.payments,
     submitPaymentWithProof: mocks.submitPaymentWithProof,
   },
@@ -47,6 +49,11 @@ const overview = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.organizationOverview.mockResolvedValue(overview);
+  mocks.subscriptionCreditStatus.mockResolvedValue({
+    planName:'Enterprise',planId:'enterprise',
+    configuredMonthlyCredits:cash('250000'),entitlementSource:'organization_plan_snapshot',
+    issuedThisPeriod:null,currentPeriod:null,state:'awaiting_approved_subscription',
+  });
   mocks.payments.mockResolvedValue({ rows: [payment], nextCursor: null });
   mocks.apiFetch.mockImplementation(async (path: string) => ({
     ok: true,
@@ -59,6 +66,16 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('organization billing views', () => {
+  it('distinguishes Enterprise monthly allowance from issued credits in Credits and Subscription', async () => {
+    const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
+    expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
+    expect(screen.getByText('₹2,500.00')).toBeInTheDocument();
+    expect(screen.getByText(/no approved and funded subscription period/i)).toBeInTheDocument();
+    expect(mocks.subscriptionCreditStatus).toHaveBeenCalled();
+    rerender(<OrganizationTopUp view="plan" canSubmit />);
+    expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
+  });
+
   it('shows the available credit sources and a recent payment status without implying approval', async () => {
     const onNavigate = vi.fn();
     render(<OrganizationTopUp view="dashboard" canSubmit onNavigate={onNavigate} />);
