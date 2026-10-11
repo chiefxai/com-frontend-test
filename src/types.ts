@@ -41,6 +41,7 @@ export interface Lead {
 export interface PipelineStageLabel {
   key: string;
   label: string;
+  terminal?: 'won' | 'lost';
 }
 
 export interface ContactGroup {
@@ -108,6 +109,8 @@ export interface Workflow {
 
 export interface CallLog {
   id: string;
+  /** Explicit call ID, when provided separately from the call-log row ID. */
+  callId?: string;
   leadId: string;
   leadName: string;
   callerNumber?: string;

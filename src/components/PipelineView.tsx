@@ -303,7 +303,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
           ) : filtered.length === 0 ? (
             <EmptyState heading="No contacts match your search" />
           ) : (
-            <DataTable bare resizable paginated columns={columns} rows={filtered} rowKey={(l) => l.campaignId ? `${l.campaignId}::${l.originalLeadId}` : `contact::${l.originalLeadId}`} onRowClick={setSelectedLead} />
+            <DataTable bare resizable paginated columns={columns} rows={filtered} rowKey={(l) => l.campaignId ? `${l.campaignId}::${l.originalLeadId}` : `contact::${l.originalLeadId}`} onRowClick={(row) => setSelectedLead(row)} />
           )}
         </Widget>
       </div>

@@ -43,11 +43,27 @@ interface CampaignTask {
   name: string;
   leadIds: string[];
   createdAt: string;
+  workflowName?: string;
   // Present on the real dialerTasks rows App.tsx passes down (typed
   // loosely as any[] there) — only the callId is needed here, to fetch
   // the same "Extracted Campaign Answers" the Active Campaign List's own
   // Workflow View shows for this lead.
-  callResults?: { [leadId: string]: { callId?: string; advisorCallback?: { time?: string | null } } };
+  callResults?: { [leadId: string]: {
+    callId?: string;
+    pipelineStage?: string;
+    status?: string;
+    leadStatus?: Lead['status'];
+    advisorCallback?: { time?: string | null };
+  } };
+}
+
+/** Campaign-local projection of a contact; identity remains originalLeadId. */
+interface CampaignLeadRow extends Lead {
+  originalLeadId: string;
+  campaignId?: string;
+  campaignName?: string;
+  campaignWorkflowName?: string;
+  campaignStatus?: string;
 }
 
 interface LeadsViewProps {
