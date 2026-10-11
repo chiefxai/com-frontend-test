@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Building2, Users, ScrollText, Settings, Database,
-  IndianRupee, MessageSquareText, Layers3, ShieldCheck,
+  IndianRupee, MessageSquareText, Layers3, ShieldCheck, PhoneCall,
 } from 'lucide-react';
 import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
@@ -16,6 +16,7 @@ import WorkspacePlansPage from './WorkspacePlansPage';
 import PaymentReviewsPage from './PaymentReviewsPage';
 import SubscriptionGraceRequestsPage from './SubscriptionGraceRequestsPage';
 import PromptsPage from './PromptsPage';
+import TelephonyConnectorsPage from './TelephonyConnectorsPage';
 import ProfileMenu from '../components/ProfileMenu';
 import PageHeaderBar from '../components/ui/PageHeaderBar';
 import Tooltip from '../components/ui/Tooltip';
@@ -28,6 +29,7 @@ const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'users',           label: 'Users',                   icon: Users },
   { path: 'activity',        label: 'Activity',                icon: ScrollText },
   { path: 'cost',            label: 'Providers & Pricing',          icon: IndianRupee },
+  { path: 'telephony-connectors', label: 'Telephony Connectors', icon: PhoneCall },
   { path: 'workspace-plans', label: 'Subscription Plans',      icon: Layers3 },
   { path: 'payment-reviews', label: 'Payment Reviews',         icon: ShieldCheck },
   { path: 'grace-requests',  label: 'Grace Requests',           icon: ShieldCheck },
@@ -153,6 +155,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               <Route path="users" element={<PageWrap title="Users" section="Users"><UsersPage /></PageWrap>} />
               <Route path="activity" element={<PageWrap title="Activity" section="Activity"><ActivityPage /></PageWrap>} />
               <Route path="cost" element={<PageWrap title="Providers & Pricing" section="Providers & Pricing"><CostPage /></PageWrap>} />
+              <Route path="telephony-connectors" element={<PageWrap title="Telephony Connectors" section="Telephony Connectors"><TelephonyConnectorsPage /></PageWrap>} />
               <Route path="workspace-plans" element={<PageWrap title="Subscription Plans" section="Subscription Plans"><WorkspacePlansPage /></PageWrap>} />
               <Route path="payment-reviews" element={<PageWrap title="Payment Reviews" section="Payment Reviews"><PaymentReviewsPage /></PageWrap>} />
               <Route path="grace-requests" element={<PageWrap title="Subscription Grace Requests" section="Grace Requests"><SubscriptionGraceRequestsPage /></PageWrap>} />

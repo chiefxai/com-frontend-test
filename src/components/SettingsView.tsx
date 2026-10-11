@@ -42,6 +42,7 @@ import SlideOver from './ui/SlideOver';
 import DataTable, { Column } from './ui/DataTable';
 import FilterBar from './ui/FilterBar';
 import BillingWorkspace from './billing/BillingWorkspace';
+import OrganizationTelephonyConnectors from './settings/OrganizationTelephonyConnectors';
 import WorkspaceManagement from './WorkspaceManagement';
 import WorkspaceSharing from './WorkspaceSharing';
 import type { BillingPanel } from './billing/OrganizationTopUp';
@@ -1137,6 +1138,7 @@ export default function SettingsView({
                   </div>
                 </Modal>
               )}
+              <OrganizationTelephonyConnectors />
               </>}
             </div>
           )}
