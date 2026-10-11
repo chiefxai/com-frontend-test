@@ -11,6 +11,7 @@ import { FeatureFlagProvider } from './features/feature-flags/FeatureFlagContext
 import { ThemeProvider } from './shared/theme/ThemeContext.tsx';
 import { ToastProvider } from './shared/toast/ToastContext.tsx';
 import { Globe2, LogOut } from 'lucide-react';
+import { LoadingBoundary, LoadingState } from './components/ui/LoadingIndicator';
 import './index.css';
 
 function LoginPage() {
@@ -31,14 +32,7 @@ function LoginPage() {
 
   if (user) return <Navigate to="/" replace />;
 
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-        <p className="text-sm text-slate-400">Redirecting to sign in…</p>
-      </div>
-    </div>
-  );
+  return <LoadingState variant="page" label="Redirecting to sign in…" description="Securely connecting to your account." />;
 }
 
 // Blocks platform admins from the org app — they should only use /admin.
@@ -99,7 +93,7 @@ createRoot(document.getElementById('root')!).render(
             element={
               <AuthProvider>
                 <FeatureFlagProvider>
-                  <React.Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] text-sm text-[var(--text-muted)]">Loading application…</div>}>
+                  <LoadingBoundary variant="page" label="Opening Chief Connect…" description="Preparing your workspace.">
                   <Routes>
                     <Route
                       path="/admin/*"
@@ -134,7 +128,7 @@ createRoot(document.getElementById('root')!).render(
                       }
                     />
                   </Routes>
-                  </React.Suspense>
+                  </LoadingBoundary>
                 </FeatureFlagProvider>
               </AuthProvider>
             }

@@ -12,6 +12,7 @@ import { PageHeaderProvider } from './lib/PageHeaderContext';
 import PageHeaderBar from './components/ui/PageHeaderBar';
 import { ActiveTabProvider } from './lib/ActiveTabContext';
 import PageShell from './components/ui/PageShell';
+import { LoadingBoundary, LoadingState } from './components/ui/LoadingIndicator';
 import { fetchUserFlags, resetUserFlags, subscribe as subscribeFlags, isLoaded as flagsLoaded } from './features/feature-flags/userFlagsStore';
 import { TAB_TO_FLAG } from './features/feature-flags/registry';
 import {
@@ -73,6 +74,28 @@ const EnquiriesView = React.lazy(() => import('./components/EnquiriesView'));
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Friendly names for first-visit lazy module transitions.
+const LOADING_MODULE_NAMES: Record<string, string> = {
+  dashboard: 'Executive Desk',
+  leads: 'Leads',
+  pipeline: 'Pipeline',
+  contacts: 'Contact Directory',
+  workflows: 'Workflow Builder',
+  dialer: 'Campaigns',
+  'call-logs': 'Call Logs',
+  reports: 'Reports',
+  inbox: 'Unified Inbox',
+  'agent-studio': 'Agent Studio',
+  compliance: 'Compliance',
+  knowledge: 'Knowledge Base',
+  enquiries: 'Enquiries',
+  'audit-log': 'Audit Logs',
+  objects: 'Custom Objects',
+  loans: 'Loan Lifecycle',
+  company: 'Company Profile',
+  settings: 'Administration',
+};
 
 export default function App() {
   // Auth state comes from Keycloak — no manual isAuthenticated flag needed.
@@ -924,14 +947,7 @@ export default function App() {
 
   // Membership gate — show spinner or no-access screen before the app
   if (membershipStatus === 'checking') {
-    return (
-      <div className="flex items-center justify-center h-screen w-screen" style={{ background: 'var(--bg-subtle)' }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Verifying access…</p>
-        </div>
-      </div>
-    );
+    return <LoadingState variant="page" label="Verifying workspace access…" description="Checking your membership and permissions." />;
   }
 
   if (membershipStatus === 'denied') {
@@ -1022,9 +1038,9 @@ export default function App() {
                   >
                     <ActiveTabProvider active={tab === activeTab}>
                       <ErrorBoundary label={tab}>
-                        <React.Suspense fallback={<div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-[var(--text-muted)]">Loading module…</div>}>
+                        <LoadingBoundary variant="section" label={`Opening ${LOADING_MODULE_NAMES[tab] || 'workspace module'}…`} description="Preparing your workspace.">
                           {renderTabContent(tab)}
-                        </React.Suspense>
+                        </LoadingBoundary>
                       </ErrorBoundary>
                     </ActiveTabProvider>
                   </div>
