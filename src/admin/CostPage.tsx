@@ -1,10 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Archive, Cpu, Phone, RefreshCw, RotateCcw, Zap } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Cpu, Phone, RefreshCw, RotateCcw, Settings2, Zap } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import Widget from '../components/ui/Widget';
 import KpiCard from '../components/ui/KpiCard';
-import DataTable, { Column } from '../components/ui/DataTable';
-import FilterBar from '../components/ui/FilterBar';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -51,28 +49,6 @@ function perMinuteRate(p: CostProvider): number {
   const withTax = base * (1 + (p.taxPercent ?? 0) / 100);
   return Math.round(withTax * 100) / 100;
 }
-
-// A permanent cost snapshot taken right before an org was deleted — see
-// backend platform/admin.js's deleteOrganization + db.archiveOrgCost.
-// The org itself, its call logs, and its accrued counters are gone; this
-// is the only place that org's final cost figures still exist.
-type CostArchiveEntry = {
-  id: string;
-  orgId: string;
-  orgName: string | null;
-  workspaceName: string | null;
-  industry: string | null;
-  deletedAt: string;
-  deletedByEmail: string | null;
-  aiMinutesUsed: number | null;
-  aiMinutesCostInr: number | null;
-  phoneCharges: number | null;
-  callProviderLabel: string | null;
-  aiTotalTokens: number | null;
-  aiTokenProviderLabel: string | null;
-  aiTokenTotalCostInr: number | null;
-};
-
 
 const GEMINI_LIVE_KEY = 'gemini';
 const GEMINI_POST_KEY = 'gemini-postcall';
@@ -167,12 +143,6 @@ export default function CostPage() {
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
 
-  const [archive, setArchive] = useState<CostArchiveEntry[]>([]);
-  const [loadingArchive, setLoadingArchive] = useState(true);
-  const [archiveError, setArchiveError] = useState('');
-  const [archiveQuery, setArchiveQuery] = useState('');
-  const [archiveIndustry, setArchiveIndustry] = useState('');
-
   const loadProviders = useCallback(async () => {
     setLoadingProviders(true);
     setProvidersError('');
@@ -192,25 +162,9 @@ export default function CostPage() {
     }
   }, []);
 
-  const loadArchive = useCallback(async () => {
-    setLoadingArchive(true);
-    setArchiveError('');
-    try {
-      const response = await apiFetch('/api/platform/cost-archive');
-      const body = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(body?.error || 'Unable to load deleted organizations.');
-      setArchive(Array.isArray(body) ? body as CostArchiveEntry[] : []);
-    } catch (reason) {
-      setArchiveError(reason instanceof Error ? reason.message : 'Unable to load deleted organizations.');
-    } finally {
-      setLoadingArchive(false);
-    }
-  }, []);
-
   useEffect(() => {
     void loadProviders();
-    void loadArchive();
-  }, [loadProviders, loadArchive]);
+  }, [loadProviders]);
 
   const updateLocal = (key: string, patch: Partial<CostProvider>) => {
     setProviders(current => current.map(provider => provider.key === key ? { ...provider, ...patch } : provider));
@@ -326,41 +280,6 @@ export default function CostPage() {
   const primaryCallProvider = activeCallProviders.find(provider => (provider.rateAmount ?? 0) > 0);
   const callRate = primaryCallProvider ? formatInr(perMinuteRate(primaryCallProvider)) : '—';
 
-  const archiveIndustries = useMemo(() =>
-    [...new Set(archive.map(row => row.industry).filter((industry): industry is string => Boolean(industry)))].sort(),
-    [archive]);
-  const filteredArchive = useMemo(() => {
-    const query = archiveQuery.trim().toLowerCase();
-    return archive.filter(row => {
-      if (archiveIndustry && row.industry !== archiveIndustry) return false;
-      if (!query) return true;
-      return [row.orgName, row.workspaceName, row.industry, row.deletedByEmail, row.orgId]
-        .some(value => (value || '').toLowerCase().includes(query));
-    }).sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
-  }, [archive, archiveQuery, archiveIndustry]);
-
-  const archiveColumns: Column<CostArchiveEntry>[] = [
-    { key: 'organization', header: 'Organization / workspace', width: '240px', cell: row =>
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-[var(--text-primary)]" title={row.orgName || row.orgId}>{row.orgName || row.orgId}</p>
-        <p className="truncate text-xs text-[var(--text-muted)]">{row.workspaceName || row.industry || row.orgId}</p>
-      </div> },
-    { key: 'deleted', header: 'Deleted', width: '220px', cell: row =>
-      <div>
-        <p className="whitespace-nowrap text-xs text-[var(--text-secondary)]">{new Date(row.deletedAt).toLocaleDateString()}</p>
-        <p className="truncate text-xs text-[var(--text-muted)]" title={row.deletedByEmail || ''}>{row.deletedByEmail || '—'}</p>
-      </div> },
-    { key: 'minutes', header: 'AI minutes', align: 'right', width: '120px', cell: row => (row.aiMinutesUsed ?? 0).toFixed(2) },
-    { key: 'aiTimeCost', header: 'AI time cost', align: 'right', width: '140px', cell: row => row.aiMinutesCostInr != null ? formatInr(row.aiMinutesCostInr) : '—' },
-    { key: 'callCost', header: 'Phone cost', align: 'right', width: '150px', cell: row =>
-      <span title={row.callProviderLabel || undefined}>{formatInr(row.phoneCharges ?? 0)}</span> },
-    { key: 'tokens', header: 'AI tokens', align: 'right', width: '130px', cell: row => (row.aiTotalTokens ?? 0).toLocaleString('en-IN') },
-    { key: 'tokenCost', header: 'AI token cost', align: 'right', width: '150px', cell: row =>
-      <span title={row.aiTokenProviderLabel || undefined}>
-        {row.aiTokenTotalCostInr != null ? formatInr(row.aiTokenTotalCostInr) : '—'}
-      </span> },
-  ];
-
   const callProviders = providers.filter(provider => provider.kind === 'call');
   const geminiLive = providers.find(provider => provider.key === GEMINI_LIVE_KEY);
   const geminiPost = providers.find(provider => provider.key === GEMINI_POST_KEY);
@@ -406,8 +325,8 @@ export default function CostPage() {
         icon={Phone} iconBg="#0d94881a" iconColor="#0d9488" />
       <KpiCard colSpan={3} label="Active AI providers" value={loadingProviders ? '—' : activeAiProviderCount}
         icon={Cpu} iconBg="#4a3aa71a" iconColor="#4a3aa7" />
-      <KpiCard colSpan={3} label="Deleted organizations" value={loadingArchive ? '—' : archive.length}
-        sub="Cost snapshots retained" icon={Archive} iconBg="#b453091a" iconColor="#b45309" />
+      <KpiCard colSpan={3} label="Provider rate entries" value={loadingProviders ? '—' : savedProviders.length}
+        sub="Stored pricing configurations" icon={Settings2} iconBg="#4a3aa71a" iconColor="#4a3aa7" />
 
       <Widget colSpan={12} title="Provider pricing"
         subtitle="Configure telephony and Gemini AI rates in one place."
@@ -472,42 +391,7 @@ export default function CostPage() {
               </div>}
       </Widget>
 
-      <Widget colSpan={12} title="Deleted organizations"
-        subtitle="Permanent final cost snapshots for removed organizations."
-        icon={Archive} accent="#b45309" padding="none"
-        action={<Button type="button" icon={RefreshCw} size="sm" variant="secondary"
-          disabled={loadingArchive} onClick={() => void loadArchive()}>Refresh</Button>}>
-        <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
-          <FilterBar
-            search={{ value: archiveQuery, onChange: setArchiveQuery, placeholder: 'Search organization, workspace, or administrator…' }}
-            selects={[{
-              key: 'industry', label: 'Industry', value: archiveIndustry,
-              onChange: setArchiveIndustry,
-              options: [{ label: 'All industries', value: '' }, ...archiveIndustries.map(value => ({ label: value.replaceAll('_', ' '), value }))],
-            }]}
-            hasActiveFilters={Boolean(archiveQuery.trim() || archiveIndustry)}
-            onClear={() => { setArchiveQuery(''); setArchiveIndustry(''); }}
-            resultCount={{ filtered: filteredArchive.length, total: archive.length, label: 'organizations' }}
-          />
-        </div>
-        {archiveError && <div role="alert" className="flex flex-wrap items-center gap-3 px-4 py-3 text-xs text-rose-700">
-          <span>{archiveError}</span>
-          <Button type="button" size="sm" onClick={() => void loadArchive()}>Retry</Button>
-        </div>}
-        <DataTable<CostArchiveEntry>
-          bare
-          resizable
-          paginated
-          defaultPageSize={25}
-          columns={archiveColumns}
-          rows={filteredArchive}
-          rowKey={row => row.id}
-          loading={loadingArchive && archive.length === 0}
-          emptyMessage={archiveQuery || archiveIndustry
-            ? 'No deleted organizations match these filters.'
-            : 'No deleted organizations have been archived yet.'}
-        />
-      </Widget>
+
     </div>
   );
 }
