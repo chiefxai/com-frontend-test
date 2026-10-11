@@ -994,7 +994,7 @@ export default function SettingsView({
                           <div>
                             <button type="button" className="text-left font-semibold text-[var(--accent)] hover:underline focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
                               onClick={() => { openNumberDetails(num); }}
-                              aria-label={`View workspace details for number ${num.number}`}>{num.number}</button>
+                              aria-label={multiWorkspaceUi ? `View workspace details for number ${num.number}` : `View details for number ${num.number}`}>{num.number}</button>
                             {num.friendlyName && <p className="text-xs text-slate-400 dark:text-[var(--text-muted)] mt-0.5">{num.friendlyName}</p>}
                           </div>
                         </div>
@@ -1162,7 +1162,7 @@ export default function SettingsView({
                 return <SlideOver open onClose={closeDetails}
                   title={<span className="flex items-center gap-2">{detailHistory.length > 0 && <IconButton icon={ArrowLeft} label="Back to previous details" variant="secondary" onClick={backDetails} />}
                     {selectedNumberDetails ? `Virtual Number · ${selectedNumberDetails.number}` : `Workspace · ${workspace?.name || 'Details'}`}</span>}
-                  subtitle="Workspace membership and access details"
+                  subtitle={multiWorkspaceUi ? 'Workspace membership and access details' : 'Phone number details'}
                   maxWidth="max-w-2xl">
                   <div className="space-y-4">
                     {selectedWorkspaceDetails && <div role="tablist" aria-label="Workspace details" className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-3">
@@ -1196,7 +1196,7 @@ export default function SettingsView({
                       {workspace && <button type="button" onClick={() => openWorkspaceDetails(workspace)}
                         className="mt-3 text-xs font-semibold text-[var(--accent)] hover:underline">View workspace →</button>}
                     </Widget>}
-                    {workspace && (selectedNumberDetails || workspaceDetailsTab === 'members') && <Widget title="Workspace Members" subtitle={selectedNumberDetails ? 'Users with workspace access, not necessarily assigned directly to this number.' : 'Users with active workspace access.'} icon={Users} padding="md">
+                    {multiWorkspaceUi && workspace && (selectedNumberDetails || workspaceDetailsTab === 'members') && <Widget title="Workspace Members" subtitle={selectedNumberDetails ? 'Users with workspace access, not necessarily assigned directly to this number.' : 'Users with active workspace access.'} icon={Users} padding="md">
                       {!canReadOrgMembers
                         ? <p className="text-xs text-[var(--text-muted)]">Organization member-read permission is required to view this list.</p>
                         : orgAccessError
