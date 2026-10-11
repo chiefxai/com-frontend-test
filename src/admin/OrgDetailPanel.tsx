@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, Cloud, Database, Archive, Building2, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw } from 'lucide-react';
+import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, , LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { OrgDetail } from './types';
 import { callCostInr, formatInr } from '../lib/pricing';
@@ -48,12 +48,6 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   const [numBusy, setNumBusy] = useState(false);
   const [gcpProject, setGcpProject] = useState<any>(null);
   const [gcpBusy, setGcpBusy] = useState(false);
-  const [retentionState, setRetentionState] = useState<any>(null);
-  const [retentionMode, setRetentionMode] = useState<'default' | 'custom'>('default');
-  const [retentionOverrides, setRetentionOverrides] = useState<Record<string, number | null>>({});
-  const [retentionBusy, setRetentionBusy] = useState(false);
-  const [backupState, setBackupState] = useState<any>(null);
-  const [backupBusy, setBackupBusy] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [rechargeBusy, setRechargeBusy] = useState(false);
 
@@ -100,57 +94,6 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to remove this virtual number.');
     }
-  };
-
-  const loadRetention = () => {
-    apiFetch(`/api/platform/organizations/${orgId}/data-retention`)
-      .then(r => r.json())
-      .then(d => {
-        setRetentionState(d);
-        setRetentionMode(d?.mode === 'custom' ? 'custom' : 'default');
-        setRetentionOverrides(d?.overrides || {});
-      }).catch(() => {});
-    apiFetch(`/api/platform/organizations/${orgId}/backup`)
-      .then(r => r.json()).then(d => setBackupState(d)).catch(() => {});
-  };
-
-  const saveRetention = async () => {
-    setActionError(null);
-    setRetentionBusy(true);
-    try {
-      const res = await apiFetch(`/api/platform/organizations/${orgId}/data-retention`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: retentionMode, overrides: retentionOverrides }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed to save retention policy');
-      setRetentionState(await res.json());
-    } catch (err: any) { setActionError(err?.message || 'Failed to save retention policy'); }
-    finally { setRetentionBusy(false); }
-  };
-
-  const saveBackup = async (patch: any) => {
-    setActionError(null);
-    setBackupBusy(true);
-    try {
-      const res = await apiFetch(`/api/platform/organizations/${orgId}/backup`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed to save backup settings');
-      setBackupState(await res.json());
-    } catch (err: any) { setActionError(err?.message || 'Failed to save backup settings'); }
-    finally { setBackupBusy(false); }
-  };
-
-  const requestBackup = async () => {
-    setActionError(null);
-    setBackupBusy(true);
-    try {
-      const res = await apiFetch(`/api/platform/organizations/${orgId}/backup`, { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Failed to queue backup');
-      setBackupState((prev: any) => ({ ...prev, lastStatus: 'queued' }));
-    } catch (err: any) { setActionError(err?.message || 'Failed to queue backup'); }
-    finally { setBackupBusy(false); }
   };
 
   const loadGcpProject = () => {
@@ -228,8 +171,6 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     setDetail(null);
     setNumbers([]);
     setEnabledFlags([]);
-    setRetentionState(null);
-    setBackupState(null);
     setActiveSection('overview');
     setEditing(false);
     setActionError(null);
@@ -237,7 +178,6 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     loadFlags();
     loadNumbers();
     loadGcpProject();
-    loadRetention();
   }, [orgId]);
 
   const handleSaveEdit = async () => {
@@ -349,7 +289,7 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                   {String(detail.status || '').toLowerCase() === 'suspended' ? 'Reactivate' : 'Suspend'}
                 </Button>
                 <Button type="button" size="sm" variant="ghost" icon={RefreshCw} disabled={loading}
-                  onClick={() => { load(); loadFlags(); loadNumbers(); loadGcpProject(); loadRetention(); }}>
+                  onClick={() => { load(); loadFlags(); loadNumbers();  }}>
                   Refresh
                 </Button>
                 <Button type="button" size="sm" variant="danger" icon={Trash2}
@@ -654,135 +594,6 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                     ) : <p className="text-xs text-[var(--text-muted)]">No virtual numbers registered.</p>}
                   </Card>
 
-                  <Card padding="md">
-                    <CardHeader title="Data retention" icon={Database} accent="#7c3aed"
-                      subtitle="Set how long each type of organizational data is retained."
-                      action={<Badge color={retentionMode === 'custom' ? 'purple' : 'slate'}>
-                        {retentionMode === 'custom' ? 'Custom' : 'Platform default'}
-                      </Badge>}
-                    />
-                    <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-1">
-                      {([
-                        ['default', 'Use platform default'],
-                        ['custom', 'Custom periods'],
-                      ] as const).map(([mode, label]) => (
-                        <button key={mode} type="button" aria-pressed={retentionMode === mode}
-                          onClick={() => {
-                            if (mode === 'custom' && retentionMode !== 'custom'
-                              && Object.keys(retentionOverrides).length === 0) {
-                              setRetentionOverrides(retentionState?.policy || retentionState?.defaults || {});
-                            }
-                            setRetentionMode(mode);
-                          }}
-                          className={'rounded-md px-2.5 py-2 text-xs font-semibold transition-colors ' +
-                            (retentionMode === mode
-                              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
-                              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]')}>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {([
-                        ['call_recordings', 'Call recordings'],
-                        ['transcripts', 'Transcripts'],
-                        ['ai_summaries', 'AI summaries'],
-                        ['call_logs', 'Call logs'],
-                        ['campaign_history', 'Campaign history'],
-                        ['audit_logs', 'Audit logs'],
-                        ['documents', 'Documents'],
-                        ['contacts', 'Contacts'],
-                      ] as const).map(([key, label]) => {
-                        const policyValue = retentionMode === 'custom'
-                          ? (Object.prototype.hasOwnProperty.call(retentionOverrides, key)
-                            ? retentionOverrides[key] : retentionState?.defaults?.[key])
-                          : retentionState?.defaults?.[key];
-                        return (
-                          <DetailField key={key} label={label}>
-                            <select className={FIELD_CLASS} value={policyValue == null ? '' : String(policyValue)}
-                              disabled={retentionMode === 'default' || retentionBusy}
-                              onChange={event => setRetentionOverrides(previous => ({
-                                ...previous,
-                                [key]: event.target.value === '' ? null : Number(event.target.value),
-                              }))}>
-                              <option value="">Never</option>
-                              <option value="30">30 days</option><option value="90">90 days</option>
-                              <option value="180">180 days</option><option value="365">1 year</option>
-                              <option value="730">2 years</option><option value="1095">3 years</option>
-                              <option value="1825">5 years</option>
-                            </select>
-                          </DetailField>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        {retentionMode === 'default' ? 'Using platform retention periods.' : 'Custom changes apply after saving.'}
-                      </p>
-                      <Button type="button" size="sm" variant="primary" loading={retentionBusy}
-                        onClick={() => void saveRetention()}>Save retention</Button>
-                    </div>
-                  </Card>
-
-                  <Card padding="md">
-                    <CardHeader title="Backups" icon={Archive} accent="#0d9488"
-                      subtitle="Scheduled data exports and backup retention."
-                      action={<Badge color={backupState?.enabled ? 'green' : 'slate'}>
-                        {backupState?.enabled ? 'Enabled' : 'Disabled'}
-                      </Badge>}
-                    />
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
-                      <span className="text-xs text-[var(--text-secondary)]">Last backup status</span>
-                      <Badge color={backupState?.lastStatus === 'completed' ? 'green'
-                        : backupState?.lastStatus === 'failed' ? 'rose' : 'slate'}>
-                        {backupState?.lastStatus || 'Never'}
-                      </Badge>
-                    </div>
-                    <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
-                      <input type="checkbox" className="h-4 w-4 accent-blue-600" checked={Boolean(backupState?.enabled)}
-                        disabled={backupBusy}
-                        onChange={event => setBackupState((previous: any) => ({ ...previous, enabled: event.target.checked }))} />
-                      Enable scheduled backups
-                    </label>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="sm:col-span-2">
-                        <DetailField label="Backup notification email">
-                          <input className={FIELD_CLASS} type="email" autoComplete="email"
-                            placeholder="admin@company.com" value={backupState?.email || ''}
-                            disabled={backupBusy}
-                            onChange={event => setBackupState((previous: any) => ({ ...previous, email: event.target.value }))} />
-                        </DetailField>
-                      </div>
-                      <DetailField label="Frequency">
-                        <select className={FIELD_CLASS} value={backupState?.frequency || 'monthly'} disabled={backupBusy}
-                          onChange={event => setBackupState((previous: any) => ({ ...previous, frequency: event.target.value }))}>
-                          <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-                        </select>
-                      </DetailField>
-                      <DetailField label="Keep backups for">
-                        <select className={FIELD_CLASS} value={String(backupState?.retentionDays || 365)} disabled={backupBusy}
-                          onChange={event => setBackupState((previous: any) => ({ ...previous, retentionDays: Number(event.target.value) }))}>
-                          <option value="30">30 days</option><option value="90">90 days</option>
-                          <option value="180">180 days</option><option value="365">1 year</option>
-                          <option value="730">2 years</option>
-                        </select>
-                      </DetailField>
-                    </div>
-                    {backupState?.lastError && <p role="alert" className="mt-3 text-xs text-rose-600">{backupState.lastError}</p>}
-                    <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
-                      <Button type="button" size="sm" variant="secondary" loading={backupBusy}
-                        disabled={!backupState?.email} onClick={() => void requestBackup()}>
-                        Create backup now
-                      </Button>
-                      <Button type="button" size="sm" variant="primary" loading={backupBusy}
-                        onClick={() => void saveBackup({
-                          enabled: Boolean(backupState?.enabled),
-                          email: backupState?.email,
-                          frequency: backupState?.frequency,
-                          retentionDays: backupState?.retentionDays,
-                        })}>Save backup settings</Button>
-                    </div>
-                  </Card>
                 </section>
               )}
             </div>
