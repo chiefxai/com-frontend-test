@@ -327,7 +327,13 @@ export default function SettingsView({
   const [connectProvider, setConnectProvider] = useState<'vobiz'>('vobiz');
   const [connectedChannels, setConnectedChannels] = useState<{ type: string; externalId: string; config: any }[]>([]);
   const loadChannels = () => {
-    apiFetch('/api/channels').then((r) => r.json()).then((list) => setConnectedChannels(Array.isArray(list) ? list : [])).catch(() => {});
+    if (!can('workspace.read')) {
+      setConnectedChannels([]);
+      return;
+    }
+    apiFetch('/api/channels').then((r) => r.ok ? r.json() : null).then((list) => {
+      if (Array.isArray(list)) setConnectedChannels(list);
+    }).catch(() => {});
   };
   useEffect(() => {
     if (subTab === 'numbers' || subTab === 'workspaces') loadChannels();
