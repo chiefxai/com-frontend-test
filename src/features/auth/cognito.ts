@@ -59,10 +59,11 @@ export async function signInWithCognito(provider?: 'Google' | 'Facebook' | 'Amaz
 export async function getCognitoToken() {
   configureCognito();
   const session = await fetchAuthSession();
-  // CRM API authorization uses Cognito access tokens. The backend resolves
-  // verified email attributes through Cognito when they are needed for
-  // identity-level checks, so API calls do not need to send the ID token.
-  return session.tokens?.accessToken?.toString() ?? '';
+  // The CRM backend verifies Cognito ID tokens and uses their verified email
+  // claim to resolve legacy email-based memberships and platform-admin access.
+  // Its GetUser fallback for access tokens requires an extra Cognito scope
+  // that Hosted UI sessions may not include.
+  return session.tokens?.idToken?.toString() ?? session.tokens?.accessToken?.toString() ?? '';
 }
 
 export async function getCognitoUser() {

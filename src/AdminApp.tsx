@@ -65,12 +65,17 @@ export default function AdminApp() {
           {deniedEmail || 'This account'} is not on the platform-admin allowlist.
           This is the operator panel, not the customer dashboard.
         </p>
-        <button
-          onClick={logout}
-          className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline"
-        >
-          Sign out and try a different account
-        </button>
+        <div className="flex items-center gap-4">
+          <a href="/" className="text-xs text-indigo-400 hover:text-indigo-300 underline">
+            Go to workspace dashboard
+          </a>
+          <button
+            onClick={logout}
+            className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline"
+          >
+            Sign out and try a different account
+          </button>
+        </div>
       </div>
     );
   }
