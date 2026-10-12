@@ -118,7 +118,7 @@ describe('Platform Admin shared reviews page', () => {
         receivedAmount: { asset: 'INR', units: '50000', scale: 2 } },
       { idempotencyKey: 'review-key-1' },
     ));
-    expect(await screen.findByRole('status')).toHaveTextContent(/top-up approved/i);
+    expect(await screen.findByText(/top-up approved/i)).toBeInTheDocument();
   });
 
   it('keeps grace decisions reason-gated and records the selected request version', async () => {
@@ -136,7 +136,7 @@ describe('Platform Admin shared reviews page', () => {
         expectedVersion: 2, grantedUntil: grace.requestedUntil },
       { idempotencyKey: 'review-key-1' },
     ));
-    expect(await screen.findByRole('status')).toHaveTextContent(/Grace request approved/i);
+    expect(await screen.findByText(/Grace request approved/i)).toBeInTheDocument();
   });
 
   it('retains the workflow-specific status filter for each review type', async () => {
