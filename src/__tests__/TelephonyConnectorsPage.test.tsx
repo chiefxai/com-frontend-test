@@ -57,6 +57,9 @@ describe('Platform telephony connector management', () => {
     expect(screen.getByText('Account B')).toBeInTheDocument();
     expect(screen.queryByText('acct-a')).not.toBeInTheDocument();
     expect(screen.queryByText('conn-a')).not.toBeInTheDocument();
+    // Cards render before the shared header's loading state finishes updating.
+    // Wait for the action to be enabled before clicking it.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add connector' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Add connector' }));
     expect(await screen.findByRole('dialog', { name: 'Add connector' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Connector name'), { target: { value: 'New account' } });
