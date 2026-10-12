@@ -55,6 +55,9 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   const [gcpBusy, setGcpBusy] = useState(false);
   const [rechargeAmount, setRechargeAmount] = useState('');
   const [rechargeBusy, setRechargeBusy] = useState(false);
+  const [trialRecoveryDays, setTrialRecoveryDays] = useState('7');
+  const [trialRecoveryBusy, setTrialRecoveryBusy] = useState(false);
+  const [trialRecoveryNotice, setTrialRecoveryNotice] = useState('');
 
   const loadNumbers = () => {
     setNumbersLoading(true);
@@ -249,6 +252,33 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     }
   };
 
+  const handleRecoverFreeTrial = async () => {
+    const days = Number(trialRecoveryDays);
+    if (!Number.isInteger(days) || days < 1 || days > 15) {
+      setActionError('Free trial duration must be from 1 to 15 days.');
+      return;
+    }
+    setTrialRecoveryBusy(true);
+    setActionError(null);
+    setTrialRecoveryNotice('');
+    try {
+      const response = await apiFetch(`/api/platform/organizations/${encodeURIComponent(orgId)}/free-trial/retry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || 'Unable to provision the free trial.');
+      setTrialRecoveryNotice(`Free trial is active for ${result.days || days} days. The organization admin can sign in now.`);
+      load();
+      onChanged();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to provision the free trial.');
+    } finally {
+      setTrialRecoveryBusy(false);
+    }
+  };
+
   const openDeleteModal = () => {
     setDeleteConfirm('');
     setDeleteModal(true);
@@ -372,6 +402,25 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
               </div>
 
               <OrganizationWorkspaceSetup key={orgId} orgId={orgId} />
+
+              <div className={PANEL_CLASS}>
+                <CardHeader title="Free trial recovery" subtitle="Use when organization setup completed but trial provisioning failed" icon={RefreshCw} accent="#2563eb" />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <DetailField label="Trial duration (days)">
+                    <input type="number" min="1" max="15" step="1" value={trialRecoveryDays}
+                      onChange={event => setTrialRecoveryDays(event.target.value)} disabled={trialRecoveryBusy}
+                      className={FIELD_CLASS} />
+                  </DetailField>
+                  <Button type="button" size="sm" icon={RefreshCw} disabled={busy || trialRecoveryBusy}
+                    onClick={() => void handleRecoverFreeTrial()}>
+                    {trialRecoveryBusy ? 'Provisioning…' : 'Provision free trial'}
+                  </Button>
+                </div>
+                <p className="mt-2 text-[11px] leading-5 text-[var(--text-muted)]">
+                  Grants ₹200 in usage credits until the trial expires. Existing subscriptions cannot be replaced.
+                </p>
+                {trialRecoveryNotice && <p role="status" className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">{trialRecoveryNotice}</p>}
+              </div>
 
               <div className={PANEL_CLASS}>
                 <CardHeader title="Billing" subtitle="How this organization is charged and what it has spent" icon={CreditCard} accent="#2563eb" />

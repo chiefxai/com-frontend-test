@@ -90,6 +90,29 @@ describe('platform organization details response safety', () => {
     await expect(fetchPlatformOrgDetail(orgId)).resolves.toMatchObject({ id: orgId });
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/organizations/org%2F1');
   });
+
+  it('lets platform admins recover an organization trial that failed during creation', async () => {
+    mocks.apiFetch.mockImplementation(async (path: string) => {
+      if (path === '/api/platform/organizations/org-one/free-trial/retry') {
+        return response({ status: 'free_trial', days: 7 }, 200);
+      }
+      if (path === '/api/platform/organizations/org-one') return response(detail);
+      if (path.endsWith('/features')) return response({ featureFlags: [] });
+      if (path.endsWith('/numbers')) return response([]);
+      if (path.endsWith('/gcp-project')) return response({});
+      throw Error('Unexpected request: ' + path);
+    });
+    render(<OrgDetailPanel orgId="org-one" onClose={mocks.onClose} onChanged={mocks.onChanged} />);
+
+    fireEvent.change(await screen.findByLabelText('Trial duration (days)'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Provision free trial' }));
+
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/organizations/org-one/free-trial/retry', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ days: 7 }),
+    })));
+    expect(await screen.findByRole('status')).toHaveTextContent('Free trial is active for 7 days.');
+  });
 });
 
 describe('Platform Admin organization detail panel', () => {
