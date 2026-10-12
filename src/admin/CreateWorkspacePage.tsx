@@ -333,6 +333,9 @@ export default function CreateWorkspacePage() {
               phoneNumber: form.callPhoneNumber.trim(),
             },
           } : {}),
+          ...(form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed'
+            ? { platformTelephonyAllocationPending: true }
+            : {}),
           chargeScope: form.chargeScope,
           billingMethod: 'pay_as_you_go',
           ...(legacyRetentionFallback

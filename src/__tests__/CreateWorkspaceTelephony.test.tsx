@@ -82,6 +82,7 @@ describe('organization creation telephony selection', () => {
     await waitFor(() => expect(createRequests).toHaveLength(1));
     expect(createRequests[0]).not.toHaveProperty('platformTelephonyNumberId');
     expect(createRequests[0]).not.toHaveProperty('callProvider');
+    expect(createRequests[0].platformTelephonyAllocationPending).toBe(true);
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/num-1/allocate', expect.objectContaining({ method: 'POST', body: JSON.stringify({ orgId: 'org-1' }) })));
   });
 

@@ -2,6 +2,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import TelephonyConnectorsPage from '../admin/TelephonyConnectorsPage';
+import { PageHeaderProvider } from '../lib/PageHeaderContext';
+import PageHeaderBar from '../components/ui/PageHeaderBar';
 
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock('../lib/api', () => ({ apiFetch: mocks.apiFetch }));
@@ -30,7 +32,6 @@ beforeEach(() => {
       inventory.push({ id: 'number-new', phoneNumberE164: data.phoneNumberE164, displayName: data.displayName, inventoryStatus: 'available', provisioningStatus: 'pending' });
       return response({ number: inventory[inventory.length - 1] }, 201);
     }
-    if (url === '/api/platform/telephony/organizations') return response({ organizations: [{ id: 'org-a', name: 'Acme Support' }] });
     if (url === '/api/platform/telephony/numbers/number-a/mark-ready' && options?.method === 'POST') {
       inventory = inventory.map(number => number.id === 'number-a' ? { ...number, provisioningStatus: 'ready' } : number);
       return response({ number: { id: 'number-a', provisioningStatus: 'ready' } });
@@ -51,13 +52,13 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('Platform telephony connector management', () => {
   it('shows connector cards and opens provider-schema form from the header action', async () => {
-    render(<TelephonyConnectorsPage />);
+  render(<PageHeaderProvider><PageHeaderBar /><TelephonyConnectorsPage /></PageHeaderProvider>);
     const card = await screen.findByText('Account A');
     expect(screen.getByText('Account B')).toBeInTheDocument();
     expect(screen.queryByText('acct-a')).not.toBeInTheDocument();
     expect(screen.queryByText('conn-a')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Add connector' }));
-    expect(await screen.findByRole('dialog', { name: 'Add telephony connector' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Add connector' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Connector name'), { target: { value: 'New account' } });
     fireEvent.change(screen.getByLabelText('Account SID *'), { target: { value: 'SID-123' } });
     fireEvent.change(screen.getByLabelText('Auth token *'), { target: { value: 'secret-value' } });
@@ -70,7 +71,7 @@ describe('Platform telephony connector management', () => {
   });
 
   it('supports multiple accounts and rotates only credentials entered by the admin', async () => {
-    render(<TelephonyConnectorsPage />);
+    render(<PageHeaderProvider><PageHeaderBar /><TelephonyConnectorsPage /></PageHeaderProvider>);
     const edit = await screen.findByRole('button', { name: 'Edit Account A' });
     fireEvent.click(edit);
     fireEvent.change(screen.getByLabelText('Auth token'), { target: { value: 'new-secret' } });
@@ -82,22 +83,23 @@ describe('Platform telephony connector management', () => {
 
   it('keeps feature-off state when the connector API returns 404', async () => {
     mocks.apiFetch.mockImplementation(async () => response({ error: 'Not found' }, 404));
-    render(<TelephonyConnectorsPage />);
+    render(<PageHeaderProvider><PageHeaderBar /><TelephonyConnectorsPage /></PageHeaderProvider>);
     expect(await screen.findByText('Telephony connectors are not enabled')).toBeInTheDocument();
-    expect(screen.getByText(/unavailable until platform operations enables/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
   });
 
-  it('saves numbers, confirms readiness, and allocates to an organization without asking for internal IDs', async () => {
-    render(<TelephonyConnectorsPage />);
+  it('saves numbers and confirms readiness without allocating organizations from connector inventory', async () => {
+    render(<PageHeaderProvider><PageHeaderBar /><TelephonyConnectorsPage /></PageHeaderProvider>);
     await screen.findByText('Account A');
     fireEvent.click(screen.getAllByRole('button', { name: 'View details' })[0]);
     expect(await screen.findByText('+14155550123')).toBeInTheDocument();
     expect(screen.queryByText(/Provisioning:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Provider ID:/)).not.toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Add number' }));
     fireEvent.change(screen.getByLabelText('Phone number'), { target: { value: '+14155550124' } });
     fireEvent.change(screen.getByLabelText('Name (optional)'), { target: { value: 'Support line' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add number' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save number' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/connectors/conn-a/numbers', expect.objectContaining({ method: 'POST' })));
     const addCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url === '/api/platform/telephony/connectors/conn-a/numbers' && options?.method === 'POST');
     expect(JSON.parse(addCall?.[1].body || '{}')).toEqual({ phoneNumberE164: '+14155550124', displayName: 'Support line' });
@@ -106,13 +108,7 @@ describe('Platform telephony connector management', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getAllByRole('button', { name: 'Confirm active' })[0]);
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/number-a/mark-ready', expect.objectContaining({ method: 'POST' })));
-    const orgSelect = screen.getByLabelText('Organization for +14155550123');
-    fireEvent.change(orgSelect, { target: { value: 'Acme Support' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Allocate' }));
-    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/number-a/allocate', expect.objectContaining({ method: 'POST' })));
-    const allocateCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url.endsWith('/number-a/allocate') && options?.method === 'POST');
-    expect(JSON.parse(allocateCall?.[1].body || '{}')).toEqual({ orgId: 'org-a' });
-    expect(await screen.findByText('Acme Support')).toBeInTheDocument();
-    expect(screen.getByText(/workspace selection is managed by the organization admin/i)).toBeInTheDocument();
+    expect(screen.getByText('Available')).toBeInTheDocument();
+    expect(mocks.apiFetch.mock.calls.some(([url]: [string]) => url.endsWith('/allocate'))).toBe(false);
   });
 });
