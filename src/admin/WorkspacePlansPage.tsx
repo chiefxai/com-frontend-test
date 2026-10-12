@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, CreditCard, Pencil, Plus, Save, Wallet, Layers3, ArrowUpRight, ShieldCheck, Database, HardDrive } from 'lucide-react';
+import { Building2, CreditCard, Pencil, Plus, Save, Wallet, Layers3, ArrowUpRight, ShieldCheck, Database, HardDrive, Settings2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { usePageHeaderContext } from '../lib/PageHeaderContext';
 import type { WorkspaceMode, WorkspacePlan, WorkspacePlanCatalog } from '../lib/workspacePolicy';
@@ -54,6 +54,7 @@ export default function WorkspacePlansPage() {
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
+  const [configureTermsOpen, setConfigureTermsOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<WorkspacePlan | null>(null);
   const [idTouched, setIdTouched] = React.useState(false);
 
@@ -225,11 +226,16 @@ export default function WorkspacePlansPage() {
         </> : <span className="truncate">Subscription Plans</span>}
       </span>,
       action: editingIndex === null
-        ? <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd}
-            disabled={loading || saving || loadingPolicies || !retentionCatalog} />
+        ? <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="secondary" icon={Settings2} onClick={() => setConfigureTermsOpen(value => !value)}>
+              {configureTermsOpen ? 'Close configuration' : 'Configure terms'}
+            </Button>
+            <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd}
+              disabled={loading || saving || loadingPolicies || !retentionCatalog} />
+          </div>
         : undefined,
     });
-  }, [headerCtx?.setHeader, beginAdd, cancelEdit, editingIndex, loading, saving, loadingPolicies, retentionCatalog]);
+  }, [headerCtx?.setHeader, beginAdd, cancelEdit, editingIndex, loading, saving, loadingPolicies, retentionCatalog, configureTermsOpen]);
 
   const policyFor = (plan: WorkspacePlan) => retentionCatalog?.policies.find(
     policy => policy.id === (plan.retentionPolicyId || retentionCatalog.defaultPolicyId),
@@ -237,7 +243,7 @@ export default function WorkspacePlansPage() {
   const chosenPolicy = draft ? policyFor(draft) : null;
 
   return <div className="w-full min-w-0 space-y-5 text-[var(--text-primary)]">
-    {editingIndex === null && <SubscriptionTermsPolicyEditor />}
+    {editingIndex === null && <SubscriptionTermsPolicyEditor open={configureTermsOpen} onClose={() => setConfigureTermsOpen(false)} />}
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
       <span>{error}</span>
       {!draft && <Button size="xs" type="button" onClick={() => void load()}>Retry</Button>}

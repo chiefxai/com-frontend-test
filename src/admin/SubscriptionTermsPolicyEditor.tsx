@@ -16,7 +16,7 @@ interface SubscriptionTermsPolicy {
   postpaid: { eligible: boolean; workspaceModes: PostpaidMode[]; organizationExposureLimit: { asset: 'INR'; units: string; scale: 2 } | null };
   serviceAfterExpiry: { mode: ExpiryMode | ''; graceSeconds: number | '' };
 }
-interface PolicyEnvelope { configured: boolean; version: number; policy: SubscriptionTermsPolicy | null; updatedAt?: string; updatedBy?: string }
+interface PolicyEnvelope { configured: boolean; source?: 'system_default' | 'configured'; version: number; policy: SubscriptionTermsPolicy | null; updatedAt?: string; updatedBy?: string }
 
 const emptyPolicy = (): SubscriptionTermsPolicy => ({
   includedDistinctIndustries: '', maxDistinctIndustries: '', taxes: [],
@@ -61,7 +61,7 @@ function validPolicy(policy: SubscriptionTermsPolicy, emptyTaxesConfirmed: boole
   return '';
 }
 
-export default function SubscriptionTermsPolicyEditor() {
+export default function SubscriptionTermsPolicyEditor({ open = true, onClose }: { open?: boolean; onClose?: () => void }) {
   const { showToast } = useToast();
   const [envelope, setEnvelope] = React.useState<PolicyEnvelope | null>(null);
   const [draft, setDraft] = React.useState<SubscriptionTermsPolicy>(emptyPolicy);
@@ -145,11 +145,13 @@ export default function SubscriptionTermsPolicyEditor() {
       <Button type="button" size="sm" variant="secondary" onClick={() => void load()}>Retry</Button>
     </div> : <>
       <div className={`mb-4 rounded-lg border p-3 text-xs ${envelope.configured ? 'border-emerald-300/60 bg-emerald-500/5 text-[var(--text-secondary)]' : 'border-amber-300/60 bg-amber-500/5 text-amber-800 dark:text-amber-300'}`}>
-        <p className="font-semibold">{envelope.configured ? `Configured · version ${envelope.version}` : 'Not configured'}</p>
-        <p className="mt-1">{envelope.configured ? 'This policy is saved for future versioned quotes.' : 'No financial terms are approved or active. Set every field explicitly before subscription quotes can be generated.'}</p>
+        <p className="font-semibold">{envelope.source === 'system_default' ? 'Starter defaults active' : envelope.configured ? `Configured · version ${envelope.version}` : 'Not configured'}</p>
+        <p className="mt-1">{envelope.source === 'system_default'
+          ? 'Default terms are active for new quotes: one included industry, no postpaid, and suspension at expiry. No tax is applied by this starter policy; configure the applicable tax treatment before using it for real billing.'
+          : envelope.configured ? 'This policy is saved for future versioned quotes.' : 'No financial terms are approved or active. Set every field explicitly before subscription quotes can be generated.'}</p>
         {envelope.updatedAt && <p className="mt-1 text-[11px]">Last updated {new Date(envelope.updatedAt).toLocaleString()}{envelope.updatedBy ? ` by ${envelope.updatedBy}` : ''}.</p>}
       </div>
-      <form onSubmit={save} className="space-y-5">
+      {open && <form onSubmit={save} className="space-y-5">
         <section className="space-y-3" aria-label="Industry allowances">
           <h3 className="text-sm font-semibold">Industry allowances</h3>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -209,9 +211,12 @@ export default function SubscriptionTermsPolicyEditor() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
           <p className="max-w-2xl text-[11px] leading-relaxed text-[var(--text-muted)]">Saving changes only the platform policy used for future plan quotes. It does not approve tax treatment, activate postpaid service, alter paid periods, or enable payment collection by itself.</p>
-          <Button type="submit" variant="primary" size="sm" icon={Save} loading={saving} disabled={saving}>Save financial terms</Button>
+          <div className="flex gap-2">
+            {onClose && <Button type="button" variant="secondary" size="sm" disabled={saving} onClick={onClose}>Cancel</Button>}
+            <Button type="submit" variant="primary" size="sm" icon={Save} loading={saving} disabled={saving}>Save financial terms</Button>
+          </div>
         </div>
-      </form>
+      </form>}
     </>}
   </Card>;
 }
