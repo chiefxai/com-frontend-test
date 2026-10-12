@@ -7,6 +7,7 @@ export interface ProfileMenuProps {
   kcUser: { name?: string; email?: string; role?: string; picture?: string; avatarUrl?: string } | null;
   dbRole: string | null;
   logout: () => void;
+  onOpen?: () => void;
   /** Optional upward placement for the account menu in a full-height sidebar. */
   placement?: 'bottom-end' | 'top-start';
   /** Avatar-only button used when a sidebar collapses to its icon rail. */
@@ -22,7 +23,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function ProfileMenu({
-  kcUser, dbRole, logout, placement = 'bottom-end', compact = false, showIdentity = false,
+  kcUser, dbRole, logout, onOpen, placement = 'bottom-end', compact = false, showIdentity = false,
 }: ProfileMenuProps) {
   const { mode, setMode } = useTheme();
   const [open, setOpen] = React.useState(false);
@@ -63,7 +64,10 @@ export default function ProfileMenu({
       {/* The avatar, name, and email share ONE keyboard-accessible trigger. */}
       <button
         ref={triggerRef}
-        onClick={() => setOpen(value => !value)}
+        onClick={() => {
+          if (!open) onOpen?.();
+          setOpen(value => !value);
+        }}
         type="button"
         aria-label="Open account menu"
         aria-haspopup="dialog"

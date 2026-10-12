@@ -71,6 +71,7 @@ interface SidebarProps {
   industryProfile?: IndustryProfile;
   accountUser: ProfileMenuProps['kcUser'];
   accountRole: string | null;
+  onAccountOpen?: () => void;
   onLogout: () => void;
 }
 
@@ -232,6 +233,7 @@ export default function Sidebar({
   industryProfile,
   accountUser,
   accountRole,
+  onAccountOpen,
   onLogout,
 }: SidebarProps) {
   const selectedWorkspace = workspaces.find(row => (row.workspaceId || row.orgId) === activeWorkspaceId);
@@ -718,6 +720,7 @@ export default function Sidebar({
           <ProfileMenu
             kcUser={accountUser}
             dbRole={accountRole}
+            onOpen={onAccountOpen}
             logout={onLogout}
             placement="top-start"
             compact={collapsed}

@@ -6,6 +6,7 @@ import { useDebouncedSync } from './hooks/useDebouncedSync';
 import { COST_PER_MINUTE_INR_FALLBACK as COST_PER_MINUTE_INR } from './lib/pricing';
 import { loadFromStorage, saveToStorage, setStorageScope } from './lib/storage';
 import { identityMatchesSelectedWorkspace, selectAuthorizedWorkspace, workspaceIdentifier } from './lib/workspaceSelection';
+import { profileRole, refreshProfileAuthorization } from './lib/profileRole';
 import { recordToLead } from './lib/objectContacts';
 import { RefreshProvider } from './lib/RefreshContext';
 import { PageHeaderProvider } from './lib/PageHeaderContext';
@@ -281,7 +282,7 @@ export default function App() {
     loadFromStorage<QuestionFlow[]>('chiefx_question_flows', [])
   );
   const { isEnabled } = useFeatureFlags();
-  const { can } = useAuthorization();
+  const { can, authorization } = useAuthorization();
   const industryContext = resolveIndustryContext(orgSettings);
   const effectiveIndustryProfile = remoteIndustryConfig?.industry === industryContext.industry
     ? {
@@ -989,7 +990,11 @@ export default function App() {
         businessType={orgSettings.businessType}
         industryProfile={effectiveIndustryProfile}
         accountUser={kcUser}
-        accountRole={dbRole}
+        accountRole={profileRole(authorization, dbRole || kcUser?.role || '')}
+        onAccountOpen={() => {
+          const selected = workspaces.find(row => workspaceIdentifier(row) === activeWorkspaceId);
+          if (selected) void refreshProfileAuthorization(selected);
+        }}
         onLogout={logout}
         workspaces={workspaces}
         multipleWorkspacesEnabled={multipleWorkspacesEnabled}

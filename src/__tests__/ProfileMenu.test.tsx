@@ -16,6 +16,19 @@ afterEach(() => {
 });
 
 describe('shared sidebar profile trigger', () => {
+  it('refreshes on opening and updates the visible role without reopening', () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<ProfileMenu kcUser={user} dbRole="Member" logout={mocks.logout} onOpen={onOpen} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open account menu' }));
+    expect(onOpen).toHaveBeenCalledOnce();
+    rerender(<ProfileMenu kcUser={user} dbRole="Manager" logout={mocks.logout} onOpen={onOpen} />);
+    const dialog = screen.getByRole('dialog', { name: 'Account menu' });
+    expect(within(dialog).getByText('Manager')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Member')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open account menu' }));
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
   it('opens the same dropdown when the expanded user name is clicked', () => {
     render(<ProfileMenu kcUser={user} dbRole="Workspace Admin" logout={mocks.logout}
       placement="top-start" showIdentity />);
