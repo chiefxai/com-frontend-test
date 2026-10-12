@@ -14,7 +14,7 @@ import PageHeaderBar from './components/ui/PageHeaderBar';
 import { ActiveTabProvider } from './lib/ActiveTabContext';
 import PageShell from './components/ui/PageShell';
 import { LoadingBoundary, LoadingState } from './components/ui/LoadingIndicator';
-import { fetchUserFlags, resetUserFlags, subscribe as subscribeFlags, isLoaded as flagsLoaded } from './features/feature-flags/userFlagsStore';
+import { fetchUserFlags, getGrantedFlags, resetUserFlags, subscribe as subscribeFlags, isLoaded as flagsLoaded } from './features/feature-flags/userFlagsStore';
 import { TAB_TO_FLAG } from './features/feature-flags/registry';
 import {
   Lead,
@@ -325,20 +325,23 @@ export default function App() {
   // and "the process got killed mid-call, does the UI still make sense"
   // both just work for free, with no special-case recovery logic needed.
   const refreshDialerTasks = useCallback(async () => {
-    if (!kcUser) return;
+    if (!kcUser || !flagsLoaded() || !getGrantedFlags().includes('dialer')) return;
     try {
       const res = await apiFetch('/api/dialer-tasks');
       const rows = await res.json();
       if (Array.isArray(rows)) setDialerTasks(rows);
     } catch { /* transient — next poll tick or SSE event will retry */ }
-  }, [kcUser]);
+  }, [kcUser?.id]);
 
   // Fetch all CRM data from the backend and update state.
   // Exposed as `refreshData` so page-level refresh buttons can call it directly.
   const refreshData = useCallback(async () => {
     if (!kcUser) return;
     try {
-      const allowed = (permission: string | string[],path: string) => {
+      const allowed = (permission: string | string[],path: string,feature?: string) => {
+        // The backend also checks workspace feature grants. Avoid fetching
+        // feature data that this membership cannot access in this workspace.
+        if (feature && (!flagsLoaded() || !getGrantedFlags().includes(feature))) return Promise.resolve(null);
         const access = getAuthorization();
         const permissions = Array.isArray(permission) ? permission : [permission];
         if (access && !permissions.some(key => access.permissions.includes(key))) return Promise.resolve(null);
@@ -357,16 +360,16 @@ export default function App() {
         resQuestionFlows,
         resIndustry
       ] = await Promise.all([
-        allowed('workspace.read', '/api/leads'),
-        allowed('workspace.read', '/api/workflows'),
-        allowed('workspace.read', '/api/call-logs'),
-        allowed('workspace.read', '/api/loans'),
+        allowed('workspace.read', '/api/leads', 'leads'),
+        allowed('workspace.read', '/api/workflows', 'workflows'),
+        allowed('workspace.read', '/api/call-logs', 'call_logs'),
+        allowed('workspace.read', '/api/loans', 'loan_lifecycle'),
         allowed('workspace.read', '/api/settings/numbers'),
         allowed(['organization.members.read','workspace.members.manage'], '/api/settings/team'),
         allowed('workspace.read', '/api/settings/workspace'),
-        allowed('workspace.read', '/api/dialer-tasks'),
+        allowed('workspace.read', '/api/dialer-tasks', 'dialer'),
         allowed('billing.read', '/api/billing'),
-        allowed('workspace.read', '/api/question-flows'),
+        allowed('workspace.read', '/api/question-flows', 'workflows'),
         allowed('workspace.read', '/api/settings/industry')
       ]);
 
@@ -390,7 +393,8 @@ export default function App() {
         setQuestionFlows(resQuestionFlows.map((f: any) => ({ nodes: [], edges: [], variables: [], ...f })));
 
       const industry = (resOrg && resOrg.industry) || orgSettings.industry;
-      if (getAuthorization()?.permissions.includes('workspace.read') !== false && industry && industry !== 'lending') {
+      if (getAuthorization()?.permissions.includes('workspace.read') !== false
+        && getGrantedFlags().includes('objects') && industry && industry !== 'lending') {
         try {
           const objects = await apiFetch('/api/objects').then(r => r.json());
           const primary = Array.isArray(objects) ? objects[0] : null;
@@ -622,6 +626,7 @@ export default function App() {
   useEffect(() => {
     saveToStorage('chiefx_leads', leads);
     if (!hasLoaded || !can('workspace.write')) return;
+    if (!flagsReady || (primaryObject ? !isEnabled('objects') : !isEnabled('leads'))) return;
 
     if (primaryObject) {
       // Non-lending organizations persist the canonical DomainRecord collection.
@@ -669,7 +674,7 @@ export default function App() {
       const prev = prevLeads.find((item) => item.id === lead.id);
       return !prev || JSON.stringify(prev) !== JSON.stringify(lead);
     });
-    if (changedLeads.length > 0) {
+    if (changedLeads.length > 0 && flagsReady && isEnabled('leads')) {
       apiFetch('/api/leads/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -677,10 +682,10 @@ export default function App() {
       }).catch((err) => console.error("Error syncing leads:", err));
     }
     previousLeadsRef.current = leads;
-  }, [leads, domainRecords, hasLoaded, primaryObject]);
+  }, [leads, domainRecords, hasLoaded, primaryObject, flagsReady, isEnabled, can]);
 
   useEffect(() => { saveToStorage('chiefx_workflows', workflows); }, [workflows]);
-  const workflowsSync = useDebouncedSync('/api/workflows/sync', workflows, hasLoaded && can('workspace.write'));
+  const workflowsSync = useDebouncedSync('/api/workflows/sync', workflows, hasLoaded && flagsReady && isEnabled('workflows') && can('workspace.write'));
 
   useEffect(() => { saveToStorage('chiefx_calllogs', callLogs); }, [callLogs]);
   // Call Logs are backend-authoritative. Do not replace/reinsert the whole
@@ -703,7 +708,7 @@ export default function App() {
   // Dialer tasks are server-authoritative; writes use the dedicated create/patch APIs.
 
   useEffect(() => { saveToStorage('chiefx_loans', loans); }, [loans]);
-  const loansSync = useDebouncedSync('/api/loans/sync', loans, hasLoaded && can('workspace.write'));
+  const loansSync = useDebouncedSync('/api/loans/sync', loans, hasLoaded && flagsReady && isEnabled('loan_lifecycle') && can('workspace.write'));
 
   // Only org admins / super admins can write to team, numbers, and org settings.
   // DB role is authoritative once loaded; JWT role is the optimistic initial value.
@@ -715,7 +720,7 @@ export default function App() {
   useEffect(() => { saveToStorage('chiefx_team', teamMembers); }, [teamMembers]);
 
   useEffect(() => { saveToStorage('chiefx_question_flows', questionFlows); }, [questionFlows]);
-  const questionFlowsSync = useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded && can('workspace.write'));
+  const questionFlowsSync = useDebouncedSync('/api/question-flows/sync', questionFlows, hasLoaded && flagsReady && isEnabled('workflows') && can('workspace.write'));
 
   useEffect(() => { saveToStorage('chiefx_org', orgSettings); }, [orgSettings]);
   const workspaceSettingsSync = useDebouncedSync('/api/settings/workspace', orgSettings, hasLoaded && isAdmin);
