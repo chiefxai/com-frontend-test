@@ -122,11 +122,11 @@ describe('subscription-aware workspace navigation', () => {
     expect(screen.queryByRole('button', { name: 'Workspaces & Numbers' })).not.toBeInTheDocument();
   });
 
-  it('keeps the switcher on a multi-workspace plan even when only one has been created', () => {
-    expect(shouldShowWorkspaceSwitcher(true, workspaces.slice(0, 1))).toBe(true);
+  it('hides the switcher on a multi-workspace plan when only one workspace exists', () => {
+    expect(shouldShowWorkspaceSwitcher(true, workspaces.slice(0, 1))).toBe(false);
     expect(showWorkspaceManagement(true)).toBe(true);
     render(sidebarView(true));
-    expect(screen.getByText('Current workspace')).toBeInTheDocument();
+    expect(screen.queryByText('Current workspace')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Administration' }));
     expect(screen.getByRole('button', { name: 'Workspaces & Numbers' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Phone Numbers' })).not.toBeInTheDocument();

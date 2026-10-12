@@ -2,8 +2,8 @@
  * A single-workspace subscription should not show an unnecessary selector.
  * However, users belonging to multiple organizations must still be able to
  * switch between them, even if each organization has a single-workspace plan.
- * An entitled multi-workspace organization keeps its selector when only one
- * workspace has been provisioned so far.
+ * Plan entitlement alone does not require a selector: at least two accessible
+ * workspaces must actually exist.
  */
 export interface WorkspaceNavigationMembership {
   orgId: string;
@@ -13,10 +13,9 @@ export interface WorkspaceNavigationMembership {
 }
 
 export function shouldShowWorkspaceSwitcher(
-  multipleWorkspacesEnabled: boolean,
+  _multipleWorkspacesEnabled: boolean,
   memberships: readonly WorkspaceNavigationMembership[],
 ): boolean {
-  if (multipleWorkspacesEnabled) return true;
   const accessible = memberships.filter(member =>
     member.organization?.status !== 'Suspended'
     && (!member.workspace?.status || member.workspace.status === 'Active'),

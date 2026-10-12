@@ -509,8 +509,7 @@ export default function Sidebar({
 
       {/* Navigation */}
 
-        {/* Only show a switcher if the plan supports multiple workspaces
-            or the signed-in user has other accessible organization memberships. */}
+        {/* Show the switcher only when multiple accessible workspaces exist. */}
         {displayWorkspaceSwitcher && <div className={collapsed ? 'shrink-0 px-2 pb-2' : 'shrink-0 px-3 pb-2'}>
           {!collapsed && (
             <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
