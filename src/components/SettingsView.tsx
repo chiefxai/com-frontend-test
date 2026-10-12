@@ -280,6 +280,7 @@ export default function SettingsView({
   const [savingWorkspaceBudget, setSavingWorkspaceBudget] = useState(false);
   const [workspaceBudgetError, setWorkspaceBudgetError] = useState('');
   const loadBillingUsage = async () => {
+    if (!can('billing.organization.read')) return;
     setBillingUsageLoading(true);
     try {
       const response = await apiFetch('/api/billing/console');
@@ -326,8 +327,8 @@ export default function SettingsView({
     } finally { setSavingWorkspaceBudget(false); }
   };
   useEffect(() => {
-    if (subTab === 'billing') void loadBillingUsage();
-  }, [subTab]);
+    if (subTab === 'billing' && can('billing.organization.read')) void loadBillingUsage();
+  }, [subTab, authorization, activeWorkspaceId]);
 
 
   // Per-org telephony credentials — lets this org use its own Vobiz
@@ -885,7 +886,7 @@ export default function SettingsView({
               <span className="text-[10px] font-medium text-[var(--text-muted)]">Administration</span>
               <span className="text-[var(--border)]">/</span>
               {subTab === 'billing'
-                ? billingPanel === 'dashboard'
+                ? billingPanel === 'dashboard' || !can('billing.organization.read')
                   ? <span className="truncate text-sm font-semibold">Billing & Usage</span>
                   : <>
                       <button type="button" onClick={() => setBillingPanel('dashboard')} className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]">Billing & Usage</button>
@@ -904,7 +905,7 @@ export default function SettingsView({
             </span>
           : <BreadcrumbTitle group="Administration" page={subTab === 'team' ? 'Staff & Teams' : 'API Keys'} />
       }
-      titleSuffix={subTab === 'billing' && billingPanel !== 'dashboard'
+      titleSuffix={subTab === 'billing' && can('billing.organization.read') && billingPanel !== 'dashboard'
         ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Billing & Usage" onClick={() => setBillingPanel('dashboard')} />
         : (subTab === 'numbers' || subTab === 'workspaces') && multiWorkspaceUi && effectiveWorkspacePanel !== 'overview'
           ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Workspaces & Numbers" onClick={() => setWorkspacePanel('overview')} />
@@ -1717,6 +1718,7 @@ export default function SettingsView({
           {/* Shared billing console: consistent information architecture across all billing views. */}
           {subTab === 'billing' && (
             <BillingWorkspace
+              workspaceId={currentWorkspaceId}
               view={billingPanel}
               onNavigate={setBillingPanel}
               workspaceBilling={workspaceBilling}

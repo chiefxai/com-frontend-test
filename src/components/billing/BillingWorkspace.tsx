@@ -11,6 +11,7 @@ import InitialSubscriptionPurchase from './InitialSubscriptionPurchase';
 import SubscriptionRenewal from './SubscriptionRenewal';
 import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
 import SubscriptionGraceRequest from './SubscriptionGraceRequest';
+import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
 
 export interface WorkspaceBillingSnapshot {
   workspaceId: string;
@@ -31,6 +32,7 @@ export interface OrganizationSubscriptionPrice {
 }
 
 export interface BillingWorkspaceProps {
+  workspaceId?: string;
   view: BillingPanel;
   onNavigate: (view: BillingPanel) => void;
   workspaceBilling: WorkspaceBillingSnapshot | null;
@@ -86,7 +88,7 @@ const money = (value: number | null | undefined) =>
 
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
-  view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
+  workspaceId, view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
   onRetry, phoneChargesBillable, canSubmitPayment, canManageBudget, rechargeBased,
   rechargeBalanceInr, rechargeReservedInr, budgetDraft, onBudgetDraftChange,
   onSaveBudget, budgetSaving, budgetError,
@@ -94,6 +96,11 @@ export default function BillingWorkspace({
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
+  if (!authorization?.permissions.includes('billing.organization.read')) {
+    return authorization?.permissions.includes('billing.read')
+      ? <WorkspaceAllocatedBilling workspaceId={workspaceId || workspaceBilling?.workspaceId || ''} />
+      : <p role="alert" className="col-span-12 text-xs text-[var(--text-secondary)]">You do not have access to workspace billing.</p>;
+  }
   return (
     <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5" id="billing-workspace">
       <Card padding="none" className="col-span-12 min-w-0 overflow-hidden">

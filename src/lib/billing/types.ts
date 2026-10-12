@@ -71,10 +71,7 @@ export interface WorkspaceBillingOverview {
   workspaceId: string;
   workspaceName: string;
   balances: CreditBalance[];
-  overallCap: BillingAmount | null;
-  postpaidUsed: BillingAmount;
-  postpaidLimit: BillingAmount | null;
-  periodEndsAt: string | null;
+  uninitialized: boolean;
   status: 'active' | 'held' | 'expired' | 'suspended';
 }
 

@@ -1,11 +1,23 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { setAuthorization, legacyAuthorization } from '../lib/authorization';
 import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '../components/billing/BillingWorkspace';
 
 vi.mock('../components/billing/OrganizationTopUp', () => ({
   default: () => <div data-testid="organization-credit-ledger">Credit ledger</div>,
 }));
+const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn() }));
+vi.mock('../lib/billing/client', () => ({ billingClient: { workspaceOverview: mocks.workspaceOverview } }));
+beforeEach(() => {
+  setAuthorization(legacyAuthorization('Organization Admin'));
+  mocks.workspaceOverview.mockResolvedValue({ orgId: 'org-1', workspaceId: 'workspace-1', workspaceName: 'Main office',
+    status: 'active', uninitialized: false, balances: [
+      { kind: 'subscription', available: {asset:'INR',units:'12500',scale:2}, held: {asset:'INR',units:'500',scale:2}, expiresAt:'2026-11-01T00:00:00Z' },
+      { kind: 'topup', available: {asset:'INR',units:'7000',scale:2}, held: {asset:'INR',units:'0',scale:2}, expiresAt:null },
+    ] });
+});
+afterEach(() => { cleanup(); setAuthorization(null); vi.clearAllMocks(); });
 
 const billing: BillingWorkspaceProps['workspaceBilling'] = {
   workspaceId: 'workspace-1',
@@ -42,6 +54,24 @@ const defaults: BillingWorkspaceProps = {
 };
 
 describe('organization billing interface', () => {
+  it.each(['dashboard', 'plan', 'usage', 'credits', 'allocation', 'payments', 'topup'] as const)(
+    'limits Workspace Admins to selected workspace allocations even on the %s view', async view => {
+      setAuthorization({ organizationRole:'Member', workspaceRole:'Workspace Admin', platformAdmin:false,
+        permissions:['billing.read','workspace.settings.manage'] });
+      render(<BillingWorkspace {...defaults} workspaceId="workspace-1" view={view} />);
+      expect(await screen.findByText('Allocated subscription credits')).toBeInTheDocument();
+      expect(screen.getByText('Allocated top-up credits')).toBeInTheDocument();
+      expect(screen.getByText('INR 125.00')).toBeInTheDocument();
+      expect(screen.getByText('INR 70.00')).toBeInTheDocument();
+      expect(mocks.workspaceOverview).toHaveBeenCalledWith('workspace-1');
+      expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name:'Billing sections' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name:'Add credits' })).not.toBeInTheDocument();
+      expect(screen.queryByText('Subscription / month')).not.toBeInTheDocument();
+      expect(screen.queryByText('Organization usage spend')).not.toBeInTheDocument();
+    },
+  );
+
   it('keeps recurring subscription, organization usage, and credit ledger conceptually separate', () => {
     render(<BillingWorkspace {...defaults} />);
     expect(screen.getByText('Subscription / month')).toBeTruthy();
