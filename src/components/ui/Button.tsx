@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { LoadingIcon } from './LoadingIndicator';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 type Size    = 'xs' | 'sm' | 'md' | 'lg';
@@ -47,10 +47,11 @@ export default function Button({
     <button
       {...rest}
       disabled={isDisabled}
+      aria-busy={loading || undefined}
       className={`inline-flex items-center font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT[variant]} ${SIZE[size]} ${className}`}
     >
       {loading ? (
-        <Loader2 className={`${ICON_SIZE[size]} animate-spin shrink-0`} />
+        <LoadingIcon size="xs" tone="current" className={`${ICON_SIZE[size]}`} />
       ) : Icon ? (
         <Icon className={`${ICON_SIZE[size]} shrink-0`} />
       ) : null}

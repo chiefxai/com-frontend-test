@@ -43,3 +43,16 @@ export function effectiveWorkspaceMemberKeys(
     assignment.featureFlags ?? null, assignment.workspaceRole === 'Workspace Admin',
   );
 }
+
+/** Organization-wide admins inherit each workspace's enabled entitlements
+ * without acquiring a Workspace Admin membership or workspace-specific override.
+ * null means workspace policy has not been loaded (not zero access).
+ */
+export function organizationAdminWorkspaceFeatures(
+  organizationKeys: string[],
+  workspacePolicy: WorkspaceFeaturePolicy | undefined,
+): string[] | null {
+  if (!workspacePolicy) return null;
+  const allowed = new Set(organizationKeys);
+  return workspacePolicy.enabledFeatures.filter(key => allowed.has(key));
+}

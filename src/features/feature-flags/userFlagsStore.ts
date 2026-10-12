@@ -12,7 +12,7 @@
 //   hasRestriction()   → true if the user has a limited flag set
 //   getGrantedFlags()  → string[] of allowed flag keys
 
-import { setAuthorization, legacyAuthorization } from '../../lib/authorization';
+import { getAuthorization, setAuthorization, legacyAuthorization } from '../../lib/authorization';
 import { apiFetch } from '../../lib/api';
 
 let _granted: string[] = [];
@@ -51,7 +51,17 @@ export async function fetchUserFlags(): Promise<string[]> {
         _granted = Array.isArray(data?.featureFlags) ? data.featureFlags : [];
         _orgFlags = Array.isArray(data?.orgFeatureFlags) ? data.orgFeatureFlags : _granted;
         _role = data?.role ?? '';
-        setAuthorization(data?.authorization || legacyAuthorization(_role));
+        // /api/auth/me is the authoritative workspace-bound permission snapshot.
+        // Do not replace its validated grants with a stale feature endpoint
+        // response or inferred legacy role permissions.
+        if (!getAuthorization()) {
+          if (data?.authorization && Array.isArray(data.authorization.permissions)) {
+            setAuthorization(data.authorization);
+          } else if (_role) {
+            // Retained only for legacy flows without an auth/me snapshot.
+            setAuthorization(legacyAuthorization(_role));
+          }
+        }
       }
       // Non-ok (403 for platform admins, etc.) — no grants, but still mark loaded
       // so the sidebar knows it can apply the "no restriction" state.

@@ -21,7 +21,16 @@ vi.mock('../lib/billing/client', () => ({
   newBillingIdempotencyKey: () => 'test-idempotency-key',
 }));
 vi.mock('../lib/api', () => ({ apiFetch: mocks.apiFetch }));
-vi.mock('../lib/authorization', () => ({ useAuthorization: () => ({ can: () => true }) }));
+vi.mock('../lib/authorization', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/authorization')>()),
+  useAuthorization: () => ({
+    can: () => true,
+    authorization: {
+      organizationRole: 'Organization Admin', workspaceRole: null, platformAdmin: false,
+      permissions: ['billing.organization.read', 'billing.credit.allocate'],
+    },
+  }),
+}));
 vi.mock('../components/billing/WorkspaceAddonPurchases', () => ({
   default: () => <div data-testid="workspace-invoices">Workspace invoices</div>,
 }));

@@ -5,7 +5,7 @@ import Button from '../ui/Button';
 import KpiCard from '../ui/KpiCard';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
 import { formatInr } from '../../lib/pricing';
-import { useAuthorization } from '../../lib/authorization';
+import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
 import InitialSubscriptionPurchase from './InitialSubscriptionPurchase';
 import SubscriptionRenewal from './SubscriptionRenewal';
@@ -92,9 +92,8 @@ export default function BillingWorkspace({
   onSaveBudget, budgetSaving, budgetError,
 }: BillingWorkspaceProps) {
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
-  const { can, authorization } = useAuthorization();
-  const canAllocate = can('billing.credit.allocate')
-    && ['Owner', 'Organization Admin'].includes(authorization?.organizationRole || '');
+  const { authorization } = useAuthorization();
+  const canAllocate = canAllocateOrganizationCredits(authorization);
   return (
     <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5" id="billing-workspace">
       <Card padding="none" className="col-span-12 min-w-0 overflow-hidden">

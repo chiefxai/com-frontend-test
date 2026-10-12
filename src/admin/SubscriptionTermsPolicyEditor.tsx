@@ -45,7 +45,7 @@ function amountToInput(value: SubscriptionTermsPolicy['postpaid']['organizationE
   return `${units / 100n}.${(units % 100n).toString().padStart(2, '0')}`;
 }
 function validPolicy(policy: SubscriptionTermsPolicy, emptyTaxesConfirmed: boolean): string {
-  if (!Number.isInteger(policy.includedDistinctIndustries) || policy.includedDistinctIndustries < 1) return 'Set the number of included distinct industries.';
+  if (!Number.isInteger(policy.includedDistinctIndustries) || Number(policy.includedDistinctIndustries) < 1) return 'Set the number of included distinct industries.';
   if (policy.maxDistinctIndustries !== null && policy.maxDistinctIndustries !== '' && (!Number.isInteger(policy.maxDistinctIndustries) || Number(policy.maxDistinctIndustries) < Number(policy.includedDistinctIndustries))) return 'Maximum distinct industries must be at least the included amount, or choose no maximum.';
   if (!policy.taxes.length && !emptyTaxesConfirmed) return 'Confirm explicitly if this policy has no tax rules.';
   for (const [index, tax] of policy.taxes.entries()) {

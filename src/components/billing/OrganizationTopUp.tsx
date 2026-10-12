@@ -1,7 +1,7 @@
 import React from 'react';
 import WorkspaceAddonPurchases from './WorkspaceAddonPurchases';
 import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
-import { useAuthorization } from '../../lib/authorization';
+import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
@@ -29,8 +29,7 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void }) {
   const { can, authorization } = useAuthorization();
-  const canAllocate = can('billing.credit.allocate')
-    && ['Owner', 'Organization Admin'].includes(authorization?.organizationRole || '');
+  const canAllocate = canAllocateOrganizationCredits(authorization);
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
   const [overviewError, setOverviewError] = React.useState('');

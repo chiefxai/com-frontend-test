@@ -20,6 +20,7 @@ import {
   waitFor,
   fireEvent,
   act,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -810,6 +811,7 @@ describe('Sidebar', () => {
     grantedFlags: string[],
     industry = 'lending',
     industryProfile?: ReturnType<typeof getIndustryProfile>,
+    accountUser: React.ComponentProps<typeof Sidebar>['accountUser'] = null,
   ) {
     setupKc(kcClaims);
     mockKc.init.mockResolvedValue(true);
@@ -851,7 +853,7 @@ describe('Sidebar', () => {
               notifications={[]}
               onMarkAllNotificationsRead={vi.fn()}
               onClearNotifications={vi.fn()}
-              accountUser={null}
+              accountUser={accountUser}
               accountRole={userRole}
               onLogout={vi.fn()}
             />
@@ -981,6 +983,26 @@ describe('Sidebar', () => {
     // 'Contacts' (the old objects tab) should not appear — only 'Contact Directory'
     const contactItems = screen.queryAllByText('Contacts');
     expect(contactItems).toHaveLength(0);
+  });
+
+  it('opens the organization sidebar profile dropdown from either name or email', async () => {
+    localStorage.setItem('sidebar-collapsed', 'false');
+    await renderSidebar(
+      { sub: 'admin', email: 'a@t.com', realm_access: { roles: ['org-admin'] } },
+      [], 'lending', undefined,
+      { name: 'Alex Rivera', email: 'alex.rivera@example.com' },
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Open account menu' });
+    expect(within(trigger).getByText('Alex Rivera')).toBeInTheDocument();
+    expect(within(trigger).getByText('alex.rivera@example.com')).toBeInTheDocument();
+
+    fireEvent.click(within(trigger).getByText('Alex Rivera'));
+    expect(screen.getByRole('dialog', { name: 'Account menu' })).toBeInTheDocument();
+
+    fireEvent.click(within(trigger).getByText('alex.rivera@example.com'));
+    expect(screen.queryByRole('dialog', { name: 'Account menu' })).not.toBeInTheDocument();
+    localStorage.removeItem('sidebar-collapsed');
   });
 });
 
