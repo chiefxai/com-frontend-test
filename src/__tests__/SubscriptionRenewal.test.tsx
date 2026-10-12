@@ -17,9 +17,10 @@ const quote = (overrides: Record<string, unknown> = {}) => ({ quoteId: 'renewal-
   subtotal: amount, discounts: { asset: 'INR', units: '0', scale: 2 }, totalTax: { asset: 'INR', units: '0', scale: 2 },
   paymentAmount: amount, includedCredits: { asset: 'INR', units: '250000', scale: 2 }, createdAt: '2026-10-01T00:00:00Z',
   validUntil: '2026-10-10T00:00:00Z', expired: false, pendingPayment: false, payable: true, ...overrides });
-const response = (options: { eligible?: boolean; overdue?: boolean; q?: ReturnType<typeof quote> | null; enabled?: boolean } = {}) => ({
+const response = (options: { eligible?: boolean; overdue?: boolean; q?: ReturnType<typeof quote> | null; enabled?: boolean; trial?: boolean } = {}) => ({
   subscription: { lifecycleStatus: 'active', accessState: 'operational', planId: 'growth', planVersion: 1, version: 3, restrictionDeadline: null },
-  period: { periodId: 'period-1', status: 'active', startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z', renewalEligible: options.eligible ?? true, overdue: options.overdue ?? false },
+  period: { periodId: 'period-1', status: 'active', startsAt: '2026-09-01T00:00:00Z', endsAt: '2026-10-01T00:00:00Z', renewalEligible: options.eligible ?? true, overdue: options.overdue ?? false, isTrial: options.trial ?? false, trialDays: options.trial ? 5 : null },
+  availablePlans: options.trial ? [{ planId: 'growth', planVersion: 4, name: 'Growth', monthlyPrice: amount, includedCredits: amount }] : [],
   quote: options.q === undefined ? null : options.q,
   payment: { submissionEnabled: options.enabled ?? true, purpose: 'subscription', submissionPath: '/api/billing/payments' },
 });
@@ -27,6 +28,18 @@ beforeEach(() => { vi.clearAllMocks(); mocks.nextKey = 0; mocks.can.mockReturnVa
 afterEach(cleanup);
 
 describe('organization subscription renewal', () => {
+  it('lets an organization choose a paid plan during a short free trial and prepares its conversion quote', async () => {
+    mocks.renewal.mockResolvedValue(response({ eligible: true, trial: true }));
+    mocks.createQuote.mockResolvedValue(response({ eligible: true, trial: true, q: quote() }));
+    render(<SubscriptionRenewal canSubmit />);
+    expect(await screen.findByText(/Free trial \(5 days\)/)).toBeInTheDocument();
+    expect(screen.getByText(/₹200 trial credits expire when the trial ends/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Choose the paid plan to start after your trial'), { target: { value: 'growth' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare trial conversion' }));
+    await screen.findByText('Renewal quote · draft');
+    expect(mocks.createQuote).toHaveBeenCalledWith({ targetPlanId: 'growth', targetPlanVersion: 4 }, expect.objectContaining({ idempotencyKey: expect.any(String) }));
+  });
+
   it('uses server renewal eligibility and keeps quote creation unavailable before the renewal window', async () => {
     mocks.renewal.mockResolvedValue(response({ eligible: false }));
     render(<SubscriptionRenewal canSubmit />);

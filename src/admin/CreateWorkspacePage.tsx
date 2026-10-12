@@ -46,6 +46,14 @@ interface CreateOrgForm {
   chargeScope: 'ai_only' | 'ai_and_call_provider';
   telephonySetup: 'customer_owned' | 'platform_managed';
   platformTelephonyNumberId: string;
+  platformTelephonyConnectorId: string;
+  platformTelephonyNumberMode: 'saved' | 'enter';
+  platformTelephonyPhoneNumber: string;
+  platformTelephonyNumberLabel: string;
+  platformTelephonyProviderNumberId: string;
+  platformTelephonyNumberConfirmed: boolean;
+  freeTrial: boolean;
+  freeTrialDays: number;
 }
 
 interface TelephonyInventoryNumber {
@@ -80,9 +88,18 @@ export default function CreateWorkspacePage() {
     chargeScope: 'ai_only',
     telephonySetup: 'customer_owned',
     platformTelephonyNumberId: '',
+    platformTelephonyConnectorId: '',
+    platformTelephonyNumberMode: 'saved',
+    platformTelephonyPhoneNumber: '',
+    platformTelephonyNumberLabel: '',
+    platformTelephonyProviderNumberId: '',
+    platformTelephonyNumberConfirmed: false,
+    freeTrial: false,
+    freeTrialDays: 7,
   });
   const [platformTelephonyNumbers, setPlatformTelephonyNumbers] = useState<Array<TelephonyInventoryNumber & { connectorId: string; connectorName: string; providerKey: string; providerName: string }>>([]);
   const [platformTelephonyAvailable, setPlatformTelephonyAvailable] = useState(false);
+  const [platformTelephonyConnectors, setPlatformTelephonyConnectors] = useState<TelephonyConnector[]>([]);
   const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
   const [loadingWorkspacePlans, setLoadingWorkspacePlans] = useState(true);
@@ -93,6 +110,9 @@ export default function CreateWorkspacePage() {
   const [selectedFlags, setSelectedFlags] = useState<string[]>(() => defaultFeatureFlagsForIndustry('lending'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [initialPaymentReference, setInitialPaymentReference] = useState('');
+  const [initialPaymentNote, setInitialPaymentNote] = useState('');
+  const [initialPaymentProof, setInitialPaymentProof] = useState<File | null>(null);
   const navigate = useNavigate();
   const selectedWorkspacePlan = workspacePlans.find(plan => plan.id === form.subscriptionPlan && plan.active) || null;
   const planMode = selectedWorkspacePlan?.defaultMode || 'single';
@@ -119,9 +139,8 @@ export default function CreateWorkspacePage() {
         const providers = Array.isArray(providerBody.providers) ? providerBody.providers : [];
         const connectors: TelephonyConnector[] = Array.isArray(connectorBody.connectors) ? connectorBody.connectors : [];
         const names = new Map<string, string>(providers.map((provider: any) => [provider.providerKey, provider.label || provider.name || provider.providerKey]));
-        // This screen reserves a number for Vobiz outbound routing, the only
-        // connector call path currently wired end to end.
-        const activeConnectors = connectors.filter(connector => connector.status === 'active' && connector.providerKey === 'vobiz');
+        const activeConnectors = connectors.filter(connector => connector.status === 'active');
+        setPlatformTelephonyConnectors(activeConnectors);
         const inventories = await Promise.all(activeConnectors.map(async connector => {
           const response = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(connector.id)}/numbers`);
           if (!response.ok) return [];
@@ -226,6 +245,15 @@ export default function CreateWorkspacePage() {
       setError('Choose an active workspace plan in the plan settings before creating an organization.');
       return;
     }
+    if (!form.freeTrial && (!initialPaymentReference.trim() || !initialPaymentProof)) {
+      setError('Enter the payment reference and upload its receipt for the initial subscription.');
+      return;
+    }
+    if (!form.freeTrial && initialPaymentProof && (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(initialPaymentProof.type)
+      || initialPaymentProof.size === 0 || initialPaymentProof.size > 10 * 1024 * 1024)) {
+      setError('Choose a PDF, JPG, PNG or WEBP receipt up to 10 MB.');
+      return;
+    }
     if (!selectedRetentionPolicy) {
       setError('The subscription plan references a missing retention and backup policy. Update the subscription plan or reload policies.');
       return;
@@ -245,9 +273,16 @@ export default function CreateWorkspacePage() {
         setError('Service account credentials JSON is required.');
         return;
       }
-      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed' && !form.platformTelephonyNumberId) {
-        setError('Choose an available platform-managed phone number.');
-        return;
+      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed') {
+        if (form.platformTelephonyNumberMode === 'saved' && !form.platformTelephonyNumberId) {
+          setError('Choose an available number from platform inventory.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'enter' && (!form.platformTelephonyConnectorId || !form.platformTelephonyPhoneNumber.trim())) {
+          setError('Choose a platform connector and enter its phone number.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'enter' && !form.platformTelephonyNumberConfirmed) {
+          setError('Confirm the number is active in the selected provider account before continuing.'); return;
+        }
       }
       if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !form.callPhoneNumber.trim())) {
         setError('Call provider credentials and phone number are required when Charge Scope is AI + Call Provider.');
@@ -278,6 +313,8 @@ export default function CreateWorkspacePage() {
           workspaceName: form.workspaceName,
           industry: form.industry,
           subscriptionPlan: form.subscriptionPlan,
+          freeTrial: form.freeTrial,
+          ...(form.freeTrial ? { freeTrialDays: form.freeTrialDays } : {}),
           workspacePlanId: form.subscriptionPlan,
           workspacePlanVersion,
           adminEmail: form.adminEmail,
@@ -295,9 +332,6 @@ export default function CreateWorkspacePage() {
               authToken: form.callAuthToken.trim(),
               phoneNumber: form.callPhoneNumber.trim(),
             },
-          } : {}),
-          ...(form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed' ? {
-            platformTelephonyNumberId: form.platformTelephonyNumberId,
           } : {}),
           chargeScope: form.chargeScope,
           billingMethod: 'pay_as_you_go',
@@ -317,6 +351,59 @@ export default function CreateWorkspacePage() {
         const d = await res.json().catch(() => ({}));
         setError(d.error || 'Failed to create workspace');
         return;
+      }
+      const created = await res.json().catch(() => ({}));
+      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed') {
+        try {
+          let numberId = form.platformTelephonyNumberId;
+          if (form.platformTelephonyNumberMode === 'enter') {
+            const numberResponse = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(form.platformTelephonyConnectorId)}/numbers`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phoneNumberE164: form.platformTelephonyPhoneNumber.trim(),
+                providerNumberId: form.platformTelephonyProviderNumberId.trim() || null,
+                displayName: form.platformTelephonyNumberLabel.trim() || null }),
+            });
+            const numberBody = await numberResponse.json().catch(() => ({}));
+            if (!numberResponse.ok || !numberBody.number?.id) throw new Error(numberBody.error || 'Could not save the number to connector inventory.');
+            numberId = numberBody.number.id;
+            const readyResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(numberId)}/mark-ready`, { method: 'POST' });
+            if (!readyResponse.ok) {
+              const details = await readyResponse.json().catch(() => ({}));
+              throw new Error(details.error || 'Could not confirm the number as ready.');
+            }
+          }
+          const allocationResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(numberId)}/allocate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: created.id }),
+          });
+          if (!allocationResponse.ok) {
+            const details = await allocationResponse.json().catch(() => ({}));
+            throw new Error(details.error || 'Could not allocate the number to the organization.');
+          }
+        } catch (cause) {
+          setError(`Organization ${created.id || ''} was created, but telephony allocation did not complete: ${cause instanceof Error ? cause.message : 'Unknown error'}. You can allocate the number from Telephony Connectors.`);
+          return;
+        }
+      }
+      if (!form.freeTrial) {
+        const purchase = created.initialSubscriptionPurchase;
+        if (purchase?.status !== 'awaiting_payment' || !purchase.quoteId || !purchase.paymentAmount) {
+          setError(`Organization ${created.id || ''} was created, but its initial payment quote is not ready. Enable subscription purchase and payment review, then recover the quote in Billing.`);
+          return;
+        }
+        const paymentForm = new FormData();
+        paymentForm.append('command', JSON.stringify({ schemaVersion: 1, purpose: 'subscription', quoteId: purchase.quoteId,
+          expectedAmount: purchase.paymentAmount, paymentReference: initialPaymentReference.trim(),
+          ...(initialPaymentNote.trim() ? { payerNote: initialPaymentNote.trim() } : {}) }));
+        paymentForm.append('proof', initialPaymentProof!, initialPaymentProof!.name);
+        const idempotencyKey = globalThis.crypto?.randomUUID?.() || `initial-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const paymentResponse = await apiFetch(`/api/platform/organizations/${encodeURIComponent(created.id)}/initial-subscription-payment`, {
+          method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: paymentForm,
+        });
+        if (!paymentResponse.ok) {
+          const details = await paymentResponse.json().catch(() => ({}));
+          setError(`Organization ${created.id} was created, but its payment proof was not submitted: ${details.error || 'Payment submission failed'}. The initial quote remains available in Billing.`);
+          return;
+        }
       }
       navigate('/admin/organizations');
     } catch (error) {
@@ -349,6 +436,34 @@ export default function CreateWorkspacePage() {
             <label className="block text-xs font-medium text-slate-500 mb-1">Organization Name *</label>
             <input value={form.name} onChange={set('name')} placeholder="Acme Corp" required className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Free trial</h2>
+          <label className="mt-3 flex items-center gap-2 text-sm text-[var(--text-primary)]">
+            <input type="checkbox" checked={form.freeTrial} onChange={event=>setForm(current=>({...current,freeTrial:event.target.checked}))} />
+            Start this organization with a free trial
+          </label>
+          {form.freeTrial && <div className="mt-3 max-w-xs">
+            <label htmlFor="free-trial-days" className="block text-xs font-medium text-[var(--text-secondary)]">Trial duration (1–15 days)</label>
+            <input id="free-trial-days" type="number" min={1} max={15} step={1} required value={form.freeTrialDays}
+              onChange={event=>setForm(current=>({...current,freeTrialDays:Number(event.target.value)}))}
+              className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm" />
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">Billing opens 7 days before the trial ends, or immediately for trials shorter than 7 days.</p>
+          </div>}
+          {!form.freeTrial && <div className="mt-4 space-y-3 rounded-xl border border-amber-300/60 bg-amber-500/5 p-4">
+            <p className="text-xs text-[var(--text-secondary)]">A paid subscription is required to start service. Submit the payment reference and receipt here; it will appear in Payment Reviews and the subscription starts only after approval.</p>
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">Bank or UPI transaction reference
+              <input required maxLength={160} value={initialPaymentReference} onChange={event=>setInitialPaymentReference(event.target.value)} className="mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm" />
+            </label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">Payment receipt
+              <input required type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={event=>setInitialPaymentProof(event.target.files?.[0] || null)} className="mt-1.5 block w-full text-xs" />
+              <span className="mt-1 block text-[11px] text-[var(--text-muted)]">PDF, JPG, PNG or WEBP, up to 10 MB.</span>
+            </label>
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">Payment note (optional)
+              <textarea rows={2} maxLength={2000} value={initialPaymentNote} onChange={event=>setInitialPaymentNote(event.target.value)} className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm" />
+            </label>
+          </div>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -460,15 +575,26 @@ export default function CreateWorkspacePage() {
                 </label>
               </fieldset>}
               {form.telephonySetup === 'platform_managed' ? <>
-                <div>
+                <fieldset className="space-y-2">
+                  <legend className="block text-xs font-medium text-slate-600">Platform number</legend>
+                  <label className="flex items-center gap-2 text-sm"><input type="radio" name="platformNumberMode" checked={form.platformTelephonyNumberMode === 'saved'} onChange={() => setForm(current => ({ ...current, platformTelephonyNumberMode: 'saved' }))} />Choose a saved number</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="radio" name="platformNumberMode" checked={form.platformTelephonyNumberMode === 'enter'} onChange={() => setForm(current => ({ ...current, platformTelephonyNumberMode: 'enter' }))} />Enter a number from a connector</label>
+                </fieldset>
+                {form.platformTelephonyNumberMode === 'saved' ? <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1" htmlFor="platform-telephony-number">Available platform number *</label>
                   <select id="platform-telephony-number" value={form.platformTelephonyNumberId} onChange={event => setForm(current => ({ ...current, platformTelephonyNumberId: event.target.value }))} required className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
                     <option value="">Select a number</option>
                     {platformTelephonyNumbers.map(number => <option key={number.id} value={number.id}>{number.phoneNumberE164} · {number.providerName} · {number.connectorName}{number.displayName ? ` · ${number.displayName}` : ''}</option>)}
                   </select>
                   {!platformTelephonyNumbers.length && <p className="mt-1 text-xs text-slate-500">No available numbers are currently in active platform connector inventory.</p>}
-                </div>
-                <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">This assigns a platform number that an administrator has verified on its provider account. Live routing still requires both telephony connector feature flags.</p>
+                </div> : <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-xs font-medium text-slate-500">Platform connector *<select required className="mt-1 w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm" value={form.platformTelephonyConnectorId} onChange={event => setForm(current => ({ ...current, platformTelephonyConnectorId: event.target.value }))}><option value="">Select connector</option>{platformTelephonyConnectors.map(connector => <option key={connector.id} value={connector.id}>{connector.displayName} · {connector.providerKey}</option>)}</select></label>
+                  <label className="block text-xs font-medium text-slate-500">Phone number *<input required value={form.platformTelephonyPhoneNumber} onChange={event => setForm(current => ({ ...current, platformTelephonyPhoneNumber: event.target.value }))} placeholder="+14155550123" className="mt-1 w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm" /></label>
+                  <label className="block text-xs font-medium text-slate-500">Number label (optional)<input value={form.platformTelephonyNumberLabel} onChange={event => setForm(current => ({ ...current, platformTelephonyNumberLabel: event.target.value }))} className="mt-1 w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm" /></label>
+                  <label className="block text-xs font-medium text-slate-500">Provider number reference (optional)<input value={form.platformTelephonyProviderNumberId} onChange={event => setForm(current => ({ ...current, platformTelephonyProviderNumberId: event.target.value }))} className="mt-1 w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm" /></label>
+                  <label className="sm:col-span-2 flex items-start gap-2 text-xs text-slate-600"><input type="checkbox" checked={form.platformTelephonyNumberConfirmed} onChange={event => setForm(current => ({ ...current, platformTelephonyNumberConfirmed: event.target.checked }))} /><span>I confirm this number is active on the selected provider account and is available to allocate.</span></label>
+                </div>}
+                <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">The number is allocated to the organization. Its admin can assign it to the right workspace later.</p>
               </> : <>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Call Provider *</label>

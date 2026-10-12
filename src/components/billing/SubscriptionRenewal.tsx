@@ -21,6 +21,7 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
   const [reference, setReference] = React.useState('');
   const [note, setNote] = React.useState('');
   const [proof, setProof] = React.useState<File | null>(null);
+  const [targetPlanId, setTargetPlanId] = React.useState('');
 
   const refresh = React.useCallback(async () => {
     setLoading(true); setError(''); setNotFound(false);
@@ -35,9 +36,11 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
 
   const createQuote = async () => {
     if (!billingAdmin || busy || data?.period?.renewalEligible !== true || data.quote?.pendingPayment) return;
+    const selected = data.period.isTrial ? data.availablePlans?.find(plan => plan.planId === targetPlanId) : null;
+    if (data.period.isTrial && !selected) { setError('Choose a subscription plan to continue after the trial.'); return; }
     setBusy(true); setError(''); setSuccess('');
     try {
-      const next = await billingClient.createSubscriptionRenewalQuote({ idempotencyKey: quoteKey });
+      const next = await billingClient.createSubscriptionRenewalQuote(selected ? { targetPlanId: selected.planId, targetPlanVersion: selected.planVersion } : {}, { idempotencyKey: quoteKey });
       setData(next); setQuoteKey(newBillingIdempotencyKey());
       setSuccess('Renewal quote is ready. Review its dates, amount, and included credits.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not prepare the renewal quote. Retry to try again safely.'); }
@@ -76,12 +79,23 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
     {!loading && notFound && <p role="status" className="mt-3 text-xs text-[var(--text-secondary)]">No active subscription period is available for renewal.</p>}
     {!loading && data && <div className="mt-3 space-y-4">
       {data.period ? <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-[var(--border)] p-3 text-xs">
-        <span>Current paid period: {subscriptionDateText(data.period.startsAt)} – {subscriptionDateText(data.period.endsAt)}</span>
+        <span>{data.period.isTrial ? `Free trial (${data.period.trialDays} days):` : 'Current paid period:'} {subscriptionDateText(data.period.startsAt)} – {subscriptionDateText(data.period.endsAt)}</span>
+        {data.period.isTrial && <span>₹200 trial credits expire when the trial ends</span>}
         {data.period.overdue && <strong className="text-amber-700">Overdue</strong>}
         {eligible && <strong className="text-[var(--accent)]">Renewal available</strong>}
       </div> : <p className="text-xs text-[var(--text-secondary)]">No current paid period dates were returned.</p>}
 
-      {eligible && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
+      {data.period?.isTrial && eligible && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-end gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3">
+        <div className="min-w-64 flex-1"><label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor="trial-conversion-plan">Choose the paid plan to start after your trial</label>
+          <select id="trial-conversion-plan" value={targetPlanId} onChange={event=>setTargetPlanId(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm">
+            <option value="">Select a subscription plan</option>{(data.availablePlans || []).map(plan=><option key={`${plan.planId}:${plan.planVersion}`} value={plan.planId}>{plan.name} · {subscriptionAmountText(plan.monthlyPrice)} / month</option>)}
+          </select>
+        </div>
+        <Button type="button" size="sm" variant="primary" icon={CreditCard} loading={busy} disabled={busy || !targetPlanId} onClick={()=>void createQuote()}>Prepare trial conversion</Button>
+        <p className="w-full text-[11px] text-[var(--text-muted)]">Submit payment before the trial ends. After platform approval, the selected plan and its monthly credits begin when the trial period ends.</p>
+      </div>}
+
+      {eligible && !data.period?.isTrial && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
         <p>{quote?.expired ? 'The previous renewal quote expired.' : data.period?.overdue ? 'The subscription period is overdue; a renewal quote remains available.' : 'Renewal has opened for this billing period.'}</p>
         <Button type="button" size="sm" variant="primary" icon={RefreshCw} loading={busy} disabled={busy} onClick={() => void createQuote()}>{quote?.expired ? 'Refresh renewal quote' : 'Prepare renewal quote'}</Button>
       </div>}

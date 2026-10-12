@@ -19,6 +19,8 @@ beforeEach(() => {
   mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
     if (url === '/api/telephony/providers') return response({ providers });
     if (url === '/api/telephony/connectors' && !options) return response({ connectors });
+    if (url === '/api/telephony/workspaces') return response({ workspaces: [{ id: 'ws-1', name: 'Support workspace' }] });
+    if (url === '/api/telephony/numbers') return response({ numbers: [{ id: 'n-1', phoneNumberE164: '+14155550123', displayName: 'Support', connectorAccountId: 'org-conn-1', inventoryStatus: 'available', provisioningStatus: 'ready' }] });
     if (url === '/api/telephony/connectors' && options?.method === 'POST') {
       const data = JSON.parse(options.body || '{}');
       connectors.push({ id: 'org-conn-2', providerKey: data.providerKey, displayName: data.displayName, providerAccountId: data.providerAccountId, credentialFieldsConfigured: true, status: 'active' });
@@ -26,6 +28,7 @@ beforeEach(() => {
     }
     if (url === '/api/telephony/connectors/org-conn-1/numbers' && options?.method === 'POST') return response({ number: { id: 'n-1' } }, 201);
     if (url === '/api/telephony/connectors/org-conn-1/numbers' && !options) return response({ numbers: [{ id: 'n-1', phoneNumberE164: '+14155550123', displayName: 'Support', inventoryStatus: 'available' }] });
+    if (url === '/api/telephony/numbers/n-1/assign' && options?.method === 'POST') return response({ assignment: { workspaceId: 'ws-1' } });
     throw new Error(`Unexpected request ${url}`);
   });
 });
@@ -35,7 +38,7 @@ describe('Organization-owned telephony connector management', () => {
     render(<OrganizationTelephonyConnectors />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Connector name'), { target: { value: 'Sales account' } });
-    fireEvent.change(screen.getByLabelText('Provider account ID (optional)'), { target: { value: 'vobiz-org-2' } });
+    fireEvent.change(screen.getByLabelText('Provider account reference (optional)'), { target: { value: 'vobiz-org-2' } });
     fireEvent.change(screen.getByLabelText('Auth ID *'), { target: { value: 'auth-2' } });
     fireEvent.change(screen.getByLabelText('Auth token *'), { target: { value: 'secret-2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add account' }));
@@ -52,5 +55,16 @@ describe('Organization-owned telephony connector management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add number to inventory' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/telephony/connectors/org-conn-1/numbers', expect.objectContaining({ method: 'POST' })));
     expect(await screen.findByRole('status')).toHaveTextContent('Live calling is not enabled');
+  });
+
+  it('assigns a ready number to a named workspace without exposing internal provisioning fields', async () => {
+    render(<OrganizationTelephonyConnectors />);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    await screen.findByText('+14155550123 · Support');
+    expect(screen.queryByText(/pending|available,/i)).not.toBeInTheDocument();
+    const choice = await screen.findByLabelText('Workspace for +14155550123');
+    fireEvent.change(choice, { target: { value: 'ws-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Assign to workspace' }));
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/telephony/numbers/n-1/assign', expect.objectContaining({ method: 'POST', body: JSON.stringify({ workspaceId: 'ws-1' }) })));
   });
 });

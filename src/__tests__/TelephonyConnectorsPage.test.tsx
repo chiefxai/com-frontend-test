@@ -6,45 +6,43 @@ import TelephonyConnectorsPage from '../admin/TelephonyConnectorsPage';
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock('../lib/api', () => ({ apiFetch: mocks.apiFetch }));
 
-const providers = [{
-  providerKey: 'voice-example', name: 'Voice Example', label: 'Voice Example',
-  credentialSchema: [
-    { key: 'accountSid', label: 'Account SID', type: 'text', required: true, placeholder: 'AC…' },
-    { key: 'authToken', label: 'Auth token', type: 'password', required: true },
-    { key: 'region', label: 'Region', type: 'select', required: true, options: [{ value: 'in', label: 'India' }, { value: 'us', label: 'United States' }] },
-  ], capabilities: { inbound: true, outbound: true },
-}];
+const providers = [{ providerKey: 'voice-example', name: 'Voice Example', label: 'Voice Example', credentialSchema: [
+  { key: 'accountSid', label: 'Account SID', type: 'text', required: true, placeholder: 'AC…' },
+  { key: 'authToken', label: 'Auth token', type: 'password', required: true },
+  { key: 'region', label: 'Region', type: 'select', required: true, options: [{ value: 'in', label: 'India' }, { value: 'us', label: 'United States' }] },
+], capabilities: { inbound: true, outbound: true } }];
 const response = (data: unknown, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
 const first = { id: 'conn-a', providerKey: 'voice-example', displayName: 'Account A', providerAccountId: 'acct-a', credentialFieldsConfigured: true, status: 'active' };
 const second = { ...first, id: 'conn-b', displayName: 'Account B', providerAccountId: 'acct-b' };
-let inventory: Array<{ id: string; phoneNumberE164: string; inventoryStatus: string; provisioningStatus: string; assignedOrgId?: string | null; assignedWorkspaceId?: string | null; assignedAt?: string | null; providerNumberId?: string; displayName?: string }>;
+let inventory: Array<{ id: string; phoneNumberE164: string; inventoryStatus: string; provisioningStatus: string; allocatedOrgId?: string | null; assignedOrgId?: string | null; assignedWorkspaceId?: string | null; displayName?: string | null }>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  inventory = [{ id: 'number-a', phoneNumberE164: '+14155550123', inventoryStatus: 'available', provisioningStatus: 'pending', assignedOrgId: null, assignedWorkspaceId: null }];
+  inventory = [{ id: 'number-a', phoneNumberE164: '+14155550123', inventoryStatus: 'available', provisioningStatus: 'pending', allocatedOrgId: null }];
   mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
     if (url === '/api/platform/telephony/providers') return response({ providers });
     if (url === '/api/platform/telephony/connectors' && !options) return response({ connectors: [first, second] });
-    if (url === '/api/platform/telephony/connectors' && options?.method === 'POST') return response({ connector: first });
+    if (url === '/api/platform/telephony/connectors' && options?.method === 'POST') return response({ connector: first }, 201);
     if (url.startsWith('/api/platform/telephony/connectors/') && options?.method === 'PATCH') return response({ connector: first });
     if (url === '/api/platform/telephony/connectors/conn-a/numbers' && !options) return response({ numbers: inventory });
     if (url === '/api/platform/telephony/connectors/conn-a/numbers' && options?.method === 'POST') {
       const data = JSON.parse(options.body || '{}');
-      inventory.push({ id: 'number-new', ...data, inventoryStatus: 'available', provisioningStatus: 'pending', assignedOrgId: null, assignedWorkspaceId: null });
+      inventory.push({ id: 'number-new', phoneNumberE164: data.phoneNumberE164, displayName: data.displayName, inventoryStatus: 'available', provisioningStatus: 'pending' });
       return response({ number: inventory[inventory.length - 1] }, 201);
     }
+    if (url === '/api/platform/telephony/organizations') return response({ organizations: [{ id: 'org-a', name: 'Acme Support' }] });
     if (url === '/api/platform/telephony/numbers/number-a/mark-ready' && options?.method === 'POST') {
       inventory = inventory.map(number => number.id === 'number-a' ? { ...number, provisioningStatus: 'ready' } : number);
       return response({ number: { id: 'number-a', provisioningStatus: 'ready' } });
     }
-    if (url === '/api/platform/telephony/numbers/number-a/assign' && options?.method === 'POST') {
+    if (url === '/api/platform/telephony/numbers/number-a/allocate' && options?.method === 'POST') {
       const data = JSON.parse(options.body || '{}');
-      inventory = inventory.map(number => number.id === 'number-a' ? { ...number, inventoryStatus: 'assigned', assignedOrgId: data.orgId, assignedWorkspaceId: data.workspaceId, assignedAt: '2026-10-11T12:00:00.000Z' } : number);
-      return response({ assignment: { id: 'assignment-a', phoneNumberId: 'number-a', ...data, assignedAt: '2026-10-11T12:00:00.000Z' } }, 201);
+      inventory = inventory.map(number => number.id === 'number-a' ? { ...number, inventoryStatus: 'assigned', allocatedOrgId: data.orgId } : number);
+      return response({ allocation: { phoneNumberId: 'number-a', orgId: data.orgId } }, 201);
     }
     if (url === '/api/platform/telephony/numbers/number-a/release' && options?.method === 'POST') {
-      inventory = inventory.map(number => number.id === 'number-a' ? { ...number, inventoryStatus: 'available', assignedOrgId: null, assignedWorkspaceId: null, assignedAt: null } : number);
-      return response({ assignment: { id: 'assignment-a', phoneNumberId: 'number-a', orgId: 'org-a', releaseReason: 'Customer returned the number' } });
+      inventory = inventory.map(number => number.id === 'number-a' ? { ...number, inventoryStatus: 'available', allocatedOrgId: null, assignedOrgId: null } : number);
+      return response({ allocation: { phoneNumberId: 'number-a', released: true } });
     }
     throw new Error(`Unexpected request ${url}`);
   });
@@ -52,80 +50,69 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('Platform telephony connector management', () => {
-  it('renders credential fields from provider schema and can create a connector', async () => {
+  it('shows connector cards and opens provider-schema form from the header action', async () => {
     render(<TelephonyConnectorsPage />);
-    expect(await screen.findByLabelText('Account SID *')).toBeInTheDocument();
-    expect(screen.getByLabelText('Auth token *')).toHaveAttribute('type', 'password');
-    expect(screen.getByLabelText('Region *')).toBeInTheDocument();
-
+    const card = await screen.findByText('Account A');
+    expect(screen.getByText('Account B')).toBeInTheDocument();
+    expect(screen.queryByText('acct-a')).not.toBeInTheDocument();
+    expect(screen.queryByText('conn-a')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add connector' }));
+    expect(await screen.findByRole('dialog', { name: 'Add telephony connector' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Connector name'), { target: { value: 'New account' } });
-    fireEvent.change(screen.getByLabelText('Provider account ID (optional)'), { target: { value: 'account-new' } });
     fireEvent.change(screen.getByLabelText('Account SID *'), { target: { value: 'SID-123' } });
     fireEvent.change(screen.getByLabelText('Auth token *'), { target: { value: 'secret-value' } });
     fireEvent.change(screen.getByLabelText('Region *'), { target: { value: 'in' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create connector' }));
-
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/connectors', expect.objectContaining({ method: 'POST' })));
     const createCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url === '/api/platform/telephony/connectors' && options?.method === 'POST');
-    expect(JSON.parse(createCall?.[1].body || '{}')).toEqual({
-      providerKey: 'voice-example', displayName: 'New account', providerAccountId: 'account-new',
-      credentials: { accountSid: 'SID-123', authToken: 'secret-value', region: 'in' },
-    });
+    expect(JSON.parse(createCall?.[1].body || '{}')).toEqual({ providerAccountId: null, providerKey: 'voice-example', displayName: 'New account', credentials: { accountSid: 'SID-123', authToken: 'secret-value', region: 'in' } });
+    expect(card).toBeInTheDocument();
   });
 
-  it('lists multiple accounts for the same provider and supports partial credential rotation', async () => {
+  it('supports multiple accounts and rotates only credentials entered by the admin', async () => {
     render(<TelephonyConnectorsPage />);
-    await screen.findByText('2 connector accounts');
-    expect(screen.getByText('Account A')).toBeInTheDocument();
-    expect(screen.getByText('Account B')).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit / rotate credentials' })[0]);
-    expect(screen.getByLabelText('Auth token')).toHaveAttribute('placeholder', 'Leave blank to keep current credential');
+    const edit = await screen.findByRole('button', { name: 'Edit Account A' });
+    fireEvent.click(edit);
     fireEvent.change(screen.getByLabelText('Auth token'), { target: { value: 'new-secret' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save connector' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/connectors/conn-a', expect.objectContaining({ method: 'PATCH' })));
     const updateCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url.endsWith('/conn-a') && options?.method === 'PATCH');
-    expect(JSON.parse(updateCall?.[1].body || '{}')).toEqual({ displayName: 'Account A', providerAccountId: 'acct-a', credentials: { authToken: 'new-secret' } });
+    expect(JSON.parse(updateCall?.[1].body || '{}')).toEqual({ displayName: 'Account A', providerAccountId: null, credentials: { authToken: 'new-secret' } });
   });
 
-  it('shows an explicit feature-off state when connector APIs return 404', async () => {
+  it('keeps feature-off state when the connector API returns 404', async () => {
     mocks.apiFetch.mockImplementation(async () => response({ error: 'Not found' }, 404));
     render(<TelephonyConnectorsPage />);
     expect(await screen.findByText('Telephony connectors are not enabled')).toBeInTheDocument();
     expect(screen.getByText(/unavailable until platform operations enables/i)).toBeInTheDocument();
   });
 
-  it('registers provider inventory, assigns it, and releases it with a reason', async () => {
+  it('saves numbers, confirms readiness, and allocates to an organization without asking for internal IDs', async () => {
     render(<TelephonyConnectorsPage />);
     await screen.findByText('Account A');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Manage numbers' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'View details' })[0]);
     expect(await screen.findByText('+14155550123')).toBeInTheDocument();
-    expect(screen.getByText(/confirm each number is active on this provider account/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Provisioning:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Provider ID:/)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Provider-owned E.164 number'), { target: { value: '+14155550124' } });
-    fireEvent.change(screen.getByLabelText('Provider number ID (optional)'), { target: { value: 'PN-124' } });
-    fireEvent.change(screen.getByLabelText('Number name (optional)'), { target: { value: 'Support line' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add to inventory' }));
+    fireEvent.change(screen.getByLabelText('Phone number'), { target: { value: '+14155550124' } });
+    fireEvent.change(screen.getByLabelText('Name (optional)'), { target: { value: 'Support line' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add number' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/connectors/conn-a/numbers', expect.objectContaining({ method: 'POST' })));
-    const registerCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url === '/api/platform/telephony/connectors/conn-a/numbers' && options?.method === 'POST');
-    expect(JSON.parse(registerCall?.[1].body || '{}')).toEqual({ phoneNumberE164: '+14155550124', providerNumberId: 'PN-124', displayName: 'Support line' });
+    const addCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url === '/api/platform/telephony/connectors/conn-a/numbers' && options?.method === 'POST');
+    expect(JSON.parse(addCall?.[1].body || '{}')).toEqual({ phoneNumberE164: '+14155550124', displayName: 'Support line' });
     expect(await screen.findByText('+14155550124')).toBeInTheDocument();
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Verify number' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Confirm active' })[0]);
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/number-a/mark-ready', expect.objectContaining({ method: 'POST' })));
-    inventory = inventory.map(number => number.id === 'number-a' ? { ...number, provisioningStatus: 'ready' } : number);
-    fireEvent.change(screen.getByLabelText('Organization ID for +14155550123'), { target: { value: 'org-a' } });
-    fireEvent.change(screen.getByLabelText('Workspace ID for +14155550123'), { target: { value: 'workspace-a' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Assign +14155550123' }));
-    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/number-a/assign', expect.objectContaining({ method: 'POST' })));
-    const assignCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url.endsWith('/number-a/assign') && options?.method === 'POST');
-    expect(JSON.parse(assignCall?.[1].body || '{}')).toEqual({ orgId: 'org-a', workspaceId: 'workspace-a' });
-    expect(await screen.findByText('assigned')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('Release reason for +14155550123'), { target: { value: 'Customer returned the number' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Release assignment' }));
-    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/number-a/release', expect.objectContaining({ method: 'POST' })));
-    const releaseCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url.endsWith('/number-a/release') && options?.method === 'POST');
-    expect(JSON.parse(releaseCall?.[1].body || '{}')).toEqual({ orgId: 'org-a', reason: 'Customer returned the number' });
+    const orgSelect = screen.getByLabelText('Organization for +14155550123');
+    fireEvent.change(orgSelect, { target: { value: 'Acme Support' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Allocate' }));
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/number-a/allocate', expect.objectContaining({ method: 'POST' })));
+    const allocateCall = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url.endsWith('/number-a/allocate') && options?.method === 'POST');
+    expect(JSON.parse(allocateCall?.[1].body || '{}')).toEqual({ orgId: 'org-a' });
+    expect(await screen.findByText('Acme Support')).toBeInTheDocument();
+    expect(screen.getByText(/workspace selection is managed by the organization admin/i)).toBeInTheDocument();
   });
 });
