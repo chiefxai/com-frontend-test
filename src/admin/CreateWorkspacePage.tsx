@@ -387,6 +387,11 @@ export default function CreateWorkspacePage() {
           return;
         }
       }
+      if (form.freeTrial && created.initialSubscriptionPurchase?.status !== 'free_trial') {
+        const reason = created.initialSubscriptionPurchase?.code || 'FREE_TRIAL_PROVISION_ERROR';
+        setError(`Organization ${created.id || ''} was created, but its free trial was not provisioned (${reason}). The organization admin may be blocked from signing in until the platform resolves the subscription setup.`);
+        return;
+      }
       if (!form.freeTrial) {
         const purchase = created.initialSubscriptionPurchase;
         if (purchase?.status !== 'awaiting_payment' || !purchase.quoteId || !purchase.paymentAmount) {

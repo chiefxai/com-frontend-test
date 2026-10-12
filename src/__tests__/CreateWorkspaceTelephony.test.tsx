@@ -22,7 +22,7 @@ const catalog = { version: 1, defaultPolicyId: 'default', policies: [{
 }] };
 const number = { id: 'num-1', phoneNumberE164: '+14155550123', inventoryStatus: 'available', provisioningStatus: 'ready', displayName: 'Support' };
 
-function setup({ connectorFeature = true } = {}) {
+function setup({ connectorFeature = true, trialProvisioningStatus = 'free_trial', trialProvisioningCode = 'SUBSCRIPTION_PLAN_VERSION_UNAVAILABLE' } = {}) {
   const createRequests: Array<Record<string, any>> = [];
   mocks.navigate.mockClear();
   mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
@@ -32,8 +32,11 @@ function setup({ connectorFeature = true } = {}) {
     if (url === '/api/platform/telephony/connectors') return connectorFeature ? response({ connectors: [{ id: 'conn-1', providerKey: 'twilio', displayName: 'Platform account', status: 'active' }] }) : response({}, 404);
     if (url === '/api/platform/telephony/connectors/conn-1/numbers' && !options) return response({ numbers: [number] });
     if (url === '/api/platform/organizations' && options?.method === 'POST') {
-      createRequests.push(JSON.parse(options.body || '{}'));
-      return response({ id: 'org-1', initialSubscriptionPurchase: { status: 'awaiting_payment', quoteId: 'quote-1', paymentAmount: { asset: 'INR', units: '100000', scale: 2 } } }, 201);
+      const request = JSON.parse(options.body || '{}');
+      createRequests.push(request);
+      return response({ id: 'org-1', initialSubscriptionPurchase: request.freeTrial
+        ? { status: trialProvisioningStatus, code: trialProvisioningCode }
+        : { status: 'awaiting_payment', quoteId: 'quote-1', paymentAmount: { asset: 'INR', units: '100000', scale: 2 } } }, 201);
     }
     if (url === '/api/platform/organizations/org-1/initial-subscription-payment') return response({ id: 'payment-1' }, 201);
     if (url === '/api/platform/telephony/numbers/num-1/allocate' && options?.method === 'POST') return response({ allocation: { orgId: 'org-1' } }, 201);
@@ -114,5 +117,14 @@ describe('organization creation telephony selection', () => {
     const form = paymentCall[1].body as FormData;
     expect(JSON.parse(String(form.get('command')))).toMatchObject({ quoteId: 'quote-1', paymentReference: 'UTR-INITIAL-1', expectedAmount: { units: '100000' } });
     expect(form.get('proof')).toMatchObject({ name: 'payment.png', type: 'image/png' });
+  });
+
+  it('shows an explicit error when organization creation succeeds but trial provisioning fails', async () => {
+    setup({ connectorFeature: false, trialProvisioningStatus: 'pending' });
+    await fillRequiredOrgFields();
+    fireEvent.change(screen.getByDisplayValue('AI and call-provider usage'), { target: { value: 'ai_only' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Create Workspace' }).closest('form')!);
+    expect(await screen.findByText(/free trial was not provisioned \(SUBSCRIPTION_PLAN_VERSION_UNAVAILABLE\)/i)).toBeInTheDocument();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });
