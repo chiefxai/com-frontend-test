@@ -73,6 +73,28 @@ beforeEach(() => {
 afterEach(() => { cleanup(); setAuthorization(null); });
 
 describe('Staff & Teams rendered workspace permissions', () => {
+  it('does not ask an organization admin for one role when adding a member', async () => {
+    setAuthorization({
+      organizationRole: 'Organization Admin', workspaceRole: null, platformAdmin: false,
+      permissions: ['organization.read', 'organization.manage', 'organization.members.read',
+        'organization.members.manage', 'workspace.members.manage', 'workspace.read'],
+    });
+    render(mount('ws-north', []));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Member' }));
+
+    expect(await screen.findByText(/Assign a separate role in each workspace after adding them/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Workspace Role')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Jane Smith'), { target: { value: 'Jane Smith' } });
+    fireEvent.change(screen.getByPlaceholderText('jane@company.com'), { target: { value: 'jane@example.test' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/settings/team', expect.objectContaining({ method: 'POST' })));
+    const request = mocks.apiFetch.mock.calls.find(([path]) => path === '/api/settings/team');
+    const body = JSON.parse(request[1].body);
+    expect(body).not.toHaveProperty('role');
+    expect(body).not.toHaveProperty('workspaceRole');
+  });
+
   it('keeps Organization Admin distinct from workspace roles while its effective feature count changes', async () => {
     setAuthorization({
       organizationRole: 'Organization Admin', workspaceRole: null, platformAdmin: false,

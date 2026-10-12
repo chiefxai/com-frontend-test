@@ -796,10 +796,7 @@ export default function SettingsView({
           name: newStaffName,
           email: newStaffEmail,
           phone: newStaffPhone || undefined,
-          role: canManageOrgMembers ? newStaffRole : 'Member',
-          workspaceRole: canManageOrgMembers
-            ? (['Workspace Admin','Manager','Member','Viewer'].includes(newStaffRole) ? newStaffRole : undefined)
-            : newStaffRole,
+          ...(canManageOrgMembers ? {} : { role: 'Member', workspaceRole: newStaffRole }),
           featureFlags: newStaffFeatures,
         }),
       });
@@ -1657,7 +1654,7 @@ export default function SettingsView({
                   onClose={() => { if (!addingStaff) setShowAddStaff(false); }}
                   title="Add Team Member"
                   subtitle={canManageOrgMembers
-                    ? "An account is provisioned through the environment authentication provider. In production, users authenticate through Google Identity Platform."
+                    ? "An account is provisioned through the authentication provider. Assign a separate role in each workspace after adding them."
                     : "The new account will be assigned to your current workspace with the selected workspace role."}
                   maxWidth="max-w-3xl"
                 >
@@ -1678,8 +1675,8 @@ export default function SettingsView({
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Phone</label>
                             <input type="tel" value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500" />
                           </div>
-                          <div className="space-y-1">
-                            <label htmlFor="new-staff-role" className="text-[11px] font-semibold text-[var(--text-secondary)]">{canManageOrgMembers ? 'Role' : 'Workspace Role'}</label>
+                          {!canManageOrgMembers && <div className="space-y-1">
+                            <label htmlFor="new-staff-role" className="text-[11px] font-semibold text-[var(--text-secondary)]">Workspace Role</label>
                             <select id="new-staff-role" value={newStaffRole}
                               onChange={event => setNewStaffRole(event.target.value as UserRole)}
                               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]">
@@ -1687,9 +1684,8 @@ export default function SettingsView({
                               {!managerInWorkspace && <option value="Manager">Manager</option>}
                               <option value="Viewer">Viewer (read-only)</option>
                               {!managerInWorkspace && canManageWorkspaceMembers && <option value="Workspace Admin">Workspace Admin</option>}
-                              {!managerInWorkspace && canManageOrgMembers && <option value="Billing Admin">Billing Admin</option>}
                             </select>
-                          </div>
+                          </div>}
                         </div>
 
                         {featureChoicesLoading && <p role="status" className="text-xs text-[var(--text-muted)]">Loading available features…</p>}
