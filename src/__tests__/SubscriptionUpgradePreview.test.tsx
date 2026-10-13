@@ -28,23 +28,25 @@ afterEach(cleanup);
 describe('organization subscription upgrade preview', () => {
   it('requests the explicit target plan/version and displays the non-payable quote', async () => {
     render(<SubscriptionUpgradePreview />);
-    fireEvent.change(screen.getByLabelText('Target plan ID'), { target: { value: 'enterprise' } });
-    fireEvent.change(screen.getByLabelText('Published version'), { target: { value: '3' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Preview upgrade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I have the plan details' }));
+    fireEvent.change(screen.getByLabelText('Plan code (from your administrator)'), { target: { value: 'enterprise' } });
+    fireEvent.change(screen.getByLabelText('Plan version (from your administrator)'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'See estimated price' }));
     await screen.findByText('enterprise · version 3');
     expect(mocks.create).toHaveBeenCalledWith({ targetPlanId: 'enterprise', targetPlanVersion: 3 }, { idempotencyKey: 'upgrade-key-1' });
-    expect(screen.getByText(/Preview only · not payable/)).toBeInTheDocument();
-    expect(screen.getByText(/Incremental credits for remaining period/)).toBeInTheDocument();
-    expect(screen.getByText(/Amount due now/)).toBeInTheDocument();
+    expect(screen.getByText(/Price preview — not a bill/)).toBeInTheDocument();
+    expect(screen.getByText(/Extra calling credits you could receive/)).toBeInTheDocument();
+    expect(screen.getByText(/Estimated one-time upgrade cost/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pay|Submit payment/i })).not.toBeInTheDocument();
   });
 
   it('surfaces when preview is disabled and does not present a payment action', async () => {
     mocks.create.mockRejectedValue(new mocks.ApiError('disabled', { code: 'SUBSCRIPTION_UPGRADE_PREVIEW_DISABLED' }));
     render(<SubscriptionUpgradePreview />);
-    fireEvent.change(screen.getByLabelText('Target plan ID'), { target: { value: 'enterprise' } });
-    fireEvent.change(screen.getByLabelText('Published version'), { target: { value: '3' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Preview upgrade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I have the plan details' }));
+    fireEvent.change(screen.getByLabelText('Plan code (from your administrator)'), { target: { value: 'enterprise' } });
+    fireEvent.change(screen.getByLabelText('Plan version (from your administrator)'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'See estimated price' }));
     await screen.findByRole('alert');
     expect(screen.getByText(/Upgrade previews are not enabled/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pay|Submit payment/i })).not.toBeInTheDocument();
@@ -53,6 +55,6 @@ describe('organization subscription upgrade preview', () => {
   it('is hidden from users without billing administration permission', () => {
     mocks.can.mockReturnValue(false);
     render(<SubscriptionUpgradePreview />);
-    expect(screen.queryByText('Upgrade subscription plan')).not.toBeInTheDocument();
+    expect(screen.queryByText('See what a bigger plan might cost')).not.toBeInTheDocument();
   });
 });

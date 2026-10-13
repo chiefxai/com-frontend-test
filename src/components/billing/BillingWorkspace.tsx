@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, Info } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import KpiCard from '../ui/KpiCard';
@@ -7,10 +7,7 @@ import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
 import { formatInr } from '../../lib/pricing';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
-import InitialSubscriptionPurchase from './InitialSubscriptionPurchase';
-import SubscriptionRenewal from './SubscriptionRenewal';
-import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
-import SubscriptionGraceRequest from './SubscriptionGraceRequest';
+import SubscriptionActionCenter from './SubscriptionActionCenter';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
 
 export interface WorkspaceBillingSnapshot {
@@ -75,7 +72,7 @@ const sections: { key: BillingPanel; label: string; icon: React.ElementType }[] 
 
 const descriptions: Record<BillingPanel, string> = {
   dashboard: 'Your subscription, usage and credit balances in one place.',
-  plan: 'Recurring plan charges and additional workspace billing.',
+  plan: 'Your plan, its price, and simple steps to manage it.',
   usage: 'Recorded call costs and workspace spending controls.',
   credits: 'Available credits from your plan and approved top-ups.',
   allocation: 'Assign organization-owned credit grants to workspaces and review transfer history.',
@@ -96,6 +93,9 @@ export default function BillingWorkspace({
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
+  const [showMorePlanDetails, setShowMorePlanDetails] = React.useState(false);
+  const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
+    ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
       ? <WorkspaceAllocatedBilling workspaceId={workspaceId || workspaceBilling?.workspaceId || ''} />
@@ -156,33 +156,61 @@ export default function BillingWorkspace({
 
       {view === 'plan' && (
         <>
-        <Card padding="sm" className="col-span-12 sm:!p-5">
-          <CardHeader title="Subscription" subtitle="Recurring organization plan costs" icon={CreditCard}
-            action={<Button type="button" size="sm" variant="secondary" icon={Wallet}
-              onClick={() => onNavigate('credits')}>View credits</Button>} />
-          <div className="rounded-xl bg-[var(--bg-subtle)] p-4 sm:p-5">
-            <p className="text-xs font-medium text-[var(--text-secondary)]">Monthly subscription</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
-              {money(organizationPricing?.totalMonthlyInr)}
-              <span className="ml-1 text-sm font-normal text-[var(--text-muted)]">/ month</span>
-            </p>
-            <p className="mt-2 text-[11px] text-[var(--text-muted)]">Excludes usage and applicable taxes.</p>
-          </div>
-          <div className="mt-4 grid grid-cols-12 gap-3">
-            <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} iconPosition="top-left" icon={Building2}
-              label="Workspaces on subscription" value={organizationPricing?.workspaceCount ?? '—'} />
-            <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} iconPosition="top-left" icon={Layers3}
-              label="Additional industry packs" value={organizationPricing?.additionalIndustries ?? '—'} />
-          </div>
-          <div className="mt-4 flex items-start gap-2 rounded-lg border border-[var(--border)] px-3 py-2.5 text-xs text-[var(--text-secondary)]">
-            <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-            Workspace invoices and renewals appear below. Subscription fees are separate from prepaid usage credits.
-          </div>
-        </Card>
-        <div className="col-span-12"><InitialSubscriptionPurchase canSubmit={canSubmitPayment} /></div>
-        <SubscriptionRenewal canSubmit={canSubmitPayment} />
-        <SubscriptionUpgradePreview />
-        <SubscriptionGraceRequest />
+          <Card padding="sm" className="col-span-12 sm:!p-5">
+            <CardHeader title="Your subscription" subtitle="Here's what your plan costs and what you can do next." icon={CreditCard}
+              action={<Button type="button" size="sm" variant="secondary" icon={Wallet}
+                onClick={() => onNavigate('credits')}>See my credits</Button>} />
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <div className="rounded-xl bg-[var(--accent-subtle)] p-5">
+                <p className="text-sm font-medium text-[var(--text-secondary)]">Your estimated plan price</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+                  {money(organizationPricing?.totalMonthlyInr)}
+                  <span className="ml-1 text-base font-normal text-[var(--text-secondary)]">every month</span>
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                  This is your plan's monthly price before taxes and extra usage charges. The amount to pay on a bill may differ.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-[var(--border)] p-4">
+                  <Building2 aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
+                  <p className="mt-3 text-2xl font-bold text-[var(--text-primary)]">{organizationPricing?.workspaceCount ?? '—'}</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">Workspaces</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Offices or teams on this plan</p>
+                </div>
+                <div className="rounded-xl border border-[var(--border)] p-4">
+                  <Layers3 aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
+                  <p className="mt-3 text-2xl font-bold text-[var(--text-primary)]">{organizationPricing?.additionalIndustries ?? '—'}</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">Extra work types</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Additional industries in your plan</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4">
+              <Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Plan price and calling credits are different.</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+                  You pay the plan price to keep your subscription. Credits are used for services such as calls.
+                  Credits included with your plan become available only after the payment is approved and the paid period starts.
+                </p>
+              </div>
+            </div>
+          </Card>
+          {canManageSubscription
+            ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} />
+            : <p className="col-span-12 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+                Only your organization's billing administrators can start, renew, or change a subscription.
+              </p>}
+          <section className="col-span-12 space-y-3">
+            <button type="button" aria-expanded={showMorePlanDetails}
+              onClick={() => setShowMorePlanDetails(current => !current)}
+              className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-left text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+              <span>{showMorePlanDetails ? 'Hide' : 'Show'} extra plan details</span>
+              <span className="text-xs font-normal text-[var(--text-secondary)]">Workspace add-ons and credits</span>
+            </button>
+            {showMorePlanDetails && <OrganizationTopUp canSubmit={canSubmitPayment} view="plan" onNavigate={onNavigate} />}
+          </section>
         </>
       )}
 
@@ -257,7 +285,7 @@ export default function BillingWorkspace({
         : <p role="alert" className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
             Only organization administrators can allocate credits to workspaces.
           </p>)}
-      {(view === 'dashboard' || view === 'credits' || view === 'topup' || view === 'payments' || view === 'plan') && (
+      {(view === 'dashboard' || view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate} />
       )}
     </div>
