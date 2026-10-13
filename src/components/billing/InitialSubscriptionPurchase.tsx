@@ -128,11 +128,11 @@ export default function InitialSubscriptionPurchase({ canSubmit = false }: { can
         <Button type="submit" size="sm" variant="primary" disabled={!proof || !reference.trim() || busy} loading={busy}>Send receipt for review</Button>
       </form>}
       {!canPay && <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
-        {!quote.payable ? <p><AlertCircle className="mr-1 inline h-3.5 w-3.5" />This quote is not payable. {quote.expired ? 'Request a fresh quote before submitting payment.' : `Quote status: ${quote.status}.`}</p>
+        {!quote.payable ? <p><AlertCircle className="mr-1 inline h-3.5 w-3.5" />{quote.expired ? 'This price has expired. Get a new price before paying.' : 'This price cannot be paid right now. Please contact your billing administrator.'}</p>
           : !data.payment.submissionEnabled ? <p>Sending receipts is not available right now. Please contact your billing administrator.</p>
             : <p>Only an account billing administrator can send a receipt.</p>}
       </div>}
     </div>}
-    {!loading && !data && !notProvisioned && !error && <p className="text-xs text-[var(--text-muted)]">Initial subscription details are unavailable.</p>}
+    {!loading && !data && !notProvisioned && !error && <p className="text-xs text-[var(--text-muted)]">We could not load your plan yet. Please try again or contact your billing administrator.</p>}
   </Card>;
 }
