@@ -7,10 +7,18 @@ import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '..
 vi.mock('../components/billing/OrganizationTopUp', () => ({
   default: () => <div data-testid="organization-credit-ledger">Credit ledger</div>,
 }));
-const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn() }));
-vi.mock('../lib/billing/client', () => ({ billingClient: { workspaceOverview: mocks.workspaceOverview } }));
+const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), renewal: vi.fn() }));
+vi.mock('../lib/billing/client', () => ({
+  billingClient: { workspaceOverview: mocks.workspaceOverview, subscriptionRenewal: mocks.renewal },
+  newBillingIdempotencyKey: () => 'test-renewal-key',
+  BillingApiError: class extends Error { status = 500; },
+}));
 beforeEach(() => {
   setAuthorization(legacyAuthorization('Organization Admin'));
+  mocks.renewal.mockResolvedValue({
+    subscription: { lifecycleStatus: 'active', accessState: 'operational', planId: 'starter', planVersion: 1, version: 1 },
+    period: null, quote: null, payment: { submissionEnabled: false, purpose: 'subscription' },
+  });
   mocks.workspaceOverview.mockResolvedValue({ orgId: 'org-1', workspaceId: 'workspace-1', workspaceName: 'Main office',
     status: 'active', uninitialized: false, balances: [
       { kind: 'subscription', available: {asset:'INR',units:'12500',scale:2}, held: {asset:'INR',units:'500',scale:2}, expiresAt:'2026-11-01T00:00:00Z' },
@@ -101,6 +109,18 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('plan');
     fireEvent.click(screen.getByRole('button', { name: 'Credits' }));
     expect(onNavigate).toHaveBeenCalledWith('credits');
+  });
+
+  it('shows a simple subscription overview and hides extra billing details by default', () => {
+    render(<BillingWorkspace {...defaults} view="plan" />);
+    expect(screen.getByText('Your subscription')).toBeInTheDocument();
+    expect(screen.getByText('Your estimated plan price')).toBeInTheDocument();
+    expect(screen.getByText('Plan price and calling credits are different.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Show extra plan details/ }));
+    expect(screen.getByTestId('organization-credit-ledger')).toBeInTheDocument();
   });
 
   it('keeps Add credits hidden for viewers without submission permission', () => {
