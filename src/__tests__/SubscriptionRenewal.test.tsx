@@ -72,7 +72,7 @@ describe('organization subscription renewal', () => {
   it('does not show payment proof form when platform payment intake is disabled', async () => {
     mocks.renewal.mockResolvedValue(response({ q: quote(), enabled: false }));
     render(<SubscriptionRenewal canSubmit />);
-    await screen.findByText(/Payment submission is not enabled yet/);
+    await screen.findByText(/Sending receipts is not available right now/);
     expect(screen.queryByRole('button', { name: 'Send receipt for review' })).not.toBeInTheDocument();
   });
 });
