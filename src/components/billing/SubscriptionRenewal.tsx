@@ -104,10 +104,10 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
 
       {quote && <div className="space-y-4 rounded-xl border border-[var(--border)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-base font-semibold">Your renewal price</h3><p className="mt-1 text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Your payment is being checked." : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Your payment has been recorded." : quote.expired ? "This price has expired." : quote.payable ? "Ready when you are." : "This price cannot be paid right now."}</p><p className="mt-1 text-xs text-[var(--text-muted)]">Price valid until {subscriptionDateText(quote.validUntil)}</p></div>
-          {quote.expired && eligible && <Button type="button" size="sm" variant="secondary" icon={RefreshCw} loading={busy} disabled={busy} onClick={() => void createQuote()}>Get an updated price</Button>}</div>
+        </div>
         
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">Amount to pay</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.paymentAmount)}</dd></div>
+          <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Amount sent for review" : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Payment amount" : "Amount to pay"}</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.paymentAmount)}</dd></div>
           <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">Credits included with your next paid period</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.includedCredits)}</dd></div>
         </dl>
         <p className="text-sm leading-6 text-[var(--text-secondary)]">The credits above are for your next paid period. You get them only after approval and when that period starts.</p>
@@ -126,7 +126,7 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
           <label className="block text-xs font-medium text-[var(--text-secondary)]">Note (optional)<textarea className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm" maxLength={2000} rows={2} value={note} disabled={busy} onChange={event => { setNote(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} /></label>
           <Button type="submit" size="sm" variant="primary" disabled={!proof || !reference.trim() || busy} loading={busy}>Send receipt for review</Button>
         </form>}
-        {!canPay && !quote.pendingPayment && <p className="text-xs text-[var(--text-secondary)]">{!quote.payable ? quote.expired ? "This price expired. Get an updated price before paying." : "Payment is not available for this plan right now." : !data.payment.submissionEnabled ? 'Payment submission is not enabled yet.' : 'Only an account billing administrator can send a payment receipt.'}</p>}
+        {!canPay && !quote.pendingPayment && <p className="text-xs text-[var(--text-secondary)]">{!quote.payable ? quote.expired ? "This price expired. Get an updated price before paying." : "Payment is not available for this plan right now." : !data.payment.submissionEnabled ? 'Sending receipts is not available right now. Ask your billing administrator for help.' : 'Only an account billing administrator can send a payment receipt.'}</p>}
       </div>}
     </div>}
   </Card>;
