@@ -103,7 +103,7 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
       </div>}
 
       {quote && <div className="space-y-4 rounded-xl border border-[var(--border)] p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-base font-semibold">Your renewal price</h3><p className="mt-1 text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Your payment is being checked." : quote.paidAt ? "Your payment has been recorded." : quote.expired ? "This price has expired." : quote.payable ? "Ready when you are." : "This price cannot be paid right now."}</p><p className="mt-1 text-xs text-[var(--text-muted)]">Price valid until {subscriptionDateText(quote.validUntil)}</p></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-base font-semibold">Your renewal price</h3><p className="mt-1 text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Your payment is being checked." : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Your payment has been recorded." : quote.expired ? "This price has expired." : quote.payable ? "Ready when you are." : "This price cannot be paid right now."}</p><p className="mt-1 text-xs text-[var(--text-muted)]">Price valid until {subscriptionDateText(quote.validUntil)}</p></div>
           {quote.expired && eligible && <Button type="button" size="sm" variant="secondary" icon={RefreshCw} loading={busy} disabled={busy} onClick={() => void createQuote()}>Get an updated price</Button>}</div>
         
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
