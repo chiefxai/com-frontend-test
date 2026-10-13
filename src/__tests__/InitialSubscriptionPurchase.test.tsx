@@ -47,42 +47,42 @@ afterEach(cleanup);
 describe('initial subscription purchase', () => {
   it('shows fee and included credits separately and submits the exact quote using payment API only when enabled', async () => {
     render(<InitialSubscriptionPurchase canSubmit />);
-    await screen.findByText('enterprise · draft');
+    await screen.findByText('Your enterprise plan');
     expect(screen.getAllByText('₹3,250.00').length).toBeGreaterThan(0);
     expect(screen.getByText('₹4,000.00')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Bank or UPI transaction reference'), { target: { value: 'UTR-123' } });
+    fireEvent.change(screen.getByLabelText('Bank or UPI payment reference'), { target: { value: 'UTR-123' } });
     const proof = new File(['%PDF-test'], 'receipt.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText(/Payment receipt/), { target: { files: [proof] } });
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit for verification' }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: 'Send receipt for review' }).closest('form')!);
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledWith({
       schemaVersion: 1, purpose: 'subscription', quoteId: 'quote-1', expectedAmount: amount, paymentReference: 'UTR-123',
     }, proof, expect.objectContaining({ idempotencyKey: expect.any(String) })));
-    expect(await screen.findByText(/Payment proof submitted for platform review/)).toBeInTheDocument();
+    expect(await screen.findByText(/We received your payment receipt/)).toBeInTheDocument();
   });
 
   it('offers initial quote provisioning when onboarding quote is absent', async () => {
     mocks.purchase.mockRejectedValue(notFound());
     render(<InitialSubscriptionPurchase canSubmit />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Create quote' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Show my starting price' }));
     await waitFor(() => expect(mocks.provision).toHaveBeenCalledWith({ idempotencyKey: expect.any(String) }));
-    expect(await screen.findByText('enterprise · draft')).toBeInTheDocument();
+    expect(await screen.findByText('Your enterprise plan')).toBeInTheDocument();
   });
 
   it('offers requoting on expired quote and never exposes payment submission for expired terms', async () => {
     mocks.purchase.mockResolvedValue(response(quote({ expired: true, payable: false })));
     render(<InitialSubscriptionPurchase canSubmit />);
-    await screen.findByText('enterprise · draft');
-    expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Retry expired quote' }));
+    await screen.findByText('Your enterprise plan');
+    expect(screen.queryByRole('button', { name: 'Send receipt for review' })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Get a new price' }));
     await waitFor(() => expect(mocks.provision).toHaveBeenCalled());
-    expect(screen.getByRole('button', { name: 'Submit for verification' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send receipt for review' })).toBeInTheDocument();
   });
 
   it('blocks submission when the backend has not enabled payment intake', async () => {
     mocks.purchase.mockResolvedValue(response(quote(), false));
     render(<InitialSubscriptionPurchase canSubmit />);
-    await screen.findByText(/Payment submission is not enabled yet/);
-    expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
+    await screen.findByText(/Sending receipts is not available right now/);
+    expect(screen.queryByRole('button', { name: 'Send receipt for review' })).not.toBeInTheDocument();
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 });
