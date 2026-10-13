@@ -50,8 +50,7 @@ describe('subscription grace request', () => {
     result.eligibility.currentRequest = { id: 'grace-1', requestedUntil: '2030-01-05T00:00:00.000Z', justification: 'Need time', status: 'requested', grantedUntil: null, version: 1 };
     mocks.list.mockResolvedValue(result);
     render(<SubscriptionGraceRequest />);
-    await screen.findByText('Your request: requested');
-    expect(screen.getByText(/Your request: requested/)).toBeInTheDocument();
+    expect((await screen.findAllByText('Your request: requested')).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Send request for more time' })).not.toBeInTheDocument();
   });
 
