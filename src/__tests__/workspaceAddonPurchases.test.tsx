@@ -59,7 +59,7 @@ describe('workspace add-on purchase UI',()=>{
       unallocatedTopupCredits:{asset:'INR',units:'6000',scale:2},rows:[]});
     if(path==='/api/billing/workspace-addons/pay-with-topup' && opts?.method==='POST')
       return response({status:'active',workspaceId:'workspace-new',paymentSource:'topup_credits'});
-    return response({},404);
+    return response({});
   });
   render(<WorkspaceManagement enabled onWorkspaceCreated={async()=>{}}/>);
   await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/billing/workspace-addons'));
