@@ -104,7 +104,7 @@ export default function DataTable<T>({
   // bare=true: no card chrome, no overflow wrapper (caller's scroll container handles it)
   const wrapper = bare
     ? className
-    : `bg-transparent dark:bg-[var(--bg-base)] rounded-[14px] border border-[var(--border)] shadow-[var(--shadow-card)] overflow-hidden ${className}`;
+    : `bg-[var(--bg-surface)] rounded-[14px] border border-[var(--border)] shadow-[var(--shadow-card)] overflow-hidden ${className}`;
 
   // Column widths (px), keyed by column key — only populated once a column
   // has actually been resized or (for resizable tables) on first render, so
@@ -202,7 +202,7 @@ export default function DataTable<T>({
           className={resizable ? 'text-sm' : 'w-full text-sm'}
           style={resizable ? { tableLayout: 'fixed', width: minTableWidth, minWidth: '100%' } : undefined}
         >
-          <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-base)' }}>
+          <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface)' }}>
             <tr className="border-b border-[var(--border)]">
               {columns.map(col => {
                 const width = resizable ? columnCssWidth(col) : col.width;
@@ -270,7 +270,7 @@ export default function DataTable<T>({
       )}
 
       {isPaginated && !loading && totalRowCount > 0 && (
-        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-[var(--border)] bg-transparent dark:bg-[var(--bg-base)]">
+        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-[var(--border)] bg-[var(--bg-surface)]">
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[var(--text-muted)]">
             <span>Rows per page</span>
             <select

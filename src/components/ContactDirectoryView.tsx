@@ -579,7 +579,7 @@ export default function ContactDirectoryView({
     >
       <div className="flex-1 flex flex-col overflow-hidden">
         <Widget className="flex-1 min-h-0" bodyClassName="flex flex-col min-h-0 overflow-hidden" showHeader={false} padding="none">
-          <div className="border-b border-[var(--border)] bg-transparent dark:bg-[var(--bg-base)] p-4 shrink-0">
+          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4 shrink-0">
         <FilterBar
           search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search contacts by name, email, phone number, employer…' }}
           onClear={clearFilters}

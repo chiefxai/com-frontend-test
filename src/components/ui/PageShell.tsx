@@ -127,7 +127,7 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
     <div className={`flex flex-col h-full overflow-hidden ${className}`}>
       {/* ── Page header (only rendered here when there's no shared header slot) ── */}
       {renderOwnHeader && (
-        <div className="shrink-0 h-16 px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-transparent dark:bg-[var(--bg-base)]">
+        <div className="shrink-0 h-16 px-8 flex items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--bg-surface)]">
           <div className="min-w-0 flex items-center gap-1.5 shrink-0">
             <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] leading-snug truncate">
               {title}
@@ -159,7 +159,7 @@ export default function PageShell({ title, subtitle, titleSuffix, titleActions, 
 
       {/* ── Optional toolbar (filters / search) — shown here only in standalone mode ── */}
       {renderOwnHeader && toolbar && (
-        <div className="shrink-0 px-8 py-2.5 border-b border-[var(--border)] bg-transparent dark:bg-[var(--bg-base)] flex items-center gap-3 flex-wrap">
+        <div className="shrink-0 px-8 py-2.5 border-b border-[var(--border)] bg-[var(--bg-subtle)] flex items-center gap-3 flex-wrap">
           {toolbar}
         </div>
       )}
