@@ -57,6 +57,19 @@ vi.mock('../shared/theme/ThemeContext', () => ({
 
 // ─── Mock apiFetch ───────────────────────────────────────────────────────────
 
+// The notification bell loads independently of feature grants. Keep its
+// background feed request from consuming Sidebar's one-shot authorization mock.
+vi.mock('../notifications/api', () => ({
+  notificationClient: {
+    list: vi.fn().mockResolvedValue([]),
+    markRead: vi.fn().mockResolvedValue({ updated: 0 }),
+    preferences: vi.fn().mockResolvedValue([]),
+    setPreferences: vi.fn().mockResolvedValue([]),
+    platformStreamTicket: vi.fn().mockResolvedValue({ ticket: '' }),
+  },
+  platformStreamUrl: vi.fn(() => ''),
+}));
+
 vi.mock('../lib/api', () => ({
   apiFetch: vi.fn(),
   getAuthToken: vi.fn(() => 'mock-token'),
