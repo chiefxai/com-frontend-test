@@ -71,6 +71,8 @@ interface SettingsViewProps {
   // Numbers) — phoneCharges is then only an estimate for reference,
   // never something owed to the platform. Defaults true (billable).
   phoneChargesBillable?: boolean;
+  billingCallLogs?: import('../types').CallLog[];
+  onOpenCallLogs?: () => void;
   // Recharge-based wallet balance. This is shown only when the organization
   // is configured for recharge_based billing.
   activeSubTab?: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api';
@@ -133,6 +135,7 @@ export default function SettingsView({
   aiTokenUsage = null,
   callProviderRate = null,
   phoneChargesBillable = true,
+  billingCallLogs = [], onOpenCallLogs,
   activeSubTab: activeSubTabProp,
   setActiveSubTab: setActiveSubTabProp,
   currentUserEmail,
@@ -1718,6 +1721,8 @@ export default function SettingsView({
           {/* Shared billing console: consistent information architecture across all billing views. */}
           {subTab === 'billing' && (
             <BillingWorkspace
+              callLogs={billingCallLogs}
+              onOpenCallLogs={onOpenCallLogs}
               workspaceId={currentWorkspaceId}
               view={billingPanel}
               onNavigate={setBillingPanel}
