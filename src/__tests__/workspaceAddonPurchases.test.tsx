@@ -80,7 +80,7 @@ it('prepares an invoice for workspace six instead of calling immediate workspace
     render(<WorkspaceManagement enabled onWorkspaceCreated={async()=>{}}/>);
     await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/settings/workspace-policy'));
     fireEvent.click(screen.getByRole('button',{name:'Create Workspace'}));
-    await screen.findByText(/Pay ₹50.00 per month/);
+    await screen.findByText(/Workspace add-on: ₹50.00/);
     fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Mumbai'}});
     fireEvent.click(screen.getByRole('button',{name:'Prepare payment invoice'}));
     await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/billing/workspace-addons',expect.objectContaining({method:'POST',body:JSON.stringify({name:'Mumbai',industry:'lending',branchName:null,pricingAcceptanceToken:'server-token'})})));
