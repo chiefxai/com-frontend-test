@@ -33,7 +33,7 @@ vi.mock('../lib/authorization', async (importOriginal) => ({
 }));
 vi.mock('../components/billing/WorkspaceAddonPurchases', () => ({
   default: ({ submittedPayments, displayFilter, showWorkspace }: {
-    submittedPayments: Array<{ id: string; purpose: string; workspaceAddonName?: string | null }>;
+    submittedPayments: Array<{ id: string; purpose: string; status: string; workspaceAddonName?: string | null }>;
     displayFilter: string; showWorkspace: boolean;
   }) => <div data-testid="payment-activity-list">
     {displayFilter !== 'workspace' && submittedPayments.map(payment =>
@@ -42,6 +42,7 @@ vi.mock('../components/billing/WorkspaceAddonPurchases', () => ({
           payment.purpose === 'subscription' ? 'Subscription payment' :
           payment.workspaceAddonName ? 'Workspace add-on' : 'Invoice payment'}
         {payment.workspaceAddonName && <span>{payment.workspaceAddonName}</span>}
+        <span>{payment.status === 'pending_verification' ? 'Waiting for approval' : payment.status}</span>
       </div>)}
     {showWorkspace && displayFilter !== 'submitted' && <span data-testid="workspace-invoices">Workspace invoices</span>}
   </div>,
@@ -205,6 +206,6 @@ describe('organization billing views', () => {
     expect(await screen.findByText('Payments and workspace invoices')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
-    expect(await screen.findByText('Awaiting admin verification')).toBeInTheDocument();
+    expect(await screen.findByText('Waiting for approval')).toBeInTheDocument();
   });
 });
