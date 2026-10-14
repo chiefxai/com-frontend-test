@@ -82,9 +82,9 @@ describe('organization billing interface', () => {
 
   it('keeps recurring subscription, organization usage, and credit ledger conceptually separate', () => {
     render(<BillingWorkspace {...defaults} />);
-    expect(screen.getByText('Subscription / month')).toBeTruthy();
-    expect(screen.getByText('Recorded usage')).toBeTruthy();
-    expect(screen.getByText('Calls recorded')).toBeTruthy();
+    expect(screen.getByText('Plan price')).toBeTruthy();
+    expect(screen.getByText('Usage recorded')).toBeTruthy();
+    expect(screen.getByText('Calls made')).toBeTruthy();
     expect(screen.getByText('43')).toBeTruthy();
     expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
     expect(screen.getByTestId('organization-credit-ledger')).toBeTruthy();
@@ -123,6 +123,23 @@ describe('organization billing interface', () => {
     expect(screen.getByTestId('organization-credit-ledger')).toBeInTheDocument();
   });
 
+  it('offers direct action cards from the new Overview', () => {
+    const onNavigate = vi.fn();
+    render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
+    expect(screen.getByText('See your costs. Stay in control.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /My credits/ }));
+    expect(onNavigate).toHaveBeenCalledWith('credits');
+    fireEvent.click(screen.getByRole('button', { name: /My payments/ }));
+    expect(onNavigate).toHaveBeenCalledWith('payments');
+  });
+
+  it('shows progress only for a known workspace limit without using organization spend', () => {
+    const { rerender } = render(<BillingWorkspace {...defaults} view="usage" />);
+    expect(screen.getByRole('progressbar', { name: 'Workspace spending limit used' })).toHaveAttribute('aria-valuenow', '75');
+    rerender(<BillingWorkspace {...defaults} view="usage" workspaceBilling={{ ...billing!, monthlyBudgetInr: null }} />);
+    expect(screen.queryByRole('progressbar', { name: 'Workspace spending limit used' })).not.toBeInTheDocument();
+  });
+
   it('keeps Add credits hidden for viewers without submission permission', () => {
     render(<BillingWorkspace {...defaults} canSubmitPayment={false} />);
     expect(screen.queryByRole('button', { name: 'Add credits' })).not.toBeInTheDocument();
@@ -132,19 +149,19 @@ describe('organization billing interface', () => {
     const onSaveBudget = vi.fn();
     const onBudgetDraftChange = vi.fn();
     render(<BillingWorkspace {...defaults} view="usage" onSaveBudget={onSaveBudget} onBudgetDraftChange={onBudgetDraftChange} />);
-    expect(screen.getByText('Organization usage spend')).toBeTruthy();
-    expect(screen.getByText('Selected workspace cap')).toBeTruthy();
-    expect(screen.getByText('Workspace cap remaining')).toBeTruthy();
-    expect(screen.getByText(/different scopes/i)).toBeTruthy();
+    expect(screen.getByText('Usage cost so far')).toBeTruthy();
+    expect(screen.getByText('Monthly limit')).toBeTruthy();
+    expect(screen.getByText('Room left before the limit')).toBeTruthy();
+    expect(screen.getByText(/different numbers/i)).toBeTruthy();
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Monthly cap in INR' }), { target: { value: '2000' } });
     expect(onBudgetDraftChange).toHaveBeenCalledWith('2000');
-    fireEvent.click(screen.getByRole('button', { name: 'Save workspace cap' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save workspace limit' }));
     expect(onSaveBudget).toHaveBeenCalledOnce();
   });
 
   it('does not display the edit action without workspace permissions', () => {
     render(<BillingWorkspace {...defaults} view="usage" canManageBudget={false} />);
-    expect(screen.queryByRole('button', { name: 'Save workspace cap' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save workspace limit' })).toBeNull();
   });
 
   it('explains a failed refresh and lets the user retry', () => {
