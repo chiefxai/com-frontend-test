@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import OrganizationTopUp from '../components/billing/OrganizationTopUp';
 
 const mocks = vi.hoisted(() => ({
@@ -206,6 +206,6 @@ describe('organization billing views', () => {
     expect(await screen.findByText('Payments and workspace invoices')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
-    expect((await screen.findAllByText('Waiting for approval')).length).toBeGreaterThan(0);
+    expect(await within(screen.getByTestId('payment-activity-list')).findByText('Waiting for approval')).toBeInTheDocument();
   });
 });
