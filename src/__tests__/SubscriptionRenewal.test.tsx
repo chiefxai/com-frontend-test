@@ -45,19 +45,20 @@ describe('organization subscription renewal', () => {
       status:'paid',paidAt:'2026-09-25T00:00:00Z',payable:false,
     })}),paidCreditsDuringTrial:{
       grantId:'paid-grant-1',amount:{asset:'INR',units:'250000',scale:2},
+      availableInOrganizationPool:{asset:'INR',units:'225000',scale:2},
       expiresAt:'2026-11-01T00:00:00Z',
     }});
     render(<SubscriptionRenewal canSubmit />);
-    expect(await screen.findByText(/Paid credits are available now:/)).toBeInTheDocument();
+    expect(await screen.findByText(/Paid plan credits approved:/)).toBeInTheDocument();
     expect(screen.getByText(/₹200 trial credits expire when the trial ends/)).toBeInTheDocument();
-    expect(screen.getByText(/It can be used alongside remaining trial credits/)).toBeInTheDocument();
+    expect(screen.getByText(/remains unallocated in your organization pool/)).toBeInTheDocument();
   });
 
   it('does not claim paid credits are available before payment approval',async()=>{
     mocks.renewal.mockResolvedValue(response({eligible:true,trial:true,q:quote({pendingPayment:true,payable:false})}));
     render(<SubscriptionRenewal canSubmit />);
     expect(await screen.findByText(/Your payment is being checked/)).toBeInTheDocument();
-    expect(screen.queryByText(/Paid credits are available now:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Paid plan credits approved:/)).not.toBeInTheDocument();
   });
 
   it('uses server renewal eligibility and keeps quote creation unavailable before the renewal window', async () => {
