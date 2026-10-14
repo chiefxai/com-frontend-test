@@ -64,6 +64,8 @@ describe('simple subscription action chooser', () => {
     expect(await screen.findByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Keep my plan going/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Look at a bigger plan/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start a new plan/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('start-panel')).toBeInTheDocument();
     expect(screen.getByText('Other plan choices')).toBeInTheDocument();
   });
 
