@@ -212,6 +212,14 @@ export default function SettingsView({
     setOrganizationNumbersError('');
   }, []);
   const visibleNumbers = organizationNumbers || virtualNumbers;
+  const refreshVirtualNumberInventory = () => {
+    if (canReadOrganization) {
+      void loadOrganizationNumbers().catch(error => {
+        setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
+      });
+    }
+    loadChannels();
+  };
   const [numberSearch, setNumberSearch] = useState('');
   const [numberProvider, setNumberProvider] = useState('');
   const [numberStatus, setNumberStatus] = useState('');
@@ -260,6 +268,7 @@ export default function SettingsView({
   };
 
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const virtualNumberSetupRef = React.useRef<HTMLDivElement>(null);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const loadAuditLogs = () => {
@@ -968,19 +977,30 @@ export default function SettingsView({
                         className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
                         Export CSV ({filteredNumbers.length})
                       </button>
-                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => setShowProviderForm(true)} />
+                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => {
+                          if (visibleNumbers.length === 0) {
+                            virtualNumberSetupRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+                          } else {
+                            setShowProviderForm(true);
+                          }
+                        }} />
                     </>}
                   />
                 </div>
                 {multiWorkspaceUi && visibleNumbers.some(number => !numberWorkspaceId(number)) &&
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
                 {visibleNumbers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-12 w-12 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-3">
-                      <Phone className="h-5 w-5 text-indigo-400" />
+                  <div ref={virtualNumberSetupRef} className="min-w-0 w-full space-y-5 px-4 py-6 sm:px-6" aria-label="Virtual number setup">
+                    <div className="flex flex-col items-center justify-center gap-2 border-b border-[var(--border)] pb-5 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
+                        <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
+                      </div>
+                      <h3 className="text-base font-semibold text-[var(--text-primary)]">No virtual numbers yet</h3>
+                      <p className="max-w-xl text-sm leading-6 text-[var(--text-secondary)]">
+                        Assign an available platform number to a workspace, or connect your telephony account and add your own numbers below.
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-slate-600">No virtual numbers yet</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xs">Click + to connect a provider, register a number, or assign an available number to a workspace.</p>
+                    <OrganizationTelephonyConnectors embedded onInventoryChange={refreshVirtualNumberInventory} />
                   </div>
                 ) : (() => {
                   const columns: Column<VirtualNumber>[] = [
@@ -1053,16 +1073,7 @@ export default function SettingsView({
                   maxWidth="max-w-5xl"
                 >
                   <div className="min-w-0 space-y-5">
-                    <OrganizationTelephonyConnectors
-                      onInventoryChange={() => {
-                        if (canReadOrganization) {
-                          void loadOrganizationNumbers().catch(error => {
-                            setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
-                          });
-                        }
-                        loadChannels();
-                      }}
-                    />
+                    <OrganizationTelephonyConnectors onInventoryChange={refreshVirtualNumberInventory} />
                     <details className="rounded-xl border border-[var(--border)] p-4">
                       <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
                         Existing Vobiz calling connection
