@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card } from '../ui/Card';
 import { Activity, ArrowRight, CalendarClock, CreditCard, ExternalLink, PhoneCall, RefreshCw, Wallet, Building2, Sparkles, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient } from '../../lib/billing/client';
@@ -35,12 +36,12 @@ function money(value: number | null | undefined): string {
 function Tile({ title, amount, description, icon: Icon }: {
   title: string; amount: React.ReactNode; description: string; icon: React.ElementType;
 }) {
-  return <div className="rounded-xl border border-[var(--border)] bg-transparent p-4">
+  return <Card padding="none" className="!p-4">
     <Icon aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
     <p className="mt-3 text-sm text-[var(--text-secondary)]">{title}</p>
     <p className="mt-1 break-words text-2xl font-bold tabular-nums text-[var(--text-primary)]">{amount}</p>
     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{description}</p>
-  </div>;
+  </Card>;
 }
 
 /** One organization-scoped dashboard. Failed optional endpoints do not hide known values. */
@@ -123,7 +124,7 @@ export default function BillingOverviewHome({
     : endsAt ? `Ends ${displayDate(endsAt)}` : 'Period dates unavailable';
 
   return <section className="col-span-12 space-y-4" aria-label="Your billing overview">
-    <div className="rounded-2xl border border-[var(--border)] bg-transparent p-5 sm:p-6">
+    <Card padding="none" className="!rounded-2xl !p-5 sm:!p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Your plan right now</p>
@@ -157,7 +158,7 @@ export default function BillingOverviewHome({
       {errors.length > 0 && !loading && <p role="alert" className="mt-3 text-xs leading-5 text-amber-700">
         Some information is unavailable: {errors.join(' ')} Refresh or check again later.
       </p>}
-    </div>
+    </Card>
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Tile title="Plan credits remaining" icon={Wallet}
@@ -176,7 +177,7 @@ export default function BillingOverviewHome({
     </p>
 
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border border-[var(--border)] bg-transparent p-5">
+      <Card padding="none" className="!rounded-2xl !p-5">
         <h3 className="text-base font-semibold text-[var(--text-primary)]">What has calling cost?</h3>
         <div className="mt-4 divide-y divide-[var(--border)] text-sm">
           <div className="flex items-center justify-between gap-3 py-3"><span>AI processing</span><strong className="tabular-nums">{money(usage?.aiSpendInr)}</strong></div>
@@ -186,8 +187,8 @@ export default function BillingOverviewHome({
         {!phoneChargesBillable && <p className="mt-2 text-xs text-[var(--text-secondary)]">Your phone provider charges separately. Its estimated cost is not an extra platform charge.</p>}
         <Button type="button" variant="secondary" size="sm" icon={ArrowRight} className="mt-3"
           onClick={() => onNavigate('usage')}>See usage and limits</Button>
-      </div>
-      <div className="rounded-2xl border border-[var(--border)] bg-transparent p-5">
+      </Card>
+      <Card padding="none" className="!rounded-2xl !p-5">
         <h3 className="text-base font-semibold text-[var(--text-primary)]">Your recent calls</h3>
         <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">Last five calls in the selected workspace, not individual billing ledger charges.</p>
         <div className="mt-3 divide-y divide-[var(--border)]">
@@ -200,10 +201,10 @@ export default function BillingOverviewHome({
           </div>) : <p className="py-5 text-sm text-[var(--text-secondary)]">No call activity available for this workspace.</p>}
         </div>
         {onOpenCallLogs && <Button type="button" variant="secondary" size="sm" icon={ExternalLink} className="mt-3" onClick={onOpenCallLogs}>Open all call logs</Button>}
-      </div>
+      </Card>
     </div>
 
-    <div className="rounded-2xl border border-[var(--border)] bg-transparent p-5">
+    <Card padding="none" className="!rounded-2xl !p-5">
       <div className="flex items-center gap-3"><Building2 aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" /><h3 className="text-base font-semibold text-[var(--text-primary)]">Extra workspace charges</h3></div>
       <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Extra workspaces can have a separate monthly access fee because each additional workspace needs its own subscription access. These fees are not deducted from calling credits.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -226,7 +227,7 @@ export default function BillingOverviewHome({
         {canSubmitPayment && <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('topup')}>Add more credits</Button>}
         <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('payments')}>View workspace invoices</Button>
       </div>
-    </div>
+    </Card>
     {loadingUsage && <p role="status" className="text-xs text-[var(--text-muted)]">Refreshing current usage…</p>}
   </section>;
 }

@@ -119,11 +119,14 @@ describe('organization billing interface', () => {
     expect(screen.getByText('Your subscription')).toBeInTheDocument();
     expect(screen.getByText('Your estimated plan price')).toBeInTheDocument();
     expect(screen.getByText('Plan price and calling credits are different.')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Show extra plan details/ }));
-    expect(screen.getByTestId('organization-credit-ledger')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show extra plan details/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /View remaining credits/ }));
+    expect(defaults.onNavigate).toHaveBeenCalledWith('credits');
+    fireEvent.click(screen.getByRole('button', { name: /Workspace invoices and payments/ }));
+    expect(defaults.onNavigate).toHaveBeenCalledWith('payments');
   });
 
   it('offers direct action cards from the new Overview', () => {

@@ -97,8 +97,7 @@ export default function BillingWorkspace({
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
-  const [showMorePlanDetails, setShowMorePlanDetails] = React.useState(false);
-  const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time'>('renew');
+  const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time' | null>(null);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
@@ -216,21 +215,18 @@ export default function BillingWorkspace({
             : <p className="col-span-12 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
                 Only your organization's billing administrators can start, renew, or change a subscription.
               </p>}
-          <section className="col-span-12 space-y-3">
-            <button type="button" aria-expanded={showMorePlanDetails}
-              onClick={() => setShowMorePlanDetails(current => !current)}
-              className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-4 text-left text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
-              <span>{showMorePlanDetails ? 'Hide' : 'Show'} extra plan details</span>
-              <span className="text-xs font-normal text-[var(--text-secondary)]">Workspace add-ons and credits</span>
-            </button>
-            {showMorePlanDetails && <OrganizationTopUp canSubmit={canSubmitPayment} view="plan" onNavigate={onNavigate} />}
-          </section>
+          <div className="col-span-12 flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="secondary" icon={Wallet}
+              onClick={() => onNavigate('credits')}>View remaining credits</Button>
+            <Button type="button" size="sm" variant="secondary" icon={ReceiptText}
+              onClick={() => onNavigate('payments')}>Workspace invoices and payments</Button>
+          </div>
         </>
       )}
 
       {view === 'usage' && (
         <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Usage and limits">
-          <div className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6">
+          <Card padding="none" className="col-span-12 !p-5 sm:!p-6">
             <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
               <Gauge aria-hidden="true" className="h-3.5 w-3.5" /> Spending and limits
             </span>
@@ -264,7 +260,7 @@ export default function BillingWorkspace({
                 <p className="mt-1 leading-6 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Recorded phone-service cost for this period.' : 'For information only. Your phone provider bills you separately.'}</p>
               </div>
             </div>
-          </div>
+          </Card>
           <Card padding="sm" className="col-span-12 sm:!p-6">
             <CardHeader title="Your workspace spending limit" subtitle={workspaceBilling?.workspaceName ? `For ${workspaceBilling.workspaceName} only` : 'For the selected workspace only'} icon={Gauge} />
             <div className="grid gap-3 sm:grid-cols-2">

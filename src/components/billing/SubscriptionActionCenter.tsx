@@ -28,8 +28,8 @@ const tasks = [
   },
 ] as const;
 
-export default function SubscriptionActionCenter({ canSubmitPayment, initialTask = 'renew' }: { canSubmitPayment: boolean; initialTask?: SubscriptionTask }) {
-  const [selected, setSelected] = React.useState<SubscriptionTask>(initialTask);
+export default function SubscriptionActionCenter({ canSubmitPayment, initialTask = null }: { canSubmitPayment: boolean; initialTask?: SubscriptionTask | null }) {
+  const [selected, setSelected] = React.useState<SubscriptionTask | null>(initialTask);
   const [availability, setAvailability] = React.useState<{ renew: boolean; upgrade: boolean } | null>(null);
   const [showDowngradeHelp, setShowDowngradeHelp] = React.useState(false);
   React.useEffect(() => { setSelected(initialTask); }, [initialTask]);
@@ -49,43 +49,36 @@ export default function SubscriptionActionCenter({ canSubmitPayment, initialTask
   }, []);
   const visibleTasks = tasks.filter(task => task.key !== 'renew' || availability?.renew)
     .filter(task => task.key !== 'upgrade' || availability?.upgrade);
-  const current = visibleTasks.find(task => task.key === selected) || visibleTasks[0];
-  // When an ineligible renewal/upgrade is hidden, activate the visible fallback.
+  // Do not auto-open a purchase or grace form. Only a chosen, eligible action may open.
+  const current = visibleTasks.find(task => task.key === selected) || null;
   const activeTask = current?.key;
 
   return (
     <section className="col-span-12 space-y-4" aria-label="Manage your subscription">
       <div>
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">What would you like to do?</h2>
-        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
-          Pick one thing. We'll show you just the steps for that choice.
-        </p>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">Select a button to see the steps. Nothing is charged or changed until you confirm.</p>
       </div>
       {!availability && <p role="status" className="text-sm text-[var(--text-secondary)]">Checking which plan actions are available…</p>}
-      <div role="group" aria-label="Subscription actions" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div role="group" aria-label="Subscription actions" className="flex flex-wrap gap-2">
         {availability && visibleTasks.map(({ key, title, description, icon: Icon }) => {
           const active = activeTask === key;
           return (
             <button type="button" key={key} aria-pressed={active} aria-controls="subscription-task-panel"
-              onClick={() => setSelected(key)}
-              className={`flex min-h-24 items-start gap-3 rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${active
-                ? 'border-[var(--accent)] bg-[var(--accent-subtle)]'
-                : 'border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)]'}`}>
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'}`}>
-                <Icon aria-hidden="true" className="h-5 w-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-[var(--text-primary)]">{title}</span>
-                <span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">{description}</span>
-              </span>
+              onClick={() => setSelected(previous => previous === key ? null : key)}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${active
+                ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
+                : 'border-[var(--border)] bg-white text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] dark:bg-[var(--bg-surface)]'}`}>
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />{title}
             </button>
           );
         })}
       </div>
       {availability && current && <div id="subscription-task-panel" aria-label={current.title} className="min-w-0 space-y-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">{current.title}</h3>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">{current.description}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-[var(--text-secondary)]">{current.description}</p>
+          <button type="button" onClick={() => setSelected(null)}
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">Close</button>
         </div>
         {activeTask === 'renew' && <SubscriptionRenewal canSubmit={canSubmitPayment} />}
         {activeTask === 'start' && <InitialSubscriptionPurchase canSubmit={canSubmitPayment} />}

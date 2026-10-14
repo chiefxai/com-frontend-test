@@ -75,20 +75,24 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('organization billing views', () => {
-  it('distinguishes Enterprise monthly allowance from issued credits in Credits and Subscription', async () => {
+  it('shows only available plan and top-up pool balances, not promised or issued entitlements', async () => {
     const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
-    expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
-    expect(screen.getByText('₹2,500.00')).toBeInTheDocument();
-    expect(screen.getByText(/waiting for an approved payment and an active subscription period/i)).toBeInTheDocument();
-    expect(mocks.subscriptionCreditStatus).toHaveBeenCalled();
+    expect(screen.getByText('Available credits')).toBeInTheDocument();
+    expect(await screen.findByText('₹3,000.00')).toBeInTheDocument();
+    expect(screen.getByText('₹1,500.00')).toBeInTheDocument();
+    expect(screen.getByText('Subscription credits remaining')).toBeInTheDocument();
+    expect(screen.getByText('Top-up credits remaining')).toBeInTheDocument();
+    expect(screen.queryByText('Monthly usage credits')).not.toBeInTheDocument();
+    expect(screen.queryByText('Current plan period')).not.toBeInTheDocument();
+    expect(mocks.subscriptionCreditStatus).not.toHaveBeenCalled();
     rerender(<OrganizationTopUp view="plan" canSubmit />);
-    expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
+    expect(screen.queryByText('Monthly usage credits')).not.toBeInTheDocument();
   });
 
   it('explains credit types clearly and shows a payment review summary', async () => {
     const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
-    expect(screen.getByText('Know what you can spend')).toBeInTheDocument();
-    expect((await screen.findAllByText('Credits from your plan')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Available credits')).toBeInTheDocument();
+    expect(await screen.findByText('Subscription credits remaining')).toBeInTheDocument();
     rerender(<OrganizationTopUp view="payments" canSubmit />);
     expect(screen.getByText('Know where your payments stand')).toBeInTheDocument();
     expect(screen.getByText('Waiting for review on this page')).toBeInTheDocument();
