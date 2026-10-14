@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import SubscriptionActionCenter from '../components/billing/SubscriptionActionCenter';
 
-const mocks = vi.hoisted(() => ({ renewal: vi.fn(), overview: vi.fn() }));
+const mocks = vi.hoisted(() => ({ renewal: vi.fn(), overview: vi.fn(), grace: vi.fn() }));
 vi.mock('../lib/billing/client', () => ({
-  billingClient: { subscriptionRenewal: mocks.renewal, organizationOverview: mocks.overview },
+  billingClient: { subscriptionRenewal: mocks.renewal, organizationOverview: mocks.overview, subscriptionGraceRequests: mocks.grace }, 
 }));
 beforeEach(() => {
   vi.clearAllMocks();
@@ -15,6 +15,7 @@ beforeEach(() => {
     quote: null,
   }));
   mocks.overview.mockResolvedValue({ nextPeriod: null });
+  mocks.grace.mockResolvedValue({ eligibility: { requestEligible: true }, items: [] });
 });
 
 vi.mock('../components/billing/SubscriptionRenewal', () => ({
@@ -68,9 +69,28 @@ describe('simple subscription action chooser', () => {
     expect(await screen.findByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Keep my plan going/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Look at a bigger plan/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ask for more time/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Start a new plan/ })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByTestId('start-panel')).not.toBeInTheDocument();
     expect(screen.getByText('Other plan choices')).toBeInTheDocument();
+  });
+
+  it('hides Ask for more time after payment is submitted or the next period is scheduled', async () => {
+    mocks.renewal.mockResolvedValue({
+      subscription: { planId: 'starter', accessState: 'operational' },
+      period: { endsAt: new Date(Date.now() + 3 * 86400000).toISOString(), renewalEligible: true },
+      quote: { status: 'pending_verification', pendingPayment: true },
+    });
+    render(<SubscriptionActionCenter canSubmitPayment />);
+    expect(await screen.findByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ask for more time/ })).not.toBeInTheDocument();
+  });
+
+  it('does not show the grace action when the backend says a request is not eligible', async () => {
+    mocks.grace.mockResolvedValue({ eligibility: { requestEligible: false }, items: [] });
+    render(<SubscriptionActionCenter canSubmitPayment />);
+    expect(await screen.findByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ask for more time/ })).not.toBeInTheDocument();
   });
 
   it('does not turn a read-only payment workflow into an enabled one', async () => {
