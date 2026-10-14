@@ -99,6 +99,11 @@ export default function CreateWorkspacePage() {
   });
   const [platformTelephonyNumbers, setPlatformTelephonyNumbers] = useState<Array<TelephonyInventoryNumber & { connectorId: string; connectorName: string; providerKey: string; providerName: string }>>([]);
   const [platformTelephonyAvailable, setPlatformTelephonyAvailable] = useState(false);
+  const [additionalCustomerNumbers, setAdditionalCustomerNumbers] = useState<string[]>([]);
+  const [additionalSavedNumberIds, setAdditionalSavedNumberIds] = useState<string[]>([]);
+  const [additionalEnteredNumbers, setAdditionalEnteredNumbers] = useState<Array<{
+    id: string; connectorId: string; phoneNumber: string; label: string; providerNumberId: string; confirmed: boolean;
+  }>>([]);
   const [platformTelephonyConnectors, setPlatformTelephonyConnectors] = useState<TelephonyConnector[]>([]);
   const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
@@ -269,13 +274,41 @@ export default function CreateWorkspacePage() {
     }
     setLoading(true);
     try {
+      const customerNumbers = [form.callPhoneNumber, ...additionalCustomerNumbers].map(number => number.trim());
+      const savedPlatformIds = [form.platformTelephonyNumberId, ...additionalSavedNumberIds].filter(Boolean);
+      const enteredPlatformNumbers = [{
+        connectorId: form.platformTelephonyConnectorId, phoneNumber: form.platformTelephonyPhoneNumber.trim(),
+        label: form.platformTelephonyNumberLabel.trim(), providerNumberId: form.platformTelephonyProviderNumberId.trim(),
+        confirmed: form.platformTelephonyNumberConfirmed,
+      }, ...additionalEnteredNumbers.map(number => ({
+        connectorId: number.connectorId, phoneNumber: number.phoneNumber.trim(),
+        label: number.label.trim(), providerNumberId: number.providerNumberId.trim(), confirmed: number.confirmed,
+      }))];
+      const validNumbers = (numbers: string[]) => numbers.length > 0 && numbers.length <= 25
+        && numbers.every(number => /^\+[1-9]\d{7,14}$/.test(number))
+        && new Set(numbers).size === numbers.length;
       if (!form.gcpCredentialsJson.trim()) {
         setError('Service account credentials JSON is required.');
         return;
       }
       if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed') {
+        if (form.platformTelephonyNumberMode === 'saved' && (!savedPlatformIds.length
+            || savedPlatformIds.length > 25 || new Set(savedPlatformIds).size !== savedPlatformIds.length)) {
+          setError('Select between 1 and 25 distinct platform phone numbers.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'saved' && savedPlatformIds.some(id => !platformTelephonyNumbers.some(number => number.id === id))) {
+          setError('A selected platform number is no longer available. Reload the inventory.'); return;
+        }
         if (form.platformTelephonyNumberMode === 'saved' && !form.platformTelephonyNumberId) {
           setError('Choose an available number from platform inventory.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'enter' && (enteredPlatformNumbers.length > 25 ||
+            !validNumbers(enteredPlatformNumbers.map(number => number.phoneNumber)) ||
+            enteredPlatformNumbers.some(number => !platformTelephonyConnectors.some(connector => connector.id === number.connectorId)))) {
+          setError('Enter 1–25 distinct E.164 numbers, each with an active platform connector.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'enter' && enteredPlatformNumbers.some(number => !number.confirmed)) {
+          setError('Confirm every entered phone number is active in its provider account.'); return;
         }
         if (form.platformTelephonyNumberMode === 'enter' && (!form.platformTelephonyConnectorId || !form.platformTelephonyPhoneNumber.trim())) {
           setError('Choose a platform connector and enter its phone number.'); return;
@@ -284,8 +317,8 @@ export default function CreateWorkspacePage() {
           setError('Confirm the number is active in the selected provider account before continuing.'); return;
         }
       }
-      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !form.callPhoneNumber.trim())) {
-        setError('Call provider credentials and phone number are required when Charge Scope is AI + Call Provider.');
+      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !validNumbers(customerNumbers))) {
+        setError('Enter call-provider credentials and 1–25 distinct phone numbers in E.164 format (for example +14155550123).');
         return;
       }
 
@@ -330,7 +363,8 @@ export default function CreateWorkspacePage() {
               provider: form.callProvider,
               authId: form.callAuthId.trim(),
               authToken: form.callAuthToken.trim(),
-              phoneNumber: form.callPhoneNumber.trim(),
+              phoneNumber: customerNumbers[0],
+              phoneNumbers: customerNumbers,
             },
           } : {}),
           ...(form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed'
@@ -358,32 +392,38 @@ export default function CreateWorkspacePage() {
       const created = await res.json().catch(() => ({}));
       if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed') {
         try {
-          let numberId = form.platformTelephonyNumberId;
+          const numberIds = form.platformTelephonyNumberMode === 'saved' ? [...savedPlatformIds] : [];
           if (form.platformTelephonyNumberMode === 'enter') {
-            const numberResponse = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(form.platformTelephonyConnectorId)}/numbers`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phoneNumberE164: form.platformTelephonyPhoneNumber.trim(),
-                providerNumberId: form.platformTelephonyProviderNumberId.trim() || null,
-                displayName: form.platformTelephonyNumberLabel.trim() || null }),
-            });
-            const numberBody = await numberResponse.json().catch(() => ({}));
-            if (!numberResponse.ok || !numberBody.number?.id) throw new Error(numberBody.error || 'Could not save the number to connector inventory.');
-            numberId = numberBody.number.id;
-            const readyResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(numberId)}/mark-ready`, { method: 'POST' });
-            if (!readyResponse.ok) {
-              const details = await readyResponse.json().catch(() => ({}));
-              throw new Error(details.error || 'Could not confirm the number as ready.');
+            for (const number of enteredPlatformNumbers) {
+              const numberResponse = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(number.connectorId)}/numbers`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumberE164: number.phoneNumber,
+                  providerNumberId: number.providerNumberId || null,
+                  displayName: number.label || null }),
+              });
+              const numberBody = await numberResponse.json().catch(() => ({}));
+              if (!numberResponse.ok || !numberBody.number?.id) throw new Error(numberBody.error || `Could not register ${number.phoneNumber} in connector inventory.`);
+              const id = numberBody.number.id as string;
+              const readyResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(id)}/mark-ready`, { method: 'POST' });
+              if (!readyResponse.ok) {
+                const details = await readyResponse.json().catch(() => ({}));
+                throw new Error(details.error || `Could not confirm ${number.phoneNumber} as ready.`);
+              }
+              numberIds.push(id);
             }
           }
-          const allocationResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(numberId)}/allocate`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: created.id }),
+          // A bulk allocation is one transaction: no partial organization
+          // mapping when another admin claims one of the selected numbers.
+          const allocationResponse = await apiFetch('/api/platform/telephony/numbers/bulk-allocate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: created.id, phoneNumberIds: numberIds }),
           });
           if (!allocationResponse.ok) {
             const details = await allocationResponse.json().catch(() => ({}));
-            throw new Error(details.error || 'Could not allocate the number to the organization.');
+            throw new Error(details.error || 'Could not allocate all selected numbers to the organization.');
           }
         } catch (cause) {
-          setError(`Organization ${created.id || ''} was created, but telephony allocation did not complete: ${cause instanceof Error ? cause.message : 'Unknown error'}. You can allocate the number from Telephony Connectors.`);
+          setError(`Organization ${created.id || ''} was created, but telephony allocation did not complete: ${cause instanceof Error ? cause.message : 'Unknown error'}. The remaining numbers can be managed from Telephony Connectors.`);
           return;
         }
       }
@@ -579,7 +619,7 @@ export default function CreateWorkspacePage() {
                 </label>
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="radio" name="telephonySetup" value="platform_managed" checked={form.telephonySetup === 'platform_managed'} onChange={set('telephonySetup')} />
-                  Reserve a platform connector number
+                  Use platform-managed phone numbers
                 </label>
               </fieldset>}
               {form.telephonySetup === 'platform_managed' ? <>
@@ -594,6 +634,22 @@ export default function CreateWorkspacePage() {
                     <option value="">Select a number</option>
                     {platformTelephonyNumbers.map(number => <option key={number.id} value={number.id}>{number.phoneNumberE164} · {number.providerName} · {number.connectorName}{number.displayName ? ` · ${number.displayName}` : ''}</option>)}
                   </select>
+                  {additionalSavedNumberIds.map((selectedId, index) => <div key={index} className="mt-2 flex items-center gap-2">
+                    <label className="sr-only" htmlFor={`additional-platform-number-${index}`}>Additional platform number {index + 2}</label>
+                    <select id={`additional-platform-number-${index}`} value={selectedId}
+                      onChange={event => setAdditionalSavedNumberIds(current => current.map((id, i) => i === index ? event.target.value : id))}
+                      required className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                      <option value="">Select a number</option>
+                      {platformTelephonyNumbers.map(number => <option key={number.id} value={number.id}>
+                        {number.phoneNumberE164} · {number.providerName} · {number.connectorName}{number.displayName ? ` · ${number.displayName}` : ''}
+                      </option>)}
+                    </select>
+                    <button type="button" className="text-xs text-rose-700 underline" onClick={() => setAdditionalSavedNumberIds(current => current.filter((_, i) => i !== index))}>Remove</button>
+                  </div>)}
+                  <button type="button" className="mt-2 text-xs font-semibold text-[var(--accent)] underline"
+                    disabled={1 + additionalSavedNumberIds.length >= 25 || 1 + additionalSavedNumberIds.length >= platformTelephonyNumbers.length}
+                    onClick={() => setAdditionalSavedNumberIds(current => [...current, ''])}>+ Add another platform number</button>
+                  <p className="mt-1 text-xs text-slate-500">{1 + additionalSavedNumberIds.length} number{additionalSavedNumberIds.length ? 's' : ''} selected for mapping. Numbers cannot be shared between organizations.</p>
                   {!platformTelephonyNumbers.length && <p className="mt-1 text-xs text-slate-500">No available numbers are currently in active platform connector inventory.</p>}
                 </div> : <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block text-xs font-medium text-slate-500">Platform connector *<select required className="mt-1 w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm" value={form.platformTelephonyConnectorId} onChange={event => setForm(current => ({ ...current, platformTelephonyConnectorId: event.target.value }))}><option value="">Select connector</option>{platformTelephonyConnectors.map(connector => <option key={connector.id} value={connector.id}>{connector.displayName} · {connector.providerKey}</option>)}</select></label>
@@ -602,7 +658,41 @@ export default function CreateWorkspacePage() {
                   <label className="block text-xs font-medium text-slate-500">Provider number reference (optional)<input value={form.platformTelephonyProviderNumberId} onChange={event => setForm(current => ({ ...current, platformTelephonyProviderNumberId: event.target.value }))} className="mt-1 w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm" /></label>
                   <label className="sm:col-span-2 flex items-start gap-2 text-xs text-slate-600"><input type="checkbox" checked={form.platformTelephonyNumberConfirmed} onChange={event => setForm(current => ({ ...current, platformTelephonyNumberConfirmed: event.target.checked }))} /><span>I confirm this number is active on the selected provider account and is available to allocate.</span></label>
                 </div>}
-                <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">The number is allocated to the organization. Its admin can assign it to the right workspace later.</p>
+                {form.platformTelephonyNumberMode === 'enter' && <div className="space-y-3">
+                  {additionalEnteredNumbers.map((entry, index) => <fieldset key={entry.id} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2">
+                    <legend className="px-1 text-xs font-semibold">Additional phone number {index + 2}</legend>
+                    <label className="text-xs text-slate-500">Platform connector *
+                      <select value={entry.connectorId} required onChange={event => setAdditionalEnteredNumbers(current => current.map(n => n.id === entry.id ? {...n, connectorId:event.target.value} : n))}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <option value="">Select connector</option>
+                        {platformTelephonyConnectors.map(connector => <option key={connector.id} value={connector.id}>{connector.displayName} · {connector.providerKey}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs text-slate-500">Phone number *
+                      <input aria-label={`Additional platform phone number ${index + 2}`} value={entry.phoneNumber} required placeholder="+14155550124"
+                        onChange={event => setAdditionalEnteredNumbers(current => current.map(n => n.id === entry.id ? {...n, phoneNumber:event.target.value} : n))}
+                        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+                    </label>
+                    <label className="text-xs text-slate-500">Number label (optional)<input value={entry.label}
+                      onChange={event => setAdditionalEnteredNumbers(current => current.map(n => n.id === entry.id ? {...n, label:event.target.value} : n))}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+                    <label className="text-xs text-slate-500">Provider number reference (optional)<input value={entry.providerNumberId}
+                      onChange={event => setAdditionalEnteredNumbers(current => current.map(n => n.id === entry.id ? {...n, providerNumberId:event.target.value} : n))}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" /></label>
+                    <label className="flex items-center gap-2 text-xs text-slate-600 sm:col-span-2"><input type="checkbox" checked={entry.confirmed}
+                      onChange={event => setAdditionalEnteredNumbers(current => current.map(n => n.id === entry.id ? {...n, confirmed:event.target.checked} : n))}/>
+                      I confirm this phone number is active in the provider account.
+                    </label>
+                    <button type="button" className="w-fit text-xs text-rose-700 underline" onClick={() => setAdditionalEnteredNumbers(current => current.filter(n => n.id !== entry.id))}>Remove phone number</button>
+                  </fieldset>)}
+                  <button type="button" className="text-xs font-semibold text-[var(--accent)] underline"
+                    disabled={additionalEnteredNumbers.length >= 24}
+                    onClick={() => setAdditionalEnteredNumbers(current => [...current, {
+                      id:crypto.randomUUID(),connectorId:form.platformTelephonyConnectorId,
+                      phoneNumber:'',label:'',providerNumberId:'',confirmed:false,
+                    }])}>+ Add another provider number</button>
+                </div>}
+                <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">All selected numbers will be allocated to this organization. Its administrator can then assign each number to the appropriate workspace in Telephony Connectors. A number cannot be allocated to another organization simultaneously.</p>
               </> : <>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Call Provider *</label>
@@ -620,9 +710,19 @@ export default function CreateWorkspacePage() {
                   <input type="password" value={form.callAuthToken} onChange={set('callAuthToken')} placeholder="Vobiz Auth Token" required={form.telephonySetup === 'customer_owned'} autoComplete="new-password" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Provider Phone Number *</label>
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Primary provider phone number *</label>
                 <input value={form.callPhoneNumber} onChange={set('callPhoneNumber')} placeholder="+14155550123" required={form.telephonySetup === 'customer_owned'} autoComplete="off" className="w-full border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                {additionalCustomerNumbers.map((number, index) => <div className="flex items-center gap-2" key={index}>
+                  <input aria-label={`Additional provider phone number ${index + 2}`} value={number}
+                    onChange={event => setAdditionalCustomerNumbers(current => current.map((n, i) => i === index ? event.target.value : n))}
+                    placeholder="+14155550124" required className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-mono" />
+                  <button type="button" onClick={() => setAdditionalCustomerNumbers(current => current.filter((_, i) => i !== index))} className="text-xs text-rose-700 underline">Remove</button>
+                </div>)}
+                <button type="button" disabled={additionalCustomerNumbers.length >= 24}
+                  onClick={() => setAdditionalCustomerNumbers(current => [...current, ''])}
+                  className="text-xs font-semibold text-[var(--accent)] underline">+ Add another phone number</button>
+                <p className="text-xs text-slate-500">All numbers share these Vobiz credentials and are mapped to the organization's default workspace. Each number must be unique and use +countrycode format.</p>
               </div>
               </>}
             </div>
