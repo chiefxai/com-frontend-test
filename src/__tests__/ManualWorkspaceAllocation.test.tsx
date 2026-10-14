@@ -81,6 +81,26 @@ describe('manual organization credit allocation',()=>{
     expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
   });
 
+  it('offers quick allocation amounts, disables unaffordable presets and still requires preview', async () => {
+    const enough = { ...snapshot, grants: [{
+      ...snapshot.grants[0], available: { asset: 'INR', units: '150000', scale: 2 },
+    }] };
+    mocks.manualAllocationOverview.mockResolvedValue(enough);
+    render(<ManualWorkspaceAllocation />);
+    await screen.findByText('Organization credit pool');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Destination workspace' }), { target: { value: 'ws-1' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Credit source' }), { target: { value: 'grant-1' } });
+    const quick = screen.getByRole('button', { name: 'Allocate ₹300' });
+    fireEvent.click(quick);
+    expect(screen.getByRole('textbox', { name: /Amount to allocate/i })).toHaveValue('300');
+    expect(quick).toHaveAttribute('aria-pressed', 'true');
+    expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview allocation' }));
+    await waitFor(() => expect(mocks.manualAllocationPreview).toHaveBeenCalledWith(
+      expect.objectContaining({ amountUnits: '30000' }),
+    ));
+  });
+
   it('previews the selected grant and workspace but cannot confirm while transfer flag is off', async()=>{
     render(<ManualWorkspaceAllocation/>);
     await screen.findByText('Organization credit pool');

@@ -7,17 +7,20 @@ import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '..
 vi.mock('../components/billing/OrganizationTopUp', () => ({
   default: () => <div data-testid="organization-credit-ledger">Credit ledger</div>,
 }));
-const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), renewal: vi.fn() }));
+const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), renewal: vi.fn(), organizationOverview: vi.fn(), creditStatus: vi.fn() }));
 vi.mock('../lib/billing/client', () => ({
-  billingClient: { workspaceOverview: mocks.workspaceOverview, subscriptionRenewal: mocks.renewal },
+  billingClient: { workspaceOverview: mocks.workspaceOverview, subscriptionRenewal: mocks.renewal,
+    organizationOverview: mocks.organizationOverview, subscriptionCreditStatus: mocks.creditStatus }, 
   newBillingIdempotencyKey: () => 'test-renewal-key',
   BillingApiError: class extends Error { status = 500; },
 }));
 beforeEach(() => {
   setAuthorization(legacyAuthorization('Organization Admin'));
+  mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null });
+  mocks.creditStatus.mockResolvedValue({ planName: 'Starter', planId: 'starter' });
   mocks.renewal.mockResolvedValue({
     subscription: { lifecycleStatus: 'active', accessState: 'operational', planId: 'starter', planVersion: 1, version: 1 },
-    period: null, quote: null, payment: { submissionEnabled: false, purpose: 'subscription' },
+    period: { endsAt: new Date(Date.now() + 3 * 86400000).toISOString(), renewalEligible: true, startsAt: new Date(Date.now() - 25 * 86400000).toISOString() }, quote: null, payment: { submissionEnabled: false, purpose: 'subscription' }, 
   });
   mocks.workspaceOverview.mockResolvedValue({ orgId: 'org-1', workspaceId: 'workspace-1', workspaceName: 'Main office',
     status: 'active', uninitialized: false, balances: [
@@ -80,14 +83,14 @@ describe('organization billing interface', () => {
     },
   );
 
-  it('keeps recurring subscription, organization usage, and credit ledger conceptually separate', () => {
+  it('keeps the plan, remaining credits and call usage conceptually separate', () => {
     render(<BillingWorkspace {...defaults} />);
-    expect(screen.getByText('Plan price')).toBeTruthy();
-    expect(screen.getByText('Usage recorded')).toBeTruthy();
-    expect(screen.getByText('Calls made')).toBeTruthy();
+    expect(screen.getByText('Your plan right now')).toBeTruthy();
+    expect(screen.getByText('Plan credits remaining')).toBeTruthy();
+    expect(screen.getByText('Call usage')).toBeTruthy();
     expect(screen.getByText('43')).toBeTruthy();
     expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
-    expect(screen.getByTestId('organization-credit-ledger')).toBeTruthy();
+    expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
   });
 
   it('offers direct navigation to the major billing sections', () => {
@@ -111,12 +114,12 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('credits');
   });
 
-  it('shows a simple subscription overview and hides extra billing details by default', () => {
+  it('shows a simple subscription overview and hides extra billing details by default', async () => {
     render(<BillingWorkspace {...defaults} view="plan" />);
     expect(screen.getByText('Your subscription')).toBeInTheDocument();
     expect(screen.getByText('Your estimated plan price')).toBeInTheDocument();
     expect(screen.getByText('Plan price and calling credits are different.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Show extra plan details/ }));
@@ -126,10 +129,10 @@ describe('organization billing interface', () => {
   it('offers direct action cards from the new Overview', () => {
     const onNavigate = vi.fn();
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
-    expect(screen.getByText('See your costs. Stay in control.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /My credits/ }));
-    expect(onNavigate).toHaveBeenCalledWith('credits');
-    fireEvent.click(screen.getByRole('button', { name: /My payments/ }));
+    expect(screen.getByText('Your plan right now')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Allocate credits to a workspace/ }));
+    expect(onNavigate).toHaveBeenCalledWith('allocation');
+    fireEvent.click(screen.getByRole('button', { name: /View workspace invoices/ }));
     expect(onNavigate).toHaveBeenCalledWith('payments');
   });
 

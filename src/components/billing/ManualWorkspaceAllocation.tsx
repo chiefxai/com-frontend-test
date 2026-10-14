@@ -208,6 +208,23 @@ export default function ManualWorkspaceAllocation() {
             {grant.expiresAt ? ' · Expires ' + new Date(grant.expiresAt).toLocaleDateString('en-IN') : ' · Does not expire'}
           </span>}
         </label>
+        <div className="mt-3">
+          <p className="text-sm font-semibold text-[var(--text-primary)]">Quick amounts</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">Pick a common amount or type your own above.</p>
+          <div role="group" aria-label="Quick allocation amounts" className="mt-2 flex flex-wrap gap-2">
+            {[100, 300, 500, 1000].map(value => {
+              const presetUnits = grant ? unitsFromInput(String(value), grant.available.scale) : null;
+              const enough = Boolean(grant && presetUnits && BigInt(presetUnits) <= BigInt(grant.available.units));
+              return <button type="button" key={value} aria-label={`Allocate ₹${value.toLocaleString('en-IN')}`}
+                aria-pressed={inputAmount === String(value)} disabled={busy || loading || !enough}
+                onClick={() => { setInputAmount(String(value)); invalidatePreview(); }}
+                className={`min-h-10 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  inputAmount === String(value) ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]'
+                    : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+                }`}>₹{value.toLocaleString('en-IN')}</button>;
+            })}
+          </div>
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="sm" icon={ArrowRight} onClick={() => void previewAllocation()}
             loading={busy} disabled={loading || !workspaceId || !grant || !units || !snapshot?.writable}>
