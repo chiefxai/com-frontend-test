@@ -1,7 +1,21 @@
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import SubscriptionActionCenter from '../components/billing/SubscriptionActionCenter';
+
+const mocks = vi.hoisted(() => ({ renewal: vi.fn(), overview: vi.fn() }));
+vi.mock('../lib/billing/client', () => ({
+  billingClient: { subscriptionRenewal: mocks.renewal, organizationOverview: mocks.overview },
+}));
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.renewal.mockImplementation(async () => ({
+    subscription: { planId: 'starter', accessState: 'operational' },
+    period: { endsAt: new Date(Date.now() + 3 * 86400000).toISOString(), renewalEligible: true },
+    quote: null,
+  }));
+  mocks.overview.mockResolvedValue({ nextPeriod: null });
+});
 
 vi.mock('../components/billing/SubscriptionRenewal', () => ({
   default: ({ canSubmit }: { canSubmit: boolean }) => <p data-testid="renew-panel">{canSubmit ? 'Can send receipt' : 'Read-only'}</p>,
@@ -19,9 +33,9 @@ vi.mock('../components/billing/SubscriptionGraceRequest', () => ({
 afterEach(cleanup);
 
 describe('simple subscription action chooser', () => {
-  it('shows only one billing task at a time and keeps the other tasks discoverable', () => {
+  it('shows only one billing task at a time and keeps the other tasks discoverable', async () => {
     render(<SubscriptionActionCenter canSubmitPayment />);
-    const keepGoing = screen.getByRole('button', { name: /Keep my plan going/ });
+    const keepGoing = await screen.findByRole('button', { name: /Keep my plan going/ });
     expect(keepGoing).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('renew-panel')).toBeInTheDocument();
     expect(screen.queryByTestId('start-panel')).not.toBeInTheDocument();
@@ -40,8 +54,21 @@ describe('simple subscription action chooser', () => {
     expect(screen.queryByTestId('upgrade-panel')).not.toBeInTheDocument();
   });
 
-  it('does not turn a read-only payment workflow into an enabled one', () => {
+  it('hides renewal outside the final seven days and does not promote enterprise upgrades', async () => {
+    mocks.renewal.mockResolvedValue({
+      subscription: { planId: 'enterprise', accessState: 'operational' },
+      period: { endsAt: new Date(Date.now() + 30 * 86400000).toISOString(), renewalEligible: false },
+      quote: null,
+    });
+    render(<SubscriptionActionCenter canSubmitPayment />);
+    expect(await screen.findByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Keep my plan going/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Look at a bigger plan/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Other plan choices')).toBeInTheDocument();
+  });
+
+  it('does not turn a read-only payment workflow into an enabled one', async () => {
     render(<SubscriptionActionCenter canSubmitPayment={false} />);
-    expect(screen.getByTestId('renew-panel')).toHaveTextContent('Read-only');
+    expect(await screen.findByTestId('renew-panel')).toHaveTextContent('Read-only');
   });
 });
