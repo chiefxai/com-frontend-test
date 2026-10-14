@@ -7,10 +7,10 @@ import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '..
 vi.mock('../components/billing/OrganizationTopUp', () => ({
   default: () => <div data-testid="organization-credit-ledger">Credit ledger</div>,
 }));
-const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), renewal: vi.fn(), organizationOverview: vi.fn(), creditStatus: vi.fn() }));
+const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), renewal: vi.fn(), organizationOverview: vi.fn(), creditStatus: vi.fn(), grace: vi.fn() }));
 vi.mock('../lib/billing/client', () => ({
   billingClient: { workspaceOverview: mocks.workspaceOverview, subscriptionRenewal: mocks.renewal,
-    organizationOverview: mocks.organizationOverview, subscriptionCreditStatus: mocks.creditStatus }, 
+    organizationOverview: mocks.organizationOverview, subscriptionCreditStatus: mocks.creditStatus, subscriptionGraceRequests: mocks.grace }, 
   newBillingIdempotencyKey: () => 'test-renewal-key',
   BillingApiError: class extends Error { status = 500; },
 }));
@@ -18,6 +18,7 @@ beforeEach(() => {
   setAuthorization(legacyAuthorization('Organization Admin'));
   mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null });
   mocks.creditStatus.mockResolvedValue({ planName: 'Starter', planId: 'starter' });
+  mocks.grace.mockResolvedValue({ eligibility: { requestEligible: true }, items: [] });
   mocks.renewal.mockResolvedValue({
     subscription: { lifecycleStatus: 'active', accessState: 'operational', planId: 'starter', planVersion: 1, version: 1 },
     period: { endsAt: new Date(Date.now() + 3 * 86400000).toISOString(), renewalEligible: true, startsAt: new Date(Date.now() - 25 * 86400000).toISOString() }, quote: null, payment: { submissionEnabled: false, purpose: 'subscription' }, 
