@@ -50,6 +50,8 @@ export default function SubscriptionActionCenter({ canSubmitPayment, initialTask
   const visibleTasks = tasks.filter(task => task.key !== 'renew' || availability?.renew)
     .filter(task => task.key !== 'upgrade' || availability?.upgrade);
   const current = visibleTasks.find(task => task.key === selected) || visibleTasks[0];
+  // When an ineligible renewal/upgrade is hidden, activate the visible fallback.
+  const activeTask = current?.key;
 
   return (
     <section className="col-span-12 space-y-4" aria-label="Manage your subscription">
@@ -62,7 +64,7 @@ export default function SubscriptionActionCenter({ canSubmitPayment, initialTask
       {!availability && <p role="status" className="text-sm text-[var(--text-secondary)]">Checking which plan actions are available…</p>}
       <div role="group" aria-label="Subscription actions" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {availability && visibleTasks.map(({ key, title, description, icon: Icon }) => {
-          const active = selected === key;
+          const active = activeTask === key;
           return (
             <button type="button" key={key} aria-pressed={active} aria-controls="subscription-task-panel"
               onClick={() => setSelected(key)}
@@ -85,10 +87,10 @@ export default function SubscriptionActionCenter({ canSubmitPayment, initialTask
           <h3 className="text-base font-semibold text-[var(--text-primary)]">{current.title}</h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{current.description}</p>
         </div>
-        {selected === 'renew' && <SubscriptionRenewal canSubmit={canSubmitPayment} />}
-        {selected === 'start' && <InitialSubscriptionPurchase canSubmit={canSubmitPayment} />}
-        {selected === 'upgrade' && <SubscriptionUpgradePreview />}
-        {selected === 'more-time' && <SubscriptionGraceRequest />}
+        {activeTask === 'renew' && <SubscriptionRenewal canSubmit={canSubmitPayment} />}
+        {activeTask === 'start' && <InitialSubscriptionPurchase canSubmit={canSubmitPayment} />}
+        {activeTask === 'upgrade' && <SubscriptionUpgradePreview />}
+        {activeTask === 'more-time' && <SubscriptionGraceRequest />}
       </div>}
       <details className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
         <summary className="cursor-pointer font-medium text-[var(--text-primary)]">Other plan choices</summary>
