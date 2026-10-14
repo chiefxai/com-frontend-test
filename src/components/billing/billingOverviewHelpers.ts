@@ -1,4 +1,4 @@
-import type { BillingAmount, CreditBalance, SubscriptionRenewalResponse } from '../../lib/billing/types';
+import type { BillingAmount, CreditBalance, SubscriptionGraceResponse, SubscriptionRenewalResponse } from '../../lib/billing/types';
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -72,4 +72,20 @@ export function renewalNotice(
  *  Plan changes are never fulfilled by the current upgrade preview endpoint. */
 export function mayPreviewUpgrade(planId: string | null | undefined): boolean {
   return /^(free|trial|starter|basic|standard|growth|professional|pro)(?:[-_].*)?$/i.test((planId || '').trim());
+}
+
+/** Offer a grace *request* only when payment is still due near the current
+ * period deadline and the backend explicitly permits creating a request.
+ * Approved, scheduled, paid, or already-pending renewals must not be prompted. */
+export function mayAskForMoreTime(
+  response: SubscriptionRenewalResponse | null,
+  grace: SubscriptionGraceResponse | null,
+  nowMs: number,
+  nextPeriodScheduled: boolean,
+): boolean {
+  if (!response?.period || !grace?.eligibility?.requestEligible || nextPeriodScheduled) return false;
+  const notice = renewalNotice(response, nowMs, nextPeriodScheduled);
+  if (notice.pendingPayment || ['paid', 'scheduled', 'fulfilled'].includes((response.quote?.status || '').toLowerCase())) return false;
+  if (['security_suspended', 'manual_suspended'].includes(response.subscription.accessState)) return false;
+  return notice.inGrace || (!notice.expired && notice.daysLeft !== null && notice.daysLeft <= 7);
 }
