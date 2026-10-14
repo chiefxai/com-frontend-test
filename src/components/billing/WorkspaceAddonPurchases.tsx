@@ -188,7 +188,7 @@ export default function WorkspaceAddonPurchases({
                   : `Paid until ${date(addon.periodEndsAt)}`}
             </p>
             {payable && <p className="mt-1 text-xs text-[var(--text-secondary)]">
-              {waiting ? 'Payment receipt awaiting approval' : `Invoice due ${date(invoice?.dueAt || null)}`}
+              {waiting ? 'Payment awaiting platform verification' : `Invoice due ${date(invoice?.dueAt || null)}`}
             </p>}
             {addon.periodEndsAt && addon.autoRenew && <p className="mt-1 text-xs text-[var(--text-muted)]">
               Renewal invoices arrive seven days before expiry. An unpaid workspace has a seven-day grace period.
