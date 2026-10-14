@@ -209,8 +209,6 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
         body: JSON.stringify({
           name: editForm.name,
           workspaceName: editForm.workspaceName,
-          industry: editForm.industry,
-          subscriptionPlan: editForm.subscriptionPlan,
           aiMinutesLimit: editForm.aiMinutesLimit ? Number(editForm.aiMinutesLimit) : null
         })
       });
@@ -744,14 +742,8 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
             <input className={FIELD_CLASS} value={editForm.workspaceName} disabled={busy}
               onChange={event => setEditForm(value => ({ ...value, workspaceName: event.target.value }))} />
           </DetailField>
-          <DetailField label="Industry">
-            <input className={FIELD_CLASS} value={editForm.industry} disabled={busy}
-              onChange={event => setEditForm(value => ({ ...value, industry: event.target.value }))} />
-          </DetailField>
-          <DetailField label="Subscription plan">
-            <input className={FIELD_CLASS} value={editForm.subscriptionPlan} disabled={busy}
-              onChange={event => setEditForm(value => ({ ...value, subscriptionPlan: event.target.value }))} />
-          </DetailField>
+          <div className="space-y-1.5"><p className="text-[11px] font-semibold text-[var(--text-secondary)]">Industry</p><p className="px-3 py-2.5 text-xs">{detail.industry}</p></div>
+          <div className="rounded-lg border border-[var(--border)] p-3 text-xs text-[var(--text-secondary)] sm:col-span-2"><strong className="text-[var(--text-primary)]">Subscription: {detail.subscriptionPlan}</strong><p className="mt-1">Plan changes must use a renewal quote and an approved payment. Downgrades show affected features and backup guidance before confirmation; the existing plan stays active until the new period starts.</p></div>
           <DetailField label="AI minutes limit">
             <input className={FIELD_CLASS} type="number" min="0" step="1"
               placeholder="Unlimited" value={editForm.aiMinutesLimit} disabled={busy}
