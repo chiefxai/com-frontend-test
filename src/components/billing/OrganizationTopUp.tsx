@@ -2,7 +2,7 @@ import React from 'react';
 import WorkspaceAddonPurchases from './WorkspaceAddonPurchases';
 import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
-import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
 import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest } from '../../lib/billing/types';
@@ -99,6 +99,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     ? formatMoney({ asset: 'INR', units: items.reduce((sum, item) => sum + BigInt(item.available.units), 0n).toString(), scale: 2 })
     : '—';
   const canTopup = canSubmit && topupAvailable && Boolean(overview);
+  const awaitingReviewOnPage = history.filter(payment => ['pending_verification', 'submitted', 'needs_information', 'needs_clarification'].includes(payment.status)).length;
 
   const resetQuote = () => {
     setQuote(null);
@@ -180,12 +181,13 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   Refresh
                 </Button>
               } />
+            <p className="mb-4 text-sm leading-6 text-[var(--text-secondary)]">These credits help pay for services like AI calls. Credits included in your plan and credits you buy are kept separate.</p>
             <div className="grid grid-cols-12 gap-3">
               <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
-                label="Subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'}
+                label="From your plan" value={overview ? sumBalance(subscriptionCredits) : '—'}
                 sub="Included with your plan" />
               <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
-                label="Added credits" value={overview ? sumBalance(topupCredits) : '—'}
+                label="Credits you added" value={overview ? sumBalance(topupCredits) : '—'}
                 sub="Approved top-up payments" />
             </div>
             {overviewError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">Credits unavailable: {overviewError}</p>}
@@ -194,10 +196,10 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               {canTopup && <Button type="button" variant="primary" size="sm" icon={Plus}
                 onClick={() => onNavigate?.('topup')}>Add credits</Button>}
             </div>
-            <p className="mt-3 text-[11px] text-[var(--text-muted)]">New credits appear only after payment approval.</p>
+            <p className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]"><Info aria-hidden="true" className="h-4 w-4 shrink-0" /> New credits appear only after payment approval.</p>
           </Card>
           <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-5 sm:!p-5">
-            <CardHeader title="Recent payments" subtitle="Latest organization payment requests"
+            <CardHeader title="Recent payments" subtitle="A quick look at your latest receipts"
               icon={Clock3} action={
                 <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate?.('payments')}>
                   View all
@@ -227,10 +229,34 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </>
       )}
 
+      {view === 'credits' && (
+        <section className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6" aria-label="Credit guide">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+            <Wallet aria-hidden="true" className="h-3.5 w-3.5" /> Your credits
+          </span>
+          <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Know what you can spend</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+            Credits are like a balance for services such as calls. Some come with your plan, and others come from payments you make.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
+              <p className="text-sm text-[var(--text-secondary)]">Credits from your plan</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{overview ? sumBalance(subscriptionCredits) : '—'}</p>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">Available from your subscription</p>
+            </div>
+            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
+              <p className="text-sm text-[var(--text-secondary)]">Credits you added</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{overview ? sumBalance(topupCredits) : '—'}</p>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">Available from approved top-ups</p>
+            </div>
+          </div>
+          <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]"><Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /> Your plan may promise monthly credits, but they cannot be spent until they have actually been issued. See the status below.</p>
+        </section>
+      )}
       {(view === 'credits' || view === 'plan') && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
       {(view === 'credits' || view === 'topup') && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Credit balances" subtitle="Subscription and purchased usage credits"
+          <CardHeader title={view === 'credits' ? 'Your balance and options' : 'Credit balances'} subtitle="Manage credits or view your plan period"
             icon={Wallet} action={
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>
@@ -246,13 +272,13 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             } />
           <div className="grid grid-cols-12 gap-3">
             <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
-              label="Available subscription credits" value={overview ? sumBalance(subscriptionCredits) : '—'}
+              label="Plan credits available" value={overview ? sumBalance(subscriptionCredits) : '—'}
               sub="Provided with your subscription" />
             <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
-              label="Available top-up credits" value={overview ? sumBalance(topupCredits) : '—'}
+              label="Extra credits available" value={overview ? sumBalance(topupCredits) : '—'}
               sub="Added after approval" />
             <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
-              label="Subscription period" value={overview?.activePeriod?.status || 'Not available'}
+              label="Current plan period" value={overview?.activePeriod?.status === 'active' ? 'Active' : overview?.activePeriod?.status || 'Not available'}
               sub={overview?.activePeriod?.endsAt
                 ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}`
                 : 'Current subscription'} />
@@ -344,8 +370,31 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
 
       {view === 'payments' && (
+        <section className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6" aria-label="Payment guide">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+            <ReceiptText aria-hidden="true" className="h-3.5 w-3.5" /> Payment history
+          </span>
+          <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Know where your payments stand</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+            When you send a receipt, our team checks it. Look here to see if each payment is waiting, approved, or needs attention.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
+              <p className="text-sm text-[var(--text-secondary)]">Payments on this page</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{historyLoading ? '—' : history.length}</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Use the filter below to choose a payment type</p>
+            </div>
+            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
+              <p className="text-sm text-[var(--text-secondary)]">Waiting for review on this page</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{historyLoading ? '—' : awaitingReviewOnPage}</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Includes requests for more information</p>
+            </div>
+          </div>
+        </section>
+      )}
+      {view === 'payments' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Payment history" subtitle="Credit, subscription, and workspace add-on payment requests"
+          <CardHeader title="All submitted payments" subtitle="Filter your receipts and see what happens next"
             icon={Clock3} action={
               <div className="flex flex-wrap items-center gap-2">
                 <select aria-label="Payment type" value={historyFilter}
@@ -364,22 +413,26 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           {historyError && <p role="alert" className="mb-3 text-xs text-rose-600 dark:text-rose-300">{historyError}</p>}
           <DataTable<PaymentRequest> bare resizable loading={historyLoading}
             columns={[
-              { key: 'date', header: 'Date', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
-              { key: 'type', header: 'Type', cell: payment => (
+              { key: 'date', header: 'Sent on', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
+              { key: 'type', header: 'What you paid for', cell: payment => (
                 <span>
                   <span className="block font-medium text-[var(--text-primary)]">{paymentTypeLabel(payment)}</span>
                   {payment.workspaceAddonName && <span className="block text-[11px] text-[var(--text-muted)]">{payment.workspaceAddonName}</span>}
                 </span>
               ) },
               { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold tabular-nums">{formatMoney(payment.expectedAmount)}</span> },
-              { key: 'status', header: 'Status', cell: payment => (
-                <span className="inline-flex rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+              { key: 'status', header: 'What happens next', cell: payment => (
+                <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  payment.status === 'approved' ? 'border-emerald-300/70 bg-emerald-500/10 text-emerald-700' :
+                  payment.status === 'rejected' || payment.status === 'cancelled' ? 'border-rose-300/70 bg-rose-500/10 text-rose-700' :
+                  'border-amber-300/70 bg-amber-500/10 text-amber-700'
+                }`}>
                   {statuses[payment.status] || payment.status}
                 </span>
               ) },
             ]}
             rows={history} rowKey={payment => payment.id}
-            emptyMessage={historyError ? 'Payment history is unavailable.' : 'No matching payments on this page.'} />
+            emptyMessage={historyError ? 'Payment history is unavailable.' : 'No payments match this filter yet.'} />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
             <p className="text-[11px] text-[var(--text-muted)]">Page {cursorStack.length} · up to 10 payments per page</p>
             <div className="flex items-center gap-2">
@@ -400,14 +453,14 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             </div>
           </div>
           <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            Showing submitted payment requests. Open and unpaid workspace invoices remain under Additional workspace billing below.
+            Only payments that have been submitted appear here. Unpaid workspace invoices are in the section below.
           </p>
         </Card>
       )}
 
       {(view === 'plan' || view === 'payments') && can('billing.organization.read') && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Additional workspace billing" subtitle="Invoices, payment approval, and renewals"
+          <CardHeader title="Workspace invoices and add-ons" subtitle="Workspace charges and bills that may need payment"
             icon={CreditCard} />
           <WorkspaceAddonPurchases canSubmit={canSubmit} />
         </Card>
