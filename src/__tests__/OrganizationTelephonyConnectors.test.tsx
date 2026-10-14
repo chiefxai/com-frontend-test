@@ -57,6 +57,15 @@ describe('Organization-owned telephony connector management', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Live calling is not enabled');
   });
 
+  it('uses the full available grid width instead of collapsing into one column', async () => {
+    render(<OrganizationTelephonyConnectors />);
+    const title = await screen.findByRole('heading', { name: 'Telephony connectors' });
+    const container = title.closest('.col-span-full');
+    expect(container).not.toBeNull();
+    expect(container).toHaveClass('min-w-0', 'w-full');
+    expect(container).toHaveTextContent('Provider account details');
+  });
+
   it('groups provider details and credentials in responsive aligned form sections', async () => {
     render(<OrganizationTelephonyConnectors />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
