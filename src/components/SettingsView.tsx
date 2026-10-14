@@ -1149,7 +1149,10 @@ export default function SettingsView({
                   </div>
                 </Modal>
               )}
-              <OrganizationTelephonyConnectors />
+              {/* The virtual-number view uses a 12-column grid: span the entire content width. */}
+              <div className="col-span-12 min-w-0 w-full">
+                <OrganizationTelephonyConnectors />
+              </div>
               </>}
             </div>
           )}

@@ -216,10 +216,12 @@ export default function OrganizationTelephonyConnectors() {
     </li>
   );
 
-  if (loading) return <Card><p className="text-sm text-[var(--text-muted)]">Loading customer telephony connectors…</p></Card>;
-  if (featureOff) return <Card><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">This feature is not enabled. The existing Vobiz connection and number setup remain available above.</p></Card>;
+  // This panel may appear directly within a grid. All states must span its full width.
+  const containerClass = 'col-span-full min-w-0 w-full';
+  if (loading) return <Card className={containerClass}><p className="text-sm text-[var(--text-muted)]">Loading customer telephony connectors…</p></Card>;
+  if (featureOff) return <Card className={containerClass}><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">This feature is not enabled. The existing Vobiz connection and number setup remain available above.</p></Card>;
 
-  return <Card className="min-w-0">
+  return <Card className={containerClass}>
     <CardHeader title="Telephony connectors" subtitle="Manage provider accounts and assign their numbers to your workspaces." />
     <p className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
       Saved credentials stay protected. Add a provider account first, then add numbers when you are ready.
