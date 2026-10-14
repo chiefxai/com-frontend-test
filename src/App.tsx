@@ -923,6 +923,8 @@ export default function App() {
             costPerMinuteInr={costPerMinuteInr}
             phoneCostPerMinute={phoneCostPerMinute}
             phoneChargesBillable={phoneChargesBillable}
+            billingCallLogs={callLogs}
+            onOpenCallLogs={() => navigate('/call-logs')}
             aiTokenCost={aiTokenCost}
             aiTokenCurrentRate={aiTokenCurrentRate}
             aiTokenUsage={aiTokenUsage}
