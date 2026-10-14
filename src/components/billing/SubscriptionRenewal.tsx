@@ -95,14 +95,14 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
 
       {eligible && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-end gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3">
         <div className="min-w-64 flex-1"><label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor="trial-conversion-plan">Choose your next subscription plan</label>
-          <select id="trial-conversion-plan" value={targetPlanId} onChange={event=>setTargetPlanId(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm">
+          <select id="trial-conversion-plan" value={targetPlanId} onChange={event=>{ setTargetPlanId(event.target.value); setAcknowledgeFeatureLoss(false); }} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm">
             <option value="">Select a subscription plan</option>{(data.availablePlans || []).map(plan=><option key={`${plan.planId}:${plan.planVersion}`} value={plan.planId}>{plan.name} · {subscriptionAmountText(plan.monthlyPrice)} / month</option>)}
           </select>
         </div>
         {selectedPlan?.impact?.conflicts.map((problem, index) => <p key={index} role="alert" className="w-full text-xs text-rose-700">{problem}</p>)}
         {removedModules.length > 0 && <div className="w-full space-y-2 rounded-lg border border-amber-400 p-3 text-xs text-[var(--text-primary)]" role="alert"><strong>Feature access will be removed</strong><p>The following features are not supported by this plan. Existing data is not automatically deleted, but it may become inaccessible. Export or back up anything you need before the new plan begins.</p><ul className="list-inside list-disc">{removedModules.map(module => <li key={`${module.industry}-${module.key}`}>{module.industry}: {module.key.replaceAll('_', ' ')}</li>)}</ul><label className="flex items-center gap-2"><input type="checkbox" checked={acknowledgeFeatureLoss} onChange={event => setAcknowledgeFeatureLoss(event.target.checked)} /> I understand the lost features and have backed up anything I need.</label></div>}
         <Button type="button" size="sm" variant="primary" icon={CreditCard} loading={busy} disabled={busy || !targetPlanId || selectionBlocked || (removedModules.length > 0 && !acknowledgeFeatureLoss)} onClick={()=>void createQuote()}>See my plan price</Button>
-        <p className="w-full text-[11px] text-[var(--text-muted)]">If you want this plan, send payment before your trial ends. Your paid plan and its credits start only after approval and when your trial finishes.</p>
+        <p className="w-full text-[11px] text-[var(--text-muted)]">Plan changes take effect only after payment approval and activation of the next billing period. Your current plan remains in effect until then.</p>
       </div>}
 
       {eligible && !data.period?.isTrial && (!quote || quote.expired) && !quote?.pendingPayment && (!data.availablePlans?.length) && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
