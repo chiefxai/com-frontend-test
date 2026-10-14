@@ -16,7 +16,9 @@ async function responseBody(response: Response) {
   return response.json().catch(() => ({} as Record<string, unknown>));
 }
 
-export default function OrganizationTelephonyConnectors() {
+export default function OrganizationTelephonyConnectors({ onInventoryChange }: {
+  onInventoryChange?: () => void | Promise<void>;
+} = {}) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [numbers, setNumbers] = useState<Record<string, InventoryNumber[]>>({});
@@ -62,6 +64,10 @@ export default function OrganizationTelephonyConnectors() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  // Refresh the parent Virtual Numbers table only after successful mutations.
+  const notifyInventoryChanged = () => {
+    if (onInventoryChange) void Promise.resolve().then(onInventoryChange).catch(() => {});
+  };
   const selectedProvider = useMemo(() => providers.find(provider => provider.providerKey === draft.providerKey), [providers, draft.providerKey]);
 
   const save = async (event: React.FormEvent) => {
@@ -77,7 +83,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (response.status === 404) { setFeatureOff(true); return; }
       if (!response.ok) throw new Error(String(body.error || 'Unable to save connector.'));
-      setDraft(emptyDraft(providers[0]?.providerKey || '')); setEditing(null); setNotice(editing ? 'Connector updated.' : 'Connector account saved.'); await load();
+      setDraft(emptyDraft(providers[0]?.providerKey || '')); setEditing(null); setNotice(editing ? 'Connector updated.' : 'Connector account saved.'); await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save connector.'); }
     finally { setBusy(false); }
   };
@@ -105,7 +111,7 @@ export default function OrganizationTelephonyConnectors() {
       if (response.status === 404) { setFeatureOff(true); return; }
       if (!response.ok) throw new Error(String(body.error || 'Unable to register provider number.'));
       setNumberDraft(current => ({ ...current, [connector.id]: { phoneNumberE164: '', providerNumberId: '', displayName: '' } }));
-      setNotice('Provider number saved to inventory. Live calling is not enabled by this record.'); await loadNumbers(connector.id);
+      setNotice('Provider number saved to inventory. Live calling is not enabled by this record.'); await loadNumbers(connector.id); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to register provider number.'); }
     finally { setBusy(false); }
   };
@@ -118,7 +124,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (!response.ok) throw new Error(String(body.error || 'Unable to verify number.'));
       setNotice('Number verified and ready for assignment.');
-      await load();
+      await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to verify number.'); }
     finally { setBusy(false); }
   };
@@ -142,7 +148,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (!response.ok) throw new Error(String(body.error || 'Unable to assign number to this workspace.'));
       setNotice(`Number assigned to ${workspaceChoices.find(item => item.id === workspaceId)?.name || 'workspace'}.`);
-      await load();
+      await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to assign number.'); }
     finally { setBusy(false); }
   };
@@ -157,7 +163,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (!response.ok) throw new Error(String(body.error || 'Unable to unassign number.'));
       setNotice(`Number unassigned from ${number.assignedWorkspaceName || 'workspace'}; it remains available to your organization.`);
-      await load();
+      await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to unassign number.'); }
     finally { setBusy(false); }
   };
@@ -222,10 +228,10 @@ export default function OrganizationTelephonyConnectors() {
   if (featureOff) return <Card className={containerClass}><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">This feature is not enabled. The existing Vobiz connection and number setup remain available above.</p></Card>;
 
   return <Card className={containerClass}>
-    <CardHeader title="Telephony connectors" subtitle="Manage provider accounts and assign their numbers to your workspaces." />
+    <CardHeader title="Set up a virtual number" subtitle="Connect a provider, add its numbers, and assign each number to a workspace." />
     <p className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
-      Saved credentials stay protected. Add a provider account first, then add numbers when you are ready.
-      Each number can be assigned to one of your workspaces.
+      Add a provider account, register its phone numbers, confirm they are active, then assign each to a workspace.
+      Existing platform-managed numbers can be assigned below without creating a provider account.
     </p>
     {error && <p role="alert" className="mb-3 text-sm text-rose-600">{error}</p>}
     {notice && <p role="status" className="mb-3 text-sm text-emerald-700">{notice}</p>}
