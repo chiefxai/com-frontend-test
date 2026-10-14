@@ -54,6 +54,7 @@ interface CreateOrgForm {
   platformTelephonyNumberConfirmed: boolean;
   freeTrial: boolean;
   freeTrialDays: number;
+  freeTrialCreditsInr: number;
 }
 
 interface TelephonyInventoryNumber {
@@ -96,6 +97,7 @@ export default function CreateWorkspacePage() {
     platformTelephonyNumberConfirmed: false,
     freeTrial: false,
     freeTrialDays: 7,
+    freeTrialCreditsInr: 200,
   });
   const [platformTelephonyNumbers, setPlatformTelephonyNumbers] = useState<Array<TelephonyInventoryNumber & { connectorId: string; connectorName: string; providerKey: string; providerName: string }>>([]);
   const [platformTelephonyAvailable, setPlatformTelephonyAvailable] = useState(false);
@@ -250,6 +252,10 @@ export default function CreateWorkspacePage() {
       setError('Choose an active workspace plan in the plan settings before creating an organization.');
       return;
     }
+    if (form.freeTrial && (!Number.isSafeInteger(form.freeTrialCreditsInr) || form.freeTrialCreditsInr < 0 || form.freeTrialCreditsInr > 10000000)) {
+      setError('Enter trial credits as a whole rupee amount between ₹0 and ₹1,00,00,000.');
+      return;
+    }
     if (!form.freeTrial && (!initialPaymentReference.trim() || !initialPaymentProof)) {
       setError('Enter the payment reference and upload its receipt for the initial subscription.');
       return;
@@ -347,7 +353,7 @@ export default function CreateWorkspacePage() {
           industry: form.industry,
           subscriptionPlan: form.subscriptionPlan,
           freeTrial: form.freeTrial,
-          ...(form.freeTrial ? { freeTrialDays: form.freeTrialDays } : {}),
+          ...(form.freeTrial ? { freeTrialDays: form.freeTrialDays, freeTrialCreditsInr: form.freeTrialCreditsInr } : {}),
           workspacePlanId: form.subscriptionPlan,
           workspacePlanVersion,
           adminEmail: form.adminEmail,
@@ -497,6 +503,11 @@ export default function CreateWorkspacePage() {
             <input id="free-trial-days" type="number" min={1} max={15} step={1} required value={form.freeTrialDays}
               onChange={event=>setForm(current=>({...current,freeTrialDays:Number(event.target.value)}))}
               className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm" />
+            <label htmlFor="free-trial-credits" className="mt-3 block text-xs font-medium text-[var(--text-secondary)]">Trial credits (₹)</label>
+            <input id="free-trial-credits" type="number" min={0} max={10000000} step={1} required value={form.freeTrialCreditsInr}
+              onChange={event=>setForm(current=>({...current,freeTrialCreditsInr:Number(event.target.value)}))}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]" />
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">These credits are added to the organization's trial pool and expire when the trial ends.</p>
             <p className="mt-1 text-[11px] text-[var(--text-muted)]">Billing opens 7 days before the trial ends, or immediately for trials shorter than 7 days.</p>
           </div>}
           {!form.freeTrial && <div className="mt-4 space-y-3 rounded-xl border border-amber-300/60 bg-amber-500/5 p-4">
