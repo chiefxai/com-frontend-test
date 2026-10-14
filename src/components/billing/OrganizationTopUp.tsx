@@ -363,7 +363,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   if (next === 'workspace' && !['all', 'workspace'].includes(historyFilter)) setHistoryFilter('workspace');
                 }}
                 className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
-                <option value="all">Payments and workspace invoices</option>
+                <option value="all">All records</option>
                 <option value="submitted">Submitted payments only</option>
                 <option value="workspace">Workspace invoices only</option>
               </select>
