@@ -280,7 +280,7 @@ export default function PipelineView({ leads, setLeads, dialerTasks = [], setDia
     >
       <div className="flex-1 flex flex-col overflow-hidden">
         <Widget className="flex-1" showHeader={false} padding="none">
-          <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="border-b border-[var(--border)] bg-transparent dark:bg-[var(--bg-base)] p-4">
             <FilterBar
               search={{ value: searchTerm, onChange: setSearchTerm, placeholder: 'Search by name, phone, or email…' }}
               selects={[
