@@ -36,6 +36,10 @@ describe('simple subscription action chooser', () => {
   it('shows only one billing task at a time and keeps the other tasks discoverable', async () => {
     render(<SubscriptionActionCenter canSubmitPayment />);
     const keepGoing = await screen.findByRole('button', { name: /Keep my plan going/ });
+    expect(keepGoing).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByTestId('renew-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('start-panel')).not.toBeInTheDocument();
+    fireEvent.click(keepGoing);
     expect(keepGoing).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('renew-panel')).toBeInTheDocument();
     expect(screen.queryByTestId('start-panel')).not.toBeInTheDocument();
@@ -64,13 +68,14 @@ describe('simple subscription action chooser', () => {
     expect(await screen.findByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Keep my plan going/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Look at a bigger plan/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Start a new plan/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('start-panel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start a new plan/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByTestId('start-panel')).not.toBeInTheDocument();
     expect(screen.getByText('Other plan choices')).toBeInTheDocument();
   });
 
   it('does not turn a read-only payment workflow into an enabled one', async () => {
     render(<SubscriptionActionCenter canSubmitPayment={false} />);
-    expect(await screen.findByTestId('renew-panel')).toHaveTextContent('Read-only');
+    fireEvent.click(await screen.findByRole('button', { name: /Keep my plan going/ }));
+    expect(screen.getByTestId('renew-panel')).toHaveTextContent('Read-only');
   });
 });
