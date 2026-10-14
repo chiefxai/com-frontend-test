@@ -5,7 +5,7 @@ import SubscriptionRenewal from './SubscriptionRenewal';
 import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
 import SubscriptionGraceRequest from './SubscriptionGraceRequest';
 import { billingClient } from '../../lib/billing/client';
-import { mayPreviewUpgrade, renewalNotice } from './billingOverviewHelpers';
+import { mayAskForMoreTime, mayPreviewUpgrade, renewalNotice } from './billingOverviewHelpers';
 
 type SubscriptionTask = 'start' | 'renew' | 'upgrade' | 'more-time';
 
@@ -30,12 +30,12 @@ const tasks = [
 
 export default function SubscriptionActionCenter({ canSubmitPayment, initialTask = null }: { canSubmitPayment: boolean; initialTask?: SubscriptionTask | null }) {
   const [selected, setSelected] = React.useState<SubscriptionTask | null>(initialTask);
-  const [availability, setAvailability] = React.useState<{ renew: boolean; upgrade: boolean } | null>(null);
+  const [availability, setAvailability] = React.useState<{ renew: boolean; upgrade: boolean; moreTime: boolean } | null>(null);
   const [showDowngradeHelp, setShowDowngradeHelp] = React.useState(false);
   React.useEffect(() => { setSelected(initialTask); }, [initialTask]);
   React.useEffect(() => {
     let active = true;
-    void Promise.allSettled([billingClient.subscriptionRenewal(), billingClient.organizationOverview()]).then(([renewal, overview]) => {
+    void Promise.allSettled([billingClient.subscriptionRenewal(), billingClient.organizationOverview(), billingClient.subscriptionGraceRequests()]).then(([renewal, overview, grace]) => {
       if (!active) return;
       const status = renewal.status === 'fulfilled' ? renewal.value : null;
       const nextPeriod = overview.status === 'fulfilled' && Boolean(overview.value.nextPeriod);
@@ -43,12 +43,14 @@ export default function SubscriptionActionCenter({ canSubmitPayment, initialTask
       setAvailability({
         renew: eligibility.canRenew,
         upgrade: mayPreviewUpgrade(status?.subscription.planId),
+        moreTime: mayAskForMoreTime(status, grace.status === 'fulfilled' ? grace.value : null, Date.now(), nextPeriod),
       });
     });
     return () => { active = false; };
   }, []);
   const visibleTasks = tasks.filter(task => task.key !== 'renew' || availability?.renew)
-    .filter(task => task.key !== 'upgrade' || availability?.upgrade);
+    .filter(task => task.key !== 'upgrade' || availability?.upgrade)
+    .filter(task => task.key !== 'more-time' || availability?.moreTime);
   // Do not auto-open a purchase or grace form. Only a chosen, eligible action may open.
   const current = visibleTasks.find(task => task.key === selected) || null;
   const activeTask = current?.key;
