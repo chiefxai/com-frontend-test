@@ -357,7 +357,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             <label className="min-w-[11rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
               Show
               <select aria-label="Payment records" value={activityView}
-                onChange={event => setActivityView(event.target.value as PaymentDisplayFilter)}
+                onChange={event => {
+                  const next = event.target.value as PaymentDisplayFilter;
+                  setActivityView(next);
+                  if (next === 'workspace' && !['all', 'workspace'].includes(historyFilter)) setHistoryFilter('workspace');
+                }}
                 className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
                 <option value="all">Payments and workspace invoices</option>
                 <option value="submitted">Submitted payments only</option>
@@ -367,7 +371,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             <label className="min-w-[10rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
               Payment type
               <select aria-label="Payment type" value={historyFilter}
-                onChange={event => setHistoryFilter(event.target.value as PaymentHistoryType)}
+                onChange={event => {
+                  const next = event.target.value as PaymentHistoryType;
+                  setHistoryFilter(next);
+                  if (activityView === 'workspace' && next !== 'all' && next !== 'workspace') setActivityView('submitted');
+                }}
                 className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
                 <option value="all">All types</option>
                 <option value="topup">Credit top-ups</option>
