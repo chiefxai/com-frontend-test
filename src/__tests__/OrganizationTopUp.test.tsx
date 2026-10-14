@@ -108,6 +108,7 @@ describe('organization billing views', () => {
     expect(await screen.findByText('Subscription credits remaining')).toBeInTheDocument();
     rerender(<OrganizationTopUp view="payments" canSubmit />);
     expect(screen.getByText('Payments and workspace invoices')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     expect(screen.getByRole('combobox', { name: 'Payment records' })).toHaveValue('all');
     expect(screen.getByRole('combobox', { name: 'Payment status' })).toHaveValue('all');
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
@@ -171,6 +172,7 @@ describe('organization billing views', () => {
     expect(screen.getByText('Mumbai')).toBeInTheDocument();
     expect(screen.getByText('Invoice payment')).toBeInTheDocument();
     expect(screen.getByText('Credit top-up')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toHaveValue('all');
     expect(mocks.payments).toHaveBeenCalledWith(null, 10, 'all');
     expect(screen.getByTestId('payment-activity-list')).toBeInTheDocument();
@@ -193,6 +195,7 @@ describe('organization billing views', () => {
     }));
     render(<OrganizationTopUp view="payments" canSubmit />);
     await screen.findByText('Credit top-up');
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Payment type' }), { target: { value: 'workspace' } });
     expect(await screen.findByText('Workspace add-on')).toBeInTheDocument();
     expect(screen.queryByText('Credit top-up')).not.toBeInTheDocument();
@@ -205,6 +208,7 @@ describe('organization billing views', () => {
     render(<OrganizationTopUp view="payments" canSubmit />);
     expect(await screen.findByText('Payments and workspace invoices')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
     expect(await within(screen.getByTestId('payment-activity-list')).findByText('Waiting for approval')).toBeInTheDocument();
   });
