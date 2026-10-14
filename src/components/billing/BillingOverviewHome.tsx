@@ -158,6 +158,53 @@ export default function BillingOverviewHome({
       {errors.length > 0 && !loading && <p role="alert" className="mt-3 text-xs leading-5 text-amber-700">
         Some information is unavailable: {errors.join(' ')} Refresh or check again later.
       </p>}
+      <div className="mt-5 border-t border-[var(--border)] pt-5" aria-label="Plan and workspace charges">
+        <div className="flex items-start gap-3">
+          <Building2 aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Plan and extra workspace charges</h3>
+            <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+              Extra workspaces have their own monthly access fee. These invoices are paid separately and never use your calling credits.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-[var(--border)] p-4">
+            <p className="text-xs font-medium text-[var(--text-secondary)]">Estimated monthly plan price</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-[var(--text-primary)]">{money(pricing?.totalMonthlyInr)}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Excludes separately invoiced workspace add-ons.</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] p-4">
+            <p className="text-xs font-medium text-[var(--text-secondary)]">Paid extra workspace access</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-[var(--text-primary)]">{addons == null ? '—' : activeAddons.length}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              {addons == null ? 'Workspace invoices are unavailable.' : `${pendingAddons.length} awaiting payment approval`}
+            </p>
+          </div>
+        </div>
+        {activeAddons.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {activeAddons.map(addon => (
+              <div key={addon.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-xs">
+                <span className="font-medium text-[var(--text-primary)]">{addon.name} <span className="text-[var(--text-muted)]">({addon.status})</span></span>
+                <span className="font-semibold tabular-nums text-[var(--text-primary)]">{displayBillingAmount(addon.monthlyAmount)}/month</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]">
+          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          The final amount due is on your approved invoice or renewal quote; estimates are not a payment request.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {canAllocate && <Button type="button" variant="primary" size="sm" icon={Wallet}
+            onClick={() => onNavigate('allocation')}>Allocate credits to a workspace</Button>}
+          {canSubmitPayment && <Button type="button" variant="secondary" size="sm"
+            onClick={() => onNavigate('topup')}>Add more credits</Button>}
+          <Button type="button" variant="secondary" size="sm"
+            onClick={() => onNavigate('payments')}>View workspace invoices</Button>
+        </div>
+      </div>
     </Card>
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -204,30 +251,6 @@ export default function BillingOverviewHome({
       </Card>
     </div>
 
-    <Card padding="none" className="!rounded-2xl !p-5">
-      <div className="flex items-center gap-3"><Building2 aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" /><h3 className="text-base font-semibold text-[var(--text-primary)]">Extra workspace charges</h3></div>
-      <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Extra workspaces can have a separate monthly access fee because each additional workspace needs its own subscription access. These fees are not deducted from calling credits.</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Tile title="Estimated base plan price" icon={CreditCard} amount={money(pricing?.totalMonthlyInr)}
-          description="Plan pricing estimate; workspace add-on invoices below are tracked separately" />
-        <Tile title="Extra workspace access" icon={Building2}
-          amount={addons == null ? '—' : activeAddons.length}
-          description={addons == null ? 'Invoice details unavailable' : `${pendingAddons.length} more awaiting payment approval`} />
-      </div>
-      {activeAddons.length > 0 && <div className="mt-3 space-y-2">
-        {activeAddons.map(addon => <div key={addon.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] p-3 text-sm">
-          <span className="font-medium text-[var(--text-primary)]">{addon.name} <span className="text-xs font-normal text-[var(--text-muted)]">({addon.status})</span></span>
-          <strong className="tabular-nums">{displayBillingAmount(addon.monthlyAmount)}/month</strong>
-        </div>)}
-      </div>}
-      {addons && !activeAddons.length && !pendingAddons.length && <p className="mt-3 text-sm text-[var(--text-secondary)]">No separately billed workspace add-ons found.</p>}
-      <p className="mt-3 flex items-start gap-2 text-xs text-[var(--text-secondary)]"><Info aria-hidden="true" className="h-4 w-4 shrink-0" /> The total payable amount comes from the approved invoice or renewal quote. Avoid adding these estimates together as if they were a final bill.</p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {canAllocate && <Button type="button" variant="primary" size="sm" icon={Wallet} onClick={() => onNavigate('allocation')}>Allocate credits to a workspace</Button>}
-        {canSubmitPayment && <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('topup')}>Add more credits</Button>}
-        <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('payments')}>View workspace invoices</Button>
-      </div>
-    </Card>
     {loadingUsage && <p role="status" className="text-xs text-[var(--text-muted)]">Refreshing current usage…</p>}
   </section>;
 }
