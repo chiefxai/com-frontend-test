@@ -69,7 +69,7 @@ describe('organization creation telephony selection', () => {
     fireEvent.change(screen.getByPlaceholderText('+14155550123'), { target: { value: '+14155550124' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Workspace' }).closest('form')!);
     await waitFor(() => expect(createRequests).toHaveLength(1));
-    expect(createRequests[0].callProvider).toEqual({ provider: 'vobiz', authId: 'auth-id', authToken: 'auth-token', phoneNumber: '+14155550124' });
+    expect(createRequests[0].callProvider).toEqual({ provider: 'vobiz', authId: 'auth-id', authToken: 'auth-token', phoneNumber: '+14155550124', phoneNumbers: ['+14155550124'] });
     expect(createRequests[0]).not.toHaveProperty('platformTelephonyNumberId');
   });
 
@@ -78,7 +78,7 @@ describe('organization creation telephony selection', () => {
     await fillRequiredOrgFields();
     fireEvent.click(await screen.findByLabelText('Use platform-managed phone numbers'));
     expect(await screen.findByLabelText('Available platform number *')).toHaveTextContent('+14155550123');
-    expect(screen.getByRole('note')).toHaveTextContent(/assign it to the right workspace/i);
+    expect(screen.getByRole('note')).toHaveTextContent(/assign each number to the appropriate workspace/i);
     fireEvent.change(screen.getByLabelText('Available platform number *'), { target: { value: 'num-1' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Workspace' }).closest('form')!);
     await waitFor(() => expect(createRequests).toHaveLength(1));
