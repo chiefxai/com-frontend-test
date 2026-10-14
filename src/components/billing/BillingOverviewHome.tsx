@@ -15,6 +15,7 @@ type AddonList = { rows?: Addon[] };
 
 interface Props {
   onNavigate: (section: BillingPanel) => void;
+  onOpenSubscriptionTask: (task: 'start' | 'renew' | 'upgrade' | 'more-time') => void;
   onOpenCallLogs?: () => void;
   callLogs?: CallLog[];
   pricing: OrganizationSubscriptionPrice | null;
@@ -44,7 +45,7 @@ function Tile({ title, amount, description, icon: Icon }: {
 
 /** One organization-scoped dashboard. Failed optional endpoints do not hide known values. */
 export default function BillingOverviewHome({
-  onNavigate, onOpenCallLogs, callLogs = [], pricing, usage, callCount, phoneChargesBillable,
+  onNavigate, onOpenSubscriptionTask, onOpenCallLogs, callLogs = [], pricing, usage, callCount, phoneChargesBillable,
   canManageSubscription, canAllocate, canSubmitPayment, loadingUsage,
 }: Props) {
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
@@ -142,10 +143,10 @@ export default function BillingOverviewHome({
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {showRenew && <Button type="button" variant="primary" size="sm" icon={CreditCard}
-            onClick={() => onNavigate('plan')}>Pay to continue next month</Button>}
+            onClick={() => onOpenSubscriptionTask('renew')}>Pay to continue next month</Button>}
           <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('plan')}>View my plan</Button>
           {showUpgrade && <Button type="button" variant="secondary" size="sm" icon={Sparkles}
-            onClick={() => onNavigate('plan')}>See upgrade options</Button>}
+            onClick={() => onOpenSubscriptionTask('upgrade')}>See upgrade options</Button>}
         </div>
         {showUpgrade && <p className="mt-2 text-xs text-[var(--text-muted)]">Upgrades are currently a price preview only, not an instant plan change.</p>}
         {canManageSubscription && <details className="mt-3 text-xs text-[var(--text-secondary)]">
