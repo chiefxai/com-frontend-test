@@ -1,8 +1,10 @@
 import React from 'react';
-import { Activity, ArrowRight, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, Info, ChartNoAxesCombined, Gauge, CircleHelp } from 'lucide-react';
+import { Activity, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, Info, ChartNoAxesCombined, Gauge, CircleHelp } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
+import BillingOverviewHome from './BillingOverviewHome';
+import type { CallLog } from '../../types';
 import { formatInr } from '../../lib/pricing';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
@@ -29,6 +31,8 @@ export interface OrganizationSubscriptionPrice {
 
 export interface BillingWorkspaceProps {
   workspaceId?: string;
+  callLogs?: CallLog[];
+  onOpenCallLogs?: () => void;
   view: BillingPanel;
   onNavigate: (view: BillingPanel) => void;
   workspaceBilling: WorkspaceBillingSnapshot | null;
@@ -85,6 +89,7 @@ const money = (value: number | null | undefined) =>
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
   workspaceId, view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
+  callLogs, onOpenCallLogs,
   onRetry, phoneChargesBillable, canSubmitPayment, canManageBudget, rechargeBased,
   rechargeBalanceInr, rechargeReservedInr, budgetDraft, onBudgetDraftChange,
   onSaveBudget, budgetSaving, budgetError,
@@ -93,8 +98,13 @@ export default function BillingWorkspace({
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [showMorePlanDetails, setShowMorePlanDetails] = React.useState(false);
+  const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time'>('renew');
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
+  const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
+    setInitialSubscriptionTask(task);
+    onNavigate('plan');
+  };
   // Do not compare organization-wide usage against a single workspace's limit.
   const limit = workspaceBilling?.monthlyBudgetInr;
   const remaining = workspaceBilling?.remainingBudgetInr;
@@ -143,53 +153,20 @@ export default function BillingWorkspace({
       )}
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
 
-      {view === 'dashboard' && (
-        <section className="col-span-12 space-y-4" aria-label="Billing overview">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-                  <ChartNoAxesCombined aria-hidden="true" className="h-3.5 w-3.5" /> Your billing at a glance
-                </span>
-                <h2 className="mt-3 text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">See your costs. Stay in control.</h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  Your plan has a regular price. Calls and other services use credits. Here's what we know for {periodLabel}.
-                </p>
-              </div>
-              <Button type="button" size="sm" variant="secondary" icon={RefreshCw} disabled={loading} onClick={onRetry}>Refresh overview</Button>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { title: 'Plan price', value: money(organizationPricing?.totalMonthlyInr), detail: 'Monthly, before extra charges', icon: CreditCard },
-                { title: 'Usage recorded', value: money(workspaceBilling?.periodSpendInr), detail: 'Across your organization', icon: Activity },
-                { title: 'Calls made', value: callCount ?? '—', detail: 'Across all workspaces', icon: PhoneCall },
-                { title: 'Time on calls', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total conversation time', icon: Clock3 },
-              ].map(({ title, value, detail, icon: Icon }) =>
-                <div key={title} className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4">
-                  <Icon aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
-                  <p className="mt-3 text-xs font-medium text-[var(--text-secondary)]">{title}</p>
-                  <p className="mt-1 break-words text-2xl font-bold tabular-nums text-[var(--text-primary)]">{value}</p>
-                  <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{detail}</p>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {[
-              { title: 'My subscription', text: 'Check your plan and next payment.', action: 'plan' as const, icon: CreditCard },
-              { title: 'My credits', text: 'See how many credits you can still use.', action: 'credits' as const, icon: Wallet },
-              { title: 'My payments', text: 'See which payments are being checked.', action: 'payments' as const, icon: ReceiptText },
-            ].map(({ title, text, action, icon: Icon }) =>
-              <button key={action} type="button" onClick={() => onNavigate(action)}
-                className="group flex min-h-28 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
-                <span className="rounded-xl bg-[var(--accent-subtle)] p-3 text-[var(--accent)]"><Icon aria-hidden="true" className="h-5 w-5" /></span>
-                <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[var(--text-primary)]">{title}</span><span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">{text}</span></span>
-                <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-1" />
-              </button>
-            )}
-          </div>
-        </section>
-      )}
+      {view === 'dashboard' && <BillingOverviewHome
+        onNavigate={onNavigate}
+        onOpenCallLogs={onOpenCallLogs}
+        callLogs={callLogs}
+        pricing={organizationPricing}
+        usage={workspaceBilling}
+        callCount={callCount}
+        phoneChargesBillable={phoneChargesBillable}
+        canManageSubscription={canManageSubscription}
+        canAllocate={canAllocate}
+        canSubmitPayment={canSubmitPayment}
+        loadingUsage={loading}
+        onOpenSubscriptionTask={openSubscriptionTask}
+      />}
 
       {view === 'plan' && (
         <>
@@ -235,7 +212,7 @@ export default function BillingWorkspace({
             </div>
           </Card>
           {canManageSubscription
-            ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} />
+            ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
             : <p className="col-span-12 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
                 Only your organization's billing administrators can start, renew, or change a subscription.
               </p>}
@@ -349,7 +326,7 @@ export default function BillingWorkspace({
         : <p role="alert" className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
             Only organization administrators can allocate credits to workspaces.
           </p>)}
-      {(view === 'dashboard' || view === 'credits' || view === 'topup' || view === 'payments') && (
+      {(view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate} />
       )}
     </div>
