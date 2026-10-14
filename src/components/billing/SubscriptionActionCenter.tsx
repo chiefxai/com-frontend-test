@@ -4,6 +4,8 @@ import InitialSubscriptionPurchase from './InitialSubscriptionPurchase';
 import SubscriptionRenewal from './SubscriptionRenewal';
 import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
 import SubscriptionGraceRequest from './SubscriptionGraceRequest';
+import { billingClient } from '../../lib/billing/client';
+import { mayPreviewUpgrade, renewalNotice } from './billingOverviewHelpers';
 
 type SubscriptionTask = 'start' | 'renew' | 'upgrade' | 'more-time';
 
@@ -26,9 +28,28 @@ const tasks = [
   },
 ] as const;
 
-export default function SubscriptionActionCenter({ canSubmitPayment }: { canSubmitPayment: boolean }) {
-  const [selected, setSelected] = React.useState<SubscriptionTask>('renew');
-  const current = tasks.find(task => task.key === selected)!;
+export default function SubscriptionActionCenter({ canSubmitPayment, initialTask = 'renew' }: { canSubmitPayment: boolean; initialTask?: SubscriptionTask }) {
+  const [selected, setSelected] = React.useState<SubscriptionTask>(initialTask);
+  const [availability, setAvailability] = React.useState<{ renew: boolean; upgrade: boolean } | null>(null);
+  const [showDowngradeHelp, setShowDowngradeHelp] = React.useState(false);
+  React.useEffect(() => { setSelected(initialTask); }, [initialTask]);
+  React.useEffect(() => {
+    let active = true;
+    void Promise.allSettled([billingClient.subscriptionRenewal(), billingClient.organizationOverview()]).then(([renewal, overview]) => {
+      if (!active) return;
+      const status = renewal.status === 'fulfilled' ? renewal.value : null;
+      const nextPeriod = overview.status === 'fulfilled' && Boolean(overview.value.nextPeriod);
+      const eligibility = renewalNotice(status, Date.now(), nextPeriod);
+      setAvailability({
+        renew: eligibility.canRenew,
+        upgrade: mayPreviewUpgrade(status?.subscription.planId),
+      });
+    });
+    return () => { active = false; };
+  }, []);
+  const visibleTasks = tasks.filter(task => task.key !== 'renew' || availability?.renew)
+    .filter(task => task.key !== 'upgrade' || availability?.upgrade);
+  const current = visibleTasks.find(task => task.key === selected) || visibleTasks[0];
 
   return (
     <section className="col-span-12 space-y-4" aria-label="Manage your subscription">
@@ -38,8 +59,9 @@ export default function SubscriptionActionCenter({ canSubmitPayment }: { canSubm
           Pick one thing. We'll show you just the steps for that choice.
         </p>
       </div>
+      {!availability && <p role="status" className="text-sm text-[var(--text-secondary)]">Checking which plan actions are available…</p>}
       <div role="group" aria-label="Subscription actions" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {tasks.map(({ key, title, description, icon: Icon }) => {
+        {availability && visibleTasks.map(({ key, title, description, icon: Icon }) => {
           const active = selected === key;
           return (
             <button type="button" key={key} aria-pressed={active} aria-controls="subscription-task-panel"
@@ -58,7 +80,7 @@ export default function SubscriptionActionCenter({ canSubmitPayment }: { canSubm
           );
         })}
       </div>
-      <div id="subscription-task-panel" aria-label={current.title} className="min-w-0 space-y-3">
+      {availability && current && <div id="subscription-task-panel" aria-label={current.title} className="min-w-0 space-y-3">
         <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
           <h3 className="text-base font-semibold text-[var(--text-primary)]">{current.title}</h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{current.description}</p>
@@ -67,7 +89,13 @@ export default function SubscriptionActionCenter({ canSubmitPayment }: { canSubm
         {selected === 'start' && <InitialSubscriptionPurchase canSubmit={canSubmitPayment} />}
         {selected === 'upgrade' && <SubscriptionUpgradePreview />}
         {selected === 'more-time' && <SubscriptionGraceRequest />}
-      </div>
+      </div>}
+      <details className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+        <summary className="cursor-pointer font-medium text-[var(--text-primary)]">Other plan choices</summary>
+        <p className="mt-2 leading-6">Looking for a lower-cost plan? Your current plan stays the same until the platform team approves a change.</p>
+        <button type="button" className="mt-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]" onClick={() => setShowDowngradeHelp(value => !value)}>Downgrade plan</button>
+        {showDowngradeHelp && <p role="status" className="mt-2 text-sm">Downgrading is not available as an automatic action yet. Please contact your platform billing administrator to request a lower-cost plan for a future billing period.</p>}
+      </details>
     </section>
   );
 }
