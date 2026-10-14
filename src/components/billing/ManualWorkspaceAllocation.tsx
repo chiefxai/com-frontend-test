@@ -116,7 +116,7 @@ export default function ManualWorkspaceAllocation() {
 
   return (
     <div className="col-span-12 grid grid-cols-12 gap-4 md:gap-5" id="manual-credit-allocation">
-      <section className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6" aria-label="Allocation guide">
+      <Card padding="none" className="col-span-12 !rounded-2xl !p-5 sm:!p-6">
         <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
           <Wallet aria-hidden="true" className="h-3.5 w-3.5" /> Share credits
         </span>
@@ -134,7 +134,7 @@ export default function ManualWorkspaceAllocation() {
             <div><p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p><p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{detail}</p></div>
           </div>)}
         </div>
-      </section>
+      </Card>
       <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
         <CardHeader title="Organization credit pool" icon={Wallet}
           subtitle="Credits here have not yet been sent to any workspace."
