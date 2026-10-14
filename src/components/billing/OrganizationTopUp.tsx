@@ -346,7 +346,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
 
       {view === 'payments' && (
-        <section className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6" aria-label="Payment guide">
+        <Card padding="none" className="col-span-12 !rounded-2xl !p-5 sm:!p-6">
           <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
             <ReceiptText aria-hidden="true" className="h-3.5 w-3.5" /> Payment history
           </span>
@@ -366,7 +366,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               <p className="mt-1 text-xs text-[var(--text-muted)]">Includes requests for more information</p>
             </div>
           </div>
-        </section>
+        </Card>
       )}
       {view === 'payments' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
