@@ -51,6 +51,10 @@ export interface WorkspaceOption {
 }
 
 interface SidebarProps {
+  /** Legacy compatibility; notifications now load from the server in NotificationBell. */
+  notifications?: unknown[];
+  onMarkAllNotificationsRead?: () => void;
+  onClearNotifications?: () => void;
   workspaces: WorkspaceOption[];
   activeWorkspaceId: string;
   /** Authenticated subscription capability, not the current workspace count. */
