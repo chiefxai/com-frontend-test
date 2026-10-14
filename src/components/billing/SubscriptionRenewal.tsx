@@ -22,6 +22,7 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
   const [note, setNote] = React.useState('');
   const [proof, setProof] = React.useState<File | null>(null);
   const [targetPlanId, setTargetPlanId] = React.useState('');
+  const [acknowledgeFeatureLoss, setAcknowledgeFeatureLoss] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     setLoading(true); setError(''); setNotFound(false);
@@ -36,11 +37,13 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
 
   const createQuote = async () => {
     if (!billingAdmin || busy || data?.period?.renewalEligible !== true || data.quote?.pendingPayment) return;
-    const selected = data.period.isTrial ? data.availablePlans?.find(plan => plan.planId === targetPlanId) : null;
+    const selected = data.availablePlans?.find(plan => plan.planId === targetPlanId) || null;
     if (data.period.isTrial && !selected) { setError('Choose a subscription plan to continue after the trial.'); return; }
+    if (selected?.impact?.conflicts.length) { setError('The selected plan cannot support your current organization inventory.'); return; }
+    if (selected?.impact?.removedModules.length && !acknowledgeFeatureLoss) { setError('Confirm feature loss and backup guidance before requesting this plan.'); return; }
     setBusy(true); setError(''); setSuccess('');
     try {
-      const next = await billingClient.createSubscriptionRenewalQuote(selected ? { targetPlanId: selected.planId, targetPlanVersion: selected.planVersion } : {}, { idempotencyKey: quoteKey });
+      const next = await billingClient.createSubscriptionRenewalQuote(selected ? { targetPlanId: selected.planId, targetPlanVersion: selected.planVersion, acknowledgeFeatureLoss } : {}, { idempotencyKey: quoteKey });
       setData(next); setQuoteKey(newBillingIdempotencyKey());
       setSuccess('Your renewal price is ready. Check the amount below before paying.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not prepare the renewal quote. Retry to try again safely.'); }
@@ -69,6 +72,9 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
   if (!billingAdmin) return null;
   const quote = data?.quote;
   const eligible = data?.period?.renewalEligible === true;
+  const selectedPlan = data?.availablePlans?.find(plan => plan.planId === targetPlanId);
+  const removedModules = selectedPlan?.impact?.removedModules || [];
+  const selectionBlocked = Boolean(selectedPlan?.impact?.conflicts.length);
   const canPay = Boolean(quote?.payable && !quote.pendingPayment && data?.payment.submissionEnabled && canSubmit);
 
   return <Card padding="sm" className="col-span-12 sm:!p-5">
@@ -87,17 +93,19 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
 
       {data.period && !eligible && <p role="status" className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">It is not time to renew yet. When renewal becomes available, you'll see a button here to check your next price.</p>}
 
-      {data.period?.isTrial && eligible && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-end gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3">
-        <div className="min-w-64 flex-1"><label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor="trial-conversion-plan">Choose the paid plan to start after your trial</label>
-          <select id="trial-conversion-plan" value={targetPlanId} onChange={event=>setTargetPlanId(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm">
+      {eligible && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-end gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3">
+        <div className="min-w-64 flex-1"><label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor="trial-conversion-plan">Choose your next subscription plan</label>
+          <select id="trial-conversion-plan" value={targetPlanId} onChange={event=>{ setTargetPlanId(event.target.value); setAcknowledgeFeatureLoss(false); }} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm">
             <option value="">Select a subscription plan</option>{(data.availablePlans || []).map(plan=><option key={`${plan.planId}:${plan.planVersion}`} value={plan.planId}>{plan.name} · {subscriptionAmountText(plan.monthlyPrice)} / month</option>)}
           </select>
         </div>
-        <Button type="button" size="sm" variant="primary" icon={CreditCard} loading={busy} disabled={busy || !targetPlanId} onClick={()=>void createQuote()}>See my plan price</Button>
-        <p className="w-full text-[11px] text-[var(--text-muted)]">If you want this plan, send payment before your trial ends. Your paid plan and its credits start only after approval and when your trial finishes.</p>
+        {selectedPlan?.impact?.conflicts.map((problem, index) => <p key={index} role="alert" className="w-full text-xs text-rose-700">{problem}</p>)}
+        {removedModules.length > 0 && <div className="w-full space-y-2 rounded-lg border border-amber-400 p-3 text-xs text-[var(--text-primary)]" role="alert"><strong>Feature access will be removed</strong><p>The following features are not supported by this plan. Existing data is not automatically deleted, but it may become inaccessible. Export or back up anything you need before the new plan begins.</p><ul className="list-inside list-disc">{removedModules.map(module => <li key={`${module.industry}-${module.key}`}>{module.industry}: {module.key.replaceAll('_', ' ')}</li>)}</ul><label className="flex items-center gap-2"><input type="checkbox" checked={acknowledgeFeatureLoss} onChange={event => setAcknowledgeFeatureLoss(event.target.checked)} /> I understand the lost features and have backed up anything I need.</label></div>}
+        <Button type="button" size="sm" variant="primary" icon={CreditCard} loading={busy} disabled={busy || !targetPlanId || selectionBlocked || (removedModules.length > 0 && !acknowledgeFeatureLoss)} onClick={()=>void createQuote()}>See my plan price</Button>
+        <p className="w-full text-[11px] text-[var(--text-muted)]">Plan changes take effect only after payment approval and activation of the next billing period. Your current plan remains in effect until then.</p>
       </div>}
 
-      {eligible && !data.period?.isTrial && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
+      {eligible && !data.period?.isTrial && (!quote || quote.expired) && !quote?.pendingPayment && (!data.availablePlans?.length) && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
         <p>{quote?.expired ? 'Your old price offer has expired. Get a new one.' : data.period?.overdue ? 'Your plan has ended, but you can still request a renewal price.' : 'It is time to renew. You can check the price now.'}</p>
         <Button type="button" size="sm" variant="primary" icon={RefreshCw} loading={busy} disabled={busy} onClick={() => void createQuote()}>{quote?.expired ? 'Get an updated price' : 'See my renewal price'}</Button>
       </div>}

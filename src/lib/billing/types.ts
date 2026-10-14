@@ -200,7 +200,7 @@ export interface SubscriptionRenewalQuote extends Omit<SubscriptionPurchaseQuote
 export interface SubscriptionRenewalResponse {
   subscription: { lifecycleStatus: string; accessState: string; planId: string | null; planVersion: number | null; version: number; restrictionDeadline: string | null };
   period: { periodId: string; status: string; startsAt: string; endsAt: string; renewalEligible: boolean; overdue: boolean; isTrial?: boolean; trialDays?: number | null } | null;
-  availablePlans?: { planId: string; planVersion: number; name: string; monthlyPrice: BillingAmount; includedCredits: BillingAmount }[];
+  availablePlans?: { planId: string; planVersion: number; name: string; monthlyPrice: BillingAmount; includedCredits: BillingAmount; impact?: { removedModules: {industry: string; key: string}[]; conflicts: string[]; isDowngrade: boolean } }[];
   quote: SubscriptionRenewalQuote | null;
   payment: { submissionEnabled: boolean; purpose: 'subscription'; submissionPath: '/api/billing/payments' };
   graceRequest: { id: string; status: string; periodId: string; requestedUntil: string; grantedUntil: string | null; version: number } | null;

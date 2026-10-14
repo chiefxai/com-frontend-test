@@ -89,7 +89,7 @@ export default function SubscriptionActionCenter({ canSubmitPayment, initialTask
         <summary className="cursor-pointer font-medium text-[var(--text-primary)]">Other plan choices</summary>
         <p className="mt-2 leading-6">Looking for a lower-cost plan? Your current plan stays the same until the platform team approves a change.</p>
         <button type="button" className="mt-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]" onClick={() => setShowDowngradeHelp(value => !value)}>Downgrade plan</button>
-        {showDowngradeHelp && <p role="status" className="mt-2 text-sm">Downgrading is not available as an automatic action yet. Please contact your platform billing administrator to request a lower-cost plan for a future billing period.</p>}
+        {showDowngradeHelp && <p role="status" className="mt-2 text-sm">You can choose a lower-cost plan during the final seven days of your billing period through “Keep my plan going.” We’ll show which features would become unavailable and ask you to back up important data. Your current plan stays active until the new paid period begins. Contact your platform billing administrator if you need an earlier change.</p>}
       </details>
     </section>
   );

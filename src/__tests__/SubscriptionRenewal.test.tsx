@@ -34,10 +34,10 @@ describe('organization subscription renewal', () => {
     render(<SubscriptionRenewal canSubmit />);
     expect(await screen.findByText(/Free trial \(5 days\)/)).toBeInTheDocument();
     expect(screen.getByText(/₹200 trial credits expire when the trial ends/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Choose the paid plan to start after your trial'), { target: { value: 'growth' } });
+    fireEvent.change(screen.getByLabelText('Choose your next subscription plan'), { target: { value: 'growth' } });
     fireEvent.click(screen.getByRole('button', { name: 'See my plan price' }));
     await screen.findByText('Your renewal price');
-    expect(mocks.createQuote).toHaveBeenCalledWith({ targetPlanId: 'growth', targetPlanVersion: 4 }, expect.objectContaining({ idempotencyKey: expect.any(String) }));
+    expect(mocks.createQuote).toHaveBeenCalledWith({ targetPlanId: 'growth', targetPlanVersion: 4, acknowledgeFeatureLoss: false }, expect.objectContaining({ idempotencyKey: expect.any(String) }));
   });
 
   it('uses server renewal eligibility and keeps quote creation unavailable before the renewal window', async () => {
