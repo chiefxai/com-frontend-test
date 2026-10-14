@@ -19,7 +19,7 @@ const explanations: Record<SubscriptionCreditStatus['state'], string> = {
   awaiting_approved_subscription: 'Your plan includes monthly credits, but they are waiting for an approved payment and an active subscription period.',
   awaiting_period_activation: 'Your payment is approved. Credits will be added when the paid period starts.',
   activation_incomplete: 'Your paid period is active, but the expected credits have not appeared. Contact platform support to check them. Do not add them manually.',
-  issued_to_organization_pool: 'Your monthly plan credits have been added to the organization's pool. An organization admin can share them with workspaces.',
+  issued_to_organization_pool: 'Your monthly plan credits have been added to the organization credit pool. An organization admin can share them with workspaces.',
 };
 
 export default function SubscriptionCreditStatusPanel() {
