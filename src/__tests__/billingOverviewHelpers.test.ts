@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { availableCredits, daysUntil, mayPreviewUpgrade, renewalNotice } from '../components/billing/billingOverviewHelpers';
+import { availableCredits, daysUntil, mayAskForMoreTime, mayPreviewUpgrade, renewalNotice } from '../components/billing/billingOverviewHelpers';
 import type { SubscriptionRenewalResponse } from '../lib/billing/types';
 
 const time = Date.parse('2030-10-01T00:00:00.000Z');
@@ -67,6 +67,19 @@ describe('billing overview lifecycle rules', () => {
     expect(availableCredits(balances, 'subscription')).toBe('₹9,00,71,99,25,47,40,995.00');
     expect(availableCredits(balances, 'topup')).toBe('₹50.00');
     expect(availableCredits([], 'topup')).toBe('₹0.00');
+  });
+
+  it('only offers an unpaid grace request during the final seven days or existing valid grace', () => {
+    const eligible = { eligibility: { requestEligible: true }, items: [] } as unknown as import('../lib/billing/types').SubscriptionGraceResponse;
+    const ineligible = { eligibility: { requestEligible: false }, items: [] } as unknown as import('../lib/billing/types').SubscriptionGraceResponse;
+    expect(mayAskForMoreTime(status('2030-10-11T00:00:00Z'), eligible, time, false)).toBe(false);
+    expect(mayAskForMoreTime(status('2030-10-07T00:00:00Z'), eligible, time, false)).toBe(true);
+    expect(mayAskForMoreTime(status('2030-10-07T00:00:00Z'), ineligible, time, false)).toBe(false);
+    expect(mayAskForMoreTime(status('2030-10-07T00:00:00Z'), eligible, time, true)).toBe(false);
+    expect(mayAskForMoreTime(status('2030-10-07T00:00:00Z', { pending: true }), eligible, time, false)).toBe(false);
+    expect(mayAskForMoreTime(status('2030-09-30T00:00:00Z', { graceStatus: 'approved', graceUntil: '2030-10-04T00:00:00Z' }), eligible, time, false)).toBe(true);
+    expect(mayAskForMoreTime(status('2030-09-30T00:00:00Z'), eligible, time, false)).toBe(false);
+    expect(mayAskForMoreTime(status('2030-10-07T00:00:00Z', { accessState: 'manual_suspended' }), eligible, time, false)).toBe(false);
   });
 
   it('offers upgrade preview only for recognizable lower tiers', () => {
