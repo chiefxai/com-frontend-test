@@ -99,6 +99,11 @@ export default function CreateWorkspacePage() {
   });
   const [platformTelephonyNumbers, setPlatformTelephonyNumbers] = useState<Array<TelephonyInventoryNumber & { connectorId: string; connectorName: string; providerKey: string; providerName: string }>>([]);
   const [platformTelephonyAvailable, setPlatformTelephonyAvailable] = useState(false);
+  const [additionalCustomerNumbers, setAdditionalCustomerNumbers] = useState<string[]>([]);
+  const [additionalSavedNumberIds, setAdditionalSavedNumberIds] = useState<string[]>([]);
+  const [additionalEnteredNumbers, setAdditionalEnteredNumbers] = useState<Array<{
+    id: string; connectorId: string; phoneNumber: string; label: string; providerNumberId: string; confirmed: boolean;
+  }>>([]);
   const [platformTelephonyConnectors, setPlatformTelephonyConnectors] = useState<TelephonyConnector[]>([]);
   const [workspacePlans, setWorkspacePlans] = useState<WorkspacePlan[]>([]);
   const [workspacePlanVersion, setWorkspacePlanVersion] = useState(0);
@@ -269,13 +274,41 @@ export default function CreateWorkspacePage() {
     }
     setLoading(true);
     try {
+      const customerNumbers = [form.callPhoneNumber, ...additionalCustomerNumbers].map(number => number.trim());
+      const savedPlatformIds = [form.platformTelephonyNumberId, ...additionalSavedNumberIds].filter(Boolean);
+      const enteredPlatformNumbers = [{
+        connectorId: form.platformTelephonyConnectorId, phoneNumber: form.platformTelephonyPhoneNumber.trim(),
+        label: form.platformTelephonyNumberLabel.trim(), providerNumberId: form.platformTelephonyProviderNumberId.trim(),
+        confirmed: form.platformTelephonyNumberConfirmed,
+      }, ...additionalEnteredNumbers.map(number => ({
+        connectorId: number.connectorId, phoneNumber: number.phoneNumber.trim(),
+        label: number.label.trim(), providerNumberId: number.providerNumberId.trim(), confirmed: number.confirmed,
+      }))];
+      const validNumbers = (numbers: string[]) => numbers.length > 0 && numbers.length <= 25
+        && numbers.every(number => /^\+[1-9]\d{7,14}$/.test(number))
+        && new Set(numbers).size === numbers.length;
       if (!form.gcpCredentialsJson.trim()) {
         setError('Service account credentials JSON is required.');
         return;
       }
       if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed') {
+        if (form.platformTelephonyNumberMode === 'saved' && (!savedPlatformIds.length
+            || savedPlatformIds.length > 25 || new Set(savedPlatformIds).size !== savedPlatformIds.length)) {
+          setError('Select between 1 and 25 distinct platform phone numbers.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'saved' && savedPlatformIds.some(id => !platformTelephonyNumbers.some(number => number.id === id))) {
+          setError('A selected platform number is no longer available. Reload the inventory.'); return;
+        }
         if (form.platformTelephonyNumberMode === 'saved' && !form.platformTelephonyNumberId) {
           setError('Choose an available number from platform inventory.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'enter' && (enteredPlatformNumbers.length > 25 ||
+            !validNumbers(enteredPlatformNumbers.map(number => number.phoneNumber)) ||
+            enteredPlatformNumbers.some(number => !platformTelephonyConnectors.some(connector => connector.id === number.connectorId)))) {
+          setError('Enter 1–25 distinct E.164 numbers, each with an active platform connector.'); return;
+        }
+        if (form.platformTelephonyNumberMode === 'enter' && enteredPlatformNumbers.some(number => !number.confirmed)) {
+          setError('Confirm every entered phone number is active in its provider account.'); return;
         }
         if (form.platformTelephonyNumberMode === 'enter' && (!form.platformTelephonyConnectorId || !form.platformTelephonyPhoneNumber.trim())) {
           setError('Choose a platform connector and enter its phone number.'); return;
@@ -284,8 +317,8 @@ export default function CreateWorkspacePage() {
           setError('Confirm the number is active in the selected provider account before continuing.'); return;
         }
       }
-      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !form.callPhoneNumber.trim())) {
-        setError('Call provider credentials and phone number are required when Charge Scope is AI + Call Provider.');
+      if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'customer_owned' && (!form.callAuthId.trim() || !form.callAuthToken.trim() || !validNumbers(customerNumbers))) {
+        setError('Enter call-provider credentials and 1–25 distinct phone numbers in E.164 format (for example +14155550123).');
         return;
       }
 
@@ -330,7 +363,8 @@ export default function CreateWorkspacePage() {
               provider: form.callProvider,
               authId: form.callAuthId.trim(),
               authToken: form.callAuthToken.trim(),
-              phoneNumber: form.callPhoneNumber.trim(),
+              phoneNumber: customerNumbers[0],
+              phoneNumbers: customerNumbers,
             },
           } : {}),
           ...(form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed'
@@ -358,32 +392,38 @@ export default function CreateWorkspacePage() {
       const created = await res.json().catch(() => ({}));
       if (form.chargeScope === 'ai_and_call_provider' && form.telephonySetup === 'platform_managed') {
         try {
-          let numberId = form.platformTelephonyNumberId;
+          const numberIds = form.platformTelephonyNumberMode === 'saved' ? [...savedPlatformIds] : [];
           if (form.platformTelephonyNumberMode === 'enter') {
-            const numberResponse = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(form.platformTelephonyConnectorId)}/numbers`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phoneNumberE164: form.platformTelephonyPhoneNumber.trim(),
-                providerNumberId: form.platformTelephonyProviderNumberId.trim() || null,
-                displayName: form.platformTelephonyNumberLabel.trim() || null }),
-            });
-            const numberBody = await numberResponse.json().catch(() => ({}));
-            if (!numberResponse.ok || !numberBody.number?.id) throw new Error(numberBody.error || 'Could not save the number to connector inventory.');
-            numberId = numberBody.number.id;
-            const readyResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(numberId)}/mark-ready`, { method: 'POST' });
-            if (!readyResponse.ok) {
-              const details = await readyResponse.json().catch(() => ({}));
-              throw new Error(details.error || 'Could not confirm the number as ready.');
+            for (const number of enteredPlatformNumbers) {
+              const numberResponse = await apiFetch(`/api/platform/telephony/connectors/${encodeURIComponent(number.connectorId)}/numbers`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumberE164: number.phoneNumber,
+                  providerNumberId: number.providerNumberId || null,
+                  displayName: number.label || null }),
+              });
+              const numberBody = await numberResponse.json().catch(() => ({}));
+              if (!numberResponse.ok || !numberBody.number?.id) throw new Error(numberBody.error || `Could not register ${number.phoneNumber} in connector inventory.`);
+              const id = numberBody.number.id as string;
+              const readyResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(id)}/mark-ready`, { method: 'POST' });
+              if (!readyResponse.ok) {
+                const details = await readyResponse.json().catch(() => ({}));
+                throw new Error(details.error || `Could not confirm ${number.phoneNumber} as ready.`);
+              }
+              numberIds.push(id);
             }
           }
-          const allocationResponse = await apiFetch(`/api/platform/telephony/numbers/${encodeURIComponent(numberId)}/allocate`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId: created.id }),
+          // A bulk allocation is one transaction: no partial organization
+          // mapping when another admin claims one of the selected numbers.
+          const allocationResponse = await apiFetch('/api/platform/telephony/numbers/bulk-allocate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId: created.id, phoneNumberIds: numberIds }),
           });
           if (!allocationResponse.ok) {
             const details = await allocationResponse.json().catch(() => ({}));
-            throw new Error(details.error || 'Could not allocate the number to the organization.');
+            throw new Error(details.error || 'Could not allocate all selected numbers to the organization.');
           }
         } catch (cause) {
-          setError(`Organization ${created.id || ''} was created, but telephony allocation did not complete: ${cause instanceof Error ? cause.message : 'Unknown error'}. You can allocate the number from Telephony Connectors.`);
+          setError(`Organization ${created.id || ''} was created, but telephony allocation did not complete: ${cause instanceof Error ? cause.message : 'Unknown error'}. The remaining numbers can be managed from Telephony Connectors.`);
           return;
         }
       }
