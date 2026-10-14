@@ -122,7 +122,7 @@ export default function WorkspaceAddonPurchases({
     if (statusFilter === 'all') return true;
     if (item.source === 'payment') {
       const state = item.payment.status;
-      if (statusFilter === 'review') return state === 'pending_verification' || state === 'submitted';
+      if (statusFilter === 'review') return state === 'pending_verification';
       if (statusFilter === 'action') return ['needs_information', 'needs_clarification', 'rejected'].includes(state);
       return state === 'approved';
     }
