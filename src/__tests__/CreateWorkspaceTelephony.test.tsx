@@ -24,6 +24,7 @@ const number = { id: 'num-1', phoneNumberE164: '+14155550123', inventoryStatus: 
 
 function setup({ connectorFeature = true, trialProvisioningStatus = 'free_trial', trialProvisioningCode = 'SUBSCRIPTION_PLAN_VERSION_UNAVAILABLE' } = {}) {
   const createRequests: Array<Record<string, any>> = [];
+  let registeredNumberCount = 0;
   mocks.navigate.mockClear();
   mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
     if (url === '/api/platform/billing/workspace-plans') return response({ version: 1, plans: [plan] });
@@ -40,8 +41,8 @@ function setup({ connectorFeature = true, trialProvisioningStatus = 'free_trial'
     }
     if (url === '/api/platform/organizations/org-1/initial-subscription-payment') return response({ id: 'payment-1' }, 201);
     if (url === '/api/platform/telephony/numbers/bulk-allocate' && options?.method === 'POST') return response({ orgId:'org-1', allocations: JSON.parse(options.body || '{}').phoneNumberIds.map((phoneNumberId:string)=>({phoneNumberId,orgId:'org-1'})) },201);
-    if (url === '/api/platform/telephony/connectors/conn-1/numbers' && options?.method === 'POST') return response({ number: { id: 'new-num-1' } }, 201);
-    if (url === '/api/platform/telephony/numbers/new-num-1/mark-ready' && options?.method === 'POST') return response({ number: { id: 'new-num-1' } });
+    if (url === '/api/platform/telephony/connectors/conn-1/numbers' && options?.method === 'POST') return response({ number: { id: `new-num-${++registeredNumberCount}` } }, 201);
+    if (/^\/api\/platform\/telephony\/numbers\/new-num-\d+\/mark-ready$/.test(url) && options?.method === 'POST') return response({ number: { id: url.split('/')[5] } });
     throw new Error(`Unexpected request ${url}`);
   });
   render(<MemoryRouter><CreateWorkspacePage /></MemoryRouter>);
@@ -100,6 +101,29 @@ describe('organization creation telephony selection', () => {
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/connectors/conn-1/numbers', expect.objectContaining({ method: 'POST' })));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/new-num-1/mark-ready', expect.objectContaining({ method: 'POST' })));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/bulk-allocate', expect.objectContaining({ method: 'POST' })));
+  });
+
+  it('registers, verifies, and allocates multiple entered platform connector numbers', async () => {
+    setup();
+    await fillRequiredOrgFields();
+    fireEvent.click(await screen.findByLabelText('Use platform-managed phone numbers'));
+    fireEvent.click(screen.getByLabelText('Enter a number from a connector'));
+    fireEvent.change(screen.getByLabelText('Platform connector *'),{target:{value:'conn-1'}});
+    fireEvent.change(screen.getByLabelText('Phone number *'),{target:{value:'+14155550135'}});
+    fireEvent.click(screen.getByLabelText(/I confirm this number is active on the selected provider account/));
+    fireEvent.click(screen.getByRole('button',{name:/Add another provider number/i}));
+    const secondNumber=screen.getByLabelText('Additional platform phone number 2');
+    fireEvent.change(secondNumber,{target:{value:'+14155550136'}});
+    const fieldset=secondNumber.closest('fieldset')!;
+    fireEvent.change(fieldset.querySelector('select')!,{target:{value:'conn-1'}});
+    fireEvent.click(fieldset.querySelector('input[type="checkbox"]')!);
+    fireEvent.submit(screen.getByRole('button',{name:'Create Workspace'}).closest('form')!);
+    await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/bulk-allocate',
+      expect.objectContaining({method:'POST',body:JSON.stringify({
+        orgId:'org-1',phoneNumberIds:['new-num-1','new-num-2'],
+      })})));
+    expect(mocks.apiFetch.mock.calls.filter(([url,options]:[string,{method?:string}]) =>
+      url==='/api/platform/telephony/connectors/conn-1/numbers' && options?.method==='POST')).toHaveLength(2);
   });
 
   it('maps multiple customer-owned Vobiz phone numbers using one credential set', async () => {
