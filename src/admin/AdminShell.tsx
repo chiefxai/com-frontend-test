@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Building2, Users, ScrollText, Settings, Database,
   IndianRupee, MessageSquareText, Layers3, ShieldCheck, PhoneCall,
 } from 'lucide-react';
-import { Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, Link, useNavigate } from 'react-router-dom';
 import OverviewPage from './OverviewPage';
 import OrganizationsPage from './OrganizationsPage';
 import CreateWorkspacePage from './CreateWorkspacePage';
@@ -21,6 +21,8 @@ import PageHeaderBar from '../components/ui/PageHeaderBar';
 import Tooltip from '../components/ui/Tooltip';
 import { PageHeaderProvider, usePageHeaderContext } from '../lib/PageHeaderContext';
 import SidebarBrand from '../components/ui/SidebarBrand';
+import NotificationBell from '../components/NotificationBell';
+import NotificationSettingsPage from '../notifications/NotificationSettingsPage';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
   { path: 'overview',        label: 'Overview',                icon: LayoutDashboard },
@@ -50,6 +52,7 @@ function initialCollapsed() {
 }
 
 export default function AdminShell({ email, onLogout }: { email: string; onLogout: () => void }) {
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = React.useState(initialCollapsed);
   const toggleSidebar = () => setCollapsed(current => !current);
 
@@ -119,6 +122,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               kcUser={{ name: email, email }}
               dbRole="Platform Admin"
               logout={onLogout}
+              onNotificationSettings={() => navigate("/admin/notification-settings")}
               placement="top-start"
               compact={collapsed}
               showIdentity={!collapsed}
@@ -138,7 +142,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
           like ChatGPT and Google Cloud, instead of two stacked chrome bars. */}
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-[var(--bg-base)]">
         <PageHeaderProvider>
-          <PageHeaderBar integrated />
+          <PageHeaderBar integrated rightSlot={<NotificationBell audience="platform" />} />
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[var(--bg-base)]">
             <Routes>
               <Route index element={<Navigate to="overview" replace />} />
@@ -154,6 +158,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
               {/* Preserve older bookmarked links while keeping one review page. */}
               <Route path="payment-reviews" element={<Navigate to="/admin/reviews?type=payments" replace />} />
               <Route path="grace-requests" element={<Navigate to="/admin/reviews?type=grace" replace />} />
+              <Route path="notification-settings" element={<PageWrap title="Notification Settings" section="Settings"><NotificationSettingsPage audience="platform" /></PageWrap>} />
               <Route path="settings" element={<PageWrap title="Features" section="Features"><SettingsPage /></PageWrap>} />
               <Route path="data-retention" element={<PageWrap title="Data Retention & Backup" section="Data Retention & Backup"><DataRetentionPage /></PageWrap>} />
               <Route path="prompts" element={<PageWrap title="Prompts" section="Prompts"><PromptsPage /></PageWrap>} />
