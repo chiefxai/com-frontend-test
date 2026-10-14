@@ -35,7 +35,8 @@ beforeEach(() => {
 
 describe('Organization-owned telephony connector management', () => {
   it('creates multiple provider accounts and keeps credentials schema-driven', async () => {
-    render(<OrganizationTelephonyConnectors />);
+    const onInventoryChange = vi.fn();
+    render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Connector name'), { target: { value: 'Sales account' } });
     fireEvent.change(screen.getByLabelText('Provider account reference (optional)'), { target: { value: 'vobiz-org-2' } });
@@ -44,22 +45,25 @@ describe('Organization-owned telephony connector management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add account' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/telephony/connectors', expect.objectContaining({ method: 'POST' })));
     expect(await screen.findByText('Sales account')).toBeInTheDocument();
+    await waitFor(() => expect(onInventoryChange).toHaveBeenCalledTimes(1));
     const call = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url === '/api/telephony/connectors' && options?.method === 'POST');
     expect(JSON.parse(call?.[1].body || '{}')).toMatchObject({ providerKey: 'vobiz', displayName: 'Sales account', providerAccountId: 'vobiz-org-2', credentials: { authId: 'auth-2', authToken: 'secret-2' } });
   });
 
   it('registers a number in the selected account inventory and states that this does not enable calling', async () => {
-    render(<OrganizationTelephonyConnectors />);
+    const onInventoryChange = vi.fn();
+    render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Phone number for Support account'), { target: { value: '+14155550123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add number to inventory' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/telephony/connectors/org-conn-1/numbers', expect.objectContaining({ method: 'POST' })));
     expect(await screen.findByRole('status')).toHaveTextContent('Live calling is not enabled');
+    await waitFor(() => expect(onInventoryChange).toHaveBeenCalledTimes(1));
   });
 
   it('uses the full available grid width instead of collapsing into one column', async () => {
     render(<OrganizationTelephonyConnectors />);
-    const title = await screen.findByRole('heading', { name: 'Telephony connectors' });
+    const title = await screen.findByRole('heading', { name: 'Set up a virtual number' });
     const container = title.closest('.col-span-full');
     expect(container).not.toBeNull();
     expect(container).toHaveClass('min-w-0', 'w-full');
@@ -92,7 +96,8 @@ describe('Organization-owned telephony connector management', () => {
       throw new Error(`Unexpected request ${url}`);
     });
 
-    render(<OrganizationTelephonyConnectors />);
+    const onInventoryChange = vi.fn();
+    render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
     const section = await screen.findByRole('region', { name: 'Platform-managed numbers' });
     expect(section).toHaveTextContent('+918071580130 · chief voice');
     expect(section).toHaveTextContent('Available to assign');
@@ -109,6 +114,7 @@ describe('Organization-owned telephony connector management', () => {
       '/api/telephony/numbers/platform-number/assign',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ workspaceId: 'ws-2' }) }),
     ));
+    await waitFor(() => expect(onInventoryChange).toHaveBeenCalledTimes(1));
   });
 
   it('assigns a ready number to a named workspace without exposing internal provisioning fields', async () => {

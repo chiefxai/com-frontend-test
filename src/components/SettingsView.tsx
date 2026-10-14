@@ -343,7 +343,6 @@ export default function SettingsView({
   // credentials, then "Provision Virtual Call-center Line" for the same
   // number) — combined into one action here since the common case is
   // exactly one number per account.
-  const [connectProvider, setConnectProvider] = useState<'vobiz'>('vobiz');
   const [connectedChannels, setConnectedChannels] = useState<{ type: string; externalId: string; config: any }[]>([]);
   const loadChannels = () => {
     if (!can('workspace.read')) {
@@ -969,7 +968,7 @@ export default function SettingsView({
                         className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
                         Export CSV ({filteredNumbers.length})
                       </button>
-                      <IconButton icon={Plus} label="Add Provider" onClick={() => setShowProviderForm(true)} />
+                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => setShowProviderForm(true)} />
                     </>}
                   />
                 </div>
@@ -981,7 +980,7 @@ export default function SettingsView({
                       <Phone className="h-5 w-5 text-indigo-400" />
                     </div>
                     <p className="text-sm font-medium text-slate-600">No virtual numbers yet</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xs">Click "Add Provider" to connect your Vobiz.ai account and provision your first virtual line.</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-xs">Click + to connect a provider, register a number, or assign an available number to a workspace.</p>
                   </div>
                 ) : (() => {
                   const columns: Column<VirtualNumber>[] = [
@@ -1044,58 +1043,36 @@ export default function SettingsView({
                 })()}
               </Widget>
 
-              {/* Add Provider overlay modal */}
+              {/* One unified setup dialog for provider accounts, numbers and workspace mapping. */}
               {showProviderForm && (
                 <Modal
                   open
                   onClose={() => setShowProviderForm(false)}
-                  title="Add Virtual Number"
-                  subtitle="Choose your telephony provider and enter your credentials to register a virtual number."
-                  maxWidth="max-w-lg"
+                  title="Add or assign virtual number"
+                  subtitle="Connect a provider, register phone numbers, or assign a platform-managed number to a workspace."
+                  maxWidth="max-w-5xl"
                 >
-                  <div className="space-y-5">
-                    {/* Provider selector */}
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Select Provider</p>
-                      <div className="grid grid-cols-1 gap-3">
-                        {([
-                          {
-                            id: 'vobiz',
-                            label: 'Vobiz.ai',
-                            connected: !!vobizChannel,
-                            selectedBg: 'bg-purple-50 border-purple-400',
-                            logo: (
-                              <div className="h-8 w-8 rounded-[9px] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-sm">V</div>
-                            ),
-                          },
-                        ] as const).map(({ id, label, connected, selectedBg, logo }) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => setConnectProvider(id)}
-                            className={`relative flex flex-col items-center gap-2 py-4 px-3 rounded-[14px] border-2 transition-all cursor-pointer ${
-                              connectProvider === id
-                                ? selectedBg
-                                : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 hover:bg-[var(--bg-base)]'
-                            }`}
-                          >
-                            {logo}
-                            <span className="text-xs font-semibold text-slate-700">{label}</span>
-                            {connected && (
-                              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Connected" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="border-t border-[var(--border)]" />
-
-                    {/* Per-provider form */}
-
-                    {connectProvider === 'vobiz' && (
-                      <form onSubmit={(e) => { handleConnectVobiz(e); setShowProviderForm(false); }} className="space-y-4">
+                  <div className="min-w-0 space-y-5">
+                    <OrganizationTelephonyConnectors
+                      onInventoryChange={() => {
+                        if (canReadOrganization) {
+                          void loadOrganizationNumbers().catch(error => {
+                            setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
+                          });
+                        }
+                        loadChannels();
+                      }}
+                    />
+                    <details className="rounded-xl border border-[var(--border)] p-4">
+                      <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
+                        Existing Vobiz calling connection
+                      </summary>
+                      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                        If your organization uses the older live Vobiz calling connection, manage it here.
+                        Provider inventory accounts above do not automatically enable live calling.
+                      </p>
+                      <div className="mt-4">
+<form onSubmit={handleConnectVobiz} className="space-y-4">
                         {vobizChannel && (
                           <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[9px] px-4 py-2.5">
                             <div className="flex items-center gap-2">
@@ -1132,27 +1109,17 @@ export default function SettingsView({
                           </div>
                         </div>
                         <div className="flex items-center justify-between pt-1">
-                          <p className="text-[11px] text-slate-400">{vobizChannel ? 'Open "Add Provider" again any time to add more Vobiz.ai numbers.' : 'You can add more numbers for this account later.'}</p>
+                          <p className="text-[11px] text-slate-400">{vobizChannel ? 'Add more Vobiz.ai numbers here when you need them.' : 'You can add more numbers for this account later.'}</p>
                           <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-[9px] px-6 py-2.5 transition-all cursor-pointer shadow-sm">
                             {savingVobiz ? 'Connecting…' : vobizChannel ? 'Add Number' : 'Connect Vobiz.ai'}
                           </button>
                         </div>
                       </form>
-                    )}
-
-                    {!connectProvider && (
-                      <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
-                        <Phone className="h-8 w-8 mb-2 opacity-30" />
-                        <p className="text-sm">Select a provider above to continue</p>
                       </div>
-                    )}
+                    </details>
                   </div>
                 </Modal>
               )}
-              {/* The virtual-number view uses a 12-column grid: span the entire content width. */}
-              <div className="col-span-12 min-w-0 w-full">
-                <OrganizationTelephonyConnectors />
-              </div>
               </>}
             </div>
           )}
