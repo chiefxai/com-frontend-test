@@ -34,6 +34,22 @@ beforeEach(() => {
 });
 
 describe('Organization-owned telephony connector management', () => {
+  it('renders complete connector setup inline without nesting a separate card', async () => {
+    const onInventoryChange = vi.fn();
+    const { container } = render(<section aria-label="Virtual number setup">
+      <h3>No virtual numbers yet</h3>
+      <OrganizationTelephonyConnectors embedded onInventoryChange={onInventoryChange} />
+    </section>);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No virtual numbers yet' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Set up a virtual number' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider account details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Saved provider accounts' })).toBeInTheDocument();
+    const setup = container.querySelector('section[aria-label="Virtual number setup"]');
+    expect(setup?.querySelector('.col-span-full')).toBeNull();
+    expect(setup?.querySelector('.w-full.text-left')).not.toBeNull();
+  });
+
   it('creates multiple provider accounts and keeps credentials schema-driven', async () => {
     const onInventoryChange = vi.fn();
     render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
