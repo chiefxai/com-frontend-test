@@ -64,7 +64,7 @@ describe('billing overview lifecycle rules', () => {
       { kind: 'subscription' as const, available: amt('199'), held: amt('0'), expiresAt: null },
       { kind: 'topup' as const, available: amt('5000'), held: amt('0'), expiresAt: null },
     ];
-    expect(availableCredits(balances, 'subscription')).toBe('₹90,07,19,92,54,74,09,95.00');
+    expect(availableCredits(balances, 'subscription')).toBe('₹9,00,71,99,25,47,40,995.00');
     expect(availableCredits(balances, 'topup')).toBe('₹50.00');
     expect(availableCredits([], 'topup')).toBe('₹0.00');
   });
