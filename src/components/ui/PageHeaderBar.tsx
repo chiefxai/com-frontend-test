@@ -11,7 +11,7 @@ import Tooltip from './Tooltip';
 // The refresh button calls the CURRENT page's own onRefresh (published by
 // PageShell, defaulting to the app-wide refresh when a page doesn't supply
 // one) — not a fixed handler — so it always reloads whatever page is showing.
-export default function PageHeaderBar({ integrated = false }: { integrated?: boolean } = {}) {
+export default function PageHeaderBar({ integrated = false, rightSlot }: { integrated?: boolean; rightSlot?: React.ReactNode } = {}) {
   const ctx = usePageHeaderContext();
   const [spinning, setSpinning] = React.useState(false);
 
@@ -58,6 +58,7 @@ export default function PageHeaderBar({ integrated = false }: { integrated?: boo
             keeps a wide row from wrapping and growing the header. */}
         <div className="shrink-0 flex items-center gap-2 h-full">
           {header.action && header.action}
+          {rightSlot}
         </div>
       </div>
 
