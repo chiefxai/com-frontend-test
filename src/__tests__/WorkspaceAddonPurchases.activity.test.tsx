@@ -41,7 +41,9 @@ afterEach(cleanup);
 describe('single payment and invoice activity list', () => {
   it('merges receipts and actionable workspace invoices without duplicating linked receipts', async () => {
     render(<WorkspaceAddonPurchases canSubmit submittedPayments={[topup, linked]} />);
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(3));
+    expect(screen.getByRole('columnheader', { name: 'Payment / workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
     expect(screen.getByText('Credit top-up')).toBeInTheDocument();
     expect(screen.getByText('Mumbai workspace')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Submit payment' })).toBeInTheDocument();
