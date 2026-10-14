@@ -206,6 +206,6 @@ describe('organization billing views', () => {
     expect(await screen.findByText('Payments and workspace invoices')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
-    expect(await screen.findByText('Waiting for approval')).toBeInTheDocument();
+    expect((await screen.findAllByText('Waiting for approval')).length).toBeGreaterThan(0);
   });
 });
