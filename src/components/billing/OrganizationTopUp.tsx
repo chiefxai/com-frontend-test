@@ -1,11 +1,10 @@
 import React from 'react';
-import WorkspaceAddonPurchases from './WorkspaceAddonPurchases';
+import WorkspaceAddonPurchases, { type PaymentDisplayFilter, type PaymentStatusFilter } from './WorkspaceAddonPurchases';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
-import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle2, Clock3, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
 import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest } from '../../lib/billing/types';
-import DataTable from '../ui/DataTable';
 import KpiCard from '../ui/KpiCard';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
@@ -27,7 +26,7 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 }
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void }) {
-  const { can, authorization } = useAuthorization();
+  const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
@@ -39,6 +38,8 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [cursorStack, setCursorStack] = React.useState<(string | null)[]>([null]);
   const [historyFilter, setHistoryFilter] = React.useState<PaymentHistoryType>('all');
+  const [activityView, setActivityView] = React.useState<PaymentDisplayFilter>('all');
+  const [paymentStatus, setPaymentStatus] = React.useState<PaymentStatusFilter>('all');
   const [amount, setAmount] = React.useState('');
   const [reference, setReference] = React.useState('');
   const [proof, setProof] = React.useState<File | null>(null);
@@ -98,7 +99,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
     ? formatMoney({ asset: 'INR', units: items.reduce((sum, item) => sum + BigInt(item.available.units), 0n).toString(), scale: 2 })
     : '—';
   const canTopup = canSubmit && topupAvailable && Boolean(overview);
-  const awaitingReviewOnPage = history.filter(payment => ['pending_verification', 'submitted', 'needs_information', 'needs_clarification'].includes(payment.status)).length;
 
   const resetQuote = () => {
     setQuote(null);
@@ -346,71 +346,67 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
 
       {view === 'payments' && (
-        <Card padding="none" className="col-span-12 !rounded-2xl !p-5 sm:!p-6">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-            <ReceiptText aria-hidden="true" className="h-3.5 w-3.5" /> Payment history
-          </span>
-          <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Know where your payments stand</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-            When you send a receipt, our team checks it. Look here to see if each payment is waiting, approved, or needs attention.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
-              <p className="text-sm text-[var(--text-secondary)]">Payments on this page</p>
-              <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{historyLoading ? '—' : history.length}</p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Use the filter below to choose a payment type</p>
-            </div>
-            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
-              <p className="text-sm text-[var(--text-secondary)]">Waiting for review on this page</p>
-              <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{historyLoading ? '—' : awaitingReviewOnPage}</p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Includes requests for more information</p>
-            </div>
-          </div>
-        </Card>
-      )}
-      {view === 'payments' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="All submitted payments" subtitle="Filter your receipts and see what happens next"
-            icon={Clock3} action={
-              <div className="flex flex-wrap items-center gap-2">
-                <select aria-label="Payment type" value={historyFilter}
-                  onChange={event => setHistoryFilter(event.target.value as PaymentHistoryType)}
-                  className="h-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 text-xs text-[var(--text-primary)]">
-                  <option value="all">All payments</option>
-                  <option value="topup">Credit top-ups</option>
-                  <option value="workspace">Workspace add-ons</option>
-                  <option value="subscription">Subscriptions</option>
-                  <option value="invoice">Other invoice payments</option>
-                </select>
-                <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
-                  onClick={() => void refresh()}>Refresh</Button>
-              </div>
+          <CardHeader title="Payments and workspace invoices"
+            subtitle="One place to check receipts, invoices, and extra workspace charges"
+            icon={ReceiptText} action={
+              <Button type="button" variant="secondary" size="sm" icon={RefreshCw}
+                onClick={() => void refresh()}>Refresh</Button>
             } />
-          {historyError && <p role="alert" className="mb-3 text-xs text-rose-600 dark:text-rose-300">{historyError}</p>}
-          <DataTable<PaymentRequest> bare resizable loading={historyLoading}
-            columns={[
-              { key: 'date', header: 'Sent on', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
-              { key: 'type', header: 'What you paid for', cell: payment => (
-                <span>
-                  <span className="block font-medium text-[var(--text-primary)]">{paymentTypeLabel(payment)}</span>
-                  {payment.workspaceAddonName && <span className="block text-[11px] text-[var(--text-muted)]">{payment.workspaceAddonName}</span>}
-                </span>
-              ) },
-              { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold tabular-nums">{formatMoney(payment.expectedAmount)}</span> },
-              { key: 'status', header: 'What happens next', cell: payment => (
-                <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                  payment.status === 'approved' ? 'border-emerald-300/70 bg-emerald-500/10 text-emerald-700' :
-                  payment.status === 'rejected' || payment.status === 'cancelled' ? 'border-rose-300/70 bg-rose-500/10 text-rose-700' :
-                  'border-amber-300/70 bg-amber-500/10 text-amber-700'
-                }`}>
-                  {statuses[payment.status] || payment.status}
-                </span>
-              ) },
-            ]}
-            rows={history} rowKey={payment => payment.id}
-            emptyMessage={historyError ? 'Payment history is unavailable.' : 'No payments match this filter yet.'} />
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
-            <p className="text-[11px] text-[var(--text-muted)]">Page {cursorStack.length} · up to 10 payments per page</p>
+          <div className="flex flex-wrap items-end gap-3 rounded-xl bg-[var(--bg-subtle)] p-3">
+            <label className="min-w-[11rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
+              Show
+              <select aria-label="Payment records" value={activityView}
+                onChange={event => setActivityView(event.target.value as PaymentDisplayFilter)}
+                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
+                <option value="all">Payments and workspace invoices</option>
+                <option value="submitted">Submitted payments only</option>
+                <option value="workspace">Workspace invoices only</option>
+              </select>
+            </label>
+            <label className="min-w-[10rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
+              Payment type
+              <select aria-label="Payment type" value={historyFilter}
+                onChange={event => setHistoryFilter(event.target.value as PaymentHistoryType)}
+                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
+                <option value="all">All types</option>
+                <option value="topup">Credit top-ups</option>
+                <option value="workspace">Workspace add-ons</option>
+                <option value="subscription">Subscriptions</option>
+                <option value="invoice">Other invoices</option>
+              </select>
+            </label>
+            <label className="min-w-[10rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
+              Status
+              <select aria-label="Payment status" value={paymentStatus}
+                onChange={event => setPaymentStatus(event.target.value as PaymentStatusFilter)}
+                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
+                <option value="all">All statuses</option>
+                <option value="action">Payment needed / needs attention</option>
+                <option value="review">Waiting for approval</option>
+                <option value="completed">Approved / active</option>
+              </select>
+            </label>
+          </div>
+          {historyError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">
+            Submitted payments could not be loaded: {historyError}. Workspace invoices may still be available.
+          </p>}
+          <div className="mt-4">
+            <WorkspaceAddonPurchases
+              canSubmit={canSubmit}
+              submittedPayments={history}
+              displayFilter={activityView}
+              statusFilter={paymentStatus}
+              showWorkspace={historyFilter === 'all' || historyFilter === 'workspace'}
+              showSubmitted
+              submittedLoading={historyLoading}
+              onChange={refresh}
+            />
+          </div>
+          {activityView !== 'workspace' && <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+            <p className="text-xs text-[var(--text-muted)]">
+              Submitted receipts: page {cursorStack.length}, up to 10 per page. Workspace invoices are loaded separately.
+            </p>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" size="sm"
                 disabled={historyLoading || cursorStack.length <= 1}
@@ -427,20 +423,10 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   void loadHistory(nextCursor);
                 }}>Next</Button>
             </div>
-          </div>
-          <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            Only payments that have been submitted appear here. Unpaid workspace invoices are in the section below.
-          </p>
+          </div>}
         </Card>
       )}
 
-      {(view === 'plan' || view === 'payments') && can('billing.organization.read') && (
-        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Workspace invoices and add-ons" subtitle="Workspace charges and bills that may need payment"
-            icon={CreditCard} />
-          <WorkspaceAddonPurchases canSubmit={canSubmit} />
-        </Card>
-      )}
     </div>
   );
 }
