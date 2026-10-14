@@ -57,6 +57,51 @@ describe('Organization-owned telephony connector management', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Live calling is not enabled');
   });
 
+  it('groups provider details and credentials in responsive aligned form sections', async () => {
+    render(<OrganizationTelephonyConnectors />);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider account details' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider credentials' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Provider')).toHaveClass('w-full');
+    expect(screen.getByLabelText('Connector name')).toHaveClass('min-w-0');
+    expect(screen.getByLabelText('Auth token *')).toHaveAttribute('type', 'password');
+  });
+
+  it('aligns platform-managed phone numbers with a labeled workspace picker and responsive assignment action', async () => {
+    mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
+      if (url === '/api/telephony/providers') return response({ providers });
+      if (url === '/api/telephony/connectors' && !options) return response({ connectors: [] });
+      if (url === '/api/telephony/workspaces') return response({ workspaces: [
+        { id: 'ws-1', name: 'Support workspace' }, { id: 'ws-2', name: 'Sales workspace' },
+      ] });
+      if (url === '/api/telephony/numbers') return response({ numbers: [{
+        id: 'platform-number', phoneNumberE164: '+918071580130', displayName: 'chief voice',
+        ownerType: 'platform_managed', inventoryStatus: 'available', provisioningStatus: 'ready',
+      }] });
+      if (url === '/api/telephony/numbers/platform-number/assign' && options?.method === 'POST')
+        return response({ assignment: { workspaceId: 'ws-2' } });
+      throw new Error(`Unexpected request ${url}`);
+    });
+
+    render(<OrganizationTelephonyConnectors />);
+    const section = await screen.findByRole('region', { name: 'Platform-managed numbers' });
+    expect(section).toHaveTextContent('+918071580130 · chief voice');
+    expect(section).toHaveTextContent('Available to assign');
+    const picker = screen.getByRole('combobox', { name: 'Workspace for +918071580130' });
+    expect(picker).toHaveClass('w-full');
+    expect(picker.closest('label')).toHaveTextContent('Workspace');
+    const button = screen.getByRole('button', { name: 'Assign to workspace' });
+    expect(button).toHaveClass('flex-1');
+    expect(button).toBeDisabled();
+
+    fireEvent.change(picker, { target: { value: 'ws-2' } });
+    fireEvent.click(button);
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith(
+      '/api/telephony/numbers/platform-number/assign',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ workspaceId: 'ws-2' }) }),
+    ));
+  });
+
   it('assigns a ready number to a named workspace without exposing internal provisioning fields', async () => {
     render(<OrganizationTelephonyConnectors />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
