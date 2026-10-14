@@ -1,8 +1,7 @@
 import React from 'react';
-import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, Info } from 'lucide-react';
+import { Activity, ArrowRight, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, Info, ChartNoAxesCombined, Gauge, CircleHelp } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
-import KpiCard from '../ui/KpiCard';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
 import { formatInr } from '../../lib/pricing';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
@@ -96,6 +95,12 @@ export default function BillingWorkspace({
   const [showMorePlanDetails, setShowMorePlanDetails] = React.useState(false);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
+  // Do not compare organization-wide usage against a single workspace's limit.
+  const limit = workspaceBilling?.monthlyBudgetInr;
+  const remaining = workspaceBilling?.remainingBudgetInr;
+  const workspaceCapUsed = limit != null && Number.isFinite(limit) && limit > 0
+    && remaining != null && Number.isFinite(remaining)
+    ? Math.min(100, Math.max(0, ((limit - remaining) / limit) * 100)) : null;
   if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
       ? <WorkspaceAllocatedBilling workspaceId={workspaceId || workspaceBilling?.workspaceId || ''} />
@@ -139,19 +144,51 @@ export default function BillingWorkspace({
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
 
       {view === 'dashboard' && (
-        <div className="col-span-12 grid grid-cols-12 gap-3 md:gap-4">
-            <KpiCard colSpan={3} iconPosition="top-left" icon={CreditCard}
-              label="Subscription / month" value={money(organizationPricing?.totalMonthlyInr)}
-              sub="Recurring plan price" />
-            <KpiCard colSpan={3} iconPosition="top-left" icon={Activity}
-              label="Recorded usage" value={money(workspaceBilling?.periodSpendInr)}
-              sub="Organization-wide this period" />
-            <KpiCard colSpan={3} iconPosition="top-left" icon={PhoneCall}
-              label="Calls recorded" value={callCount ?? '—'} sub="Across all workspaces" />
-            <KpiCard colSpan={3} iconPosition="top-left" icon={Clock3}
-              label="Conversation time" value={formatCallTime(workspaceBilling?.aiMinutesUsed)}
-              sub="Across all workspaces" />
-        </div>
+        <section className="col-span-12 space-y-4" aria-label="Billing overview">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+                  <ChartNoAxesCombined aria-hidden="true" className="h-3.5 w-3.5" /> Your billing at a glance
+                </span>
+                <h2 className="mt-3 text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">See your costs. Stay in control.</h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                  Your plan has a regular price. Calls and other services use credits. Here's what we know for {periodLabel}.
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="secondary" icon={RefreshCw} disabled={loading} onClick={onRetry}>Refresh overview</Button>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { title: 'Plan price', value: money(organizationPricing?.totalMonthlyInr), detail: 'Monthly, before extra charges', icon: CreditCard },
+                { title: 'Usage recorded', value: money(workspaceBilling?.periodSpendInr), detail: 'Across your organization', icon: Activity },
+                { title: 'Calls made', value: callCount ?? '—', detail: 'Across all workspaces', icon: PhoneCall },
+                { title: 'Time on calls', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total conversation time', icon: Clock3 },
+              ].map(({ title, value, detail, icon: Icon }) =>
+                <div key={title} className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4">
+                  <Icon aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
+                  <p className="mt-3 text-xs font-medium text-[var(--text-secondary)]">{title}</p>
+                  <p className="mt-1 break-words text-2xl font-bold tabular-nums text-[var(--text-primary)]">{value}</p>
+                  <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{detail}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              { title: 'My subscription', text: 'Check your plan and next payment.', action: 'plan' as const, icon: CreditCard },
+              { title: 'My credits', text: 'See how many credits you can still use.', action: 'credits' as const, icon: Wallet },
+              { title: 'My payments', text: 'See which payments are being checked.', action: 'payments' as const, icon: ReceiptText },
+            ].map(({ title, text, action, icon: Icon }) =>
+              <button key={action} type="button" onClick={() => onNavigate(action)}
+                className="group flex min-h-28 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+                <span className="rounded-xl bg-[var(--accent-subtle)] p-3 text-[var(--accent)]"><Icon aria-hidden="true" className="h-5 w-5" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[var(--text-primary)]">{title}</span><span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">{text}</span></span>
+                <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-1" />
+              </button>
+            )}
+          </div>
+        </section>
       )}
 
       {view === 'plan' && (
@@ -215,69 +252,91 @@ export default function BillingWorkspace({
       )}
 
       {view === 'usage' && (
-        <>
-          <Card padding="sm" className="col-span-12 sm:!p-5">
-            <CardHeader title="Calling costs" subtitle={`Organization-wide activity · ${periodLabel}`} icon={PhoneCall} />
-            <div className="grid grid-cols-12 gap-3">
-              <KpiCard colSpan={3} iconPosition="top-left" icon={PhoneCall}
-                label="Calls" value={callCount ?? '—'} sub="Recorded this period" />
-              <KpiCard colSpan={3} iconPosition="top-left" icon={Clock3}
-                label="Call duration" value={formatCallTime(workspaceBilling?.aiMinutesUsed)} sub="Conversation time" />
-              <KpiCard colSpan={3} iconPosition="top-left" icon={Activity}
-                label="AI voice & post-call" value={money(workspaceBilling?.aiSpendInr)} sub="AI processing" />
-              <KpiCard colSpan={3} iconPosition="top-left" icon={PhoneCall}
-                label={phoneChargesBillable ? 'Phone provider charges' : 'Phone provider estimate'}
-                value={money(workspaceBilling?.phoneSpendInr)}
-                sub={phoneChargesBillable ? 'Recorded provider cost' : 'Your provider bills separately'} />
+        <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Usage and limits">
+          <div className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+              <Gauge aria-hidden="true" className="h-3.5 w-3.5" /> Spending and limits
+            </span>
+            <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Where your usage goes</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+              See what your organization used this period. You can also set a separate spending limit for the selected workspace.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { title: 'Usage cost so far', value: money(workspaceBilling?.periodSpendInr), detail: 'All workspaces combined', icon: Activity },
+                { title: 'Calls', value: callCount ?? '—', detail: 'Recorded this period', icon: PhoneCall },
+                { title: 'Call time', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total speaking time', icon: Clock3 },
+                { title: 'AI costs', value: money(workspaceBilling?.aiSpendInr), detail: 'Voice AI and call processing', icon: ChartNoAxesCombined },
+              ].map(({ title, value, detail, icon: Icon }) =>
+                <div key={title} className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4">
+                  <Icon aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
+                  <p className="mt-3 text-xs font-medium text-[var(--text-secondary)]">{title}</p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{value}</p>
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">{detail}</p>
+                </div>)}
             </div>
-            {!phoneChargesBillable && <p className="mt-3 text-xs text-[var(--text-muted)]">
-              Phone costs are informational and not charged by this platform.
-            </p>}
-          </Card>
-          <Card padding="sm" className="col-span-12 sm:!p-5">
-            <CardHeader title="Spending & limits" subtitle="Organization spend and selected workspace controls" icon={Wallet} />
-            <div className="grid grid-cols-12 gap-3">
-              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Activity}
-                label="Organization usage spend" value={money(workspaceBilling?.periodSpendInr)}
-                sub="Across all workspaces" />
-              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
-                label="Selected workspace cap"
-                value={!workspaceBilling ? '—' : workspaceBilling.monthlyBudgetInr == null ? 'No cap' : money(workspaceBilling.monthlyBudgetInr)}
-                sub={workspaceBilling?.workspaceName || 'Selected workspace'} />
-              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
-                label="Workspace cap remaining" value={money(workspaceBilling?.remainingBudgetInr)}
-                sub="From billing service" />
-              {rechargeBased && <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
-                label="Call balance available" value={formatInr(Math.max(0, rechargeBalanceInr - rechargeReservedInr))}
-                sub="After active-call reservations" />}
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4 text-sm">
+              <PhoneCall aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+              <div>
+                <p className="font-semibold text-[var(--text-primary)]">{phoneChargesBillable ? 'Phone provider charges' : 'Phone provider estimate'}: {money(workspaceBilling?.phoneSpendInr)}</p>
+                <p className="mt-1 leading-6 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Recorded phone-service cost for this period.' : 'For information only. Your phone provider bills you separately.'}</p>
+              </div>
             </div>
-            {canManageBudget && workspaceBilling && (
-              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4">
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Set the selected workspace's monthly cap</h3>
-                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
-                  Limit new outbound calls when this workspace reaches its cap. Leave blank for no cap.
+          </div>
+          <Card padding="sm" className="col-span-12 sm:!p-6">
+            <CardHeader title="Your workspace spending limit" subtitle={workspaceBilling?.workspaceName ? `For ${workspaceBilling.workspaceName} only` : 'For the selected workspace only'} icon={Gauge} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
+                <p className="text-sm text-[var(--text-secondary)]">Monthly limit</p>
+                <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                  {!workspaceBilling ? '—' : workspaceBilling.monthlyBudgetInr == null ? 'No limit set' : money(workspaceBilling.monthlyBudgetInr)}
                 </p>
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <label className="min-w-0 flex-1 text-xs font-medium text-[var(--text-secondary)]">
+              </div>
+              <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
+                <p className="text-sm text-[var(--text-secondary)]">Room left before the limit</p>
+                <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                  {!workspaceBilling || workspaceBilling.monthlyBudgetInr == null ? '—' : money(workspaceBilling.remainingBudgetInr)}
+                </p>
+              </div>
+            </div>
+            {workspaceCapUsed !== null && (
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)]">
+                  <span>How much of this workspace's limit is used</span>
+                  <strong className="text-[var(--text-primary)]">{Math.round(workspaceCapUsed)}%</strong>
+                </div>
+                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]"
+                  role="progressbar" aria-label="Workspace spending limit used" aria-valuenow={Math.round(workspaceCapUsed)} aria-valuemin={0} aria-valuemax={100}>
+                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${workspaceCapUsed}%` }} />
+                </div>
+              </div>
+            )}
+            {canManageBudget && workspaceBilling && (
+              <div className="mt-5 rounded-xl border border-[var(--border)] p-4">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">Change the monthly limit</h3>
+                <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+                  Enter a limit for new outgoing calls. Leave the box empty to allow spending without a set limit.
+                </p>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <label className="min-w-0 flex-1 text-sm font-medium text-[var(--text-secondary)]">
                     Monthly cap in INR
                     <input type="number" min="0" step="0.01" value={budgetDraft}
-                      onChange={event => onBudgetDraftChange(event.target.value)}
-                      placeholder="No cap"
-                      className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]" />
+                      onChange={event => onBudgetDraftChange(event.target.value)} placeholder="No limit"
+                      className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]" />
                   </label>
                   <Button type="button" variant="primary" size="md" loading={budgetSaving} onClick={onSaveBudget}>
-                    Save workspace cap
+                    Save workspace limit
                   </Button>
                 </div>
                 {budgetError && <p role="alert" className="mt-2 text-xs text-rose-600">{budgetError}</p>}
               </div>
             )}
-            <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">
-              Organization usage and the selected workspace cap are different scopes. Do not subtract one from the other.
-              Active calls may finish slightly over the cap.
+            <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]">
+              <CircleHelp aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+              Your organization's total usage and this workspace's limit are different numbers. A call already in progress may finish slightly over the limit.
             </p>
           </Card>
-        </>
+        </section>
       )}
 
       {view === 'allocation' && (canAllocate
