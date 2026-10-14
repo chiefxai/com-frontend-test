@@ -362,7 +362,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               setActivityView('all'); setHistoryFilter('all'); setPaymentStatus('all'); setPaymentSearch('');
             }}
             selects={[
-              { key: 'Records', label: 'Payment records', value: activityView,
+              { key: 'Payment records', label: 'Payment records', value: activityView,
                 onChange: value => {
                   const next = value as PaymentDisplayFilter;
                   setActivityView(next);
@@ -386,7 +386,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   { label: 'Subscriptions', value: 'subscription' },
                   { label: 'Other invoices', value: 'invoice' },
                 ] },
-              { key: 'Status', label: 'Payment status', value: paymentStatus,
+              { key: 'Payment status', label: 'Payment status', value: paymentStatus,
                 onChange: value => setPaymentStatus(value as PaymentStatusFilter),
                 options: [
                   { label: 'All statuses', value: 'all' },
