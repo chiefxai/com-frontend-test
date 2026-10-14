@@ -79,10 +79,20 @@ describe('organization billing views', () => {
     const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
     expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
     expect(screen.getByText('₹2,500.00')).toBeInTheDocument();
-    expect(screen.getByText(/no approved and funded subscription period/i)).toBeInTheDocument();
+    expect(screen.getByText(/waiting for an approved payment and an active subscription period/i)).toBeInTheDocument();
     expect(mocks.subscriptionCreditStatus).toHaveBeenCalled();
     rerender(<OrganizationTopUp view="plan" canSubmit />);
     expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
+  });
+
+  it('explains credit types clearly and shows a payment review summary', async () => {
+    const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
+    expect(screen.getByText('Know what you can spend')).toBeInTheDocument();
+    expect((await screen.findAllByText('Credits from your plan')).length).toBeGreaterThan(0);
+    rerender(<OrganizationTopUp view="payments" canSubmit />);
+    expect(screen.getByText('Know where your payments stand')).toBeInTheDocument();
+    expect(screen.getByText('Waiting for review on this page')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
   });
 
   it('shows the available credit sources and a recent payment status without implying approval', async () => {

@@ -49,6 +49,16 @@ beforeEach(()=>{
 afterEach(cleanup);
 
 describe('manual organization credit allocation',()=>{
+  it('explains the three-step flow without enabling financial transfers', async () => {
+    render(<ManualWorkspaceAllocation />);
+    expect(screen.getByText('Give credits to your workspaces')).toBeInTheDocument();
+    expect(screen.getByText('Pick a workspace')).toBeInTheDocument();
+    expect(screen.getByText('Choose credits')).toBeInTheDocument();
+    expect(screen.getByText('Check and confirm')).toBeInTheDocument();
+    await screen.findByText('Organization credit pool');
+    expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
+  });
+
   it('keeps exact amounts across large ledger balances and decimal values',()=>{
     expect(formatCreditAmount({asset:'INR',units:'900719925474099312345',scale:2}))
       .toBe('₹90,07,19,92,54,74,09,93,123.45');
@@ -67,7 +77,7 @@ describe('manual organization credit allocation',()=>{
     expect(screen.getByText('₹90.00')).toBeInTheDocument();
     expect(screen.getByText('Workspace balances')).toBeInTheDocument();
     expect(screen.getByText('Allocation history')).toBeInTheDocument();
-    expect(screen.getByText(/Preview mode. Live transfers are disabled/i)).toBeInTheDocument();
+    expect(screen.getByText(/sending credits is not enabled yet/i)).toBeInTheDocument();
     expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
   });
 
