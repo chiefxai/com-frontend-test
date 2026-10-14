@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, RefreshCw } from 'lucide-react';
+import { CreditCard, RefreshCw, CheckCircle2, Info } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingAmount, SubscriptionCreditStatus } from '../../lib/billing/types';
 import { Card, CardHeader } from '../ui/Card';
@@ -14,12 +14,12 @@ const displayInr = (amount: BillingAmount | null): string => {
 };
 
 const explanations: Record<SubscriptionCreditStatus['state'], string> = {
-  unverified_plan: 'This organization was created with a legacy plan whose original monthly-credit amount cannot be verified. Ask the platform team to reconcile the original plan snapshot.',
-  no_included_credits: 'This organization plan has no included monthly usage credits.',
-  awaiting_approved_subscription: 'Monthly credits are configured, but no approved and funded subscription period is active. The platform team must approve the subscription purchase before credits can be issued.',
-  awaiting_period_activation: 'The subscription payment has been approved. The funded subscription period is awaiting billing-lifecycle activation.',
-  activation_incomplete: 'The billing period is active, but its included credit grant is missing. Contact platform support to reconcile the subscription ledger; do not issue credits manually.',
-  issued_to_organization_pool: 'Subscription credits have been issued to the organization credit pool. An Organization Admin can distribute them to workspaces through Allocation.',
+  unverified_plan: 'We cannot confirm how many monthly credits came with this older plan. Ask platform support to check it.',
+  no_included_credits: 'This plan does not include monthly credits. You can still use approved extra credits if available.',
+  awaiting_approved_subscription: 'Your plan includes monthly credits, but they are waiting for an approved payment and an active subscription period.',
+  awaiting_period_activation: 'Your payment is approved. Credits will be added when the paid period starts.',
+  activation_incomplete: 'Your paid period is active, but the expected credits have not appeared. Contact platform support to check them. Do not add them manually.',
+  issued_to_organization_pool: 'Your monthly plan credits have been added to the organization's pool. An organization admin can share them with workspaces.',
 };
 
 export default function SubscriptionCreditStatusPanel() {
@@ -37,7 +37,7 @@ export default function SubscriptionCreditStatusPanel() {
 
   return (
     <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-      <CardHeader title="Monthly usage credits" subtitle="Plan entitlement versus credits actually issued"
+      <CardHeader title="Monthly usage credits" subtitle="See what your plan includes and what has actually been added"
         icon={CreditCard}
         action={<Button type="button" size="sm" variant="secondary" icon={RefreshCw}
           disabled={loading} onClick={() => void load()}>Refresh status</Button>} />
@@ -47,20 +47,25 @@ export default function SubscriptionCreditStatusPanel() {
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3">
-                  <p className="text-xs text-[var(--text-secondary)]">Included in {status.planName || 'the selected plan'} / month</p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--text-primary)]">{displayInr(status.configuredMonthlyCredits)}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Credits promised each month ({status.planName || 'your plan'})</p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{displayInr(status.configuredMonthlyCredits)}</p>
                 </div>
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3">
-                  <p className="text-xs text-[var(--text-secondary)]">Issued for this billing period</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Credits added this period</p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--text-primary)]">
                     {displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 }))}
                   </p>
                 </div>
               </div>
-              <p role="status" className="text-xs leading-5 text-[var(--text-secondary)]">{explanations[status.state]}</p>
+              <p role="status" className="flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
+                  {status.state === 'issued_to_organization_pool'
+                    ? <CheckCircle2 aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                    : <Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />}
+                  <span>{explanations[status.state]}</span>
+                </p>
               {status.entitlementSource === 'matching_platform_plan_version' && (
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  This organization predates the credit-snapshot fix. The allowance matches the still-current platform plan version; no credits were automatically issued during reconciliation.
+                  We found a matching plan record from before the credit tracking update. This check did not add any credits.
                 </p>
               )}
             </div>
