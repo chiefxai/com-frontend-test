@@ -30,7 +30,7 @@ export default function NotificationBell({ audience, placement = 'header' }: Pro
   const ref = React.useRef<HTMLDivElement>(null);
 
   const refresh = React.useCallback(async () => {
-    try { setRows(await notificationClient.list(audience)); setError(false); }
+    try { const result = await notificationClient.list(audience); setRows(Array.isArray(result) ? result : []); setError(false); }
     catch { setError(true); }
     finally { setLoading(false); }
   }, [audience]);
