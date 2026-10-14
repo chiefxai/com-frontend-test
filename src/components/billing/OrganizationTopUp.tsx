@@ -1,6 +1,5 @@
 import React from 'react';
 import WorkspaceAddonPurchases from './WorkspaceAddonPurchases';
-import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
@@ -230,66 +229,43 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
 
       {view === 'credits' && (
-        <section className="col-span-12 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6" aria-label="Credit guide">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-            <Wallet aria-hidden="true" className="h-3.5 w-3.5" /> Your credits
-          </span>
-          <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Know what you can spend</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-            Credits are like a balance for services such as calls. Some come with your plan, and others come from payments you make.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
-              <p className="text-sm text-[var(--text-secondary)]">Credits from your plan</p>
-              <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{overview ? sumBalance(subscriptionCredits) : '—'}</p>
-              <p className="mt-2 text-xs text-[var(--text-muted)]">Available from your subscription</p>
-            </div>
-            <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
-              <p className="text-sm text-[var(--text-secondary)]">Credits you added</p>
-              <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{overview ? sumBalance(topupCredits) : '—'}</p>
-              <p className="mt-2 text-xs text-[var(--text-muted)]">Available from approved top-ups</p>
-            </div>
-          </div>
-          <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]"><Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /> Your plan may promise monthly credits, but they cannot be spent until they have actually been issued. See the status below.</p>
-        </section>
-      )}
-      {(view === 'credits' || view === 'plan') && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
-      {(view === 'credits' || view === 'topup') && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title={view === 'credits' ? 'Your balance and options' : 'Credit balances'} subtitle="Manage credits or view your plan period"
-            icon={Wallet} action={
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>
-                  Refresh
-                </Button>
-                {canAllocate && view === 'credits' && onNavigate && <Button type="button" variant="secondary" size="sm"
-                  icon={Wallet} onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
-                {canSubmit && view === 'credits' && <Button type="button" variant="primary" size="sm" icon={Plus}
-                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>
-                  Add credits
-                </Button>}
+          <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
+                {canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
+                  onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
+                {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
+                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
               </div>
             } />
-          <div className="grid grid-cols-12 gap-3">
-            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
-              label="Plan credits available" value={overview ? sumBalance(subscriptionCredits) : '—'}
-              sub="Provided with your subscription" />
-            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
-              label="Extra credits available" value={overview ? sumBalance(topupCredits) : '—'}
-              sub="Added after approval" />
-            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
-              label="Current plan period" value={overview?.activePeriod?.status === 'active' ? 'Active' : overview?.activePeriod?.status || 'Not available'}
-              sub={overview?.activePeriod?.endsAt
-                ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}`
-                : 'Current subscription'} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[var(--border)] p-5">
+              <p className="text-sm font-medium text-[var(--text-secondary)]">Subscription credits remaining</p>
+              <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--text-primary)]">
+                {overview ? sumBalance(subscriptionCredits) : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] p-5">
+              <p className="text-sm font-medium text-[var(--text-secondary)]">Top-up credits remaining</p>
+              <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--text-primary)]">
+                {overview ? sumBalance(topupCredits) : '—'}
+              </p>
+            </div>
           </div>
-          {overviewError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">Credit ledger unavailable: {overviewError}</p>}
-          {canSubmit && initialLoadComplete && !canTopup && <p role="status" className="mt-3 text-xs text-[var(--text-muted)]">
-            Adding credits is unavailable until the billing ledger and payment review flow are enabled.
+          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
+        </Card>
+      )}
+      {view === 'topup' && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Add credits" subtitle="Credits become available after your receipt is approved" icon={Wallet}
+            action={<Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>Refresh</Button>} />
+          {canSubmit && initialLoadComplete && !canTopup && <p role="status" className="text-sm text-[var(--text-secondary)]">
+            Adding credits is unavailable until billing and payment review are enabled.
           </p>}
-          {!canSubmit && <p className="mt-3 text-xs text-[var(--text-muted)]">
-            Only administrators with payment-submission permission can add credits.
-          </p>}
+          {!canSubmit && <p className="text-sm text-[var(--text-secondary)]">Only administrators with payment-submission permission can add credits.</p>}
+          {overviewError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">{overviewError}</p>}
         </Card>
       )}
 
