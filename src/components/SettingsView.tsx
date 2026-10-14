@@ -212,6 +212,14 @@ export default function SettingsView({
     setOrganizationNumbersError('');
   }, []);
   const visibleNumbers = organizationNumbers || virtualNumbers;
+  const refreshVirtualNumberInventory = () => {
+    if (canReadOrganization) {
+      void loadOrganizationNumbers().catch(error => {
+        setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
+      });
+    }
+    loadChannels();
+  };
   const [numberSearch, setNumberSearch] = useState('');
   const [numberProvider, setNumberProvider] = useState('');
   const [numberStatus, setNumberStatus] = useState('');
@@ -260,6 +268,7 @@ export default function SettingsView({
   };
 
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const virtualNumberSetupRef = React.useRef<HTMLDivElement>(null);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const loadAuditLogs = () => {
@@ -880,6 +889,65 @@ export default function SettingsView({
     globalRefresh?.();
   };
 
+  // A single legacy Vobiz connection control is shared by inline onboarding
+  // and the + dialog. Existing calling setups remain accessible in both states.
+  const legacyVobizConnectionPanel = (
+    <details className="rounded-xl border border-[var(--border)] p-4">
+                      <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
+                        Existing Vobiz calling connection
+                      </summary>
+                      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                        If your organization uses the older live Vobiz calling connection, manage it here.
+                        Provider inventory accounts above do not automatically enable live calling.
+                      </p>
+                      <div className="mt-4">
+<form onSubmit={handleConnectVobiz} className="space-y-4">
+                        {vobizChannel && (
+                          <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[9px] px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              <span>Active: <span className="font-semibold">{vobizChannel.externalId}</span></span>
+                            </div>
+                            <button type="button" onClick={() => handleDisconnectChannel('vobiz')} disabled={disconnectingChannel === 'vobiz'} className="text-rose-500 hover:text-rose-600 font-semibold text-xs disabled:opacity-50 cursor-pointer">
+                              {disconnectingChannel === 'vobiz' ? 'Disconnecting…' : 'Disconnect'}
+                            </button>
+                          </div>
+                        )}
+                        <div className="space-y-3">
+                          {!vobizChannel && (
+                            <>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth ID</label>
+                                <input type="text" value={vobizAuthId} onChange={(e) => setVobizAuthId(e.target.value)} placeholder="Your Vobiz.ai Auth ID" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth Token</label>
+                                <input type="password" value={vobizToken} onChange={(e) => setVobizToken(e.target.value)} placeholder="••••••••••••••••••••••••••••••••" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                              </div>
+                            </>
+                          )}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone Number</label>
+                              <input type="text" value={vobizPhone} onChange={(e) => setVobizPhone(e.target.value)} placeholder="+91XXXXXXXXXX" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Label <span className="text-slate-400 font-normal">(optional)</span></label>
+                              <input type="text" value={vobizLabel} onChange={(e) => setVobizLabel(e.target.value)} placeholder="e.g. Support Line" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <p className="text-[11px] text-slate-400">{vobizChannel ? 'Add more Vobiz.ai numbers here when you need them.' : 'You can add more numbers for this account later.'}</p>
+                          <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-[9px] px-6 py-2.5 transition-all cursor-pointer shadow-sm">
+                            {savingVobiz ? 'Connecting…' : vobizChannel ? 'Add Number' : 'Connect Vobiz.ai'}
+                          </button>
+                        </div>
+                      </form>
+                      </div>
+                    </details>
+  );
+
   return (
     <PageShell
       title={
@@ -968,19 +1036,31 @@ export default function SettingsView({
                         className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
                         Export CSV ({filteredNumbers.length})
                       </button>
-                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => setShowProviderForm(true)} />
+                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => {
+                          if (visibleNumbers.length === 0) {
+                            virtualNumberSetupRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+                          } else {
+                            setShowProviderForm(true);
+                          }
+                        }} />
                     </>}
                   />
                 </div>
                 {multiWorkspaceUi && visibleNumbers.some(number => !numberWorkspaceId(number)) &&
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
                 {visibleNumbers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-12 w-12 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-3">
-                      <Phone className="h-5 w-5 text-indigo-400" />
+                  <div ref={virtualNumberSetupRef} className="min-w-0 w-full space-y-5 px-4 py-6 sm:px-6" aria-label="Virtual number setup">
+                    <div className="flex flex-col items-center justify-center gap-2 border-b border-[var(--border)] pb-5 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
+                        <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
+                      </div>
+                      <h3 className="text-base font-semibold text-[var(--text-primary)]">No virtual numbers yet</h3>
+                      <p className="max-w-xl text-sm leading-6 text-[var(--text-secondary)]">
+                        Assign an available platform number to a workspace, or connect your telephony account and add your own numbers below.
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-slate-600">No virtual numbers yet</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xs">Click + to connect a provider, register a number, or assign an available number to a workspace.</p>
+                    <OrganizationTelephonyConnectors embedded onInventoryChange={refreshVirtualNumberInventory} />
+                    {legacyVobizConnectionPanel}
                   </div>
                 ) : (() => {
                   const columns: Column<VirtualNumber>[] = [
@@ -1053,70 +1133,8 @@ export default function SettingsView({
                   maxWidth="max-w-5xl"
                 >
                   <div className="min-w-0 space-y-5">
-                    <OrganizationTelephonyConnectors
-                      onInventoryChange={() => {
-                        if (canReadOrganization) {
-                          void loadOrganizationNumbers().catch(error => {
-                            setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
-                          });
-                        }
-                        loadChannels();
-                      }}
-                    />
-                    <details className="rounded-xl border border-[var(--border)] p-4">
-                      <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
-                        Existing Vobiz calling connection
-                      </summary>
-                      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                        If your organization uses the older live Vobiz calling connection, manage it here.
-                        Provider inventory accounts above do not automatically enable live calling.
-                      </p>
-                      <div className="mt-4">
-<form onSubmit={handleConnectVobiz} className="space-y-4">
-                        {vobizChannel && (
-                          <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[9px] px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>Active: <span className="font-semibold">{vobizChannel.externalId}</span></span>
-                            </div>
-                            <button type="button" onClick={() => handleDisconnectChannel('vobiz')} disabled={disconnectingChannel === 'vobiz'} className="text-rose-500 hover:text-rose-600 font-semibold text-xs disabled:opacity-50 cursor-pointer">
-                              {disconnectingChannel === 'vobiz' ? 'Disconnecting…' : 'Disconnect'}
-                            </button>
-                          </div>
-                        )}
-                        <div className="space-y-3">
-                          {!vobizChannel && (
-                            <>
-                              <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth ID</label>
-                                <input type="text" value={vobizAuthId} onChange={(e) => setVobizAuthId(e.target.value)} placeholder="Your Vobiz.ai Auth ID" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth Token</label>
-                                <input type="password" value={vobizToken} onChange={(e) => setVobizToken(e.target.value)} placeholder="••••••••••••••••••••••••••••••••" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                              </div>
-                            </>
-                          )}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone Number</label>
-                              <input type="text" value={vobizPhone} onChange={(e) => setVobizPhone(e.target.value)} placeholder="+91XXXXXXXXXX" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Label <span className="text-slate-400 font-normal">(optional)</span></label>
-                              <input type="text" value={vobizLabel} onChange={(e) => setVobizLabel(e.target.value)} placeholder="e.g. Support Line" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <p className="text-[11px] text-slate-400">{vobizChannel ? 'Add more Vobiz.ai numbers here when you need them.' : 'You can add more numbers for this account later.'}</p>
-                          <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-[9px] px-6 py-2.5 transition-all cursor-pointer shadow-sm">
-                            {savingVobiz ? 'Connecting…' : vobizChannel ? 'Add Number' : 'Connect Vobiz.ai'}
-                          </button>
-                        </div>
-                      </form>
-                      </div>
-                    </details>
+                    <OrganizationTelephonyConnectors onInventoryChange={refreshVirtualNumberInventory} />
+                    {legacyVobizConnectionPanel}
                   </div>
                 </Modal>
               )}

@@ -16,8 +16,10 @@ async function responseBody(response: Response) {
   return response.json().catch(() => ({} as Record<string, unknown>));
 }
 
-export default function OrganizationTelephonyConnectors({ onInventoryChange }: {
+export default function OrganizationTelephonyConnectors({ onInventoryChange, embedded = false }: {
   onInventoryChange?: () => void | Promise<void>;
+  /** Show the complete provider/number workflow inside the Virtual Numbers empty state. */
+  embedded?: boolean;
 } = {}) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
@@ -222,12 +224,14 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange }: {
     </li>
   );
 
-  // This panel may appear directly within a grid. All states must span its full width.
-  const containerClass = 'col-span-full min-w-0 w-full';
-  if (loading) return <Card className={containerClass}><p className="text-sm text-[var(--text-muted)]">Loading customer telephony connectors…</p></Card>;
-  if (featureOff) return <Card className={containerClass}><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">This feature is not enabled. The existing Vobiz connection and number setup remain available above.</p></Card>;
+  // Inline onboarding shares the surrounding Virtual Numbers platform panel.
+  // The dialog variant retains a full-width shared Card.
+  const Container = embedded ? 'div' : Card;
+  const containerClass = embedded ? 'min-w-0 w-full text-left' : 'col-span-full min-w-0 w-full';
+  if (loading) return <Container className={containerClass}><p className="text-sm text-[var(--text-muted)]">Loading telephony accounts and available numbers…</p></Container>;
+  if (featureOff) return <Container className={containerClass}><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">Provider account setup is not enabled for this organization.</p></Container>;
 
-  return <Card className={containerClass}>
+  return <Container className={containerClass}>
     <CardHeader title="Set up a virtual number" subtitle="Connect a provider, add its numbers, and assign each number to a workspace." />
     <p className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
       Add a provider account, register its phone numbers, confirm they are active, then assign each to a workspace.
@@ -361,5 +365,5 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange }: {
         <ul className="mt-4 space-y-3">{platformNumbers.map(number => renderNumber(number, true))}</ul>
       </section>
     )}
-  </Card>;
+  </Container>;
 }
