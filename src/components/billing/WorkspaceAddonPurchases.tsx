@@ -8,7 +8,7 @@ import Button from '../ui/Button';
 
 export type PaymentDisplayFilter = 'all' | 'submitted' | 'workspace';
 export type PaymentStatusFilter = 'all' | 'action' | 'review' | 'completed';
-type AddonInvoice = {id:string;status:string;paymentAmount:BillingAmount;dueAt:string|null;paymentStatus:string|null;paymentRequestId:string|null};
+type AddonInvoice = {id:string;status:string;paymentAmount:BillingAmount;dueAt:string|null;paymentStatus:string|null;paymentRequestId:string|null;paymentSource?:'topup_credits'|'approved_payment'|null};
 type Addon = {id:string;name:string;status:string;workspaceId:string|null;monthlyAmount:BillingAmount;autoRenew:boolean;periodEndsAt:string|null;graceEndsAt:string|null;invoice:AddonInvoice|null};
 const money = (amount:BillingAmount) => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Number(amount.units)/10 ** amount.scale);
 const date = (value:string|null) => value ? new Date(value).toLocaleDateString('en-IN') : 'After payment approval';
@@ -187,6 +187,7 @@ export default function WorkspaceAddonPurchases({
                   ? `Grace period — pay before ${date(addon.graceEndsAt)}`
                   : `Paid until ${date(addon.periodEndsAt)}`}
             </p>
+            {invoice?.status === 'paid' && invoice.paymentSource === 'topup_credits' && <p className="mt-1 text-xs text-[var(--text-secondary)]">First month paid using unallocated top-up credits (no manual approval required).</p>}
             {payable && <p className="mt-1 text-xs text-[var(--text-secondary)]">
               {waiting ? 'Payment awaiting platform verification' : `Invoice due ${date(invoice?.dueAt || null)}`}
             </p>}
