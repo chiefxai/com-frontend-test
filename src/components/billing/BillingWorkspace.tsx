@@ -275,6 +275,11 @@ export default function BillingWorkspace({
                   <p className="mt-2 text-xs text-[var(--text-muted)]">{detail}</p>
                 </div>)}
             </div>
+            {rechargeBased && <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--accent-subtle)] p-4">
+              <p className="text-sm font-medium text-[var(--text-secondary)]">Call credits ready to use</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{formatInr(Math.max(0, rechargeBalanceInr - rechargeReservedInr))}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">This is your balance after setting aside credits for calls in progress.</p>
+            </div>}
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4 text-sm">
               <PhoneCall aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
               <div>
