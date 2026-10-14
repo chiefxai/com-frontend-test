@@ -11,7 +11,6 @@ vi.mock('../lib/authorization',()=>({useAuthorization:()=>({can:mocks.can})}));
 vi.mock('../lib/billing/client',()=>({billingClient:{submitPaymentWithProof:mocks.submit},newBillingIdempotencyKey:()=>crypto.randomUUID()}));
 vi.mock('../components/ui/Modal',()=>({default:({open,children}:{open:boolean;children:React.ReactNode})=>open?<div role="dialog">{children}</div>:null}));
 vi.mock('../components/ui/Widget',()=>({default:({children}:{children:React.ReactNode})=><div>{children}</div>}));
-vi.mock('../components/ui/DataTable',()=>({default:()=>null}));
 vi.mock('../components/ui/FilterBar',()=>({default:({actions}:{actions:React.ReactNode})=><div>{actions}</div>}));
 vi.mock('../components/ui/IconButton',()=>({default:({label,onClick}:{label:string;onClick:()=>void})=><button onClick={onClick}>{label}</button>}));
 const amount={asset:'INR',units:'5000',scale:2};
