@@ -7,6 +7,7 @@ import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/clien
 import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest } from '../../lib/billing/types';
 import KpiCard from '../ui/KpiCard';
 import { Card, CardHeader } from '../ui/Card';
+import FilterBar from '../ui/FilterBar';
 import Button from '../ui/Button';
 
 type Quote = { quoteId: string; paymentAmount: BillingAmount; topupCredits: BillingAmount; validUntil: string };
@@ -40,6 +41,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   const [historyFilter, setHistoryFilter] = React.useState<PaymentHistoryType>('all');
   const [activityView, setActivityView] = React.useState<PaymentDisplayFilter>('all');
   const [paymentStatus, setPaymentStatus] = React.useState<PaymentStatusFilter>('all');
+  const [paymentSearch, setPaymentSearch] = React.useState('');
   const [amount, setAmount] = React.useState('');
   const [reference, setReference] = React.useState('');
   const [proof, setProof] = React.useState<File | null>(null);
@@ -353,49 +355,47 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               <Button type="button" variant="secondary" size="sm" icon={RefreshCw}
                 onClick={() => void refresh()}>Refresh</Button>
             } />
-          <div className="flex flex-wrap items-end gap-3 rounded-xl bg-[var(--bg-subtle)] p-3">
-            <label className="min-w-[11rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
-              Show
-              <select aria-label="Payment records" value={activityView}
-                onChange={event => {
-                  const next = event.target.value as PaymentDisplayFilter;
+          <FilterBar className="mb-4"
+            search={{ value: paymentSearch, onChange: setPaymentSearch, placeholder: 'Find a payment or workspace…' }}
+            hasActiveFilters={activityView !== 'all' || historyFilter !== 'all' || paymentStatus !== 'all' || Boolean(paymentSearch)}
+            onClear={() => {
+              setActivityView('all'); setHistoryFilter('all'); setPaymentStatus('all'); setPaymentSearch('');
+            }}
+            selects={[
+              { key: 'Payment records', label: 'Payment records', value: activityView,
+                onChange: value => {
+                  const next = value as PaymentDisplayFilter;
                   setActivityView(next);
                   if (next === 'workspace' && !['all', 'workspace'].includes(historyFilter)) setHistoryFilter('workspace');
-                }}
-                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
-                <option value="all">All records</option>
-                <option value="submitted">Submitted payments only</option>
-                <option value="workspace">Workspace invoices only</option>
-              </select>
-            </label>
-            <label className="min-w-[10rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
-              Payment type
-              <select aria-label="Payment type" value={historyFilter}
-                onChange={event => {
-                  const next = event.target.value as PaymentHistoryType;
+                },
+                options: [
+                  { label: 'All records', value: 'all' },
+                  { label: 'Submitted payments only', value: 'submitted' },
+                  { label: 'Workspace invoices only', value: 'workspace' },
+                ] },
+              { key: 'Payment type', label: 'Payment type', value: historyFilter,
+                onChange: value => {
+                  const next = value as PaymentHistoryType;
                   setHistoryFilter(next);
                   if (activityView === 'workspace' && next !== 'all' && next !== 'workspace') setActivityView('submitted');
-                }}
-                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
-                <option value="all">All types</option>
-                <option value="topup">Credit top-ups</option>
-                <option value="workspace">Workspace add-ons</option>
-                <option value="subscription">Subscriptions</option>
-                <option value="invoice">Other invoices</option>
-              </select>
-            </label>
-            <label className="min-w-[10rem] flex-1 text-xs font-semibold text-[var(--text-secondary)]">
-              Status
-              <select aria-label="Payment status" value={paymentStatus}
-                onChange={event => setPaymentStatus(event.target.value as PaymentStatusFilter)}
-                className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] dark:bg-[var(--bg-surface)]">
-                <option value="all">All statuses</option>
-                <option value="action">Payment needed / needs attention</option>
-                <option value="review">Waiting for approval</option>
-                <option value="completed">Approved / active</option>
-              </select>
-            </label>
-          </div>
+                },
+                options: [
+                  { label: 'All types', value: 'all' },
+                  { label: 'Credit top-ups', value: 'topup' },
+                  { label: 'Workspace add-ons', value: 'workspace' },
+                  { label: 'Subscriptions', value: 'subscription' },
+                  { label: 'Other invoices', value: 'invoice' },
+                ] },
+              { key: 'Payment status', label: 'Payment status', value: paymentStatus,
+                onChange: value => setPaymentStatus(value as PaymentStatusFilter),
+                options: [
+                  { label: 'All statuses', value: 'all' },
+                  { label: 'Payment needed / needs attention', value: 'action' },
+                  { label: 'Waiting for approval', value: 'review' },
+                  { label: 'Approved / active', value: 'completed' },
+                ] },
+            ]}
+          />
           {historyError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">
             Submitted payments could not be loaded: {historyError}. Workspace invoices may still be available.
           </p>}
@@ -408,6 +408,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               showWorkspace={historyFilter === 'all' || historyFilter === 'workspace'}
               showSubmitted
               submittedLoading={historyLoading}
+              searchTerm={paymentSearch}
               onChange={refresh}
             />
           </div>
