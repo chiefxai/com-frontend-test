@@ -366,20 +366,13 @@ export default function CostPage() {
         label="Provider rate entries" value={loadingProviders ? '—' : savedProviders.length}
         sub="Stored rate configurations" icon={Settings2} />
 
-      <div className="col-span-12 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-2xl text-xs leading-5 text-[var(--text-secondary)]">
-            Browse the same compact cards used in Agent Studio. Choose <strong>View</strong> for full
-            rate details or <strong>Edit</strong> to update pricing. Saved changes affect future
-            usage; historical bills keep their original rates.
-          </p>
-          {dirtyCount > 0 && (
-            <span role="status" className="rounded-lg border border-amber-300/60 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-              {dirtyCount} unsaved {dirtyCount === 1 ? 'configuration' : 'configurations'}
-            </span>
-          )}
+      {dirtyCount > 0 && (
+        <div className="col-span-12 flex justify-end">
+          <span role="status" className="rounded-lg border border-amber-300/60 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            {dirtyCount} unsaved {dirtyCount === 1 ? 'configuration' : 'configurations'}
+          </span>
         </div>
-      </div>
+      )}
 
       {loadingProviders ? (
         <Card padding="lg" className="col-span-12">
