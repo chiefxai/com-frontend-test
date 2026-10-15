@@ -15,6 +15,7 @@ vi.mock('../lib/billing/client', () => ({
     subscriptionRenewal: mocks.subscriptionRenewal,
   },
 }));
+
 const cash = (units: string) => ({ asset: 'INR', units, scale: 2 });
 
 beforeEach(() => {
@@ -37,7 +38,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Billing Overview current plan card', () => {
-  it('includes workspace fees and billing links in the current-plan card without a separate charges card', async () => {
+  it('shows balances beside the current plan and defaults to View my plan', async () => {
     const onNavigate = vi.fn();
     render(<BillingOverviewHome
       onNavigate={onNavigate} onOpenSubscriptionTask={vi.fn()}
@@ -45,13 +46,13 @@ describe('Billing Overview current plan card', () => {
       canManageSubscription canAllocate canSubmitPayment loadingUsage={false}
     />);
     expect(screen.getByText('Your plan right now')).toBeInTheDocument();
-    expect(await screen.findByText('North workspace')).toBeInTheDocument();
-    expect(screen.getByText('Plan and extra workspace charges')).toBeInTheDocument();
-    expect(screen.queryByText('Extra workspace charges')).not.toBeInTheDocument();
-    expect(screen.getByText('1 awaiting payment approval')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Allocate credits to a workspace' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add more credits' }));
-    fireEvent.click(screen.getByRole('button', { name: 'View workspace invoices' }));
-    expect(onNavigate.mock.calls.map(([destination]) => destination)).toEqual(['allocation', 'topup', 'payments']);
+    expect(await screen.findByText('Starter')).toBeInTheDocument();
+    for (const label of ['Plan credits remaining','Extra credits remaining','AI usage cost','Call usage'])
+      expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByText('Plan and extra workspace charges')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pay to continue' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'View my plan' }));
+    expect(onNavigate).toHaveBeenCalledWith('plan');
   });
+
 });

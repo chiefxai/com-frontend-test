@@ -3,6 +3,7 @@ import { CreditCard, RefreshCw, CheckCircle2, Info } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingAmount, SubscriptionCreditStatus } from '../../lib/billing/types';
 import { Card, CardHeader } from '../ui/Card';
+import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
 
 const displayInr = (amount: BillingAmount | null): string => {
@@ -45,17 +46,15 @@ export default function SubscriptionCreditStatusPanel() {
         : error ? <p role="alert" className="text-xs text-rose-600">{error}</p>
           : status && (
             <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3">
-                  <p className="text-sm text-[var(--text-secondary)]">Credits promised each month ({status.planName || 'your plan'})</p>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{displayInr(status.configuredMonthlyCredits)}</p>
-                </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 p-3">
-                  <p className="text-sm text-[var(--text-secondary)]">Credits added this period</p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--text-primary)]">
-                    {displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 }))}
-                  </p>
-                </div>
+              <div className="grid grid-cols-12 gap-3">
+                <KpiCard span={{ xs: 12, sm: 6 }} icon={CreditCard} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label={`Credits promised each month (${status.planName || 'your plan'})`}
+                  value={displayInr(status.configuredMonthlyCredits)} />
+                <KpiCard span={{ xs: 12, sm: 6 }} icon={CheckCircle2} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label="Credits added this period"
+                  value={displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 }))} />
               </div>
               <p role="status" className="flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
                   {status.state === 'issued_to_organization_pool'

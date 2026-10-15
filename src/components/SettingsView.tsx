@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Settings,
   Phone,
@@ -157,7 +158,18 @@ export default function SettingsView({
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
-  const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
+  const billingLocation = useLocation();
+  const billingNavigate = useNavigate();
+  // Billing section is part of the URL, so refresh/deep links and browser
+  // back/forward keep exactly the same page.
+  const billingPath = billingLocation.pathname.split('/').filter(Boolean);
+  const billingPanels: readonly BillingPanel[] = ['dashboard','plan','usage','allocation','credits','topup','payments'];
+  const billingPanelCandidate = billingPath[0] === 'administration' && billingPath[1] === 'billing' ? billingPath[2] : undefined;
+  const billingPanel: BillingPanel = billingPanelCandidate && billingPanels.includes(billingPanelCandidate as BillingPanel)
+    ? billingPanelCandidate as BillingPanel : 'dashboard';
+  const setBillingPanel = React.useCallback((panel: BillingPanel) => {
+    billingNavigate(panel === 'dashboard' ? '/administration/billing' : `/administration/billing/${panel}`);
+  }, [billingNavigate]);
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
   // Customers with one purchased workspace reach their phone numbers directly.
   const multiWorkspaceUi = showWorkspaceManagement(multipleWorkspacesEnabled);
