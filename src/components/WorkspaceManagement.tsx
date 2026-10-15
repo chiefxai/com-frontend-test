@@ -10,6 +10,7 @@ import IconButton from './ui/IconButton';
 import { newBillingIdempotencyKey } from '../lib/billing/client';
 
 interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number;maxWorkspaces:number|null}}; currentQuote: {totalMonthlyInr:number} | null; purchasesAvailable?:boolean;pendingWorkspacePurchases?:number;addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string;paymentRequired:boolean;monthlyAddonInr:number} | null }
+interface IndustryOption { key: string; label: string }
 interface TopupFunding { topupPaymentAvailable?: boolean; unallocatedTopupCredits?: {asset:string;units:string;scale:number} }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
 
@@ -37,6 +38,8 @@ export default function WorkspaceManagement({
   const [setup, setSetup] = useState<WorkspaceSetup | null>(null);
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
+  const [industryOptions, setIndustryOptions] = useState<IndustryOption[]>([]);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [branchName, setBranchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,11 +69,17 @@ export default function WorkspaceManagement({
         return body as WorkspaceSetup;
       }),
       apiFetch('/api/billing/workspace-addons').then(async response => response.ok ? await response.json() as TopupFunding : null).catch(() => null),
-    ]).then(([rows, options, funding]) => {
+      apiFetch('/api/auth/industries').then(async response => {
+        const body = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(body.error || 'Could not load industries');
+        return body as IndustryOption[];
+      }),
+    ]).then(([rows, options, funding, industries]) => {
       if (cancelled) return;
       setWorkspaces(Array.isArray(rows) ? rows : []);
       setSetup(options);
       setTopupFunding(funding);
+      setIndustryOptions(Array.isArray(industries) ? industries : []);
       if (funding?.topupPaymentAvailable && BigInt(funding.unallocatedTopupCredits?.units || '0') >= BigInt(Math.round((options.addBranchQuote?.monthlyAddonInr || 0) * 100))) setPaymentMethod('topup');
       else setPaymentMethod('invoice');
       setIndustry(options.policy.primaryIndustry);
@@ -82,6 +91,27 @@ export default function WorkspaceManagement({
   }, [enabled, canRead]);
 
   if (!enabled || !canRead) return null;
+
+  const changeIndustry = async (nextIndustry: string) => {
+    setIndustry(nextIndustry);
+    setPurchaseKey(newBillingIdempotencyKey());
+    setQuoteLoading(true);
+    setSetup(current => current ? { ...current, addBranchQuote: null } : current);
+    setMessage(null);
+    try {
+      const response = await apiFetch('/api/settings/workspace-policy?industry=' + encodeURIComponent(nextIndustry));
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Could not refresh workspace pricing');
+      setSetup(body as WorkspaceSetup);
+      const amount = Math.round((body.addBranchQuote?.monthlyAddonInr || 0) * 100);
+      if (topupFunding?.topupPaymentAvailable && BigInt(topupFunding.unallocatedTopupCredits?.units || '0') >= BigInt(amount) && amount > 0) setPaymentMethod('topup');
+      else setPaymentMethod('invoice');
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Could not refresh workspace pricing.' });
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
 
   const createWorkspace = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -110,7 +140,7 @@ export default function WorkspaceManagement({
       // unsuccessful (or encourage a duplicate workspace submission).
       try {
         const policyResponse = await apiFetch('/api/settings/workspace-policy');
-        if (policyResponse.ok) { const refreshed=await policyResponse.json(); setSetup(refreshed); if (Array.isArray(refreshed.workspaces)) setWorkspaces(refreshed.workspaces); }
+        if (policyResponse.ok) { const refreshed=await policyResponse.json(); setSetup(refreshed); setIndustry(refreshed.policy.primaryIndustry); if (Array.isArray(refreshed.workspaces)) setWorkspaces(refreshed.workspaces); }
         if (redeemTopup) { const fundingResponse=await apiFetch('/api/billing/workspace-addons'); if (fundingResponse.ok) setTopupFunding(await fundingResponse.json()); }
         await onWorkspaceCreated();
       } catch {
@@ -184,8 +214,13 @@ export default function WorkspaceManagement({
           </label>
           <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
             <span>Industry</span>
-            <input readOnly value={industry.replaceAll('_', ' ')}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
+            {setup?.policy.mode === 'mixed_industry'
+              ? <select value={industry} onChange={event => { void changeIndustry(event.target.value); }} disabled={quoteLoading || saving}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)]">
+                  {industryOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+                </select>
+              : <input readOnly value={industryOptions.find(option => option.key === industry)?.label || industry.replaceAll('_', ' ')}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />}
           </label>
           <label className="block space-y-1 text-xs font-medium text-[var(--text-secondary)]">
             <span>Branch (optional)</span>
@@ -193,7 +228,9 @@ export default function WorkspaceManagement({
               placeholder="Mumbai"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2.5 text-xs text-[var(--text-primary)]" />
           </label>
-          <p className="text-xs text-[var(--text-muted)]">Different industries are provisioned by a platform administrator.</p>
+          <p className="text-xs text-[var(--text-muted)]">{setup?.policy.mode === 'mixed_industry'
+            ? 'Choose the industry for this workspace. Pricing updates to include any additional industry fee.'
+            : 'This subscription allows workspaces in the organization’s primary industry only.'}</p>
           {setup?.addBranchQuote
             ? <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
                 Workspace {workspaces.length + 1}: {workspaces.length + 1 <= (setup.policy.pricing?.includedWorkspaces ?? 1) ? 'within the included allowance' : 'priced as a workspace add-on'}. Total monthly organization estimate across subscription and add-on invoices: ₹{setup.addBranchQuote.totalMonthlyInr.toFixed(2)}. Usage charges and applicable taxes are additional.
@@ -219,7 +256,7 @@ export default function WorkspaceManagement({
               className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
               Cancel
             </button>
-            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !name.trim() || (paymentRequired && (!canPay || (redeemTopup ? !canUseTopup : !setup?.purchasesAvailable)))}
+            <button type="submit" disabled={saving || loading || quoteLoading || !setup?.addBranchQuote || !name.trim() || (paymentRequired && (!canPay || (redeemTopup ? !canUseTopup : !setup?.purchasesAvailable)))}
               className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               {saving ? 'Preparing…' : redeemTopup ? 'Pay credits & create workspace' : paymentRequired ? 'Prepare payment invoice' : 'Create Workspace'}
