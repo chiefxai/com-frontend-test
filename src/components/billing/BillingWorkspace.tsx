@@ -296,16 +296,13 @@ export default function BillingWorkspace({
           </p>)}
       {(view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
-<<<<<<< HEAD
           creditUsage={workspaceBilling ? {
             aiSpendInr: workspaceBilling.aiSpendInr,
             phoneSpendInr: workspaceBilling.phoneSpendInr,
             phoneChargesBillable,
             periodLabel,
-          } : null} />
-=======
+          } : null}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
->>>>>>> origin/main
       )}
     </div>
   );

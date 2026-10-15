@@ -27,15 +27,12 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
   return 'Invoice payment';
 }
 
-<<<<<<< HEAD
-export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate, creditUsage }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void; creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null }) {
-  const { authorization } = useAuthorization();
-=======
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate,
-  manualAllocationAllowed = false }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void;
+  creditUsage, manualAllocationAllowed = false }: { canSubmit?: boolean; view?: BillingPanel;
+  onNavigate?: (view: BillingPanel) => void;
+  creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null;
   manualAllocationAllowed?: boolean }) {
   const { can, authorization } = useAuthorization();
->>>>>>> origin/main
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
@@ -265,11 +262,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </>
       )}
 
-<<<<<<< HEAD
-      {view === 'credits' && (
-        <>
-          <div className="col-span-12 grid grid-cols-12 gap-3" aria-label="Available credit balances">
-=======
       {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
       {(view === 'credits' || view === 'topup') && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
@@ -284,7 +276,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               </div>
             } />
           <div className="grid grid-cols-12 gap-3">
->>>>>>> origin/main
             <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
               label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
@@ -294,21 +285,12 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
               value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
           </div>
-<<<<<<< HEAD
-          <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-            <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
-              action={
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
-                  {canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
-                    onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
-                  {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
-                    disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
-                </div>
-              } />
-            <p className="text-sm text-[var(--text-secondary)]">Plan credits and approved top-up credits remain in separate pools until allocated to workspaces.</p>
-            {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
-          </Card>
+          <p className="text-sm text-[var(--text-secondary)]">Plan credits and approved top-up credits remain in separate pools until allocated to workspaces.</p>
+          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
+          {workspaceCreditError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
+        </Card>
+      )}
+      {view === 'credits' && (
           <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
             <CardHeader title="Credit usage activity" subtitle="AI processing and phone-service costs recorded for the current period" icon={ReceiptText}
               action={onNavigate ? <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('usage')}>View usage</Button> : undefined} />
@@ -329,12 +311,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             </div>
             <p className="mt-3 text-xs text-[var(--text-muted)]">Aggregate period costs, not individual credit debits. The plan and top-up balances above reflect the actual available ledger amounts. {creditUsage?.periodLabel || ''}</p>
           </Card>
-        </>
-=======
-          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
-          {workspaceCreditError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
-        </Card>
->>>>>>> origin/main
       )}
       {view === 'topup' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
