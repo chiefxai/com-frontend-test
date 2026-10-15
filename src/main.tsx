@@ -94,7 +94,7 @@ createRoot(document.getElementById('root')!).render(
             element={
               <AuthProvider>
                 <FeatureFlagProvider>
-                  <LoadingBoundary variant="page" label="Opening ${APP_NAME}…" description="Preparing your workspace.">
+                  <LoadingBoundary variant="page" label={`Opening ${APP_NAME}…`} description="Preparing your workspace.">
                   <Routes>
                     <Route
                       path="/admin/*"
