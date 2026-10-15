@@ -1,3 +1,4 @@
+import { APP_NAME } from './lib/appName';
 import React, { useEffect, useState } from 'react';
 import { Globe2, ShieldAlert } from 'lucide-react';
 import LoadingState from './components/ui/LoadingIndicator';
@@ -17,7 +18,7 @@ export default function AdminApp() {
   const [deniedEmail, setDeniedEmail] = useState('');
 
   useEffect(() => {
-    document.title = 'Chief Connect | Platform Admin';
+    document.title = `${APP_NAME} | Platform Admin`;
   }, []);
 
   useEffect(() => {
