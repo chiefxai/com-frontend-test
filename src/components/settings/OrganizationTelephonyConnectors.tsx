@@ -16,10 +16,12 @@ async function responseBody(response: Response) {
   return response.json().catch(() => ({} as Record<string, unknown>));
 }
 
-export default function OrganizationTelephonyConnectors({ onInventoryChange, embedded = false }: {
+export default function OrganizationTelephonyConnectors({ onInventoryChange, embedded = false, view = 'all' }: {
   onInventoryChange?: () => void | Promise<void>;
   /** Show the complete provider/number workflow inside the Virtual Numbers empty state. */
   embedded?: boolean;
+  /** Choose platform-owned inventory or customer calling connections in the shared overlay. */
+  view?: 'all' | 'platform' | 'connection';
 } = {}) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
@@ -232,15 +234,15 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange, emb
   if (featureOff) return <Container className={containerClass}><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">Provider account setup is not enabled for this organization.</p></Container>;
 
   return <Container className={containerClass}>
-    <CardHeader title="Set up a virtual number" subtitle="Connect a provider, add its numbers, and assign each number to a workspace." />
-    <p className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
+    {view === 'all' && <CardHeader title="Set up a virtual number" subtitle="Connect a provider, add its numbers, and assign each number to a workspace." />}
+    {view === 'all' && <p className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
       Add a provider account, register its phone numbers, confirm they are active, then assign each to a workspace.
       Existing platform-managed numbers can be assigned below without creating a provider account.
-    </p>
+    </p>}
     {error && <p role="alert" className="mb-3 text-sm text-rose-600">{error}</p>}
     {notice && <p role="status" className="mb-3 text-sm text-emerald-700">{notice}</p>}
 
-    <form onSubmit={event => void save(event)} className="space-y-5">
+    {view !== 'platform' && <form onSubmit={event => void save(event)} className="space-y-5">
       <fieldset className="min-w-0">
         <legend className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Provider account details</legend>
         <div className="grid min-w-0 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -296,9 +298,9 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange, emb
           {editing ? 'Save account' : 'Add account'}
         </Button>
       </div>
-    </form>
+    </form>}
 
-    <section className="mt-6 border-t border-[var(--border)] pt-5" aria-label="Saved provider accounts">
+    {view !== 'platform' && <section className="mt-6 border-t border-[var(--border)] pt-5" aria-label="Saved provider accounts">
       <h3 className="text-sm font-semibold text-[var(--text-primary)]">Saved provider accounts</h3>
       {connectors.length === 0 &&
         <p className="mt-3 rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
@@ -354,15 +356,16 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange, emb
           </section>
         ))}
       </div>
-    </section>
+    </section>}
 
-    {platformNumbers.length > 0 && (
+    {view !== 'connection' && (
       <section className="mt-6 min-w-0 border-t border-[var(--border)] pt-5" aria-label="Platform-managed numbers">
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">Numbers provided by your platform</h3>
         <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
           These numbers use platform-managed provider accounts. You can assign or unassign them for your workspaces.
         </p>
-        <ul className="mt-4 space-y-3">{platformNumbers.map(number => renderNumber(number, true))}</ul>
+        {platformNumbers.length ? <ul className="mt-4 space-y-3">{platformNumbers.map(number => renderNumber(number, true))}</ul>
+          : <p className="mt-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">No platform-provided numbers are currently available for this organization.</p>}
       </section>
     )}
   </Container>;
