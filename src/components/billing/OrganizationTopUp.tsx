@@ -311,7 +311,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             </div>
             <p className="mt-3 text-xs text-[var(--text-muted)]">Aggregate period costs, not individual credit debits. The plan and top-up balances above reflect the actual available ledger amounts. {creditUsage?.periodLabel || ''}</p>
           </Card>
-      )}      )}
+      )}
       {view === 'topup' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
           <CardHeader title="Add credits" subtitle="Credits become available after your receipt is approved" icon={Wallet}
