@@ -10,6 +10,7 @@ import EmptyState from '../components/ui/EmptyState';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
+import Tooltip from '../components/ui/Tooltip';
 import { useToast } from '../components/ui/Toast';
 import { readableBackup, readableRetention, type RetentionPolicyCatalog } from '../lib/retentionPolicies';
 import { INDUSTRY_PROFILES } from '../lib/industry/registry';
@@ -227,9 +228,10 @@ export default function WorkspacePlansPage() {
       </span>,
       action: editingIndex === null
         ? <div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="secondary" icon={Settings2} onClick={() => setConfigureTermsOpen(value => !value)}>
-              {configureTermsOpen ? 'Close configuration' : 'Configure terms'}
-            </Button>
+            <Tooltip label="Configure" side="bottom">
+              <IconButton icon={Settings2} label="Configure" onClick={() => setConfigureTermsOpen(value => !value)}
+                aria-pressed={configureTermsOpen} />
+            </Tooltip>
             <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd}
               disabled={loading || saving || loadingPolicies || !retentionCatalog} />
           </div>
