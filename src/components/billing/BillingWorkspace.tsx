@@ -186,7 +186,7 @@ export default function BillingWorkspace({
                 <KpiCard span={{ xs: 6 }} icon={Layers3} iconPosition="top-left"
                   iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                   label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
-              </div>>
+              </div>
             </div>
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4">
               <Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
