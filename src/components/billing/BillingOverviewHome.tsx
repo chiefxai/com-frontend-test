@@ -3,7 +3,7 @@ import { Card } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
 import { CalendarClock, CreditCard, PhoneCall, Wallet, Sparkles } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
-import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse } from '../../lib/billing/types';
+import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse, WorkspaceBillingOverview } from '../../lib/billing/types';
 import type { CallLog } from '../../types';
 import type { BillingPanel } from './OrganizationTopUp';
 import type { OrganizationSubscriptionPrice, WorkspaceBillingSnapshot } from './BillingWorkspace';
@@ -33,6 +33,7 @@ export default function BillingOverviewHome({
   onNavigate, onOpenSubscriptionTask, usage, callCount, canManageSubscription,
 }: Props) {
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
+  const [workspaceCredits, setWorkspaceCredits] = React.useState<WorkspaceBillingOverview | null>(null);
   const [creditStatus, setCreditStatus] = React.useState<SubscriptionCreditStatus | null>(null);
   const [renewal, setRenewal] = React.useState<SubscriptionRenewalResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -40,21 +41,42 @@ export default function BillingOverviewHome({
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setWorkspaceCredits(null);
     void Promise.allSettled([
       billingClient.organizationOverview(),
       billingClient.subscriptionCreditStatus(),
       canManageSubscription ? billingClient.subscriptionRenewal() : Promise.resolve(null),
-    ]).then(([balances, credits, period]) => {
+    ]).then(async ([balances, credits, period]) => {
       if (cancelled) return;
       const failures: string[] = [];
-      if (balances.status === 'fulfilled') setOverview(balances.value);
-      else { setOverview(null); failures.push('Available credits could not be loaded.'); }
+      if (balances.status === 'fulfilled') {
+        setOverview(balances.value);
+        const allocation = balances.value.allocation;
+        if (allocation?.mode === 'automatic') {
+          if (allocation.status === 'ready' && allocation.workspaceId) {
+            try {
+              const currentWorkspaceCredits = await billingClient.workspaceOverview(allocation.workspaceId);
+              if (currentWorkspaceCredits.workspaceId !== allocation.workspaceId
+                  || currentWorkspaceCredits.uninitialized || currentWorkspaceCredits.status !== 'active') {
+                throw new Error('The automatically allocated workspace balance is unavailable.');
+              }
+              if (!cancelled) setWorkspaceCredits(currentWorkspaceCredits);
+            } catch {
+              failures.push('Workspace credit balances could not be loaded.');
+            }
+          } else {
+            failures.push('Workspace credit balances are not ready yet.');
+          }
+        }
+      } else { setOverview(null); failures.push('Available credits could not be loaded.'); }
       if (credits.status === 'fulfilled') setCreditStatus(credits.value);
       else { setCreditStatus(null); failures.push('Plan information could not be loaded.'); }
       if (period.status === 'fulfilled') setRenewal(period.value);
       else { setRenewal(null); failures.push('Renewal status could not be loaded.'); }
-      setErrors(failures);
-      setLoading(false);
+      if (!cancelled) {
+        setErrors(failures);
+        setLoading(false);
+      }
     });
     return () => { cancelled = true; };
   }, [canManageSubscription]);
@@ -68,6 +90,11 @@ export default function BillingOverviewHome({
   const suspended = Boolean(access && ['manual_suspended','security_suspended','billing_suspended'].includes(access));
   const showPay = canManageSubscription && notice.canRenew && actionRequired && !notice.nextPeriodScheduled;
   const planName = creditStatus?.planName || creditStatus?.planId;
+  const usesWorkspaceCredits = overview?.allocation?.mode === 'automatic';
+  const visibleBalances = usesWorkspaceCredits
+    ? workspaceCredits?.balances ?? null
+    : overview?.balances ?? null;
+  const balanceLocation = usesWorkspaceCredits ? 'your subscription workspace' : 'the organization pool';
   const planStatus = notice.inGrace ? 'Payment grace period'
     : suspended ? 'Access restricted' : notice.expired ? 'Plan expired' : 'Current plan';
 
@@ -75,11 +102,11 @@ export default function BillingOverviewHome({
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
       <div className="grid min-w-0 grid-cols-12 gap-3" aria-label="Billing balances and usage">
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Plan credits remaining" icon={Wallet}
-          value={overview ? availableCredits(overview.balances,'subscription') : '—'}
-          sub="Approved plan credits still in the organization pool" />
+          value={visibleBalances ? availableCredits(visibleBalances,'subscription') : '—'}
+          sub={usesWorkspaceCredits ? 'Available in your subscription workspace' : 'Approved plan credits still in the organization pool'} />
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Extra credits remaining" icon={CreditCard}
-          value={overview ? availableCredits(overview.balances,'topup') : '—'}
-          sub="Approved top-ups still in the organization pool" />
+          value={visibleBalances ? availableCredits(visibleBalances,'topup') : '—'}
+          sub={usesWorkspaceCredits ? 'Extra credits available in your subscription workspace' : 'Approved top-ups still in the organization pool'} />
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="AI usage cost" icon={Sparkles} value={money(usage?.aiSpendInr)}
           sub="AI voice and post-call processing this period" />
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
