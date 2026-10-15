@@ -242,19 +242,13 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
               </div>
             } />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-[var(--border)] p-5">
-              <p className="text-sm font-medium text-[var(--text-secondary)]">Subscription credits remaining</p>
-              <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--text-primary)]">
-                {overview ? sumBalance(subscriptionCredits) : '—'}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] p-5">
-              <p className="text-sm font-medium text-[var(--text-secondary)]">Top-up credits remaining</p>
-              <p className="mt-2 text-3xl font-bold tabular-nums text-[var(--text-primary)]">
-                {overview ? sumBalance(topupCredits) : '—'}
-              </p>
-            </div>
+          <div className="grid grid-cols-12 gap-3">
+            <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
+              iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label="Subscription credits remaining" value={overview ? sumBalance(subscriptionCredits) : '—'} />
+            <KpiCard span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
+              iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label="Top-up credits remaining" value={overview ? sumBalance(topupCredits) : '—'} />
           </div>
           {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
         </Card>
