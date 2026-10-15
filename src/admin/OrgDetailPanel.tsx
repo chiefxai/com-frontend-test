@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, Building2, Cloud, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw, Bot } from 'lucide-react';
+import { Loader2, Users, PhoneCall, ScrollText, Pencil, Ban, PlayCircle, Trash2, Hash, Plus, X, Building2, Cloud, LayoutDashboard, ShieldCheck, Settings2, Activity, CreditCard, RefreshCw, Bot, Mail } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { fetchPlatformOrgDetail } from '../lib/platformOrgDetail';
 import LoadingState from '../components/ui/LoadingIndicator';
@@ -58,6 +58,8 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   const [trialRecoveryDays, setTrialRecoveryDays] = useState('7');
   const [trialRecoveryBusy, setTrialRecoveryBusy] = useState(false);
   const [trialRecoveryNotice, setTrialRecoveryNotice] = useState('');
+  const [invitationBusy, setInvitationBusy] = useState(false);
+  const [invitationNotice, setInvitationNotice] = useState('');
 
   const loadNumbers = () => {
     setNumbersLoading(true);
@@ -277,6 +279,22 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
     }
   };
 
+  const handleResendInitialInvitation = async () => {
+    setInvitationBusy(true);
+    setActionError(null);
+    setInvitationNotice('');
+    try {
+      const response = await apiFetch(`/api/platform/organizations/${encodeURIComponent(orgId)}/resend-initial-invitation`, { method: 'POST' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || 'Unable to resend the initial invitation.');
+      setInvitationNotice(result?.message || 'Initial invitation email sent.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to resend the initial invitation.');
+    } finally {
+      setInvitationBusy(false);
+    }
+  };
+
   const openDeleteModal = () => {
     setDeleteConfirm('');
     setDeleteModal(true);
@@ -400,6 +418,25 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
               </div>
 
               <OrganizationWorkspaceSetup key={orgId} orgId={orgId} />
+
+              <div className={PANEL_CLASS}>
+                <CardHeader title="Initial admin invitation" subtitle="Resend first access details to the original organization admin" icon={Mail} accent="#2563eb" />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="min-w-0 break-all text-xs text-[var(--text-secondary)]">
+                    {detail.members
+                      .filter(member => String(member.role || '').toLowerCase() === 'organizationadmin')
+                      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0]?.email || 'No organization admin found'}
+                  </p>
+                  <Button type="button" size="sm" icon={Mail} loading={invitationBusy} disabled={busy || !detail.members.some(member => String(member.role || '').toLowerCase() === 'organizationadmin')}
+                    onClick={() => void handleResendInitialInvitation()}>
+                    Resend first access email
+                  </Button>
+                </div>
+                <p className="mt-2 text-[11px] leading-5 text-[var(--text-muted)]">
+                  Available only until the original admin completes their first sign-in.
+                </p>
+                {invitationNotice && <p role="status" className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">{invitationNotice}</p>}
+              </div>
 
               <div className={PANEL_CLASS}>
                 <CardHeader title="Free trial recovery" subtitle="Use when organization setup completed but trial provisioning failed" icon={RefreshCw} accent="#2563eb" />
