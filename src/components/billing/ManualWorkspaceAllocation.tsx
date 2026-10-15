@@ -116,25 +116,6 @@ export default function ManualWorkspaceAllocation() {
 
   return (
     <div className="col-span-12 grid grid-cols-12 gap-4 md:gap-5" id="manual-credit-allocation">
-      <Card padding="none" className="col-span-12 !rounded-2xl !p-5 sm:!p-6">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-          <Wallet aria-hidden="true" className="h-3.5 w-3.5" /> Share credits
-        </span>
-        <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Give credits to your workspaces</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-          Your organization holds credits first. You can share some with a workspace so its team can use them for calls and other services.
-        </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {[
-            ['1', 'Pick a workspace', 'Choose the team that needs credits.'],
-            ['2', 'Choose credits', 'Pick a balance and enter an amount.'],
-            ['3', 'Check and confirm', 'Review the result before sending.'],
-          ].map(([number, title, detail]) => <div key={number} className="flex gap-3 rounded-xl bg-[var(--bg-subtle)] p-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-subtle)] text-sm font-bold text-[var(--accent)]">{number}</span>
-            <div><p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p><p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{detail}</p></div>
-          </div>)}
-        </div>
-      </Card>
       <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
         <CardHeader title="Organization credit pool" icon={Wallet}
           subtitle="Credits here have not yet been sent to any workspace."
