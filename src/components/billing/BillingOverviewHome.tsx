@@ -125,7 +125,7 @@ export default function BillingOverviewHome({
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
           sub={`Calls · ${usage?.aiMinutesUsed == null ? 'Time unavailable' : Math.round(usage.aiMinutesUsed) + ' call minutes'}`} />
       </div>
-      {showWorkspaceAllocation && <Card padding="sm" className="col-span-12 min-w-0">
+      {showWorkspaceAllocation && <Card padding="sm" className="min-w-0 lg:col-span-2">
         <CardHeader title="Current workspace allocation"
           subtitle={currentWorkspaceAllocation?.workspaceName || usage?.workspaceName || 'Selected workspace'}
           icon={Wallet} />
@@ -151,8 +151,8 @@ export default function BillingOverviewHome({
                     <th scope="row" className="px-3 py-3 font-medium text-[var(--text-primary)]">
                       {balance.kind === 'subscription' ? 'Subscription credits' : 'Extra credits'}
                     </th>
-                    <td className="px-3 py-3 text-[var(--text-secondary)]">{availableCredits([balance], 'subscription')}</td>
-                    <td className="px-3 py-3 text-[var(--text-secondary)]">{availableCredits([{ ...balance, available: balance.held }], 'subscription')}</td>
+                    <td className="px-3 py-3 text-[var(--text-secondary)]">{availableCredits([balance], balance.kind)}</td>
+                    <td className="px-3 py-3 text-[var(--text-secondary)]">{availableCredits([{ ...balance, available: balance.held }], balance.kind)}</td>
                     <td className="px-3 py-3 text-[var(--text-secondary)]">{balance.expiresAt ? displayDate(balance.expiresAt) : 'No expiry'}</td>
                   </tr>
                 ))}
