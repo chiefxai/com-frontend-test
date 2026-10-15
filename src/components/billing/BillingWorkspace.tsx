@@ -188,30 +188,19 @@ export default function BillingWorkspace({
 
       {view === 'plan' && (
         <>
+          <div className="col-span-12 grid grid-cols-12 gap-3">
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label="Estimated monthly plan price" value={money(organizationPricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label="Workspaces" value={organizationPricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
+          </div>
           <Card padding="sm" className="col-span-12 sm:!p-5">
             <CardHeader title="Your subscription" subtitle="Here's what your plan costs and what you can do next." icon={CreditCard}
               action={<Button type="button" size="sm" variant="secondary" icon={Wallet}
                 onClick={() => onNavigate('credits')}>See my credits</Button>} />
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-              <div className="rounded-xl bg-[var(--accent-subtle)] p-5">
-                <p className="text-sm font-medium text-[var(--text-secondary)]">Your estimated plan price</p>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
-                  {money(organizationPricing?.totalMonthlyInr)}
-                  <span className="ml-1 text-base font-normal text-[var(--text-secondary)]">every month</span>
-                </p>
-                <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                  This is your plan's monthly price before taxes and extra usage charges. The amount to pay on a bill may differ.
-                </p>
-              </div>
-              <div className="grid grid-cols-12 gap-3">
-                <KpiCard span={{ xs: 6 }} icon={Building2} iconPosition="top-left"
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label="Workspaces" value={organizationPricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
-                <KpiCard span={{ xs: 6 }} icon={Layers3} iconPosition="top-left"
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
-              </div>
-            </div>
+            <p className="text-sm leading-6 text-[var(--text-secondary)]">The displayed monthly estimate excludes taxes and additional usage charges. The final billed amount may differ.</p>
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4">
               <Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
               <div>
@@ -240,15 +229,7 @@ export default function BillingWorkspace({
 
       {view === 'usage' && (
         <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Usage and limits">
-          <Card padding="none" className="col-span-12 !p-5 sm:!p-6">
-            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
-              <Gauge aria-hidden="true" className="h-3.5 w-3.5" /> Spending and limits
-            </span>
-            <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Where your usage goes</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-              See what your organization used this period.
-            </p>
-            <div className="mt-5 grid grid-cols-12 gap-3">
+            <div className="col-span-12 grid grid-cols-12 gap-3">
               {[
                 { title: 'Usage cost so far', value: money(workspaceBilling?.periodSpendInr), detail: 'All workspaces combined', icon: Activity },
                 { title: 'Calls', value: callCount ?? '—', detail: 'Recorded this period', icon: PhoneCall },
@@ -259,12 +240,21 @@ export default function BillingWorkspace({
                   iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                   label={title} value={value} sub={detail} icon={icon} />)}
             </div>
-            {rechargeBased && <div className="mt-4 grid grid-cols-12 gap-3">
+            {rechargeBased && <div className="col-span-12 grid grid-cols-12 gap-3">
               <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Wallet} iconPosition="top-left"
                 iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                 label="Call credits ready to use" value={formatInr(Math.max(0,rechargeBalanceInr-rechargeReservedInr))}
                 sub="Balance after credits reserved for calls in progress" />
             </div>}
+          <Card padding="none" className="col-span-12 !p-5 sm:!p-6">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+              <Gauge aria-hidden="true" className="h-3.5 w-3.5" /> Spending and limits
+            </span>
+            <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Where your usage goes</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+              See what your organization used this period.
+            </p>
+
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4 text-sm">
               <PhoneCall aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
               <div>
@@ -272,6 +262,26 @@ export default function BillingWorkspace({
                 <p className="mt-1 leading-6 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Recorded phone-service cost for this period.' : 'For information only. Your phone provider bills you separately.'}</p>
               </div>
             </div>
+          </Card>
+          <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+            <CardHeader title="Usage activity breakdown" subtitle="Aggregate charges and call activity for the current billing period" icon={Activity}
+              action={onOpenCallLogs ? <Button type="button" size="sm" variant="secondary" onClick={onOpenCallLogs}>View call logs</Button> : undefined} />
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-xs">
+                <thead className="border-b border-[var(--border)] text-[var(--text-secondary)]">
+                  <tr><th scope="col" className="pb-3 pr-4 font-medium">Activity</th><th scope="col" className="pb-3 pr-4 font-medium">Usage</th><th scope="col" className="pb-3 pr-4 font-medium">Cost</th><th scope="col" className="pb-3 font-medium">Details</th></tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
+                  <tr><th scope="row" className="py-3 pr-4 font-semibold">AI credits / processing</th><td className="py-3 pr-4">{formatCallTime(workspaceBilling?.aiMinutesUsed)}</td>
+                    <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.aiSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">Voice AI usage this period</td></tr>
+                  <tr><th scope="row" className="py-3 pr-4 font-semibold">Call credits / phone service</th><td className="py-3 pr-4">{callCount ?? '—'} calls</td>
+                    <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.phoneSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Phone charges included in billing' : 'Provider estimate; billed separately'}</td></tr>
+                  <tr><th scope="row" className="py-3 pr-4 font-semibold">Total recorded usage</th><td className="py-3 pr-4">{periodLabel}</td>
+                    <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.periodSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">Billing-period aggregate; not an additional charge</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-[var(--text-muted)]">These are period-level totals from billing data, not individual credit ledger transactions. Phone provider estimates may be billed separately.</p>
           </Card>
 
         </section>
@@ -286,7 +296,16 @@ export default function BillingWorkspace({
           </p>)}
       {(view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
+<<<<<<< HEAD
+          creditUsage={workspaceBilling ? {
+            aiSpendInr: workspaceBilling.aiSpendInr,
+            phoneSpendInr: workspaceBilling.phoneSpendInr,
+            phoneChargesBillable,
+            periodLabel,
+          } : null} />
+=======
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
+>>>>>>> origin/main
       )}
     </div>
   );

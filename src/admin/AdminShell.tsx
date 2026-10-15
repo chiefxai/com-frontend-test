@@ -1,3 +1,4 @@
+import { APP_NAME } from '../lib/appName';
 import React from 'react';
 import {
   LayoutDashboard, Building2, Users, ScrollText, Settings, Database,
@@ -72,7 +73,7 @@ export default function AdminShell({ email, onLogout }: { email: string; onLogou
         <SidebarBrand
           collapsed={collapsed}
           onToggle={toggleSidebar}
-          title="Chief Connect"
+          title={APP_NAME}
           subtitle="Platform Admin"
           homeTo="/admin/overview"
           navId="platform-admin-nav"

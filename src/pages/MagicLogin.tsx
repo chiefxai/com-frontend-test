@@ -1,3 +1,4 @@
+import { APP_NAME } from '../lib/appName';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, XCircle, Copy, Check, LogIn } from 'lucide-react';
@@ -53,7 +54,7 @@ export default function MagicLogin() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-xl mb-3">
             <LogIn className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white">Chief Connect</h1>
+          <h1 className="text-xl font-bold text-white">{APP_NAME}</h1>
           <p className="text-amber-100 text-sm mt-1">Your login credentials</p>
         </div>
 

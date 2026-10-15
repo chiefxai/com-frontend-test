@@ -117,6 +117,18 @@ export default function ManualWorkspaceAllocation() {
 
   return (
     <div className="col-span-12 grid grid-cols-12 gap-4 md:gap-5" id="manual-credit-allocation">
+      {!loading && !snapshot?.uninitialized && orgBalances.length > 0 && (
+        <div className="col-span-12 grid grid-cols-12 gap-3">
+              {orgBalances.map(row => (
+                <KpiCard key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
+                  span={{ xs: 12, sm: 6, xl: 4 }} icon={Wallet} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label={friendlyKind(row.kind) + ' not yet shared'}
+                  value={formatCreditAmount(row.available)}
+                  sub={`Held: ${formatCreditAmount(row.held)}`} />
+              ))}
+            </div>
+      )}
       <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
         <CardHeader title="Organization credit pool" icon={Wallet}
           subtitle="Credits here have not yet been sent to any workspace."
@@ -125,22 +137,8 @@ export default function ManualWorkspaceAllocation() {
         {notice && <p role="status" className="mb-3 flex items-center gap-2 text-xs text-[var(--text-primary)]">
           <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-600" />{notice}</p>}
         {loading ? <p role="status" className="text-xs text-[var(--text-muted)]">Loading the credit ledger…</p>
-          : snapshot?.uninitialized ? (
-            <p role="status" className="text-xs leading-5 text-[var(--text-secondary)]">
-              Your credit balance is not ready yet. Contact platform support before sending credits to workspaces.
-            </p>
-          ) : (
-            <div className="grid grid-cols-12 gap-3">
-              {orgBalances.length ? orgBalances.map(row => (
-                <KpiCard key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
-                  span={{ xs: 12, sm: 6, xl: 4 }} icon={Wallet} iconPosition="top-left"
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label={friendlyKind(row.kind) + ' not yet shared'}
-                  value={formatCreditAmount(row.available)}
-                  sub={`Held: ${formatCreditAmount(row.held)}`} />
-              )) : <p className="col-span-12 text-xs text-[var(--text-muted)]">No unallocated active credit positions.</p>}
-            </div>
-          )}
+          : snapshot?.uninitialized ? <p role="status" className="text-xs text-[var(--text-secondary)]">Your credit balance is not ready yet. Contact platform support before allocating credits.</p>
+          : !orgBalances.length ? <p className="text-xs text-[var(--text-muted)]">No unallocated active credit positions.</p> : null}
         {snapshot && !snapshot.uninitialized && !snapshot.writable && (
           <p role="status" className="mt-3 text-xs text-amber-700 dark:text-amber-300">
             This billing account is held or inactive. Allocation is unavailable until the account is reactivated.

@@ -1,3 +1,4 @@
+import { APP_NAME } from '../lib/appName';
 import { useAuthorization, canAccessTab } from '../lib/authorization';
 import React, { useState, useRef, useEffect } from 'react';
 import Tooltip from './ui/Tooltip';
@@ -502,7 +503,7 @@ export default function Sidebar({
         <SidebarBrand
           collapsed={collapsed}
           onToggle={toggleCollapsed}
-          title="Chief Connect"
+          title={APP_NAME}
           subtitle={organizationName || 'Organization'}
           navId="organization-nav"
         />

@@ -119,7 +119,7 @@ describe('organization billing interface', () => {
   it('shows a simple subscription overview and hides extra billing details by default', async () => {
     render(<BillingWorkspace {...defaults} view="plan" />);
     expect(screen.getByText('Your subscription')).toBeInTheDocument();
-    expect(screen.getByText('Your estimated plan price')).toBeInTheDocument();
+    expect(screen.getByText('Estimated monthly plan price')).toBeInTheDocument();
     expect(screen.getByText('Plan price and calling credits are different.')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
@@ -153,6 +153,9 @@ describe('organization billing interface', () => {
   it('removes workspace monthly spending controls without hiding usage totals', () => {
     render(<BillingWorkspace {...defaults} view="usage" />);
     expect(screen.getByText('Usage cost so far')).toBeInTheDocument();
+    expect(screen.getByText('Usage activity breakdown')).toBeInTheDocument();
+    expect(screen.getByText('AI credits / processing')).toBeInTheDocument();
+    expect(screen.getByText('Call credits / phone service')).toBeInTheDocument();
     expect(screen.queryByText('Your workspace spending limit')).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', {name:'Monthly cap in INR'})).not.toBeInTheDocument();
     expect(screen.queryByRole('button', {name:'Save workspace limit'})).not.toBeInTheDocument();
