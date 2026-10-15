@@ -24,13 +24,14 @@ const number = { id: 'num-1', phoneNumberE164: '+14155550123', inventoryStatus: 
 
 function setup({ connectorFeature = true, trialProvisioningStatus = 'free_trial', trialProvisioningCode = 'SUBSCRIPTION_PLAN_VERSION_UNAVAILABLE' } = {}) {
   const createRequests: Array<Record<string, any>> = [];
+  let registeredNumberCount = 0;
   mocks.navigate.mockClear();
   mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
     if (url === '/api/platform/billing/workspace-plans') return response({ version: 1, plans: [plan] });
     if (url === '/api/platform/data-retention/policies') return response(catalog);
     if (url === '/api/platform/telephony/providers') return connectorFeature ? response({ providers: [{ providerKey: 'vobiz', label: 'Vobiz' }, { providerKey: 'twilio', label: 'Twilio' }] }) : response({}, 404);
     if (url === '/api/platform/telephony/connectors') return connectorFeature ? response({ connectors: [{ id: 'conn-1', providerKey: 'twilio', displayName: 'Platform account', status: 'active' }] }) : response({}, 404);
-    if (url === '/api/platform/telephony/connectors/conn-1/numbers' && !options) return response({ numbers: [number] });
+    if (url === '/api/platform/telephony/connectors/conn-1/numbers' && !options) return response({ numbers: [number, { ...number, id:'num-2', phoneNumberE164:'+14155550125', displayName:'Sales' }] });
     if (url === '/api/platform/organizations' && options?.method === 'POST') {
       const request = JSON.parse(options.body || '{}');
       createRequests.push(request);
@@ -39,10 +40,9 @@ function setup({ connectorFeature = true, trialProvisioningStatus = 'free_trial'
         : { status: 'awaiting_payment', quoteId: 'quote-1', paymentAmount: { asset: 'INR', units: '100000', scale: 2 } } }, 201);
     }
     if (url === '/api/platform/organizations/org-1/initial-subscription-payment') return response({ id: 'payment-1' }, 201);
-    if (url === '/api/platform/telephony/numbers/num-1/allocate' && options?.method === 'POST') return response({ allocation: { orgId: 'org-1' } }, 201);
-    if (url === '/api/platform/telephony/connectors/conn-1/numbers' && options?.method === 'POST') return response({ number: { id: 'new-num-1' } }, 201);
-    if (url === '/api/platform/telephony/numbers/new-num-1/mark-ready' && options?.method === 'POST') return response({ number: { id: 'new-num-1' } });
-    if (url === '/api/platform/telephony/numbers/new-num-1/allocate' && options?.method === 'POST') return response({ allocation: { orgId: 'org-1' } }, 201);
+    if (url === '/api/platform/telephony/numbers/bulk-allocate' && options?.method === 'POST') return response({ orgId:'org-1', allocations: JSON.parse(options.body || '{}').phoneNumberIds.map((phoneNumberId:string)=>({phoneNumberId,orgId:'org-1'})) },201);
+    if (url === '/api/platform/telephony/connectors/conn-1/numbers' && options?.method === 'POST') return response({ number: { id: `new-num-${++registeredNumberCount}` } }, 201);
+    if (/^\/api\/platform\/telephony\/numbers\/new-num-\d+\/mark-ready$/.test(url) && options?.method === 'POST') return response({ number: { id: url.split('/')[5] } });
     throw new Error(`Unexpected request ${url}`);
   });
   render(<MemoryRouter><CreateWorkspacePage /></MemoryRouter>);
@@ -64,35 +64,35 @@ describe('organization creation telephony selection', () => {
   it('hides platform number selection when connector APIs are unavailable and preserves BYO payload', async () => {
     const { createRequests } = setup({ connectorFeature: false });
     await fillRequiredOrgFields();
-    expect(screen.queryByText('Reserve a platform connector number')).not.toBeInTheDocument();
+    expect(screen.queryByText('Use platform-managed phone numbers')).not.toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Vobiz Auth ID'), { target: { value: 'auth-id' } });
     fireEvent.change(screen.getByPlaceholderText('Vobiz Auth Token'), { target: { value: 'auth-token' } });
     fireEvent.change(screen.getByPlaceholderText('+14155550123'), { target: { value: '+14155550124' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Workspace' }).closest('form')!);
     await waitFor(() => expect(createRequests).toHaveLength(1));
-    expect(createRequests[0].callProvider).toEqual({ provider: 'vobiz', authId: 'auth-id', authToken: 'auth-token', phoneNumber: '+14155550124' });
+    expect(createRequests[0].callProvider).toEqual({ provider: 'vobiz', authId: 'auth-id', authToken: 'auth-token', phoneNumber: '+14155550124', phoneNumbers: ['+14155550124'] });
     expect(createRequests[0]).not.toHaveProperty('platformTelephonyNumberId');
   });
 
   it('sends the selected platform inventory number without asking for BYO credentials', async () => {
     const { createRequests } = setup();
     await fillRequiredOrgFields();
-    fireEvent.click(await screen.findByLabelText('Reserve a platform connector number'));
+    fireEvent.click(await screen.findByLabelText('Use platform-managed phone numbers'));
     expect(await screen.findByLabelText('Available platform number *')).toHaveTextContent('+14155550123');
-    expect(screen.getByRole('note')).toHaveTextContent(/assign it to the right workspace/i);
+    expect(screen.getByRole('note')).toHaveTextContent(/assign each number to the appropriate workspace/i);
     fireEvent.change(screen.getByLabelText('Available platform number *'), { target: { value: 'num-1' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Workspace' }).closest('form')!);
     await waitFor(() => expect(createRequests).toHaveLength(1));
     expect(createRequests[0]).not.toHaveProperty('platformTelephonyNumberId');
     expect(createRequests[0]).not.toHaveProperty('callProvider');
     expect(createRequests[0].platformTelephonyAllocationPending).toBe(true);
-    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/num-1/allocate', expect.objectContaining({ method: 'POST', body: JSON.stringify({ orgId: 'org-1' }) })));
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/bulk-allocate', expect.objectContaining({ method: 'POST', body: JSON.stringify({ orgId: 'org-1', phoneNumberIds:['num-1'] }) })));
   });
 
   it('registers an entered platform number on the selected provider connector, confirms and allocates it', async () => {
     setup();
     await fillRequiredOrgFields();
-    fireEvent.click(await screen.findByLabelText('Reserve a platform connector number'));
+    fireEvent.click(await screen.findByLabelText('Use platform-managed phone numbers'));
     fireEvent.click(screen.getByLabelText('Enter a number from a connector'));
     fireEvent.change(screen.getByLabelText('Platform connector *'), { target: { value: 'conn-1' } });
     fireEvent.change(screen.getByLabelText('Phone number *'), { target: { value: '+14155550199' } });
@@ -100,7 +100,72 @@ describe('organization creation telephony selection', () => {
     fireEvent.submit(screen.getByRole('button', { name: 'Create Workspace' }).closest('form')!);
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/connectors/conn-1/numbers', expect.objectContaining({ method: 'POST' })));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/new-num-1/mark-ready', expect.objectContaining({ method: 'POST' })));
-    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/new-num-1/allocate', expect.objectContaining({ method: 'POST' })));
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/bulk-allocate', expect.objectContaining({ method: 'POST' })));
+  });
+
+  it('registers, verifies, and allocates multiple entered platform connector numbers', async () => {
+    setup();
+    await fillRequiredOrgFields();
+    fireEvent.click(await screen.findByLabelText('Use platform-managed phone numbers'));
+    fireEvent.click(screen.getByLabelText('Enter a number from a connector'));
+    fireEvent.change(screen.getByLabelText('Platform connector *'),{target:{value:'conn-1'}});
+    fireEvent.change(screen.getByLabelText('Phone number *'),{target:{value:'+14155550135'}});
+    fireEvent.click(screen.getByLabelText(/I confirm this number is active on the selected provider account/));
+    fireEvent.click(screen.getByRole('button',{name:/Add another provider number/i}));
+    const secondNumber=screen.getByLabelText('Additional platform phone number 2');
+    fireEvent.change(secondNumber,{target:{value:'+14155550136'}});
+    const fieldset=secondNumber.closest('fieldset')!;
+    fireEvent.change(fieldset.querySelector('select')!,{target:{value:'conn-1'}});
+    fireEvent.click(fieldset.querySelector('input[type="checkbox"]')!);
+    fireEvent.submit(screen.getByRole('button',{name:'Create Workspace'}).closest('form')!);
+    await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/bulk-allocate',
+      expect.objectContaining({method:'POST',body:JSON.stringify({
+        orgId:'org-1',phoneNumberIds:['new-num-1','new-num-2'],
+      })})));
+    expect(mocks.apiFetch.mock.calls.filter(([url,options]:[string,{method?:string}]) =>
+      url==='/api/platform/telephony/connectors/conn-1/numbers' && options?.method==='POST')).toHaveLength(2);
+  });
+
+  it('maps multiple customer-owned Vobiz phone numbers using one credential set', async () => {
+    const { createRequests } = setup({connectorFeature:false});
+    await fillRequiredOrgFields();
+    fireEvent.change(screen.getByPlaceholderText('Vobiz Auth ID'), {target:{value:'auth-id'}});
+    fireEvent.change(screen.getByPlaceholderText('Vobiz Auth Token'), {target:{value:'auth-token'}});
+    fireEvent.change(screen.getByPlaceholderText('+14155550123'), {target:{value:'+14155550123'}});
+    fireEvent.click(screen.getByRole('button',{name:/Add another phone number/i}));
+    fireEvent.change(screen.getByLabelText('Additional provider phone number 2'),{target:{value:'+14155550124'}});
+    fireEvent.submit(screen.getByRole('button',{name:'Create Workspace'}).closest('form')!);
+    await waitFor(()=>expect(createRequests).toHaveLength(1));
+    expect(createRequests[0].callProvider).toEqual({
+      provider:'vobiz',authId:'auth-id',authToken:'auth-token',
+      phoneNumber:'+14155550123',phoneNumbers:['+14155550123','+14155550124'],
+    });
+  });
+
+  it('blocks duplicate customer-owned phone numbers before organization creation', async () => {
+    const { createRequests } = setup({connectorFeature:false});
+    await fillRequiredOrgFields();
+    fireEvent.change(screen.getByPlaceholderText('Vobiz Auth ID'),{target:{value:'auth-id'}});
+    fireEvent.change(screen.getByPlaceholderText('Vobiz Auth Token'),{target:{value:'auth-token'}});
+    fireEvent.change(screen.getByPlaceholderText('+14155550123'),{target:{value:'+14155550123'}});
+    fireEvent.click(screen.getByRole('button',{name:/Add another phone number/i}));
+    fireEvent.change(screen.getByLabelText('Additional provider phone number 2'),{target:{value:'+14155550123'}});
+    fireEvent.submit(screen.getByRole('button',{name:'Create Workspace'}).closest('form')!);
+    expect(await screen.findByText(/distinct phone numbers/i)).toBeInTheDocument();
+    expect(createRequests).toHaveLength(0);
+  });
+
+  it('maps two distinct saved platform numbers in one bulk allocation',async()=>{
+    const {createRequests}=setup();
+    await fillRequiredOrgFields();
+    fireEvent.click(await screen.findByLabelText('Use platform-managed phone numbers'));
+    fireEvent.change(screen.getByLabelText('Available platform number *'),{target:{value:'num-1'}});
+    fireEvent.click(screen.getByRole('button',{name:/Add another platform number/i}));
+    fireEvent.change(screen.getByLabelText('Additional platform number 2'),{target:{value:'num-2'}});
+    fireEvent.submit(screen.getByRole('button',{name:'Create Workspace'}).closest('form')!);
+    await waitFor(()=>expect(createRequests).toHaveLength(1));
+    await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/platform/telephony/numbers/bulk-allocate',
+      expect.objectContaining({method:'POST',body:JSON.stringify({orgId:'org-1',phoneNumberIds:['num-1','num-2']})})));
   });
 
   it('collects payment reference and receipt for direct purchase, then submits them to Payment Reviews', async () => {

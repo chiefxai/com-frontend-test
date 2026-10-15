@@ -4,7 +4,7 @@ import Tooltip from './ui/Tooltip';
 import SidebarFrame from './ui/SidebarFrame';
 import SidebarBrand from './ui/SidebarBrand';
 import CommonDropdown from './ui/CommonDropdown';
-import NotificationBell, { type AppNotification } from './NotificationBell';
+import NotificationBell from './NotificationBell';
 import ProfileMenu, { type ProfileMenuProps } from './ProfileMenu';
 import {
   LayoutDashboard,
@@ -51,15 +51,16 @@ export interface WorkspaceOption {
 }
 
 interface SidebarProps {
+  /** Legacy compatibility; notifications now load from the server in NotificationBell. */
+  notifications?: unknown[];
+  onMarkAllNotificationsRead?: () => void;
+  onClearNotifications?: () => void;
   workspaces: WorkspaceOption[];
   activeWorkspaceId: string;
   /** Authenticated subscription capability, not the current workspace count. */
   multipleWorkspacesEnabled?: boolean;
   workspaceName?: string;
   onWorkspaceChange: (workspace: WorkspaceOption) => void;
-  notifications: AppNotification[];
-  onMarkAllNotificationsRead: () => void;
-  onClearNotifications: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   activeSubTab: string;
@@ -72,6 +73,7 @@ interface SidebarProps {
   accountUser: ProfileMenuProps['kcUser'];
   accountRole: string | null;
   onAccountOpen?: () => void;
+  onNotificationSettings?: () => void;
   onLogout: () => void;
 }
 
@@ -219,9 +221,6 @@ export default function Sidebar({
   multipleWorkspacesEnabled = false,
   workspaceName,
   onWorkspaceChange,
-  notifications,
-  onMarkAllNotificationsRead,
-  onClearNotifications,
   activeTab,
   setActiveTab,
   activeSubTab,
@@ -234,6 +233,7 @@ export default function Sidebar({
   accountUser,
   accountRole,
   onAccountOpen,
+  onNotificationSettings,
   onLogout,
 }: SidebarProps) {
   const selectedWorkspace = workspaces.find(row => (row.workspaceId || row.orgId) === activeWorkspaceId);
@@ -720,17 +720,13 @@ export default function Sidebar({
             kcUser={accountUser}
             dbRole={accountRole}
             onOpen={onAccountOpen}
+            onNotificationSettings={onNotificationSettings}
             logout={onLogout}
             placement="top-start"
             compact={collapsed}
             showIdentity={!collapsed}
           />
-          <NotificationBell
-            placement="sidebar"
-            notifications={notifications}
-            onMarkAllRead={onMarkAllNotificationsRead}
-            onClear={onClearNotifications}
-          />
+          <NotificationBell placement="sidebar" audience="organization" />
         </div>
       </div>
       </SidebarFrame>

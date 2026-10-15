@@ -11,7 +11,6 @@ vi.mock('../lib/authorization',()=>({useAuthorization:()=>({can:mocks.can})}));
 vi.mock('../lib/billing/client',()=>({billingClient:{submitPaymentWithProof:mocks.submit},newBillingIdempotencyKey:()=>crypto.randomUUID()}));
 vi.mock('../components/ui/Modal',()=>({default:({open,children}:{open:boolean;children:React.ReactNode})=>open?<div role="dialog">{children}</div>:null}));
 vi.mock('../components/ui/Widget',()=>({default:({children}:{children:React.ReactNode})=><div>{children}</div>}));
-vi.mock('../components/ui/DataTable',()=>({default:()=>null}));
 vi.mock('../components/ui/FilterBar',()=>({default:({actions}:{actions:React.ReactNode})=><div>{actions}</div>}));
 vi.mock('../components/ui/IconButton',()=>({default:({label,onClick}:{label:string;onClick:()=>void})=><button onClick={onClick}>{label}</button>}));
 const amount={asset:'INR',units:'5000',scale:2};
@@ -46,7 +45,33 @@ describe('workspace add-on purchase UI',()=>{
     expect(screen.queryByRole('button',{name:'Submit payment'})).not.toBeInTheDocument();
     expect(screen.queryByRole('button',{name:'Cancel purchase'})).not.toBeInTheDocument();
   });
-  it('prepares an invoice for workspace six instead of calling immediate workspace creation',async()=>{
+  it('redeems unallocated paid top-up credits to create an extra workspace immediately',async()=>{
+  const workspaces=Array.from({length:5},(_,i)=>({id:`w-${i}`,name:`Workspace ${i}`,status:'Active',industry:'lending'}));
+  const setup={policy:{mode:'same_industry',primaryIndustry:'lending',pricing:{includedWorkspaces:5,maxWorkspaces:10}},
+    purchasesAvailable:true,workspaces,currentQuote:{totalMonthlyInr:1000},
+    addBranchQuote:{totalMonthlyInr:1050,paymentRequired:true,monthlyAddonInr:50,token:'server-token'}};
+  mocks.apiFetch.mockImplementation(async(path:string,opts?:{method?:string})=>{
+    if(path==='/api/settings/workspaces')return response(workspaces);
+    if(path==='/api/settings/workspace-policy')return response(setup);
+    if(path==='/api/billing/workspace-addons')return response({
+      purchasesAvailable:true,topupPaymentAvailable:true,
+      unallocatedTopupCredits:{asset:'INR',units:'6000',scale:2},rows:[]});
+    if(path==='/api/billing/workspace-addons/pay-with-topup' && opts?.method==='POST')
+      return response({status:'active',workspaceId:'workspace-new',paymentSource:'topup_credits'});
+    return response({});
+  });
+  render(<WorkspaceManagement enabled onWorkspaceCreated={async()=>{}}/>);
+  await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/billing/workspace-addons'));
+  fireEvent.click(screen.getByRole('button',{name:'Create Workspace'}));
+  expect(await screen.findByRole('radio',{name:/Pay now with unallocated top-up credits/})).toBeChecked();
+  fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Mumbai'}});
+  fireEvent.click(screen.getByRole('button',{name:'Pay credits & create workspace'}));
+  await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith(
+    '/api/billing/workspace-addons/pay-with-topup',expect.objectContaining({method:'POST'})));
+  expect(await screen.findByText(/Workspace created immediately/)).toBeInTheDocument();
+});
+
+it('prepares an invoice for workspace six instead of calling immediate workspace creation',async()=>{
     const workspaces=Array.from({length:5},(_,i)=>({id:`w-${i}`,name:`Workspace ${i}`,status:'Active',industry:'lending'}));
     const setup={policy:{mode:'same_industry',primaryIndustry:'lending',pricing:{includedWorkspaces:5,maxWorkspaces:10}},purchasesAvailable:true,
       workspaces,currentQuote:{totalMonthlyInr:1000},addBranchQuote:{totalMonthlyInr:1050,paymentRequired:true,monthlyAddonInr:50,token:'server-token'}};
@@ -54,7 +79,7 @@ describe('workspace add-on purchase UI',()=>{
     render(<WorkspaceManagement enabled onWorkspaceCreated={async()=>{}}/>);
     await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/settings/workspace-policy'));
     fireEvent.click(screen.getByRole('button',{name:'Create Workspace'}));
-    await screen.findByText(/Pay ₹50.00 per month/);
+    await screen.findByText(/Workspace add-on: ₹50.00/);
     fireEvent.change(screen.getByLabelText('Workspace name'),{target:{value:'Mumbai'}});
     fireEvent.click(screen.getByRole('button',{name:'Prepare payment invoice'}));
     await waitFor(()=>expect(mocks.apiFetch).toHaveBeenCalledWith('/api/billing/workspace-addons',expect.objectContaining({method:'POST',body:JSON.stringify({name:'Mumbai',industry:'lending',branchName:null,pricingAcceptanceToken:'server-token'})})));

@@ -1,14 +1,14 @@
 import React from 'react';
-import WorkspaceAddonPurchases from './WorkspaceAddonPurchases';
+import WorkspaceAddonPurchases, { type PaymentDisplayFilter, type PaymentStatusFilter } from './WorkspaceAddonPurchases';
 import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
-import { ArrowDownToLine, CheckCircle2, Clock3, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle2, Clock3, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
 import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview } from '../../lib/billing/types';
-import DataTable from '../ui/DataTable';
 import KpiCard from '../ui/KpiCard';
 import { Card, CardHeader } from '../ui/Card';
+import FilterBar from '../ui/FilterBar';
 import Button from '../ui/Button';
 
 type Quote = { quoteId: string; paymentAmount: BillingAmount; topupCredits: BillingAmount; validUntil: string };
@@ -44,6 +44,9 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [cursorStack, setCursorStack] = React.useState<(string | null)[]>([null]);
   const [historyFilter, setHistoryFilter] = React.useState<PaymentHistoryType>('all');
+  const [activityView, setActivityView] = React.useState<PaymentDisplayFilter>('all');
+  const [paymentStatus, setPaymentStatus] = React.useState<PaymentStatusFilter>('all');
+  const [paymentSearch, setPaymentSearch] = React.useState('');
   const [amount, setAmount] = React.useState('');
   const [reference, setReference] = React.useState('');
   const [proof, setProof] = React.useState<File | null>(null);
@@ -209,25 +212,25 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   Refresh
                 </Button>
               } />
+            <p className="mb-4 text-sm leading-6 text-[var(--text-secondary)]">These credits help pay for services like AI calls. Credits included in your plan and credits you buy are kept separate.</p>
             <div className="grid grid-cols-12 gap-3">
               <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
-                label="Subscription credits" value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'}
+                label="From your plan" value={overview ? sumBalance(subscriptionCredits) : '—'}
                 sub="Included with your plan" />
               <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
-                label="Added credits" value={balancesAvailable ? sumBalance(topupCredits) : '—'}
+                label="Credits you added" value={overview ? sumBalance(topupCredits) : '—'}
                 sub="Approved top-up payments" />
             </div>
             {overviewError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">Credits unavailable: {overviewError}</p>}
-            {workspaceCreditError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate?.('credits')}>View credits</Button>
               {canTopup && <Button type="button" variant="primary" size="sm" icon={Plus}
                 onClick={() => onNavigate?.('topup')}>Add credits</Button>}
             </div>
-            <p className="mt-3 text-[11px] text-[var(--text-muted)]">New credits appear only after payment approval.</p>
+            <p className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]"><Info aria-hidden="true" className="h-4 w-4 shrink-0" /> New credits appear only after payment approval.</p>
           </Card>
           <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-5 sm:!p-5">
-            <CardHeader title="Recent payments" subtitle="Latest organization payment requests"
+            <CardHeader title="Recent payments" subtitle="A quick look at your latest receipts"
               icon={Clock3} action={
                 <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate?.('payments')}>
                   View all
@@ -257,44 +260,42 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </>
       )}
 
-      {(view === 'credits' || view === 'plan') && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
+      {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
       {(view === 'credits' || view === 'topup') && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Credit balances" subtitle="Subscription and purchased usage credits"
-            icon={Wallet} action={
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>
-                  Refresh
-                </Button>
-                {manualAllocationAllowed && canAllocate && view === 'credits' && onNavigate && <Button type="button" variant="secondary" size="sm"
-                  icon={Wallet} onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
-                {canSubmit && view === 'credits' && <Button type="button" variant="primary" size="sm" icon={Plus}
-                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>
-                  Add credits
-                </Button>}
+          <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
+                {manualAllocationAllowed && canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
+                  onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
+                {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
+                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
               </div>
             } />
           <div className="grid grid-cols-12 gap-3">
-            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
-              label="Available subscription credits" value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'}
-              sub="Provided with your subscription" />
-            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
-              label="Available top-up credits" value={balancesAvailable ? sumBalance(topupCredits) : '—'}
-              sub="Added after approval" />
-            <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
-              label="Subscription period" value={overview?.activePeriod?.status || 'Not available'}
-              sub={overview?.activePeriod?.endsAt
-                ? `Ends ${new Date(overview.activePeriod.endsAt).toLocaleDateString('en-IN')}`
-                : 'Current subscription'} />
+            <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
+              iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
+              value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'} />
+            <KpiCard span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
+              iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
+              value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
           </div>
-          {overviewError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">Credit ledger unavailable: {overviewError}</p>}
-          {workspaceCreditError && <p role="alert" className="mt-3 text-xs text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
-          {canSubmit && initialLoadComplete && !canTopup && <p role="status" className="mt-3 text-xs text-[var(--text-muted)]">
-            Adding credits is unavailable until the billing ledger and payment review flow are enabled.
+          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
+          {workspaceCreditError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
+        </Card>
+      )}
+      {view === 'topup' && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Add credits" subtitle="Credits become available after your receipt is approved" icon={Wallet}
+            action={<Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>Refresh</Button>} />
+          {canSubmit && initialLoadComplete && !canTopup && <p role="status" className="text-sm text-[var(--text-secondary)]">
+            Adding credits is unavailable until billing and payment review are enabled.
           </p>}
-          {!canSubmit && <p className="mt-3 text-xs text-[var(--text-muted)]">
-            Only administrators with payment-submission permission can add credits.
-          </p>}
+          {!canSubmit && <p className="text-sm text-[var(--text-secondary)]">Only administrators with payment-submission permission can add credits.</p>}
+          {overviewError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">{overviewError}</p>}
         </Card>
       )}
 
@@ -376,43 +377,73 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
 
       {view === 'payments' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Payment history" subtitle="Credit, subscription, and workspace add-on payment requests"
-            icon={Clock3} action={
-              <div className="flex flex-wrap items-center gap-2">
-                <select aria-label="Payment type" value={historyFilter}
-                  onChange={event => setHistoryFilter(event.target.value as PaymentHistoryType)}
-                  className="h-9 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 text-xs text-[var(--text-primary)]">
-                  <option value="all">All payments</option>
-                  <option value="topup">Credit top-ups</option>
-                  <option value="workspace">Workspace add-ons</option>
-                  <option value="subscription">Subscriptions</option>
-                  <option value="invoice">Other invoice payments</option>
-                </select>
-                <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
-                  onClick={() => void refresh()}>Refresh</Button>
-              </div>
+          <CardHeader title="Payments and workspace invoices"
+            subtitle="One place to check receipts, invoices, and extra workspace charges"
+            icon={ReceiptText} action={
+              <Button type="button" variant="secondary" size="sm" icon={RefreshCw}
+                onClick={() => void refresh()}>Refresh</Button>
             } />
-          {historyError && <p role="alert" className="mb-3 text-xs text-rose-600 dark:text-rose-300">{historyError}</p>}
-          <DataTable<PaymentRequest> bare resizable loading={historyLoading}
-            columns={[
-              { key: 'date', header: 'Date', cell: payment => new Date(payment.submittedAt).toLocaleDateString('en-IN') },
-              { key: 'type', header: 'Type', cell: payment => (
-                <span>
-                  <span className="block font-medium text-[var(--text-primary)]">{paymentTypeLabel(payment)}</span>
-                  {payment.workspaceAddonName && <span className="block text-[11px] text-[var(--text-muted)]">{payment.workspaceAddonName}</span>}
-                </span>
-              ) },
-              { key: 'amount', header: 'Amount', cell: payment => <span className="font-semibold tabular-nums">{formatMoney(payment.expectedAmount)}</span> },
-              { key: 'status', header: 'Status', cell: payment => (
-                <span className="inline-flex rounded-md bg-[var(--bg-subtle)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-                  {statuses[payment.status] || payment.status}
-                </span>
-              ) },
+          <FilterBar className="mb-4"
+            search={{ value: paymentSearch, onChange: setPaymentSearch, placeholder: 'Find a payment or workspace…' }}
+            hasActiveFilters={activityView !== 'all' || historyFilter !== 'all' || paymentStatus !== 'all' || Boolean(paymentSearch)}
+            onClear={() => {
+              setActivityView('all'); setHistoryFilter('all'); setPaymentStatus('all'); setPaymentSearch('');
+            }}
+            selects={[
+              { key: 'Payment records', label: 'Payment records', value: activityView,
+                onChange: value => {
+                  const next = value as PaymentDisplayFilter;
+                  setActivityView(next);
+                  if (next === 'workspace' && !['all', 'workspace'].includes(historyFilter)) setHistoryFilter('workspace');
+                },
+                options: [
+                  { label: 'All records', value: 'all' },
+                  { label: 'Submitted payments only', value: 'submitted' },
+                  { label: 'Workspace invoices only', value: 'workspace' },
+                ] },
+              { key: 'Payment type', label: 'Payment type', value: historyFilter,
+                onChange: value => {
+                  const next = value as PaymentHistoryType;
+                  setHistoryFilter(next);
+                  if (activityView === 'workspace' && next !== 'all' && next !== 'workspace') setActivityView('submitted');
+                },
+                options: [
+                  { label: 'All types', value: 'all' },
+                  { label: 'Credit top-ups', value: 'topup' },
+                  { label: 'Workspace add-ons', value: 'workspace' },
+                  { label: 'Subscriptions', value: 'subscription' },
+                  { label: 'Other invoices', value: 'invoice' },
+                ] },
+              { key: 'Payment status', label: 'Payment status', value: paymentStatus,
+                onChange: value => setPaymentStatus(value as PaymentStatusFilter),
+                options: [
+                  { label: 'All statuses', value: 'all' },
+                  { label: 'Payment needed / needs attention', value: 'action' },
+                  { label: 'Waiting for approval', value: 'review' },
+                  { label: 'Approved / active', value: 'completed' },
+                ] },
             ]}
-            rows={history} rowKey={payment => payment.id}
-            emptyMessage={historyError ? 'Payment history is unavailable.' : 'No matching payments on this page.'} />
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
-            <p className="text-[11px] text-[var(--text-muted)]">Page {cursorStack.length} · up to 10 payments per page</p>
+          />
+          {historyError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">
+            Submitted payments could not be loaded: {historyError}. Workspace invoices may still be available.
+          </p>}
+          <div className="mt-4">
+            <WorkspaceAddonPurchases
+              canSubmit={canSubmit}
+              submittedPayments={history}
+              displayFilter={activityView}
+              statusFilter={paymentStatus}
+              showWorkspace={historyFilter === 'all' || historyFilter === 'workspace'}
+              showSubmitted
+              submittedLoading={historyLoading}
+              searchTerm={paymentSearch}
+              onChange={refresh}
+            />
+          </div>
+          {activityView !== 'workspace' && <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
+            <p className="text-xs text-[var(--text-muted)]">
+              Submitted receipts: page {cursorStack.length}, up to 10 per page. Workspace invoices are loaded separately.
+            </p>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" size="sm"
                 disabled={historyLoading || cursorStack.length <= 1}
@@ -429,20 +460,10 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                   void loadHistory(nextCursor);
                 }}>Next</Button>
             </div>
-          </div>
-          <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            Showing submitted payment requests. Open and unpaid workspace invoices remain under Additional workspace billing below.
-          </p>
+          </div>}
         </Card>
       )}
 
-      {(view === 'plan' || view === 'payments') && can('billing.organization.read') && (
-        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Additional workspace billing" subtitle="Invoices, payment approval, and renewals"
-            icon={CreditCard} />
-          <WorkspaceAddonPurchases canSubmit={canSubmit} />
-        </Card>
-      )}
     </div>
   );
 }

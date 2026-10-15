@@ -1,192 +1,139 @@
-<title>Notification Bell</title>
-import React, { useEffect, useRef, useState } from 'react';
-import { Bell, Phone, Activity, X, CheckCheck, CreditCard, Loader2 } from 'lucide-react';
-import { BillingApiError, billingClient, newBillingIdempotencyKey } from '../lib/billing';
+import React from 'react';
+import { Bell, CheckCheck, CreditCard, Loader2, MailCheck, Settings2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { notificationClient, platformStreamUrl, type NotificationAudience, type ProductNotification } from '../notifications/api';
 
-export interface AppNotification {
-  id: string;
-  type: string;
-  message: string;
-  timestamp: number;
-  read: boolean;
-  title?: string;
-  source?: 'live' | 'billing';
-  eventKey?: string;
-  scopeType?: 'organization' | 'workspace';
-  scopeOwnerId?: string;
+interface Props { audience: NotificationAudience; placement?: 'sidebar' | 'header'; }
+const REFRESH_EVENT = 'chiefx-notification-change';
+
+function timeAgo(value: string) {
+  const elapsed = Date.now() - Date.parse(value);
+  if (!Number.isFinite(elapsed) || elapsed < 0) return 'Recently';
+  if (elapsed < 60_000) return 'Just now';
+  if (elapsed < 3_600_000) return Math.floor(elapsed / 60_000) + 'm ago';
+  if (elapsed < 86_400_000) return Math.floor(elapsed / 3_600_000) + 'h ago';
+  return new Date(value).toLocaleDateString();
+}
+function notificationIcon(eventKey: string) {
+  if (eventKey.startsWith('payment.') || eventKey.startsWith('billing.')) return <CreditCard className="h-4 w-4 text-emerald-600" />;
+  return <Bell className="h-4 w-4 text-blue-500" />;
 }
 
-interface Props {
-  notifications: AppNotification[];
-  onMarkAllRead: () => void;
-  onClear: () => void;
-  placement?: 'header' | 'sidebar';
-}
+/** Notifications are database-backed business events, not raw SSE transport logs. */
+export default function NotificationBell({ audience, placement = 'header' }: Props) {
+  const navigate = useNavigate();
+  const [rows, setRows] = React.useState<ProductNotification[]>([]);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
+  const [menuPosition, setMenuPosition] = React.useState({left:8,bottom:80});
+  const ref = React.useRef<HTMLDivElement>(null);
 
-function typeIcon(type: string) {
-  if (type === 'call_started' || type === 'call_completed') return <Phone className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
-  if (type.startsWith('billing.') || type.startsWith('payment.')) return <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />;
-  return <Activity className="h-3.5 w-3.5 text-slate-400 shrink-0" />;
-}
+  const refresh = React.useCallback(async () => {
+    try { const result = await notificationClient.list(audience); setRows(Array.isArray(result) ? result : []); setError(false); }
+    catch { setError(true); }
+    finally { setLoading(false); }
+  }, [audience]);
 
-function timeAgo(ts: number) {
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
-}
+  React.useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 30_000);
+    window.addEventListener(REFRESH_EVENT, refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener(REFRESH_EVENT, refresh); };
+  }, [refresh]);
 
-export default function NotificationBell({ notifications, onMarkAllRead, onClear, placement = 'header' }: Props) {
-  const [menuPosition, setMenuPosition] = useState({ left: 8, bottom: 80 });
-  const [open, setOpen] = useState(false);
-  const [billingNotifications, setBillingNotifications] = useState<AppNotification[]>([]);
-  const [loadingBilling, setLoadingBilling] = useState(false);
-  const [billingError, setBillingError] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-  const activeScope = () => {
-    try {
-      const orgId = sessionStorage.getItem('chiefx_active_org_id') || localStorage.getItem('chiefx_active_org_id');
-      const workspaceId = sessionStorage.getItem('chiefx_active_workspace_id') || localStorage.getItem('chiefx_active_workspace_id');
-      return { orgId, workspaceId };
-    } catch { return { orgId: null, workspaceId: null }; }
-  };
-  const scope = activeScope();
-  const visibleBilling = billingNotifications.filter((item) => item.scopeType === 'organization'
-    ? !scope.orgId || item.scopeOwnerId === scope.orgId
-    : !scope.workspaceId || item.scopeOwnerId === scope.workspaceId);
-  const allNotifications = [...notifications, ...visibleBilling];
-  const unread = allNotifications.filter(n => !n.read).length;
-
-  const loadBillingNotifications = async () => {
-    setLoadingBilling(true);
-    setBillingError('');
-    try {
-      const page = await billingClient.notifications(null, 25);
-      const mapped = page.rows.map((item) => ({
-        id: item.id,
-        type: `billing.${item.eventKey}`,
-        message: item.message,
-        title: item.title,
-        timestamp: Date.parse(item.occurredAt),
-        read: Boolean(item.readAt),
-        source: 'billing' as const,
-        eventKey: item.eventKey,
-        scopeType: item.scopeType,
-        scopeOwnerId: item.scopeOwnerId,
-      }));
-      setBillingNotifications(mapped);
-    } catch (error) {
-      setBillingError(error instanceof BillingApiError && error.status === 404
-        ? 'Billing alerts are not available on this server yet.'
-        : error instanceof Error ? error.message : 'Billing notifications could not be loaded.');
-    } finally { setLoadingBilling(false); }
-  };
-
-  const markVisibleRead = async () => {
-    onMarkAllRead();
-    const unreadBilling = visibleBilling.filter((item) => !item.read);
-    if (!unreadBilling.length) return;
-    const results = await Promise.allSettled(unreadBilling.map((item) => billingClient.markNotificationRead(item.id, { idempotencyKey: newBillingIdempotencyKey() })));
-    const succeeded = new Set(unreadBilling.filter((_, index) => results[index].status === 'fulfilled').map((item) => item.id));
-    setBillingNotifications((current) => current.map((item) => succeeded.has(item.id) ? { ...item, read: true } : item));
-    const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
-    if (failure) setBillingError(failure.reason instanceof Error ? failure.reason.message : 'Billing notifications could not be marked read.');
-  };
-
-  const markBillingNotificationRead = async (notification: AppNotification) => {
-    if (notification.source !== 'billing' || notification.read) return;
-    try {
-      await billingClient.markNotificationRead(notification.id, { idempotencyKey: newBillingIdempotencyKey() });
-      setBillingNotifications((current) => current.map((item) => item.id === notification.id ? { ...item, read: true } : item));
-    } catch (error) {
-      setBillingError(error instanceof Error ? error.message : 'Notification could not be marked read.');
+  // Platform operators do not have an active organization SSE connection.
+  // Their stream uses its own short-lived, server-signed ticket.
+  React.useEffect(() => {
+    if (audience !== 'platform') return;
+    let source: EventSource | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    async function connect() {
+      if (cancelled) return;
+      try {
+        const ticket = await notificationClient.platformStreamTicket();
+        if (cancelled) return;
+        source = new EventSource(platformStreamUrl(ticket));
+        source.addEventListener('notification', () => void refresh());
+        source.onerror = () => {
+          source?.close();
+          if (!cancelled) retry = setTimeout(() => void connect(), 5000);
+        };
+      } catch {
+        if (!cancelled) retry = setTimeout(() => void connect(), 10_000);
+      }
     }
-  };
+    void connect();
+    return () => { cancelled=true; if (retry) clearTimeout(retry); source?.close(); };
+  }, [audience, refresh]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+  React.useEffect(() => {
+    const closeOutside = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const closeEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown',closeOutside);
+    document.addEventListener('keydown',closeEscape);
+    return () => { document.removeEventListener('mousedown',closeOutside); document.removeEventListener('keydown',closeEscape); };
   }, []);
+
+  const unread = rows.filter(row => !row.readAt).length;
+  const mark = async (id?: string) => {
+    try {
+      await notificationClient.markRead(audience,id);
+      setRows(old => old.map(row => (!id || row.id === id) ? {...row,readAt:new Date().toISOString()} : row));
+    } catch { setError(true); }
+  };
+  const settingsPath = audience === 'platform' ? '/admin/notification-settings' : '/notification-settings';
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
+      <button type="button" aria-label="Notifications" aria-haspopup="dialog" aria-expanded={open}
         onClick={event => {
           if (!open && placement === 'sidebar') {
-            const rect = event.currentTarget.getBoundingClientRect();
-            const width = Math.min(320, window.innerWidth - 16);
-            setMenuPosition({
-              left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
-              bottom: window.innerHeight - rect.top + 8,
-            });
+            const box = event.currentTarget.getBoundingClientRect();
+            const width = Math.min(340,window.innerWidth-16);
+            setMenuPosition({left:Math.max(8,Math.min(box.left,window.innerWidth-width-8)),bottom:window.innerHeight-box.top+8});
           }
-          setOpen(o => !o);
-          if (!open) { onMarkAllRead(); void loadBillingNotifications(); }
+          setOpen(value => !value);
+          if (!open) void refresh();
         }}
-        className={`relative flex items-center justify-center rounded-xl text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${placement === 'sidebar' ? 'h-11 w-11' : 'h-8 w-8'}`}
-        aria-label="Notifications"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-      >
+        className={`relative flex items-center justify-center rounded-xl text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] ${placement === 'sidebar' ? 'h-11 w-11' : 'h-9 w-9'}`}>
         <Bell className="h-4 w-4" />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
-            {unread > 99 ? '99+' : unread}
-          </span>
-        )}
+        {unread > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-0.5 text-[9px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>}
       </button>
-
       {open && (
-        <div
-          role="dialog"
-          aria-label="Notifications"
-          className={`theme-dropdown z-[100] flex flex-col overflow-hidden rounded-2xl border shadow-2xl ${placement === 'sidebar' ? 'fixed w-[min(20rem,calc(100vw-1rem))]' : 'absolute right-0 top-10 w-80'}`}
-          style={placement === 'sidebar'
-            ? { left: menuPosition.left, bottom: menuPosition.bottom, maxHeight: `calc(100dvh - ${menuPosition.bottom + 8}px)` }
-            : undefined}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <span className="text-sm font-semibold text-slate-800">Notifications</span>
-            <div className="flex items-center gap-2">
-              {visibleBilling.some((item) => !item.read) && (
-                <button onClick={() => void markVisibleRead()} className="text-[10px] text-slate-400 hover:text-emerald-600 transition-colors">
-                  Mark billing read
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button onClick={onClear} className="text-[10px] text-slate-400 hover:text-rose-500 flex items-center gap-1 transition-colors">
-                  <X className="h-3 w-3" /> Clear call alerts
-                </button>
-              )}
+        <div role="dialog" aria-label="Notifications" className={`theme-dropdown z-[200] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl ${placement === 'sidebar' ? 'fixed w-[min(21rem,calc(100vw-1rem))]' : 'absolute right-0 top-11 w-[min(21rem,calc(100vw-1rem))]'}`}
+          style={placement === 'sidebar' ? {left:menuPosition.left,bottom:menuPosition.bottom,maxHeight:`calc(100dvh - ${menuPosition.bottom + 8}px)`} : undefined}>
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+            <span className="text-sm font-semibold text-[var(--text-primary)]">Notifications</span>
+            <div className="flex items-center gap-3">
+              {unread > 0 && <button type="button" onClick={() => void mark()} className="text-[11px] text-[var(--text-secondary)] hover:text-blue-600">Mark all read</button>}
+              <button type="button" aria-label="Notification settings" title="Notification settings" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" onClick={() => { setOpen(false); navigate(settingsPath); }}>
+                <Settings2 className="h-4 w-4" />
+              </button>
             </div>
           </div>
-
-          {/* List */}
-          <div className="min-h-0 overflow-y-auto max-h-80">
-            {loadingBilling && <div className="flex items-center justify-center gap-2 py-3 text-[11px] text-slate-400"><Loader2 className="h-3 w-3 animate-spin" /> Loading billing alerts…</div>}
-            {billingError && <div className="px-4 py-2 text-[11px] text-rose-600">{billingError}<button onClick={() => void loadBillingNotifications()} className="ml-2 underline">Retry</button></div>}
-            {!loadingBilling && !billingError && allNotifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                <CheckCheck className="h-6 w-6 mb-2 opacity-40" />
-                <p className="text-xs">All caught up</p>
-              </div>
-            ) : (
-              allNotifications.slice().sort((a, b) => b.timestamp - a.timestamp).map(n => (
-                <button type="button" onClick={() => void markBillingNotificationRead(n)} key={`${n.source || 'live'}:${n.id}`} className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-slate-50 dark:border-[var(--border-subtle)] last:border-0 ${n.read ? '' : 'bg-blue-50/40 dark:bg-blue-500/10'}`}>
-                  <div className="mt-0.5">{typeIcon(n.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    {n.title && <p className="text-xs font-semibold text-slate-800 leading-snug">{n.title}</p>}
-                    <p className="text-xs text-slate-700 leading-snug">{n.message}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo(n.timestamp)}</p>
-                  </div>
-                </button>
-              ))
-            )}
+          <div className="max-h-80 min-h-0 overflow-y-auto">
+            {loading && <div role="status" className="flex items-center justify-center gap-2 p-5 text-xs text-[var(--text-muted)]"><Loader2 className="h-4 w-4 animate-spin" /> Loading notifications…</div>}
+            {error && <div role="alert" className="flex items-center justify-between gap-2 px-4 py-3 text-xs text-[var(--text-secondary)]">
+              Notifications temporarily unavailable. <button type="button" className="text-blue-600 underline" onClick={() => void refresh()}>Retry</button>
+            </div>}
+            {!loading && rows.length === 0 && !error && <div className="flex flex-col items-center gap-2 p-10 text-xs text-[var(--text-muted)]"><MailCheck className="h-6 w-6" /> All caught up</div>}
+            {rows.map(row => (
+              <button key={row.id} type="button" className={`flex w-full items-start gap-3 border-b border-[var(--border)] px-4 py-3 text-left last:border-0 hover:bg-[var(--bg-subtle)] ${row.readAt ? '' : 'bg-blue-500/5'}`}
+                onClick={() => {
+                  if (!row.readAt) void mark(row.id);
+                  if (row.actionPath?.startsWith('/') && !row.actionPath.startsWith('//')) { setOpen(false); navigate(row.actionPath); }
+                }}>
+                <span className="mt-0.5 shrink-0">{notificationIcon(row.eventKey)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold text-[var(--text-primary)]">{row.title}</span>
+                  <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">{row.message}</span>
+                  <span className="mt-1 block text-[10px] text-[var(--text-muted)]">{timeAgo(row.occurredAt)}</span>
+                </span>
+                {!row.readAt && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-label="Unread" />}
+              </button>
+            ))}
           </div>
         </div>
       )}

@@ -87,7 +87,7 @@ export const billingClient = Object.freeze({
     method: 'POST', headers: mutationHeaders(options), body: JSON.stringify({}),
   }),
   subscriptionRenewal: () => jsonRequest<SubscriptionRenewalResponse>('/api/billing/subscription-renewal'),
-  createSubscriptionRenewalQuote: (input: { targetPlanId?: string; targetPlanVersion?: number }, options: BillingMutationOptions) => jsonRequest<SubscriptionRenewalResponse>('/api/billing/subscription-renewal/quote', {
+  createSubscriptionRenewalQuote: (input: { targetPlanId?: string; targetPlanVersion?: number; acknowledgeFeatureLoss?: boolean }, options: BillingMutationOptions) => jsonRequest<SubscriptionRenewalResponse>('/api/billing/subscription-renewal/quote', {
     method: 'POST', headers: mutationHeaders(options), body: JSON.stringify(input),
   }),
   createSubscriptionUpgradeQuote: (input: { targetPlanId: string; targetPlanVersion: number }, options: BillingMutationOptions) => jsonRequest<SubscriptionUpgradeResponse>('/api/billing/subscription-upgrade/quote', {

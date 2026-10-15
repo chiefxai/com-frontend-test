@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Settings,
   Phone,
@@ -71,6 +72,8 @@ interface SettingsViewProps {
   // Numbers) — phoneCharges is then only an estimate for reference,
   // never something owed to the platform. Defaults true (billable).
   phoneChargesBillable?: boolean;
+  billingCallLogs?: import('../types').CallLog[];
+  onOpenCallLogs?: () => void;
   // Recharge-based wallet balance. This is shown only when the organization
   // is configured for recharge_based billing.
   activeSubTab?: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api';
@@ -133,6 +136,7 @@ export default function SettingsView({
   aiTokenUsage = null,
   callProviderRate = null,
   phoneChargesBillable = true,
+  billingCallLogs = [], onOpenCallLogs,
   activeSubTab: activeSubTabProp,
   setActiveSubTab: setActiveSubTabProp,
   currentUserEmail,
@@ -154,7 +158,18 @@ export default function SettingsView({
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
   const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
   const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
-  const [billingPanel, setBillingPanel] = useState<BillingPanel>('dashboard');
+  const billingLocation = useLocation();
+  const billingNavigate = useNavigate();
+  // Billing section is part of the URL, so refresh/deep links and browser
+  // back/forward keep exactly the same page.
+  const billingPath = billingLocation.pathname.split('/').filter(Boolean);
+  const billingPanels: readonly BillingPanel[] = ['dashboard','plan','usage','allocation','credits','topup','payments'];
+  const billingPanelCandidate = billingPath[0] === 'administration' && billingPath[1] === 'billing' ? billingPath[2] : undefined;
+  const billingPanel: BillingPanel = billingPanelCandidate && billingPanels.includes(billingPanelCandidate as BillingPanel)
+    ? billingPanelCandidate as BillingPanel : 'dashboard';
+  const setBillingPanel = React.useCallback((panel: BillingPanel) => {
+    billingNavigate(panel === 'dashboard' ? '/administration/billing' : `/administration/billing/${panel}`);
+  }, [billingNavigate]);
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
   // Customers with one purchased workspace reach their phone numbers directly.
   const multiWorkspaceUi = showWorkspaceManagement(multipleWorkspacesEnabled);
@@ -209,6 +224,14 @@ export default function SettingsView({
     setOrganizationNumbersError('');
   }, []);
   const visibleNumbers = organizationNumbers || virtualNumbers;
+  const refreshVirtualNumberInventory = () => {
+    if (canReadOrganization) {
+      void loadOrganizationNumbers().catch(error => {
+        setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
+      });
+    }
+    loadChannels();
+  };
   const [numberSearch, setNumberSearch] = useState('');
   const [numberProvider, setNumberProvider] = useState('');
   const [numberStatus, setNumberStatus] = useState('');
@@ -257,6 +280,7 @@ export default function SettingsView({
   };
 
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const [numberSource, setNumberSource] = useState<'platform' | 'connection'>('platform');
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const loadAuditLogs = () => {
@@ -340,7 +364,6 @@ export default function SettingsView({
   // credentials, then "Provision Virtual Call-center Line" for the same
   // number) — combined into one action here since the common case is
   // exactly one number per account.
-  const [connectProvider, setConnectProvider] = useState<'vobiz'>('vobiz');
   const [connectedChannels, setConnectedChannels] = useState<{ type: string; externalId: string; config: any }[]>([]);
   const loadChannels = () => {
     if (!can('workspace.read')) {
@@ -878,6 +901,65 @@ export default function SettingsView({
     globalRefresh?.();
   };
 
+  // A single legacy Vobiz connection control is shared by inline onboarding
+  // and the + dialog. Existing calling setups remain accessible in both states.
+  const legacyVobizConnectionPanel = (
+    <details className="rounded-xl border border-[var(--border)] p-4">
+                      <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
+                        Vobiz.ai live calling configuration
+                      </summary>
+                      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                        Manage your current Vobiz.ai live calling connection here.
+                        Provider inventory accounts above do not automatically enable live calling.
+                      </p>
+                      <div className="mt-4">
+<form onSubmit={handleConnectVobiz} className="space-y-4">
+                        {vobizChannel && (
+                          <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[9px] px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              <span>Active: <span className="font-semibold">{vobizChannel.externalId}</span></span>
+                            </div>
+                            <button type="button" onClick={() => handleDisconnectChannel('vobiz')} disabled={disconnectingChannel === 'vobiz'} className="text-rose-500 hover:text-rose-600 font-semibold text-xs disabled:opacity-50 cursor-pointer">
+                              {disconnectingChannel === 'vobiz' ? 'Disconnecting…' : 'Disconnect'}
+                            </button>
+                          </div>
+                        )}
+                        <div className="space-y-3">
+                          {!vobizChannel && (
+                            <>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth ID</label>
+                                <input type="text" value={vobizAuthId} onChange={(e) => setVobizAuthId(e.target.value)} placeholder="Your Vobiz.ai Auth ID" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth Token</label>
+                                <input type="password" value={vobizToken} onChange={(e) => setVobizToken(e.target.value)} placeholder="••••••••••••••••••••••••••••••••" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                              </div>
+                            </>
+                          )}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone Number</label>
+                              <input type="text" value={vobizPhone} onChange={(e) => setVobizPhone(e.target.value)} placeholder="+91XXXXXXXXXX" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Label <span className="text-slate-400 font-normal">(optional)</span></label>
+                              <input type="text" value={vobizLabel} onChange={(e) => setVobizLabel(e.target.value)} placeholder="e.g. Support Line" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <p className="text-[11px] text-slate-400">{vobizChannel ? 'Add more Vobiz.ai numbers here when you need them.' : 'You can add more numbers for this account later.'}</p>
+                          <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-[9px] px-6 py-2.5 transition-all cursor-pointer shadow-sm">
+                            {savingVobiz ? 'Connecting…' : vobizChannel ? 'Add Number' : 'Connect Vobiz.ai'}
+                          </button>
+                        </div>
+                      </form>
+                      </div>
+                    </details>
+  );
+
   return (
     <PageShell
       title={
@@ -966,19 +1048,27 @@ export default function SettingsView({
                         className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
                         Export CSV ({filteredNumbers.length})
                       </button>
-                      <IconButton icon={Plus} label="Add Provider" onClick={() => setShowProviderForm(true)} />
+                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => {
+                        setNumberSource('platform');
+                        setShowProviderForm(true);
+                      }} />
                     </>}
                   />
                 </div>
                 {multiWorkspaceUi && visibleNumbers.some(number => !numberWorkspaceId(number)) &&
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
                 {visibleNumbers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-12 w-12 rounded-[14px] bg-indigo-50 flex items-center justify-center mb-3">
-                      <Phone className="h-5 w-5 text-indigo-400" />
+                  <div className="flex min-w-0 flex-col items-center justify-center gap-3 px-5 py-12 text-center" aria-label="Virtual number empty state">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
+                      <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
                     </div>
-                    <p className="text-sm font-medium text-slate-600">No virtual numbers yet</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-xs">Click "Add Provider" to connect your Vobiz.ai account and provision your first virtual line.</p>
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">No virtual numbers yet</h3>
+                    <p className="max-w-lg text-sm leading-6 text-[var(--text-secondary)]">
+                      Assign a number provided by your platform, or connect an existing calling account to add your own.
+                    </p>
+                    <Button type="button" onClick={() => { setNumberSource('platform'); setShowProviderForm(true); }}>
+                      Add or assign virtual number
+                    </Button>
                   </div>
                 ) : (() => {
                   const columns: Column<VirtualNumber>[] = [
@@ -1041,112 +1131,43 @@ export default function SettingsView({
                 })()}
               </Widget>
 
-              {/* Add Provider overlay modal */}
+              {/* One unified setup dialog for provider accounts, numbers and workspace mapping. */}
               {showProviderForm && (
                 <Modal
                   open
                   onClose={() => setShowProviderForm(false)}
-                  title="Add Virtual Number"
-                  subtitle="Choose your telephony provider and enter your credentials to register a virtual number."
-                  maxWidth="max-w-lg"
+                  title="Add or assign virtual number"
+                  subtitle="Choose a source, then register or assign a number to your workspace."
+                  maxWidth="max-w-5xl"
                 >
-                  <div className="space-y-5">
-                    {/* Provider selector */}
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Select Provider</p>
-                      <div className="grid grid-cols-1 gap-3">
-                        {([
-                          {
-                            id: 'vobiz',
-                            label: 'Vobiz.ai',
-                            connected: !!vobizChannel,
-                            selectedBg: 'bg-purple-50 border-purple-400',
-                            logo: (
-                              <div className="h-8 w-8 rounded-[9px] bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-sm">V</div>
-                            ),
-                          },
-                        ] as const).map(({ id, label, connected, selectedBg, logo }) => (
-                          <button
-                            key={id}
-                            type="button"
-                            onClick={() => setConnectProvider(id)}
-                            className={`relative flex flex-col items-center gap-2 py-4 px-3 rounded-[14px] border-2 transition-all cursor-pointer ${
-                              connectProvider === id
-                                ? selectedBg
-                                : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-slate-300 hover:bg-[var(--bg-base)]'
-                            }`}
-                          >
-                            {logo}
-                            <span className="text-xs font-semibold text-slate-700">{label}</span>
-                            {connected && (
-                              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Connected" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="min-w-0 space-y-5">
+                    <div role="tablist" aria-label="Virtual number source" className="grid grid-cols-1 gap-2 rounded-xl bg-[var(--bg-subtle)] p-1 sm:grid-cols-2">
+                      {([
+                        { key: 'platform', label: 'Numbers provided by your platform' },
+                        { key: 'connection', label: 'Existing calling connection' },
+                      ] as const).map(option => (
+                        <button key={option.key} type="button" role="tab" aria-selected={numberSource === option.key}
+                          onClick={() => setNumberSource(option.key)}
+                          className={`min-w-0 rounded-lg px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${
+                            numberSource === option.key
+                              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+                              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                          }`}>
+                          {option.label}
+                        </button>
+                      ))}
                     </div>
-
-                    {/* Divider */}
-                    <div className="border-t border-[var(--border)]" />
-
-                    {/* Per-provider form */}
-
-                    {connectProvider === 'vobiz' && (
-                      <form onSubmit={(e) => { handleConnectVobiz(e); setShowProviderForm(false); }} className="space-y-4">
-                        {vobizChannel && (
-                          <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[9px] px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>Active: <span className="font-semibold">{vobizChannel.externalId}</span></span>
-                            </div>
-                            <button type="button" onClick={() => handleDisconnectChannel('vobiz')} disabled={disconnectingChannel === 'vobiz'} className="text-rose-500 hover:text-rose-600 font-semibold text-xs disabled:opacity-50 cursor-pointer">
-                              {disconnectingChannel === 'vobiz' ? 'Disconnecting…' : 'Disconnect'}
-                            </button>
-                          </div>
-                        )}
-                        <div className="space-y-3">
-                          {!vobizChannel && (
-                            <>
-                              <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth ID</label>
-                                <input type="text" value={vobizAuthId} onChange={(e) => setVobizAuthId(e.target.value)} placeholder="Your Vobiz.ai Auth ID" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Auth Token</label>
-                                <input type="password" value={vobizToken} onChange={(e) => setVobizToken(e.target.value)} placeholder="••••••••••••••••••••••••••••••••" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                              </div>
-                            </>
-                          )}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone Number</label>
-                              <input type="text" value={vobizPhone} onChange={(e) => setVobizPhone(e.target.value)} placeholder="+91XXXXXXXXXX" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Label <span className="text-slate-400 font-normal">(optional)</span></label>
-                              <input type="text" value={vobizLabel} onChange={(e) => setVobizLabel(e.target.value)} placeholder="e.g. Support Line" className="w-full bg-[var(--bg-base)] border border-[var(--border)] rounded-[9px] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all" />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <p className="text-[11px] text-slate-400">{vobizChannel ? 'Open "Add Provider" again any time to add more Vobiz.ai numbers.' : 'You can add more numbers for this account later.'}</p>
-                          <button type="submit" disabled={savingVobiz} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-sm font-semibold rounded-[9px] px-6 py-2.5 transition-all cursor-pointer shadow-sm">
-                            {savingVobiz ? 'Connecting…' : vobizChannel ? 'Add Number' : 'Connect Vobiz.ai'}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-
-                    {!connectProvider && (
-                      <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
-                        <Phone className="h-8 w-8 mb-2 opacity-30" />
-                        <p className="text-sm">Select a provider above to continue</p>
-                      </div>
-                    )}
+                    <div role="tabpanel" aria-label={numberSource === 'platform' ? 'Numbers provided by your platform' : 'Existing calling connection'} className="min-w-0">
+                      {numberSource === 'platform'
+                        ? <OrganizationTelephonyConnectors embedded view="platform" onInventoryChange={refreshVirtualNumberInventory} />
+                        : <div className="space-y-5">
+                            <OrganizationTelephonyConnectors embedded view="connection" onInventoryChange={refreshVirtualNumberInventory} />
+                            {legacyVobizConnectionPanel}
+                          </div>}
+                    </div>
                   </div>
                 </Modal>
               )}
-              <OrganizationTelephonyConnectors />
               </>}
             </div>
           )}
@@ -1718,6 +1739,8 @@ export default function SettingsView({
           {/* Shared billing console: consistent information architecture across all billing views. */}
           {subTab === 'billing' && (
             <BillingWorkspace
+              callLogs={billingCallLogs}
+              onOpenCallLogs={onOpenCallLogs}
               workspaceId={currentWorkspaceId}
               view={billingPanel}
               onNavigate={setBillingPanel}

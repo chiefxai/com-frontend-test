@@ -34,17 +34,38 @@ describe('organization subscription renewal', () => {
     render(<SubscriptionRenewal canSubmit />);
     expect(await screen.findByText(/Free trial \(5 days\)/)).toBeInTheDocument();
     expect(screen.getByText(/₹200 trial credits expire when the trial ends/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Choose the paid plan to start after your trial'), { target: { value: 'growth' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Prepare trial conversion' }));
-    await screen.findByText('Renewal quote · draft');
-    expect(mocks.createQuote).toHaveBeenCalledWith({ targetPlanId: 'growth', targetPlanVersion: 4 }, expect.objectContaining({ idempotencyKey: expect.any(String) }));
+    fireEvent.change(screen.getByLabelText('Choose your next subscription plan'), { target: { value: 'growth' } });
+    fireEvent.click(screen.getByRole('button', { name: 'See my plan price' }));
+    await screen.findByText('Your renewal price');
+    expect(mocks.createQuote).toHaveBeenCalledWith({ targetPlanId: 'growth', targetPlanVersion: 4, acknowledgeFeatureLoss: false }, expect.objectContaining({ idempotencyKey: expect.any(String) }));
+  });
+
+  it('shows approved paid credits alongside trial credits with the independent paid expiry', async () => {
+    mocks.renewal.mockResolvedValue({ ...response({eligible:true,trial:true,q:quote({
+      status:'paid',paidAt:'2026-09-25T00:00:00Z',payable:false,
+    })}),paidCreditsDuringTrial:{
+      grantId:'paid-grant-1',amount:{asset:'INR',units:'250000',scale:2},
+      availableInOrganizationPool:{asset:'INR',units:'225000',scale:2},
+      expiresAt:'2026-11-01T00:00:00Z',
+    }});
+    render(<SubscriptionRenewal canSubmit />);
+    expect(await screen.findByText(/Paid plan credits approved:/)).toBeInTheDocument();
+    expect(screen.getByText(/₹200 trial credits expire when the trial ends/)).toBeInTheDocument();
+    expect(screen.getByText(/remains unallocated in your organization pool/)).toBeInTheDocument();
+  });
+
+  it('does not claim paid credits are available before payment approval',async()=>{
+    mocks.renewal.mockResolvedValue(response({eligible:true,trial:true,q:quote({pendingPayment:true,payable:false})}));
+    render(<SubscriptionRenewal canSubmit />);
+    expect(await screen.findByText(/Your payment is being checked/)).toBeInTheDocument();
+    expect(screen.queryByText(/Paid plan credits approved:/)).not.toBeInTheDocument();
   });
 
   it('uses server renewal eligibility and keeps quote creation unavailable before the renewal window', async () => {
     mocks.renewal.mockResolvedValue(response({ eligible: false }));
     render(<SubscriptionRenewal canSubmit />);
     await screen.findByText(/Current paid period:/);
-    expect(screen.queryByRole('button', { name: 'Prepare renewal quote' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See my renewal price' })).not.toBeInTheDocument();
     expect(mocks.createQuote).not.toHaveBeenCalled();
   });
 
@@ -52,27 +73,27 @@ describe('organization subscription renewal', () => {
     mocks.renewal.mockResolvedValue(response({ eligible: true, overdue: true }));
     mocks.createQuote.mockResolvedValue(response({ eligible: true, overdue: true, q: quote() }));
     render(<SubscriptionRenewal canSubmit />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Prepare renewal quote' }));
-    await screen.findByText('Renewal quote · draft');
-    expect(screen.getByText('Overdue')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Bank or UPI transaction reference'), { target: { value: 'UTR-RENEW-1' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'See my renewal price' }));
+    await screen.findByText('Your renewal price');
+    expect(screen.getByText('Plan has ended')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Bank or UPI payment reference'), { target: { value: 'UTR-RENEW-1' } });
     const proof = new File(['%PDF'], 'receipt.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText(/Payment receipt/), { target: { files: [proof] } });
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit for verification' }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: 'Send receipt for review' }).closest('form')!);
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledWith({ schemaVersion: 1, purpose: 'subscription', quoteId: 'renewal-1', expectedAmount: amount, paymentReference: 'UTR-RENEW-1' }, proof, expect.objectContaining({ idempotencyKey: expect.any(String) })));
   });
 
   it('does not submit a renewal quote while an earlier payment is pending review', async () => {
     mocks.renewal.mockResolvedValue(response({ eligible: true, q: quote({ pendingPayment: true, payable: false }) }));
     render(<SubscriptionRenewal canSubmit />);
-    await screen.findByText(/A renewal payment is already awaiting platform review/);
-    expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
+    await screen.findByText(/We received your receipt. It is waiting for someone to check it/);
+    expect(screen.queryByRole('button', { name: 'Send receipt for review' })).not.toBeInTheDocument();
   });
 
   it('does not show payment proof form when platform payment intake is disabled', async () => {
     mocks.renewal.mockResolvedValue(response({ q: quote(), enabled: false }));
     render(<SubscriptionRenewal canSubmit />);
-    await screen.findByText(/Payment submission is not enabled yet/);
-    expect(screen.queryByRole('button', { name: 'Submit for verification' })).not.toBeInTheDocument();
+    await screen.findByText(/Sending receipts is not available right now/);
+    expect(screen.queryByRole('button', { name: 'Send receipt for review' })).not.toBeInTheDocument();
   });
 });

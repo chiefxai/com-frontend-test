@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import OrganizationTopUp from '../components/billing/OrganizationTopUp';
 
 const mocks = vi.hoisted(() => ({
@@ -34,7 +34,20 @@ vi.mock('../lib/authorization', async (importOriginal) => ({
   }),
 }));
 vi.mock('../components/billing/WorkspaceAddonPurchases', () => ({
-  default: () => <div data-testid="workspace-invoices">Workspace invoices</div>,
+  default: ({ submittedPayments, displayFilter, showWorkspace }: {
+    submittedPayments: Array<{ id: string; purpose: string; status: string; workspaceAddonName?: string | null }>;
+    displayFilter: string; showWorkspace: boolean;
+  }) => <div data-testid="payment-activity-list">
+    {displayFilter !== 'workspace' && submittedPayments.map(payment =>
+      <div key={payment.id}>
+        {payment.purpose === 'topup' ? 'Credit top-up' :
+          payment.purpose === 'subscription' ? 'Subscription payment' :
+          payment.workspaceAddonName ? 'Workspace add-on' : 'Invoice payment'}
+        {payment.workspaceAddonName && <span>{payment.workspaceAddonName}</span>}
+        <span>{payment.status === 'pending_verification' ? 'Waiting for approval' : payment.status}</span>
+      </div>)}
+    {showWorkspace && displayFilter !== 'submitted' && <span data-testid="workspace-invoices">Workspace invoices</span>}
+  </div>,
 }));
 
 const cash = (units: string) => ({ asset: 'INR', scale: 2, units });
@@ -81,14 +94,30 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('organization billing views', () => {
-  it('distinguishes Enterprise monthly allowance from issued credits in Credits and Subscription', async () => {
+  it('shows available balances and the separate subscription credit status', async () => {
     const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
+    expect(screen.getByText('Available credits')).toBeInTheDocument();
+    expect(await screen.findByText('₹3,000.00')).toBeInTheDocument();
+    expect(screen.getByText('₹1,500.00')).toBeInTheDocument();
+    expect(screen.getByText('Subscription credits remaining')).toBeInTheDocument();
+    expect(screen.getByText('Top-up credits remaining')).toBeInTheDocument();
     expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
-    expect(screen.getByText('₹2,500.00')).toBeInTheDocument();
-    expect(screen.getByText(/no approved and funded subscription period/i)).toBeInTheDocument();
+    expect(screen.queryByText('Current plan period')).not.toBeInTheDocument();
     expect(mocks.subscriptionCreditStatus).toHaveBeenCalled();
     rerender(<OrganizationTopUp view="plan" canSubmit />);
-    expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
+    expect(screen.queryByText('Monthly usage credits')).not.toBeInTheDocument();
+  });
+
+  it('explains credit types clearly and shows a payment review summary', async () => {
+    const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
+    expect(screen.getByText('Available credits')).toBeInTheDocument();
+    expect(await screen.findByText('Subscription credits remaining')).toBeInTheDocument();
+    rerender(<OrganizationTopUp view="payments" canSubmit />);
+    expect(screen.getByText('Payments and workspace invoices')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
+    expect(screen.getByRole('combobox', { name: 'Payment records' })).toHaveValue('all');
+    expect(screen.getByRole('combobox', { name: 'Payment status' })).toHaveValue('all');
+    expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
   });
 
   it('shows the available credit sources and a recent payment status without implying approval', async () => {
@@ -166,10 +195,16 @@ describe('organization billing views', () => {
     expect(screen.getByText('Mumbai')).toBeInTheDocument();
     expect(screen.getByText('Invoice payment')).toBeInTheDocument();
     expect(screen.getByText('Credit top-up')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toHaveValue('all');
     expect(mocks.payments).toHaveBeenCalledWith(null, 10, 'all');
-    // Only payment requests are in this table: open invoices remain in the card below.
+    expect(screen.getByTestId('payment-activity-list')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Payment records' }), { target: { value: 'submitted' } });
+    expect(screen.queryByTestId('workspace-invoices')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Payment records' }), { target: { value: 'workspace' } });
+    expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
+    expect(screen.queryByText('Credit top-up')).not.toBeInTheDocument();
   });
 
   it('filters workspace invoices on the server before pagination and preserves type on Next', async () => {
@@ -183,6 +218,7 @@ describe('organization billing views', () => {
     }));
     render(<OrganizationTopUp view="payments" canSubmit />);
     await screen.findByText('Credit top-up');
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Payment type' }), { target: { value: 'workspace' } });
     expect(await screen.findByText('Workspace add-on')).toBeInTheDocument();
     expect(screen.queryByText('Credit top-up')).not.toBeInTheDocument();
@@ -193,9 +229,10 @@ describe('organization billing views', () => {
 
   it('keeps the payment history and workspace-renewal view together', async () => {
     render(<OrganizationTopUp view="payments" canSubmit />);
-    expect(await screen.findByText('Payment history')).toBeInTheDocument();
+    expect(await screen.findByText('Payments and workspace invoices')).toBeInTheDocument();
     expect(screen.getByTestId('workspace-invoices')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
     expect(screen.getByRole('combobox', { name: 'Payment type' })).toBeInTheDocument();
-    expect(await screen.findByText('Awaiting admin verification')).toBeInTheDocument();
+    expect(await within(screen.getByTestId('payment-activity-list')).findByText('Waiting for approval')).toBeInTheDocument();
   });
 });

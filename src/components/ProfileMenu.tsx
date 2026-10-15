@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Monitor, LogOut, ChevronDown } from 'lucide-react';
+import { Sun, Moon, Monitor, LogOut, ChevronDown, Settings } from 'lucide-react';
 import { useTheme } from '../shared/theme/ThemeContext';
 
 // ── Profile dropdown (YouTube-style) ─────────────────────────────────────────
@@ -8,6 +8,7 @@ export interface ProfileMenuProps {
   dbRole: string | null;
   logout: () => void;
   onOpen?: () => void;
+  onNotificationSettings?: () => void;
   /** Optional upward placement for the account menu in a full-height sidebar. */
   placement?: 'bottom-end' | 'top-start';
   /** Avatar-only button used when a sidebar collapses to its icon rail. */
@@ -23,7 +24,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function ProfileMenu({
-  kcUser, dbRole, logout, onOpen, placement = 'bottom-end', compact = false, showIdentity = false,
+  kcUser, dbRole, logout, onOpen, onNotificationSettings, placement = 'bottom-end', compact = false, showIdentity = false,
 }: ProfileMenuProps) {
   const { mode, setMode } = useTheme();
   const [open, setOpen] = React.useState(false);
@@ -131,6 +132,16 @@ export default function ProfileMenu({
               </div>
             </div>
           </div>
+
+          {onNotificationSettings && (
+            <div className="border-b border-[var(--border)] px-3 py-2">
+              <button type="button" onClick={() => { setOpen(false); onNotificationSettings(); }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">
+                <Settings className="h-4 w-4" />
+                <span>Notification Settings</span>
+              </button>
+            </div>
+          )}
 
           {/* Theme section */}
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>

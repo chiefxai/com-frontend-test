@@ -49,6 +49,16 @@ beforeEach(()=>{
 afterEach(cleanup);
 
 describe('manual organization credit allocation',()=>{
+  it('omits the onboarding walkthrough and preserves the credit pool', async () => {
+    render(<ManualWorkspaceAllocation />);
+    expect(screen.queryByText('Give credits to your workspaces')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pick a workspace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Choose credits')).not.toBeInTheDocument();
+    expect(screen.queryByText('Check and confirm')).not.toBeInTheDocument();
+    await screen.findByText('Organization credit pool');
+    expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
+  });
+
   it('keeps exact amounts across large ledger balances and decimal values',()=>{
     expect(formatCreditAmount({asset:'INR',units:'900719925474099312345',scale:2}))
       .toBe('₹90,07,19,92,54,74,09,93,123.45');
@@ -67,8 +77,28 @@ describe('manual organization credit allocation',()=>{
     expect(screen.getByText('₹90.00')).toBeInTheDocument();
     expect(screen.getByText('Workspace balances')).toBeInTheDocument();
     expect(screen.getByText('Allocation history')).toBeInTheDocument();
-    expect(screen.getByText(/Preview mode. Live transfers are disabled/i)).toBeInTheDocument();
+    expect(screen.getByText(/sending credits is not enabled yet/i)).toBeInTheDocument();
     expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
+  });
+
+  it('offers quick allocation amounts, disables unaffordable presets and still requires preview', async () => {
+    const enough = { ...snapshot, grants: [{
+      ...snapshot.grants[0], available: { asset: 'INR', units: '150000', scale: 2 },
+    }] };
+    mocks.manualAllocationOverview.mockResolvedValue(enough);
+    render(<ManualWorkspaceAllocation />);
+    await screen.findByText('Organization credit pool');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Destination workspace' }), { target: { value: 'ws-1' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Credit source' }), { target: { value: 'grant-1' } });
+    const quick = screen.getByRole('button', { name: 'Allocate ₹300' });
+    fireEvent.click(quick);
+    expect(screen.getByRole('textbox', { name: /Amount to allocate/i })).toHaveValue('300');
+    expect(quick).toHaveAttribute('aria-pressed', 'true');
+    expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview allocation' }));
+    await waitFor(() => expect(mocks.manualAllocationPreview).toHaveBeenCalledWith(
+      expect.objectContaining({ amountUnits: '30000' }),
+    ));
   });
 
   it('previews the selected grant and workspace but cannot confirm while transfer flag is off', async()=>{

@@ -36,7 +36,7 @@ describe('Platform Admin Providers & Pricing cards', () => {
     render(<CostPage />);
     expect(await screen.findByRole('region', { name: 'Call provider pricing' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'AI provider pricing' })).toBeInTheDocument();
-    expect(screen.getByText(/Browse the same compact cards used in Agent Studio/)).toBeInTheDocument();
+    expect(screen.queryByText(/Browse the same compact cards used in Agent Studio/)).not.toBeInTheDocument();
     expect(screen.getByText('Vobiz')).toBeInTheDocument();
     expect(screen.getByText('Gemini AI')).toBeInTheDocument();
     expect(screen.getByText('Provider rate entries')).toBeInTheDocument();

@@ -10,13 +10,19 @@ type InventoryNumber = { id: string; phoneNumberE164: string; displayName: strin
 type Workspace = { id: string; name: string };
 type Draft = { providerKey: string; displayName: string; providerAccountId: string; credentials: Record<string, string> };
 const emptyDraft = (providerKey = ''): Draft => ({ providerKey, displayName: '', providerAccountId: '', credentials: {} });
-const inputClass = 'mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm';
+const inputClass = 'mt-1.5 block h-10 w-full min-w-0 rounded-lg border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)] dark:bg-[var(--bg-surface)]';
 
 async function responseBody(response: Response) {
   return response.json().catch(() => ({} as Record<string, unknown>));
 }
 
-export default function OrganizationTelephonyConnectors() {
+export default function OrganizationTelephonyConnectors({ onInventoryChange, embedded = false, view = 'all' }: {
+  onInventoryChange?: () => void | Promise<void>;
+  /** Show the complete provider/number workflow inside the Virtual Numbers empty state. */
+  embedded?: boolean;
+  /** Choose platform-owned inventory or customer calling connections in the shared overlay. */
+  view?: 'all' | 'platform' | 'connection';
+} = {}) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [numbers, setNumbers] = useState<Record<string, InventoryNumber[]>>({});
@@ -62,6 +68,10 @@ export default function OrganizationTelephonyConnectors() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  // Refresh the parent Virtual Numbers table only after successful mutations.
+  const notifyInventoryChanged = () => {
+    if (onInventoryChange) void Promise.resolve().then(onInventoryChange).catch(() => {});
+  };
   const selectedProvider = useMemo(() => providers.find(provider => provider.providerKey === draft.providerKey), [providers, draft.providerKey]);
 
   const save = async (event: React.FormEvent) => {
@@ -77,7 +87,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (response.status === 404) { setFeatureOff(true); return; }
       if (!response.ok) throw new Error(String(body.error || 'Unable to save connector.'));
-      setDraft(emptyDraft(providers[0]?.providerKey || '')); setEditing(null); setNotice(editing ? 'Connector updated.' : 'Connector account saved.'); await load();
+      setDraft(emptyDraft(providers[0]?.providerKey || '')); setEditing(null); setNotice(editing ? 'Connector updated.' : 'Connector account saved.'); await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save connector.'); }
     finally { setBusy(false); }
   };
@@ -105,7 +115,7 @@ export default function OrganizationTelephonyConnectors() {
       if (response.status === 404) { setFeatureOff(true); return; }
       if (!response.ok) throw new Error(String(body.error || 'Unable to register provider number.'));
       setNumberDraft(current => ({ ...current, [connector.id]: { phoneNumberE164: '', providerNumberId: '', displayName: '' } }));
-      setNotice('Provider number saved to inventory. Live calling is not enabled by this record.'); await loadNumbers(connector.id);
+      setNotice('Provider number saved to inventory. Live calling is not enabled by this record.'); await loadNumbers(connector.id); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to register provider number.'); }
     finally { setBusy(false); }
   };
@@ -118,7 +128,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (!response.ok) throw new Error(String(body.error || 'Unable to verify number.'));
       setNotice('Number verified and ready for assignment.');
-      await load();
+      await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to verify number.'); }
     finally { setBusy(false); }
   };
@@ -142,7 +152,7 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (!response.ok) throw new Error(String(body.error || 'Unable to assign number to this workspace.'));
       setNotice(`Number assigned to ${workspaceChoices.find(item => item.id === workspaceId)?.name || 'workspace'}.`);
-      await load();
+      await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to assign number.'); }
     finally { setBusy(false); }
   };
@@ -157,45 +167,206 @@ export default function OrganizationTelephonyConnectors() {
       const body = await responseBody(response);
       if (!response.ok) throw new Error(String(body.error || 'Unable to unassign number.'));
       setNotice(`Number unassigned from ${number.assignedWorkspaceName || 'workspace'}; it remains available to your organization.`);
-      await load();
+      await load(); notifyInventoryChanged();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to unassign number.'); }
     finally { setBusy(false); }
   };
 
-  if (loading) return <Card><p className="text-sm text-[var(--text-muted)]">Loading customer telephony connectors…</p></Card>;
-  if (featureOff) return <Card><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">This feature is not enabled. The existing Vobiz connection and number setup remain available above.</p></Card>;
 
-  return <Card>
-    <CardHeader title="Telephony connectors" subtitle="Manage provider accounts and assign their numbers to your workspaces." />
-    <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm text-[var(--text-secondary)]">Saved credentials stay protected. Add a provider account first, then add numbers when you are ready. Each number can be assigned to one of your workspaces.</p>
-    {error && <p role="alert" className="mb-3 text-sm text-rose-600">{error}</p>}{notice && <p role="status" className="mb-3 text-sm text-emerald-700">{notice}</p>}
-    <form onSubmit={event => void save(event)} className="grid gap-3 md:grid-cols-2">
-      {!editing && <label className="text-sm">Provider<select className={inputClass} value={draft.providerKey} onChange={event => setDraft(current => ({ ...current, providerKey: event.target.value, credentials: {} }))} required>
-        {providers.map(provider => <option key={provider.providerKey} value={provider.providerKey}>{provider.label || provider.name}</option>)}
-      </select></label>}
-      <label className="text-sm">Connector name<input className={inputClass} value={draft.displayName} onChange={event => setDraft(current => ({ ...current, displayName: event.target.value }))} maxLength={191} required placeholder="e.g. Mumbai support account" /></label>
-      <label className="text-sm">Provider account reference (optional)<input className={inputClass} value={draft.providerAccountId} onChange={event => setDraft(current => ({ ...current, providerAccountId: event.target.value }))} maxLength={191} /></label>
-      {selectedProvider?.credentialSchema.map(field => <label key={field.key} className="text-sm">{field.label}{field.required && !editing ? ' *' : ''}<input className={inputClass} type={field.type === 'secret' || field.type === 'password' ? 'password' : 'text'} autoComplete="new-password" value={draft.credentials[field.key] || ''} onChange={event => setDraft(current => ({ ...current, credentials: { ...current.credentials, [field.key]: event.target.value } }))} required={!editing && field.required} placeholder={editing ? 'Leave blank to keep current value' : field.placeholder || ''} /></label>)}
-      <div className="flex items-end gap-2"><Button type="submit" loading={busy}>{editing ? 'Save account' : 'Add account'}</Button>{editing && <Button type="button" disabled={busy} onClick={() => { setEditing(null); setDraft(emptyDraft(providers[0]?.providerKey || '')); }}>Cancel</Button>}</div>
-    </form>
-    <div className="mt-5 divide-y divide-[var(--border)]">
-      {connectors.length === 0 && <p className="py-3 text-sm text-[var(--text-muted)]">No additional connector accounts configured.</p>}
-      {connectors.map(connector => <section key={connector.id} className="py-4 first:pt-0 last:pb-0">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-medium">{connector.displayName}</h3><p className="mt-1 text-xs text-[var(--text-muted)]">{providers.find(item => item.providerKey === connector.providerKey)?.label || connector.providerKey} · {connector.credentialFieldsConfigured ? 'Credentials saved' : 'Credentials needed'}</p></div>
-          <div className="flex gap-2"><Button type="button" size="sm" onClick={() => void loadNumbers(connector.id)}>Refresh numbers</Button><Button type="button" size="sm" onClick={() => { setEditing(connector.id); setDraft({ providerKey: connector.providerKey, displayName: connector.displayName, providerAccountId: connector.providerAccountId || '', credentials: {} }); }}>Edit / rotate</Button></div></div>
-        <form className="mt-3 grid gap-2 md:grid-cols-4" onSubmit={event => void registerNumber(event, connector)}>
-          <input aria-label={`Phone number for ${connector.displayName}`} className={inputClass} value={numberDraft[connector.id]?.phoneNumberE164 || ''} onChange={event => setNumberDraft(current => ({ ...current, [connector.id]: { ...(current[connector.id] || { phoneNumberE164: '', providerNumberId: '', displayName: '' }), phoneNumberE164: event.target.value } }))} placeholder="+14155550123" required />
-          <input aria-label={`Provider number reference for ${connector.displayName}`} className={inputClass} value={numberDraft[connector.id]?.providerNumberId || ''} onChange={event => setNumberDraft(current => ({ ...current, [connector.id]: { ...(current[connector.id] || { phoneNumberE164: '', providerNumberId: '', displayName: '' }), providerNumberId: event.target.value } }))} placeholder="Provider reference (optional)" />
-          <input aria-label={`Number label for ${connector.displayName}`} className={inputClass} value={numberDraft[connector.id]?.displayName || ''} onChange={event => setNumberDraft(current => ({ ...current, [connector.id]: { ...(current[connector.id] || { phoneNumberE164: '', providerNumberId: '', displayName: '' }), displayName: event.target.value } }))} placeholder="Label (optional)" />
-          <Button type="submit" disabled={busy}>Add number to inventory</Button>
-        </form>
-        <ul className="mt-3 space-y-2 text-sm">{(numbers[connector.id] || []).map(number => <li key={number.id} className="rounded-lg border border-[var(--border)] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{number.phoneNumberE164}{number.displayName ? ` · ${number.displayName}` : ''}</span><span className="text-xs text-[var(--text-muted)]">{number.assignedWorkspaceName ? `Assigned to ${number.assignedWorkspaceName}` : 'Available to assign'}</span></div><div className="mt-2 flex flex-wrap items-center gap-2">{number.provisioningStatus !== 'ready' ? <><span className="text-xs text-[var(--text-muted)]">Confirm the number is active in your provider account to enable assignment.</span><Button type="button" size="sm" disabled={busy} onClick={() => void markNumberReady(number)}>Confirm number</Button></> : <><select aria-label={`Workspace for ${number.phoneNumberE164}`} className="h-9 min-w-48 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 text-sm" value={assignmentDraft[number.id] || ''} onChange={event => setAssignmentDraft(current => ({ ...current, [number.id]: event.target.value }))}><option value="">Choose workspace</option>{workspaceChoices.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select><Button type="button" size="sm" disabled={busy || !assignmentDraft[number.id]} onClick={() => void assignNumber(number)}>{number.assignedWorkspaceId ? 'Reassign' : 'Assign to workspace'}</Button>{number.assignedWorkspaceId && <Button type="button" size="sm" disabled={busy} onClick={() => void releaseNumber(number)}>Unassign</Button>}</>}</div></li>)}</ul>
-      </section>)}
-      {Object.values(numbers).flat().filter(number => number.ownerType === 'platform' || number.ownerType === 'platform_managed').length > 0 && <section className="mt-4 border-t border-[var(--border)] pt-4">
-        <h3 className="font-medium">Numbers provided by your platform</h3>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">These numbers use platform-managed provider accounts. You can assign or unassign them for your workspaces.</p>
-        <ul className="mt-3 space-y-2">{Object.values(numbers).flat().filter(number => number.ownerType === 'platform' || number.ownerType === 'platform_managed').map(number => <li key={number.id} className="rounded-lg border border-[var(--border)] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{number.phoneNumberE164}{number.displayName ? ` · ${number.displayName}` : ''}</span><span className="text-xs text-[var(--text-muted)]">{number.assignedWorkspaceName ? `Assigned to ${number.assignedWorkspaceName}` : 'Available to assign'}</span></div><div className="mt-2 flex flex-wrap items-center gap-2"><select aria-label={`Workspace for ${number.phoneNumberE164}`} className="h-9 min-w-48 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 text-sm" value={assignmentDraft[number.id] || ''} onChange={event => setAssignmentDraft(current => ({ ...current, [number.id]: event.target.value }))}><option value="">Choose workspace</option>{workspaceChoices.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select><Button type="button" size="sm" disabled={busy || !assignmentDraft[number.id]} onClick={() => void assignNumber(number)}>{number.assignedWorkspaceId ? 'Reassign' : 'Assign to workspace'}</Button>{number.assignedWorkspaceId && <Button type="button" size="sm" disabled={busy} onClick={() => void releaseNumber(number)}>Unassign</Button>}</div></li>)}</ul>
-      </section>}
-    </div>
-  </Card>;
+  const platformNumbers = Object.values(numbers).flat()
+    .filter(number => number.ownerType === 'platform' || number.ownerType === 'platform_managed');
+
+  const renderNumber = (number: InventoryNumber, isPlatformNumber = false) => (
+    <li key={number.id} className="min-w-0 rounded-xl border border-[var(--border)] bg-white p-4 dark:bg-[var(--bg-surface)] sm:p-5">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-semibold text-[var(--text-primary)]">
+            {number.phoneNumberE164}{number.displayName ? ` · ${number.displayName}` : ''}
+          </p>
+          {isPlatformNumber && <p className="mt-1 text-xs text-[var(--text-muted)]">Provided by your platform</p>}
+        </div>
+        <span className="inline-flex w-fit max-w-full shrink-0 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+          {number.assignedWorkspaceName ? `Assigned to ${number.assignedWorkspaceName}` : 'Available to assign'}
+        </span>
+      </div>
+      {!isPlatformNumber && number.provisioningStatus !== 'ready' ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+          <p className="max-w-xl text-xs leading-5 text-[var(--text-secondary)]">
+            Confirm this number is active in your provider account before assigning it.
+          </p>
+          <Button type="button" size="sm" disabled={busy} onClick={() => void markNumberReady(number)}>
+            Confirm number
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-4 grid min-w-0 gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <label className="block min-w-0 text-xs font-semibold text-[var(--text-secondary)]">
+            Workspace
+            <select aria-label={`Workspace for ${number.phoneNumberE164}`}
+              className={inputClass} value={assignmentDraft[number.id] || ''}
+              onChange={event => setAssignmentDraft(current => ({ ...current, [number.id]: event.target.value }))}>
+              <option value="">Choose workspace</option>
+              {workspaceChoices.map(workspace =>
+                <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+            </select>
+          </label>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <Button type="button" size="sm" className="min-h-10 flex-1 justify-center sm:flex-none"
+              disabled={busy || !assignmentDraft[number.id]}
+              onClick={() => void assignNumber(number)}>
+              {number.assignedWorkspaceId ? 'Reassign' : 'Assign to workspace'}
+            </Button>
+            {number.assignedWorkspaceId && (
+              <Button type="button" size="sm" className="min-h-10 flex-1 justify-center sm:flex-none"
+                disabled={busy} onClick={() => void releaseNumber(number)}>Unassign</Button>
+            )}
+          </div>
+        </div>
+      )}
+    </li>
+  );
+
+  // Inline onboarding shares the surrounding Virtual Numbers platform panel.
+  // The dialog variant retains a full-width shared Card.
+  const Container = embedded ? 'div' : Card;
+  const containerClass = embedded ? 'min-w-0 w-full text-left' : 'col-span-full min-w-0 w-full';
+  if (loading) return <Container className={containerClass}><p className="text-sm text-[var(--text-muted)]">Loading telephony accounts and available numbers…</p></Container>;
+  if (featureOff) return <Container className={containerClass}><CardHeader title="Customer-owned provider accounts" subtitle="Manage multiple accounts for each telephony provider." /><p className="text-sm text-[var(--text-muted)]">Provider account setup is not enabled for this organization.</p></Container>;
+
+  return <Container className={containerClass}>
+    {view === 'all' && <CardHeader title="Set up a virtual number" subtitle="Connect a provider, add its numbers, and assign each number to a workspace." />}
+    {view === 'all' && <p className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
+      Add a provider account, register its phone numbers, confirm they are active, then assign each to a workspace.
+      Existing platform-managed numbers can be assigned below without creating a provider account.
+    </p>}
+    {error && <p role="alert" className="mb-3 text-sm text-rose-600">{error}</p>}
+    {notice && <p role="status" className="mb-3 text-sm text-emerald-700">{notice}</p>}
+
+    {view !== 'platform' && <form onSubmit={event => void save(event)} className="space-y-5">
+      <fieldset className="min-w-0">
+        <legend className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Provider account details</legend>
+        <div className="grid min-w-0 gap-x-4 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
+          {!editing && (
+            <label className="block min-w-0 text-xs font-semibold text-[var(--text-secondary)]">
+              Provider
+              <select className={inputClass} value={draft.providerKey}
+                onChange={event => setDraft(current => ({ ...current, providerKey: event.target.value, credentials: {} }))}
+                required>
+                {providers.map(provider =>
+                  <option key={provider.providerKey} value={provider.providerKey}>{provider.label || provider.name}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="block min-w-0 text-xs font-semibold text-[var(--text-secondary)]">
+            Connector name
+            <input className={inputClass} value={draft.displayName}
+              onChange={event => setDraft(current => ({ ...current, displayName: event.target.value }))}
+              maxLength={191} required placeholder="e.g. Mumbai support account" />
+          </label>
+          <label className="block min-w-0 text-xs font-semibold text-[var(--text-secondary)]">
+            Provider account reference (optional)
+            <input className={inputClass} value={draft.providerAccountId}
+              onChange={event => setDraft(current => ({ ...current, providerAccountId: event.target.value }))}
+              maxLength={191} />
+          </label>
+        </div>
+      </fieldset>
+      {selectedProvider && selectedProvider.credentialSchema.length > 0 && (
+        <fieldset className="min-w-0">
+          <legend className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Provider credentials</legend>
+          <div className="grid min-w-0 gap-x-4 gap-y-4 sm:grid-cols-2">
+            {selectedProvider.credentialSchema.map(field => (
+              <label key={field.key} className="block min-w-0 text-xs font-semibold text-[var(--text-secondary)]">
+                {field.label}{field.required && !editing ? ' *' : ''}
+                <input className={inputClass}
+                  type={field.type === 'secret' || field.type === 'password' ? 'password' : 'text'}
+                  autoComplete="new-password"
+                  value={draft.credentials[field.key] || ''}
+                  onChange={event => setDraft(current => ({ ...current, credentials: { ...current.credentials, [field.key]: event.target.value } }))}
+                  required={!editing && field.required}
+                  placeholder={editing ? 'Leave blank to keep current value' : field.placeholder || ''} />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-4">
+        {editing && <Button type="button" disabled={busy} onClick={() => {
+          setEditing(null); setDraft(emptyDraft(providers[0]?.providerKey || ''));
+        }}>Cancel</Button>}
+        <Button type="submit" variant="primary" loading={busy}>
+          {editing ? 'Save account' : 'Add account'}
+        </Button>
+      </div>
+    </form>}
+
+    {view !== 'platform' && <section className="mt-6 border-t border-[var(--border)] pt-5" aria-label="Saved provider accounts">
+      <h3 className="text-sm font-semibold text-[var(--text-primary)]">Saved provider accounts</h3>
+      {connectors.length === 0 &&
+        <p className="mt-3 rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
+          No additional connector accounts configured.
+        </p>}
+      <div className="mt-3 space-y-4">
+        {connectors.map(connector => (
+          <section key={connector.id} className="min-w-0 rounded-xl border border-[var(--border)] p-4 sm:p-5">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h4 className="break-words text-sm font-semibold text-[var(--text-primary)]">{connector.displayName}</h4>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  {providers.find(item => item.providerKey === connector.providerKey)?.label || connector.providerKey}
+                  {' · '}{connector.credentialFieldsConfigured ? 'Credentials saved' : 'Credentials needed'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" onClick={() => void loadNumbers(connector.id)}>Refresh numbers</Button>
+                <Button type="button" size="sm" onClick={() => {
+                  setEditing(connector.id);
+                  setDraft({ providerKey: connector.providerKey, displayName: connector.displayName,
+                    providerAccountId: connector.providerAccountId || '', credentials: {} });
+                }}>Edit / rotate</Button>
+              </div>
+            </div>
+            <form className="mt-4 grid min-w-0 gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2 xl:grid-cols-4 xl:items-end"
+              onSubmit={event => void registerNumber(event, connector)}>
+              <input aria-label={`Phone number for ${connector.displayName}`} className={inputClass}
+                value={numberDraft[connector.id]?.phoneNumberE164 || ''}
+                onChange={event => setNumberDraft(current => ({ ...current, [connector.id]: {
+                  ...(current[connector.id] || { phoneNumberE164: '', providerNumberId: '', displayName: '' }),
+                  phoneNumberE164: event.target.value,
+                } }))} placeholder="+14155550123" required />
+              <input aria-label={`Provider number reference for ${connector.displayName}`} className={inputClass}
+                value={numberDraft[connector.id]?.providerNumberId || ''}
+                onChange={event => setNumberDraft(current => ({ ...current, [connector.id]: {
+                  ...(current[connector.id] || { phoneNumberE164: '', providerNumberId: '', displayName: '' }),
+                  providerNumberId: event.target.value,
+                } }))} placeholder="Provider reference (optional)" />
+              <input aria-label={`Number label for ${connector.displayName}`} className={inputClass}
+                value={numberDraft[connector.id]?.displayName || ''}
+                onChange={event => setNumberDraft(current => ({ ...current, [connector.id]: {
+                  ...(current[connector.id] || { phoneNumberE164: '', providerNumberId: '', displayName: '' }),
+                  displayName: event.target.value,
+                } }))} placeholder="Label (optional)" />
+              <Button type="submit" size="sm" className="min-h-10 justify-center" disabled={busy}>Add number to inventory</Button>
+            </form>
+            <ul className="mt-4 space-y-3 text-sm">
+              {(numbers[connector.id] || [])
+                .filter(number => number.ownerType !== 'platform' && number.ownerType !== 'platform_managed')
+                .map(number => renderNumber(number))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </section>}
+
+    {view !== 'connection' && (
+      <section className="mt-6 min-w-0 border-t border-[var(--border)] pt-5" aria-label="Platform-managed numbers">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Numbers provided by your platform</h3>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+          These numbers use platform-managed provider accounts. You can assign or unassign them for your workspaces.
+        </p>
+        {platformNumbers.length ? <ul className="mt-4 space-y-3">{platformNumbers.map(number => renderNumber(number, true))}</ul>
+          : <p className="mt-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">No platform-provided numbers are currently available for this organization.</p>}
+      </section>
+    )}
+  </Container>;
 }

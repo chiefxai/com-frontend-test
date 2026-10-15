@@ -49,7 +49,7 @@ import Sidebar, { type WorkspaceOption } from './components/Sidebar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { QuestionFlow } from './features/workflows/types';
 import { useFeatureFlags } from './features/feature-flags/FeatureFlagContext';
-import type { AppNotification } from './components/NotificationBell';
+import NotificationSettingsPage from './notifications/NotificationSettingsPage';
 
 // Each feature view is fetched the first time its workspace tab is opened.
 const DashboardView = React.lazy(() => import('./features/dashboard'));
@@ -129,6 +129,7 @@ export default function App() {
     loans:         'loan-lifecycle',
     company:       'company-profile',
     settings:      'administration',
+    'notification-settings': 'notification-settings',
   };
   const SLUG_TO_TAB: Record<string, string> = Object.fromEntries(
     Object.entries(TAB_TO_SLUG).map(([tab, slug]) => [slug, tab])
@@ -306,15 +307,6 @@ export default function App() {
   // cleared when it completes. Not a simulation: this only fires for real
   // Vobiz call events from server.js/vobizProxy.js.
   const [liveCallBanner, setLiveCallBanner] = useState<{ message: string; startedAt: number } | null>(null);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-
-  const pushNotification = (type: string, message: string) => {
-    setNotifications(prev => [
-      { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, type, message, timestamp: Date.now(), read: false },
-      ...prev.slice(0, 49), // keep last 50
-    ]);
-  };
-
   // Lightweight refresh for just the dialer tasks — used to keep
   // auto-dial progress (autoDialStatus, callResults) live in the UI
   // without re-fetching everything else refreshData() does. The backend
@@ -552,6 +544,7 @@ export default function App() {
       if (closed || !ticket) return;
 
       source = new EventSource(`${getApiBase()}/api/logs-stream?ticket=${encodeURIComponent(ticket)}`);
+      source.addEventListener('notification', () => window.dispatchEvent(new Event('chiefx-notification-change')));
       source.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -563,7 +556,7 @@ export default function App() {
           if (data.type === 'call_started') {
             const msg = `Incoming call from ${data.callerNumber || 'unknown number'}…`;
             setLiveCallBanner({ message: msg, startedAt: Date.now() });
-            pushNotification('call_started', msg);
+            // Live call banner is transient UI, never a stored notification.
           } else if (data.type === 'call_completed') {
             setLiveCallBanner(null);
             if (data.callLog) {
@@ -578,7 +571,7 @@ export default function App() {
             // refresh so campaign Survey Status / sentiment / answers match
             // the authoritative row without waiting for the 8s poll.
             refreshDialerTasks();
-            pushNotification('call_completed', `Call completed${data.callLog?.leadName ? ` with ${data.callLog.leadName}` : ''}`);
+            // Persisted call notifications are emitted once by the backend finalizer.
           } else if (data.type === 'auto_dial_progress') {
             // Refetch immediately instead of trying to patch the specific
             // task/field this event mentions — the backend row is the
@@ -586,9 +579,7 @@ export default function App() {
             // it here is simpler and can't drift out of sync with whatever
             // shape a given progress event happens to carry.
             refreshDialerTasks();
-            if (data.message) pushNotification(data.type, data.message);
-          } else if (data.message) {
-            pushNotification(data.type || 'info', data.message);
+            // Progress and transport messages are not notifications.
           }
         } catch {
           // non-JSON keepalive/init messages — ignore
@@ -807,6 +798,8 @@ export default function App() {
       );
     }
     switch (tab) {
+      case 'notification-settings':
+        return <PageShell title="Notification Settings"><NotificationSettingsPage audience="organization" /></PageShell>;
       case 'dashboard':
         return (
           <DashboardView
@@ -923,6 +916,8 @@ export default function App() {
             costPerMinuteInr={costPerMinuteInr}
             phoneCostPerMinute={phoneCostPerMinute}
             phoneChargesBillable={phoneChargesBillable}
+            billingCallLogs={callLogs}
+            onOpenCallLogs={() => navigate('/call-logs')}
             aiTokenCost={aiTokenCost}
             aiTokenCurrentRate={aiTokenCurrentRate}
             aiTokenUsage={aiTokenUsage}
@@ -1001,6 +996,7 @@ export default function App() {
           if (selected) void refreshProfileAuthorization(selected);
         }}
         onLogout={logout}
+        onNotificationSettings={() => navigate('/notification-settings')}
         workspaces={workspaces}
         multipleWorkspacesEnabled={multipleWorkspacesEnabled}
         activeWorkspaceId={activeWorkspaceId || orgSettings.id}
@@ -1014,9 +1010,6 @@ export default function App() {
           setActiveWorkspaceId(workspaceId);
           window.location.reload();
         }}
-        notifications={notifications}
-        onMarkAllNotificationsRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearNotifications={() => setNotifications([])}
       />
 
       {/* Main Workspace — fills remaining 12-col grid space */}

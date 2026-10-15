@@ -10,6 +10,7 @@ import IconButton from './ui/IconButton';
 import { newBillingIdempotencyKey } from '../lib/billing/client';
 
 interface WorkspaceSetup { policy: {mode:string;primaryIndustry:string;pricing?:{includedWorkspaces:number;maxWorkspaces:number|null}}; currentQuote: {totalMonthlyInr:number} | null; purchasesAvailable?:boolean;pendingWorkspacePurchases?:number;addBranchQuote: {totalMonthlyInr:number;upgradesToMultipleBranches:boolean;token:string;paymentRequired:boolean;monthlyAddonInr:number} | null }
+interface TopupFunding { topupPaymentAvailable?: boolean; unallocatedTopupCredits?: {asset:string;units:string;scale:number} }
 interface WorkspaceRow { id: string; name: string; industry: string; branchName?: string | null; status: string }
 
 export default function WorkspaceManagement({
@@ -40,8 +41,14 @@ export default function WorkspaceManagement({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [purchaseKey,setPurchaseKey] = useState(newBillingIdempotencyKey);
+  const [topupFunding,setTopupFunding] = useState<TopupFunding | null>(null);
+  const [paymentMethod,setPaymentMethod] = useState<'topup' | 'invoice'>('invoice');
   const canPay = can('billing.payment.submit');
   const paymentRequired = setup?.addBranchQuote?.paymentRequired === true;
+  const chargeUnits = BigInt(Math.round((setup?.addBranchQuote?.monthlyAddonInr || 0) * 100));
+  const fundedTopupUnits = BigInt(topupFunding?.unallocatedTopupCredits?.units || '0');
+  const canUseTopup = topupFunding?.topupPaymentAvailable === true && fundedTopupUnits >= chargeUnits && chargeUnits > 0n;
+  const redeemTopup = paymentRequired && paymentMethod === 'topup';
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -58,10 +65,14 @@ export default function WorkspaceManagement({
         if (!response.ok) throw new Error(body.error || 'Could not load workspace policy');
         return body as WorkspaceSetup;
       }),
-    ]).then(([rows, options]) => {
+      apiFetch('/api/billing/workspace-addons').then(async response => response.ok ? await response.json() as TopupFunding : null).catch(() => null),
+    ]).then(([rows, options, funding]) => {
       if (cancelled) return;
       setWorkspaces(Array.isArray(rows) ? rows : []);
       setSetup(options);
+      setTopupFunding(funding);
+      if (funding?.topupPaymentAvailable && BigInt(funding.unallocatedTopupCredits?.units || '0') >= BigInt(Math.round((options.addBranchQuote?.monthlyAddonInr || 0) * 100))) setPaymentMethod('topup');
+      else setPaymentMethod('invoice');
       setIndustry(options.policy.primaryIndustry);
     }).catch(error => {
       if (!cancelled) setMessage({ type: 'error', text: error.message || 'Could not load workspace setup.' });
@@ -78,27 +89,32 @@ export default function WorkspaceManagement({
     setSaving(true);
     setMessage(null);
     try {
-      const response = await apiFetch(paymentRequired ? '/api/billing/workspace-addons' : '/api/settings/workspaces', {
+      if (redeemTopup && !canUseTopup) throw new Error('Insufficient unallocated top-up credits. Choose invoice payment or add more credits.');
+      const response = await apiFetch(paymentRequired ? (redeemTopup ? '/api/billing/workspace-addons/pay-with-topup' : '/api/billing/workspace-addons') : '/api/settings/workspaces', {
         method: 'POST',
         ...(paymentRequired ? {headers:{'Idempotency-Key':purchaseKey}} : {}),
         body: JSON.stringify({ name: name.trim(), industry, branchName: branchName.trim() || null, pricingAcceptanceToken:setup.addBranchQuote.token }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not create workspace');
-      if (!paymentRequired) setWorkspaces(current => [...current, body as WorkspaceRow]);
+      if (!paymentRequired || redeemTopup) {
+        if (redeemTopup) setWorkspaces(current => [...current, {id:body.workspaceId,name:name.trim(),industry,branchName:branchName.trim() || null,status:'Active'}]);
+        else setWorkspaces(current => [...current, body as WorkspaceRow]);
+      }
       setPurchaseKey(newBillingIdempotencyKey());
       setName('');
       setBranchName('');
       setShowCreateWorkspace(false);
-      setMessage({ type: 'success', text: paymentRequired ? 'Workspace reserved. Submit the payment receipt under Billing & Usage → Subscription; it will be created after approval.' : 'Workspace created and assigned to you as Workspace Admin.' });
+      setMessage({ type: 'success', text: redeemTopup ? 'Workspace created immediately. The first month was charged to your unallocated top-up credits; renewal invoices are still paid separately.' : paymentRequired ? 'Workspace reserved. Submit the payment receipt under Billing & Usage → Payments; it will be created after approval.' : 'Workspace created and assigned to you as Workspace Admin.' });
       // A secondary refresh failure must never make a successful create look
       // unsuccessful (or encourage a duplicate workspace submission).
       try {
         const policyResponse = await apiFetch('/api/settings/workspace-policy');
-        if (policyResponse.ok) setSetup(await policyResponse.json());
+        if (policyResponse.ok) { const refreshed=await policyResponse.json(); setSetup(refreshed); if (Array.isArray(refreshed.workspaces)) setWorkspaces(refreshed.workspaces); }
+        if (redeemTopup) { const fundingResponse=await apiFetch('/api/billing/workspace-addons'); if (fundingResponse.ok) setTopupFunding(await fundingResponse.json()); }
         await onWorkspaceCreated();
       } catch {
-        setMessage({ type: 'success', text: paymentRequired ? 'Purchase recorded. Refresh to see its payment invoice.' : 'Workspace created. Refresh the page if related workspace data has not updated yet.' });
+        setMessage({ type: 'success', text: redeemTopup ? 'Workspace created and top-up credits charged. Refresh if your credit balance has not updated.' : paymentRequired ? 'Purchase recorded. Refresh to see its payment invoice.' : 'Workspace created. Refresh the page if related workspace data has not updated yet.' });
       }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Could not create workspace.' });
@@ -156,7 +172,7 @@ export default function WorkspaceManagement({
         open={showCreateWorkspace}
         onClose={() => { if (!saving) setShowCreateWorkspace(false); }}
         title="Create Workspace"
-        subtitle="Included workspaces are created immediately. Paid add-ons require payment approval."
+        subtitle="Included workspaces are free. Extra workspaces can be created with eligible top-up credits or a verified invoice."
         maxWidth="max-w-lg"
       >
         <form onSubmit={createWorkspace} className="space-y-4">
@@ -187,17 +203,26 @@ export default function WorkspaceManagement({
                   ? `This subscription allows up to ${setup.policy.pricing.maxWorkspaces} workspace${setup.policy.pricing.maxWorkspaces === 1 ? '' : 's'}. Upgrade the subscription to add another workspace.`
                   : 'Ask a platform administrator to configure branch pricing before adding another workspace.'}
               </p>}
-          {paymentRequired && <p className="text-xs text-[var(--text-secondary)]">Pay ₹{setup?.addBranchQuote?.monthlyAddonInr.toFixed(2)} per month for this workspace. The first month starts after payment approval. Monthly renewal invoices follow; usage credits cannot pay this fee.</p>}
-          {paymentRequired && (!canPay || !setup?.purchasesAvailable) && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{!canPay ? 'An organization billing administrator must purchase this add-on.' : 'Workspace payments are currently unavailable. Contact your platform administrator.'}</p>}
+          {paymentRequired && <div className="space-y-2 text-xs text-[var(--text-secondary)]">
+            <p>Workspace add-on: ₹{setup?.addBranchQuote?.monthlyAddonInr.toFixed(2)} for the first month, then monthly renewal invoices.</p>
+            {topupFunding?.topupPaymentAvailable && <div className="space-y-2 rounded-lg border border-[var(--border)] p-3" role="group" aria-label="Workspace payment method">
+              <label className="flex items-center gap-2"><input type="radio" name="workspace-funding" checked={paymentMethod === 'topup'} onChange={() => { setPaymentMethod('topup'); setPurchaseKey(newBillingIdempotencyKey()); }} disabled={!canUseTopup} /> Pay now with unallocated top-up credits (₹{(Number(fundedTopupUnits)/100).toFixed(2)} available)</label>
+              <label className="flex items-center gap-2"><input type="radio" name="workspace-funding" checked={paymentMethod === 'invoice'} onChange={() => { setPaymentMethod('invoice'); setPurchaseKey(newBillingIdempotencyKey()); }} /> Submit invoice for approval</label>
+              {!canUseTopup && <p role="status">Not enough unallocated top-up credits to cover ₹{setup?.addBranchQuote?.monthlyAddonInr.toFixed(2)}. Allocate fewer credits to workspaces or purchase more top-up credits first.</p>}
+              {redeemTopup && <p>Confirming will deduct the full first-month charge immediately. Credits already allocated to another workspace and subscription credits will not be used. Renewals still require a separate invoice payment.</p>}
+            </div>}
+            {!topupFunding?.topupPaymentAvailable && <p>The first month starts only after invoice payment approval. Renewal invoices follow.</p>}
+          </div>}
+          {paymentRequired && (!canPay || (redeemTopup ? !canUseTopup : !setup?.purchasesAvailable)) && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{!canPay ? 'An organization billing administrator must purchase this add-on.' : redeemTopup ? 'Top-up payment is unavailable or the balance is insufficient.' : 'Workspace invoice payments are currently unavailable. Contact your platform administrator.'}</p>}
           <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
             <button type="button" disabled={saving} onClick={() => setShowCreateWorkspace(false)}
               className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
               Cancel
             </button>
-            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !name.trim() || (paymentRequired && (!canPay || !setup?.purchasesAvailable))}
+            <button type="submit" disabled={saving || loading || !setup?.addBranchQuote || !name.trim() || (paymentRequired && (!canPay || (redeemTopup ? !canUseTopup : !setup?.purchasesAvailable)))}
               className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-              {saving ? 'Preparing…' : paymentRequired ? 'Prepare payment invoice' : 'Create Workspace'}
+              {saving ? 'Preparing…' : redeemTopup ? 'Pay credits & create workspace' : paymentRequired ? 'Prepare payment invoice' : 'Create Workspace'}
             </button>
           </div>
         </form>

@@ -7,18 +7,28 @@ import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '..
 vi.mock('../components/billing/OrganizationTopUp', () => ({
   default: () => <div data-testid="organization-credit-ledger">Credit ledger</div>,
 }));
-const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), organizationOverview: vi.fn() }));
-vi.mock('../lib/billing/client', () => ({ billingClient: {
-  workspaceOverview: mocks.workspaceOverview, organizationOverview: mocks.organizationOverview,
-} }));
+const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), renewal: vi.fn(), organizationOverview: vi.fn(), creditStatus: vi.fn(), grace: vi.fn() }));
+vi.mock('../lib/billing/client', () => ({
+  billingClient: { workspaceOverview: mocks.workspaceOverview, subscriptionRenewal: mocks.renewal,
+    organizationOverview: mocks.organizationOverview, subscriptionCreditStatus: mocks.creditStatus, subscriptionGraceRequests: mocks.grace }, 
+  newBillingIdempotencyKey: () => 'test-renewal-key',
+  BillingApiError: class extends Error { status = 500; },
+}));
 beforeEach(() => {
   setAuthorization(legacyAuthorization('Organization Admin'));
+  mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null,
+    allocation: { mode:'manual',manualAllocationAllowed:true,workspaceLimit:10,workspaceCount:2,workspaceId:null,status:'ready' } });
+  mocks.creditStatus.mockResolvedValue({ planName: 'Starter', planId: 'starter' });
+  mocks.grace.mockResolvedValue({ eligibility: { requestEligible: true }, items: [] });
+  mocks.renewal.mockResolvedValue({
+    subscription: { lifecycleStatus: 'active', accessState: 'operational', planId: 'starter', planVersion: 1, version: 1 },
+    period: { endsAt: new Date(Date.now() + 3 * 86400000).toISOString(), renewalEligible: true, startsAt: new Date(Date.now() - 25 * 86400000).toISOString() }, quote: null, payment: { submissionEnabled: false, purpose: 'subscription' }, 
+  });
   mocks.workspaceOverview.mockResolvedValue({ orgId: 'org-1', workspaceId: 'workspace-1', workspaceName: 'Main office',
     status: 'active', uninitialized: false, balances: [
       { kind: 'subscription', available: {asset:'INR',units:'12500',scale:2}, held: {asset:'INR',units:'500',scale:2}, expiresAt:'2026-11-01T00:00:00Z' },
       { kind: 'topup', available: {asset:'INR',units:'7000',scale:2}, held: {asset:'INR',units:'0',scale:2}, expiresAt:null },
     ] });
-  mocks.organizationOverview.mockReturnValue(new Promise(() => {}));
 });
 afterEach(() => { cleanup(); setAuthorization(null); vi.clearAllMocks(); });
 
@@ -75,14 +85,14 @@ describe('organization billing interface', () => {
     },
   );
 
-  it('keeps recurring subscription, organization usage, and credit ledger conceptually separate', () => {
+  it('keeps the plan, remaining credits and call usage conceptually separate', () => {
     render(<BillingWorkspace {...defaults} />);
-    expect(screen.getByText('Subscription / month')).toBeTruthy();
-    expect(screen.getByText('Recorded usage')).toBeTruthy();
-    expect(screen.getByText('Calls recorded')).toBeTruthy();
+    expect(screen.getByText('Your plan right now')).toBeTruthy();
+    expect(screen.getByText('Plan credits remaining')).toBeTruthy();
+    expect(screen.getByText('Call usage')).toBeTruthy();
     expect(screen.getByText('43')).toBeTruthy();
     expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
-    expect(screen.getByTestId('organization-credit-ledger')).toBeTruthy();
+    expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
   });
 
   it('offers direct navigation to the major billing sections', () => {
@@ -106,39 +116,51 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('credits');
   });
 
-  it('hides Allocation for a single-workspace subscription and redirects a direct Allocation URL', async () => {
+  it('shows a simple subscription overview and hides extra billing details by default', async () => {
+    render(<BillingWorkspace {...defaults} view="plan" />);
+    expect(screen.getByText('Your subscription')).toBeInTheDocument();
+    expect(screen.getByText('Your estimated plan price')).toBeInTheDocument();
+    expect(screen.getByText('Plan price and calling credits are different.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show extra plan details/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /View remaining credits/ }));
+    expect(defaults.onNavigate).toHaveBeenCalledWith('credits');
+    fireEvent.click(screen.getByRole('button', { name: /Workspace invoices and payments/ }));
+    expect(defaults.onNavigate).toHaveBeenCalledWith('payments');
+  });
+
+  it('hides Allocation for automatic single-workspace billing and redirects a direct Allocation URL', async () => {
     const onNavigate = vi.fn();
-    mocks.organizationOverview.mockResolvedValue({ allocation: { mode:'automatic',manualAllocationAllowed:false,
-      workspaceLimit:1,workspaceCount:1,workspaceId:'workspace-1',status:'ready' } });
+    mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null,
+      allocation: { mode:'automatic',manualAllocationAllowed:false,workspaceLimit:1,workspaceCount:1,
+        workspaceId:'workspace-1',status:'ready' } });
     render(<BillingWorkspace {...defaults} view="allocation" onNavigate={onNavigate} />);
     expect(await screen.findByRole('navigation', { name:'Billing sections' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name:'Allocation' })).not.toBeInTheDocument();
     await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('credits'));
-    expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
+  });
+
+  it('keeps four usage and balance cards alongside the compact current-plan card', () => {
+    render(<BillingWorkspace {...defaults} />);
+    expect(screen.getByText('Your plan right now')).toBeInTheDocument();
+    for (const title of ['Plan credits remaining','Extra credits remaining','AI usage cost','Call usage'])
+      expect(screen.getByText(title)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View my plan' })).toBeInTheDocument();
+  });
+
+  it('removes workspace monthly spending controls without hiding usage totals', () => {
+    render(<BillingWorkspace {...defaults} view="usage" />);
+    expect(screen.getByText('Usage cost so far')).toBeInTheDocument();
+    expect(screen.queryByText('Your workspace spending limit')).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', {name:'Monthly cap in INR'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name:'Save workspace limit'})).not.toBeInTheDocument();
   });
 
   it('keeps Add credits hidden for viewers without submission permission', () => {
     render(<BillingWorkspace {...defaults} canSubmitPayment={false} />);
     expect(screen.queryByRole('button', { name: 'Add credits' })).not.toBeInTheDocument();
-  });
-
-  it('keeps organization spending distinct from the selected workspace cap and preserves save', () => {
-    const onSaveBudget = vi.fn();
-    const onBudgetDraftChange = vi.fn();
-    render(<BillingWorkspace {...defaults} view="usage" onSaveBudget={onSaveBudget} onBudgetDraftChange={onBudgetDraftChange} />);
-    expect(screen.getByText('Organization usage spend')).toBeTruthy();
-    expect(screen.getByText('Selected workspace cap')).toBeTruthy();
-    expect(screen.getByText('Workspace cap remaining')).toBeTruthy();
-    expect(screen.getByText(/different scopes/i)).toBeTruthy();
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Monthly cap in INR' }), { target: { value: '2000' } });
-    expect(onBudgetDraftChange).toHaveBeenCalledWith('2000');
-    fireEvent.click(screen.getByRole('button', { name: 'Save workspace cap' }));
-    expect(onSaveBudget).toHaveBeenCalledOnce();
-  });
-
-  it('does not display the edit action without workspace permissions', () => {
-    render(<BillingWorkspace {...defaults} view="usage" canManageBudget={false} />);
-    expect(screen.queryByRole('button', { name: 'Save workspace cap' })).toBeNull();
   });
 
   it('explains a failed refresh and lets the user retry', () => {

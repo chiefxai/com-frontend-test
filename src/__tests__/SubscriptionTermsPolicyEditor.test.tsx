@@ -23,6 +23,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('subscription terms policy editor', () => {
+  it('hides informational financial terms until Configure is opened', async () => {
+    const view = render(<SubscriptionTermsPolicyEditor open={false} />);
+    expect(screen.queryByText('Subscription financial terms')).not.toBeInTheDocument();
+    expect(screen.queryByText('Starter defaults active')).not.toBeInTheDocument();
+    view.rerender(<SubscriptionTermsPolicyEditor open />);
+    expect(await screen.findByText('Subscription financial terms')).toBeInTheDocument();
+  });
+
   it('shows an unconfigured state and requires explicit confirmation for no taxes', async () => {
     render(<SubscriptionTermsPolicyEditor />);
     await screen.findByText('Not configured');

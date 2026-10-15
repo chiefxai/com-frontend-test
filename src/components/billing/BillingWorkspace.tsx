@@ -1,17 +1,17 @@
 import React from 'react';
-import { Activity, ArrowDownToLine, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Activity, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, Info, ChartNoAxesCombined, Gauge } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
-import Button from '../ui/Button';
 import KpiCard from '../ui/KpiCard';
+import Button from '../ui/Button';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
+import BillingOverviewHome from './BillingOverviewHome';
+import type { CallLog } from '../../types';
 import { formatInr } from '../../lib/pricing';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
-import InitialSubscriptionPurchase from './InitialSubscriptionPurchase';
-import SubscriptionRenewal from './SubscriptionRenewal';
-import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
-import SubscriptionGraceRequest from './SubscriptionGraceRequest';
+import SubscriptionActionCenter from './SubscriptionActionCenter';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
+import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview } from '../../lib/billing/types';
 
@@ -35,6 +35,8 @@ export interface OrganizationSubscriptionPrice {
 
 export interface BillingWorkspaceProps {
   workspaceId?: string;
+  callLogs?: CallLog[];
+  onOpenCallLogs?: () => void;
   view: BillingPanel;
   onNavigate: (view: BillingPanel) => void;
   workspaceBilling: WorkspaceBillingSnapshot | null;
@@ -77,8 +79,8 @@ const sections: { key: BillingPanel; label: string; icon: React.ElementType }[] 
 
 const descriptions: Record<BillingPanel, string> = {
   dashboard: 'Your subscription, usage and credit balances in one place.',
-  plan: 'Recurring plan charges and additional workspace billing.',
-  usage: 'Recorded call costs and workspace spending controls.',
+  plan: 'Your plan, its price, and simple steps to manage it.',
+  usage: 'Recorded call costs and usage totals.',
   credits: 'Available credits from your plan and approved top-ups.',
   allocation: 'Assign organization-owned credit grants to workspaces and review transfer history.',
   topup: 'Submit a payment receipt for additional usage credits.',
@@ -91,6 +93,7 @@ const money = (value: number | null | undefined) =>
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
   workspaceId, view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
+  callLogs, onOpenCallLogs,
   onRetry, phoneChargesBillable, canSubmitPayment, canManageBudget, rechargeBased,
   rechargeBalanceInr, rechargeReservedInr, budgetDraft, onBudgetDraftChange,
   onSaveBudget, budgetSaving, budgetError,
@@ -119,7 +122,14 @@ export default function BillingWorkspace({
   React.useEffect(() => {
     if (view === 'allocation' && allocationCapability && !canUseManualAllocation) onNavigate('credits');
   }, [view, allocationCapability, canUseManualAllocation, onNavigate]);
-  if (!authorization?.permissions.includes('billing.organization.read')) {
+  const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time' | null>(null);
+  const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
+    ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
+  const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
+    setInitialSubscriptionTask(task);
+    onNavigate('plan');
+  };
+    if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
       ? <WorkspaceAllocatedBilling workspaceId={workspaceId || workspaceBilling?.workspaceId || ''} />
       : <p role="alert" className="col-span-12 text-xs text-[var(--text-secondary)]">You do not have access to workspace billing.</p>;
@@ -161,118 +171,110 @@ export default function BillingWorkspace({
       )}
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
 
-      {view === 'dashboard' && (
-        <div className="col-span-12 grid grid-cols-12 gap-3 md:gap-4">
-            <KpiCard colSpan={3} iconPosition="top-left" icon={CreditCard}
-              label="Subscription / month" value={money(organizationPricing?.totalMonthlyInr)}
-              sub="Recurring plan price" />
-            <KpiCard colSpan={3} iconPosition="top-left" icon={Activity}
-              label="Recorded usage" value={money(workspaceBilling?.periodSpendInr)}
-              sub="Organization-wide this period" />
-            <KpiCard colSpan={3} iconPosition="top-left" icon={PhoneCall}
-              label="Calls recorded" value={callCount ?? '—'} sub="Across all workspaces" />
-            <KpiCard colSpan={3} iconPosition="top-left" icon={Clock3}
-              label="Conversation time" value={formatCallTime(workspaceBilling?.aiMinutesUsed)}
-              sub="Across all workspaces" />
-        </div>
-      )}
+      {view === 'dashboard' && <BillingOverviewHome
+        onNavigate={onNavigate}
+        onOpenCallLogs={onOpenCallLogs}
+        callLogs={callLogs}
+        pricing={organizationPricing}
+        usage={workspaceBilling}
+        callCount={callCount}
+        phoneChargesBillable={phoneChargesBillable}
+        canManageSubscription={canManageSubscription}
+        canAllocate={canUseManualAllocation}
+        canSubmitPayment={canSubmitPayment}
+        loadingUsage={loading}
+        onOpenSubscriptionTask={openSubscriptionTask}
+      />}
 
       {view === 'plan' && (
         <>
-        <Card padding="sm" className="col-span-12 sm:!p-5">
-          <CardHeader title="Subscription" subtitle="Recurring organization plan costs" icon={CreditCard}
-            action={<Button type="button" size="sm" variant="secondary" icon={Wallet}
-              onClick={() => onNavigate('credits')}>View credits</Button>} />
-          <div className="rounded-xl bg-[var(--bg-subtle)] p-4 sm:p-5">
-            <p className="text-xs font-medium text-[var(--text-secondary)]">Monthly subscription</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
-              {money(organizationPricing?.totalMonthlyInr)}
-              <span className="ml-1 text-sm font-normal text-[var(--text-muted)]">/ month</span>
-            </p>
-            <p className="mt-2 text-[11px] text-[var(--text-muted)]">Excludes usage and applicable taxes.</p>
+          <Card padding="sm" className="col-span-12 sm:!p-5">
+            <CardHeader title="Your subscription" subtitle="Here's what your plan costs and what you can do next." icon={CreditCard}
+              action={<Button type="button" size="sm" variant="secondary" icon={Wallet}
+                onClick={() => onNavigate('credits')}>See my credits</Button>} />
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <div className="rounded-xl bg-[var(--accent-subtle)] p-5">
+                <p className="text-sm font-medium text-[var(--text-secondary)]">Your estimated plan price</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+                  {money(organizationPricing?.totalMonthlyInr)}
+                  <span className="ml-1 text-base font-normal text-[var(--text-secondary)]">every month</span>
+                </p>
+                <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                  This is your plan's monthly price before taxes and extra usage charges. The amount to pay on a bill may differ.
+                </p>
+              </div>
+              <div className="grid grid-cols-12 gap-3">
+                <KpiCard span={{ xs: 6 }} icon={Building2} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label="Workspaces" value={organizationPricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
+                <KpiCard span={{ xs: 6 }} icon={Layers3} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4">
+              <Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Plan price and calling credits are different.</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+                  You pay the plan price to keep your subscription. Credits are used for services such as calls.
+                  Credits included with your plan become available only after the payment is approved and the paid period starts.
+                </p>
+              </div>
+            </div>
+          </Card>
+          {canManageSubscription
+            ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
+            : <p className="col-span-12 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+                Only your organization's billing administrators can start, renew, or change a subscription.
+              </p>}
+          <div className="col-span-12 flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="secondary" icon={Wallet}
+              onClick={() => onNavigate('credits')}>View remaining credits</Button>
+            <Button type="button" size="sm" variant="secondary" icon={ReceiptText}
+              onClick={() => onNavigate('payments')}>Workspace invoices and payments</Button>
           </div>
-          <div className="mt-4 grid grid-cols-12 gap-3">
-            <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} iconPosition="top-left" icon={Building2}
-              label="Workspaces on subscription" value={organizationPricing?.workspaceCount ?? '—'} />
-            <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} iconPosition="top-left" icon={Layers3}
-              label="Additional industry packs" value={organizationPricing?.additionalIndustries ?? '—'} />
-          </div>
-          <div className="mt-4 flex items-start gap-2 rounded-lg border border-[var(--border)] px-3 py-2.5 text-xs text-[var(--text-secondary)]">
-            <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-            Workspace invoices and renewals appear below. Subscription fees are separate from prepaid usage credits.
-          </div>
-        </Card>
-        <div className="col-span-12"><InitialSubscriptionPurchase canSubmit={canSubmitPayment} /></div>
-        <SubscriptionRenewal canSubmit={canSubmitPayment} />
-        <SubscriptionUpgradePreview />
-        <SubscriptionGraceRequest />
+          <SubscriptionCreditStatusPanel />
         </>
       )}
 
       {view === 'usage' && (
-        <>
-          <Card padding="sm" className="col-span-12 sm:!p-5">
-            <CardHeader title="Calling costs" subtitle={`Organization-wide activity · ${periodLabel}`} icon={PhoneCall} />
-            <div className="grid grid-cols-12 gap-3">
-              <KpiCard colSpan={3} iconPosition="top-left" icon={PhoneCall}
-                label="Calls" value={callCount ?? '—'} sub="Recorded this period" />
-              <KpiCard colSpan={3} iconPosition="top-left" icon={Clock3}
-                label="Call duration" value={formatCallTime(workspaceBilling?.aiMinutesUsed)} sub="Conversation time" />
-              <KpiCard colSpan={3} iconPosition="top-left" icon={Activity}
-                label="AI voice & post-call" value={money(workspaceBilling?.aiSpendInr)} sub="AI processing" />
-              <KpiCard colSpan={3} iconPosition="top-left" icon={PhoneCall}
-                label={phoneChargesBillable ? 'Phone provider charges' : 'Phone provider estimate'}
-                value={money(workspaceBilling?.phoneSpendInr)}
-                sub={phoneChargesBillable ? 'Recorded provider cost' : 'Your provider bills separately'} />
-            </div>
-            {!phoneChargesBillable && <p className="mt-3 text-xs text-[var(--text-muted)]">
-              Phone costs are informational and not charged by this platform.
-            </p>}
-          </Card>
-          <Card padding="sm" className="col-span-12 sm:!p-5">
-            <CardHeader title="Spending & limits" subtitle="Organization spend and selected workspace controls" icon={Wallet} />
-            <div className="grid grid-cols-12 gap-3">
-              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Activity}
-                label="Organization usage spend" value={money(workspaceBilling?.periodSpendInr)}
-                sub="Across all workspaces" />
-              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={CreditCard}
-                label="Selected workspace cap"
-                value={!workspaceBilling ? '—' : workspaceBilling.monthlyBudgetInr == null ? 'No cap' : money(workspaceBilling.monthlyBudgetInr)}
-                sub={workspaceBilling?.workspaceName || 'Selected workspace'} />
-              <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={ArrowDownToLine}
-                label="Workspace cap remaining" value={money(workspaceBilling?.remainingBudgetInr)}
-                sub="From billing service" />
-              {rechargeBased && <KpiCard colSpan={4} span={{ xs: 12, sm: 6, lg: 4 }} iconPosition="top-left" icon={Wallet}
-                label="Call balance available" value={formatInr(Math.max(0, rechargeBalanceInr - rechargeReservedInr))}
-                sub="After active-call reservations" />}
-            </div>
-            {canManageBudget && workspaceBilling && (
-              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-4">
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Set the selected workspace's monthly cap</h3>
-                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
-                  Limit new outbound calls when this workspace reaches its cap. Leave blank for no cap.
-                </p>
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <label className="min-w-0 flex-1 text-xs font-medium text-[var(--text-secondary)]">
-                    Monthly cap in INR
-                    <input type="number" min="0" step="0.01" value={budgetDraft}
-                      onChange={event => onBudgetDraftChange(event.target.value)}
-                      placeholder="No cap"
-                      className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-subtle)]" />
-                  </label>
-                  <Button type="button" variant="primary" size="md" loading={budgetSaving} onClick={onSaveBudget}>
-                    Save workspace cap
-                  </Button>
-                </div>
-                {budgetError && <p role="alert" className="mt-2 text-xs text-rose-600">{budgetError}</p>}
-              </div>
-            )}
-            <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">
-              Organization usage and the selected workspace cap are different scopes. Do not subtract one from the other.
-              Active calls may finish slightly over the cap.
+        <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Usage and limits">
+          <Card padding="none" className="col-span-12 !p-5 sm:!p-6">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-subtle)] px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+              <Gauge aria-hidden="true" className="h-3.5 w-3.5" /> Spending and limits
+            </span>
+            <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)] sm:text-2xl">Where your usage goes</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+              See what your organization used this period.
             </p>
+            <div className="mt-5 grid grid-cols-12 gap-3">
+              {[
+                { title: 'Usage cost so far', value: money(workspaceBilling?.periodSpendInr), detail: 'All workspaces combined', icon: Activity },
+                { title: 'Calls', value: callCount ?? '—', detail: 'Recorded this period', icon: PhoneCall },
+                { title: 'Call time', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total speaking time', icon: Clock3 },
+                { title: 'AI costs', value: money(workspaceBilling?.aiSpendInr), detail: 'Voice AI and call processing', icon: ChartNoAxesCombined },
+              ].map(({ title, value, detail, icon }) =>
+                <KpiCard key={title} span={{ xs: 12, sm: 6, lg: 3 }} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label={title} value={value} sub={detail} icon={icon} />)}
+            </div>
+            {rechargeBased && <div className="mt-4 grid grid-cols-12 gap-3">
+              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Wallet} iconPosition="top-left"
+                iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                label="Call credits ready to use" value={formatInr(Math.max(0,rechargeBalanceInr-rechargeReservedInr))}
+                sub="Balance after credits reserved for calls in progress" />
+            </div>}
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] p-4 text-sm">
+              <PhoneCall aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+              <div>
+                <p className="font-semibold text-[var(--text-primary)]">{phoneChargesBillable ? 'Phone provider charges' : 'Phone provider estimate'}: {money(workspaceBilling?.phoneSpendInr)}</p>
+                <p className="mt-1 leading-6 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Recorded phone-service cost for this period.' : 'For information only. Your phone provider bills you separately.'}</p>
+              </div>
+            </div>
           </Card>
-        </>
+
+        </section>
       )}
 
       {view === 'allocation' && (canUseManualAllocation
@@ -282,9 +284,9 @@ export default function BillingWorkspace({
               ? 'Allocation availability could not be confirmed. Refresh billing to try again.'
               : 'Checking whether manual allocation is available…'}
           </p>)}
-      {(view === 'dashboard' || view === 'credits' || view === 'topup' || view === 'payments' || view === 'plan') && (
+      {(view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
-          manualAllocationAllowed={canUseManualAllocation} />
+          manualAllocationAllowed={Boolean(canUseManualAllocation)} />
       )}
     </div>
   );

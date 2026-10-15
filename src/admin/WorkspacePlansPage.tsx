@@ -227,9 +227,7 @@ export default function WorkspacePlansPage() {
       </span>,
       action: editingIndex === null
         ? <div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="secondary" icon={Settings2} onClick={() => setConfigureTermsOpen(value => !value)}>
-              {configureTermsOpen ? 'Close configuration' : 'Configure terms'}
-            </Button>
+            <IconButton icon={Settings2} label="Configure" variant="secondary" onClick={() => setConfigureTermsOpen(value => !value)} />
             <IconButton icon={Plus} label="Create subscription plan" onClick={beginAdd}
               disabled={loading || saving || loadingPolicies || !retentionCatalog} />
           </div>

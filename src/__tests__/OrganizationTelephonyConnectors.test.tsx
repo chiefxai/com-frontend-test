@@ -34,8 +34,50 @@ beforeEach(() => {
 });
 
 describe('Organization-owned telephony connector management', () => {
+  it('shows only platform-provided numbers when platform inventory is selected', async () => {
+    mocks.apiFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/telephony/providers') return response({ providers });
+      if (url === '/api/telephony/connectors') return response({ connectors });
+      if (url === '/api/telephony/workspaces') return response({ workspaces: [{ id: 'ws-1', name: 'Support workspace' }] });
+      if (url === '/api/telephony/numbers') return response({ numbers: [{
+        id: 'platform-1', phoneNumberE164: '+918071580130', displayName: 'chief voice',
+        ownerType: 'platform_managed', inventoryStatus: 'available', provisioningStatus: 'ready',
+      }] });
+      throw new Error('Unexpected ' + url);
+    });
+    render(<OrganizationTelephonyConnectors embedded view="platform" />);
+    expect(await screen.findByText('+918071580130 · chief voice')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Platform-managed numbers' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Provider account details' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved provider accounts')).not.toBeInTheDocument();
+  });
+
+  it('shows provider accounts without platform inventory in the existing connection view', async () => {
+    render(<OrganizationTelephonyConnectors embedded view="connection" />);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider account details' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Platform-managed numbers' })).not.toBeInTheDocument();
+  });
+
+  it('renders complete connector setup inline without nesting a separate card', async () => {
+    const onInventoryChange = vi.fn();
+    const { container } = render(<section aria-label="Virtual number setup">
+      <h3>No virtual numbers yet</h3>
+      <OrganizationTelephonyConnectors embedded onInventoryChange={onInventoryChange} />
+    </section>);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No virtual numbers yet' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Set up a virtual number' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider account details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Saved provider accounts' })).toBeInTheDocument();
+    const setup = container.querySelector('section[aria-label="Virtual number setup"]');
+    expect(setup?.querySelector('.col-span-full')).toBeNull();
+    expect(setup?.querySelector('.w-full.text-left')).not.toBeNull();
+  });
+
   it('creates multiple provider accounts and keeps credentials schema-driven', async () => {
-    render(<OrganizationTelephonyConnectors />);
+    const onInventoryChange = vi.fn();
+    render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Connector name'), { target: { value: 'Sales account' } });
     fireEvent.change(screen.getByLabelText('Provider account reference (optional)'), { target: { value: 'vobiz-org-2' } });
@@ -44,17 +86,76 @@ describe('Organization-owned telephony connector management', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add account' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/telephony/connectors', expect.objectContaining({ method: 'POST' })));
     expect(await screen.findByText('Sales account')).toBeInTheDocument();
+    await waitFor(() => expect(onInventoryChange).toHaveBeenCalledTimes(1));
     const call = mocks.apiFetch.mock.calls.find(([url, options]: [string, { method?: string }]) => url === '/api/telephony/connectors' && options?.method === 'POST');
     expect(JSON.parse(call?.[1].body || '{}')).toMatchObject({ providerKey: 'vobiz', displayName: 'Sales account', providerAccountId: 'vobiz-org-2', credentials: { authId: 'auth-2', authToken: 'secret-2' } });
   });
 
   it('registers a number in the selected account inventory and states that this does not enable calling', async () => {
-    render(<OrganizationTelephonyConnectors />);
+    const onInventoryChange = vi.fn();
+    render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
     expect(await screen.findByText('Support account')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Phone number for Support account'), { target: { value: '+14155550123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add number to inventory' }));
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith('/api/telephony/connectors/org-conn-1/numbers', expect.objectContaining({ method: 'POST' })));
     expect(await screen.findByRole('status')).toHaveTextContent('Live calling is not enabled');
+    await waitFor(() => expect(onInventoryChange).toHaveBeenCalledTimes(1));
+  });
+
+  it('uses the full available grid width instead of collapsing into one column', async () => {
+    render(<OrganizationTelephonyConnectors />);
+    const title = await screen.findByRole('heading', { name: 'Set up a virtual number' });
+    const container = title.closest('.col-span-full');
+    expect(container).not.toBeNull();
+    expect(container).toHaveClass('min-w-0', 'w-full');
+    expect(container).toHaveTextContent('Provider account details');
+  });
+
+  it('groups provider details and credentials in responsive aligned form sections', async () => {
+    render(<OrganizationTelephonyConnectors />);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider account details' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider credentials' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Provider')).toHaveClass('w-full');
+    expect(screen.getByLabelText('Connector name')).toHaveClass('min-w-0');
+    expect(screen.getByLabelText('Auth token *')).toHaveAttribute('type', 'password');
+  });
+
+  it('aligns platform-managed phone numbers with a labeled workspace picker and responsive assignment action', async () => {
+    mocks.apiFetch.mockImplementation(async (url: string, options?: { method?: string; body?: string }) => {
+      if (url === '/api/telephony/providers') return response({ providers });
+      if (url === '/api/telephony/connectors' && !options) return response({ connectors: [] });
+      if (url === '/api/telephony/workspaces') return response({ workspaces: [
+        { id: 'ws-1', name: 'Support workspace' }, { id: 'ws-2', name: 'Sales workspace' },
+      ] });
+      if (url === '/api/telephony/numbers') return response({ numbers: [{
+        id: 'platform-number', phoneNumberE164: '+918071580130', displayName: 'chief voice',
+        ownerType: 'platform_managed', inventoryStatus: 'available', provisioningStatus: 'ready',
+      }] });
+      if (url === '/api/telephony/numbers/platform-number/assign' && options?.method === 'POST')
+        return response({ assignment: { workspaceId: 'ws-2' } });
+      throw new Error(`Unexpected request ${url}`);
+    });
+
+    const onInventoryChange = vi.fn();
+    render(<OrganizationTelephonyConnectors onInventoryChange={onInventoryChange} />);
+    const section = await screen.findByRole('region', { name: 'Platform-managed numbers' });
+    expect(section).toHaveTextContent('+918071580130 · chief voice');
+    expect(section).toHaveTextContent('Available to assign');
+    const picker = screen.getByRole('combobox', { name: 'Workspace for +918071580130' });
+    expect(picker).toHaveClass('w-full');
+    expect(picker.closest('label')).toHaveTextContent('Workspace');
+    const button = screen.getByRole('button', { name: 'Assign to workspace' });
+    expect(button).toHaveClass('flex-1');
+    expect(button).toBeDisabled();
+
+    fireEvent.change(picker, { target: { value: 'ws-2' } });
+    fireEvent.click(button);
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledWith(
+      '/api/telephony/numbers/platform-number/assign',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ workspaceId: 'ws-2' }) }),
+    ));
+    await waitFor(() => expect(onInventoryChange).toHaveBeenCalledTimes(1));
   });
 
   it('assigns a ready number to a named workspace without exposing internal provisioning fields', async () => {

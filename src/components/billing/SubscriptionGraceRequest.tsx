@@ -64,7 +64,7 @@ export default function SubscriptionGraceRequest() {
       await billingClient.submitSubscriptionGraceRequest({ periodId: eligibility.currentPeriodId,
         requestedUntil: requestedDate.toISOString(), justification: justification.trim(), expectedVersion: eligibility.subscriptionVersion },
       { idempotencyKey: operationKey });
-      setSuccess('Grace request submitted. Access will not extend unless a platform administrator approves it.');
+      setSuccess('Your request was sent. Your deadline stays the same unless an administrator approves it.');
       setRequestedUntil(''); setJustification(''); setOperationKey(newBillingIdempotencyKey());
       await refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not submit the grace request. Retry the same request safely.'); }
@@ -73,32 +73,32 @@ export default function SubscriptionGraceRequest() {
 
   if (!billingAdmin) return null;
   return <Card padding="sm" className="col-span-12 sm:!p-5">
-    <CardHeader title="Request subscription grace time" subtitle="A request does not extend access until a platform administrator approves it." icon={CalendarClock} />
-    {loading && <p role="status" className="text-xs text-[var(--text-muted)]">Loading grace eligibility…</p>}
+    <CardHeader title="Need more time to pay?" subtitle="Ask your billing team to move your deadline." icon={CalendarClock} />
+    {loading && <p role="status" className="text-xs text-[var(--text-muted)]">Checking if you can ask for more time…</p>}
     {error && <p role="alert" className="mt-3 rounded-lg border border-rose-300/60 bg-rose-500/5 p-3 text-xs text-rose-700">{error}</p>}
     {success && <p role="status" className="mt-3 rounded-lg border border-emerald-300/60 bg-emerald-500/5 p-3 text-xs text-emerald-800">{success}</p>}
     {!loading && data && <div className="mt-3 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] p-3 text-xs">
-        <div><p className="font-semibold">{eligibility?.requestEligible ? 'You may request a deadline extension' : request ? `Grace request ${request.status}` : 'Grace request is unavailable for the current subscription state'}</p>
-          <p className="mt-1 text-[var(--text-muted)]">Current billing deadline: {subscriptionDateText(eligibility?.currentRestrictionDeadline || eligibility?.currentPeriodEndsAt || null)}</p>
-          {eligibility?.maximumUntil && <p className="mt-1 text-[var(--text-muted)]">Latest request date allowed by platform policy: {subscriptionDateText(eligibility.maximumUntil)}</p>}</div>
+        <div><p className="font-semibold">{eligibility?.requestEligible ? 'You can ask for more time' : request ? `Your request: ${request.status}` : 'You cannot ask for more time with this plan right now'}</p>
+          <p className="mt-1 text-[var(--text-muted)]">Your current deadline: {subscriptionDateText(eligibility?.currentRestrictionDeadline || eligibility?.currentPeriodEndsAt || null)}</p>
+          {eligibility?.maximumUntil && <p className="mt-1 text-[var(--text-muted)]">Latest date you can ask for: {subscriptionDateText(eligibility.maximumUntil)}</p>}</div>
         <Button type="button" size="sm" variant="secondary" icon={RefreshCw} disabled={loading || busy} onClick={() => void refresh()}>Refresh</Button>
       </div>
       {request && <div className="rounded-lg bg-[var(--bg-subtle)] p-3 text-xs text-[var(--text-secondary)]">
-        <p className="font-semibold">Current request: {request.status}</p>
-        <p className="mt-1">Requested until {subscriptionDateText(request.requestedUntil)}{request.grantedUntil ? ` · Approved until ${subscriptionDateText(request.grantedUntil)}` : ''}</p>
+        <p className="font-semibold">Your request: {request.status}</p>
+        <p className="mt-1">You asked for {subscriptionDateText(request.requestedUntil)}{request.grantedUntil ? ` · Approved until ${subscriptionDateText(request.grantedUntil)}` : ''}</p>
         <p className="mt-1">Reason: {request.justification}</p>
       </div>}
       {eligibility?.requestEligible && !request && <form onSubmit={submit} className="space-y-3 rounded-xl border border-[var(--border)] p-4">
-        <div className="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><ShieldAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /><p>Choose a requested deadline within the platform maximum. A pending request does not extend service or issue subscription credits.</p></div>
-        <label className="block text-xs font-medium text-[var(--text-secondary)]">Requested deadline ({Intl.DateTimeFormat().resolvedOptions().timeZone})
+        <div className="flex items-start gap-2 text-xs text-[var(--text-secondary)]"><ShieldAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /><p>Choose a date before the limit shown above. Asking does not extend your plan automatically, and it does not add credits.</p></div>
+        <label className="block text-xs font-medium text-[var(--text-secondary)]">New deadline you are asking for ({Intl.DateTimeFormat().resolvedOptions().timeZone})
           <input className="mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm" type="datetime-local" required disabled={busy} min={minInput || undefined} max={maxInput || undefined} value={requestedUntil} onChange={event => { setRequestedUntil(event.target.value); setOperationKey(newBillingIdempotencyKey()); }} />
           <span className="mt-1 block text-[11px] text-[var(--text-muted)]">Must be after {subscriptionDateText(minBase)} and on or before {subscriptionDateText(eligibility.maximumUntil)}.</span>
         </label>
-        <label className="block text-xs font-medium text-[var(--text-secondary)]">Reason for the grace request
+        <label className="block text-xs font-medium text-[var(--text-secondary)]">Why do you need more time?
           <textarea className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm" required minLength={1} maxLength={2000} rows={3} disabled={busy} value={justification} onChange={event => { setJustification(event.target.value); setOperationKey(newBillingIdempotencyKey()); }} placeholder="Explain why additional time is needed." />
         </label>
-        <Button type="submit" size="sm" variant="primary" loading={busy} disabled={busy || !requestedUntil || !justification.trim()}>Submit grace request</Button>
+        <Button type="submit" size="sm" variant="primary" loading={busy} disabled={busy || !requestedUntil || !justification.trim()}>Send request for more time</Button>
       </form>}
     </div>}
   </Card>;
