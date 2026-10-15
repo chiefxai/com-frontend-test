@@ -1,4 +1,7 @@
 import { APP_NAME } from './lib/appName';
+
+// Set the initial browser tab title from the same build-time brand configuration.
+document.title = `${APP_NAME} | AI Voice CRM`;
 import React, { StrictMode, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
