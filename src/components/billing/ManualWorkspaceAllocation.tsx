@@ -131,7 +131,6 @@ export default function ManualWorkspaceAllocation() {
       )}
       <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
         <CardHeader title="Organization credit pool" icon={Wallet}
-          subtitle="Credits here have not yet been sent to any workspace."
           action={<Button type="button" size="sm" variant="secondary" icon={RefreshCw} onClick={() => void refresh()} disabled={busy || loading}>Refresh</Button>} />
         {error && <p role="alert" className="mb-3 rounded-lg border border-rose-300/50 bg-rose-500/5 px-3 py-2 text-xs text-rose-600">{error}</p>}
         {notice && <p role="status" className="mb-3 flex items-center gap-2 text-xs text-[var(--text-primary)]">
