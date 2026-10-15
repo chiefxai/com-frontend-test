@@ -125,7 +125,37 @@ export default function BillingOverviewHome({
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
           sub={`Calls · ${usage?.aiMinutesUsed == null ? 'Time unavailable' : Math.round(usage.aiMinutesUsed) + ' call minutes'}`} />
       </div>
-      {showWorkspaceAllocation && <Card padding="sm" className="min-w-0 lg:col-span-2">
+      <Card padding="none" className="min-w-0 !rounded-2xl !p-5 sm:!p-6" >
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Your plan right now</p>
+        <h2 className="mt-2 break-words text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+          {planName || (loading ? 'Checking your plan…' : 'Plan name unavailable')}
+        </h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          {planStatus}{endsAt ? ` · Ends ${displayDate(endsAt)}` : ''}
+        </p>
+        {actionRequired && <div role="status" className="mt-5 rounded-xl border border-amber-300/70 bg-amber-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <CalendarClock aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="text-sm text-[var(--text-primary)]">
+              {notice.inGrace
+                ? `Payment grace period: ${notice.graceDays} day(s) remaining.`
+                : notice.expired ? 'Your plan has expired.'
+                : `Your plan ends in ${daysLeft} day(s).`}
+              {notice.inGrace && notice.graceEnd &&
+                <p className="mt-1 text-xs">Grace deadline: {displayDate(notice.graceEnd)}</p>}
+            </div>
+          </div>
+        </div>}
+        <div className="mt-5 flex flex-wrap gap-2">
+          {showPay && <Button type="button" variant="primary" size="sm" icon={CreditCard}
+            onClick={() => onOpenSubscriptionTask('renew')}>Pay to continue</Button>}
+          <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('plan')}>View my plan</Button>
+        </div>
+        {errors.length > 0 && !loading &&
+          <p role="alert" className="mt-4 text-xs text-amber-700">{errors.join(' ')}</p>}
+      </Card>
+    </div>
+      {showWorkspaceAllocation && <Card padding="sm" className="col-span-12 min-w-0">
         <CardHeader title="Current workspace allocation"
           subtitle={currentWorkspaceAllocation?.workspaceName || usage?.workspaceName || 'Selected workspace'}
           icon={Wallet} />
@@ -160,35 +190,5 @@ export default function BillingOverviewHome({
           </table>
         </div>}
       </Card>}
-      <Card padding="none" className="min-w-0 !rounded-2xl !p-5 sm:!p-6" >
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Your plan right now</p>
-        <h2 className="mt-2 break-words text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-          {planName || (loading ? 'Checking your plan…' : 'Plan name unavailable')}
-        </h2>
-        <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          {planStatus}{endsAt ? ` · Ends ${displayDate(endsAt)}` : ''}
-        </p>
-        {actionRequired && <div role="status" className="mt-5 rounded-xl border border-amber-300/70 bg-amber-500/10 p-4">
-          <div className="flex items-start gap-3">
-            <CalendarClock aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            <div className="text-sm text-[var(--text-primary)]">
-              {notice.inGrace
-                ? `Payment grace period: ${notice.graceDays} day(s) remaining.`
-                : notice.expired ? 'Your plan has expired.'
-                : `Your plan ends in ${daysLeft} day(s).`}
-              {notice.inGrace && notice.graceEnd &&
-                <p className="mt-1 text-xs">Grace deadline: {displayDate(notice.graceEnd)}</p>}
-            </div>
-          </div>
-        </div>}
-        <div className="mt-5 flex flex-wrap gap-2">
-          {showPay && <Button type="button" variant="primary" size="sm" icon={CreditCard}
-            onClick={() => onOpenSubscriptionTask('renew')}>Pay to continue</Button>}
-          <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('plan')}>View my plan</Button>
-        </div>
-        {errors.length > 0 && !loading &&
-          <p role="alert" className="mt-4 text-xs text-amber-700">{errors.join(' ')}</p>}
-      </Card>
-    </div>
   </section>;
 }
