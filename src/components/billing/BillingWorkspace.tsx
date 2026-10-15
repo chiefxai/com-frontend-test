@@ -109,6 +109,7 @@ export default function BillingWorkspace({
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [allocationCapability, setAllocationCapability] = React.useState<BillingOverview['allocation'] | null>(null);
+  const [allocationTerms, setAllocationTerms] = React.useState<BillingOverview['subscriptionTerms']>(null);
   const [allocationCapabilityError, setAllocationCapabilityError] = React.useState(false);
   React.useEffect(() => {
     let current = true;
@@ -116,15 +117,17 @@ export default function BillingWorkspace({
     billingClient.organizationOverview().then(overview => {
       if (!current) return;
       setAllocationCapability(overview.allocation || null);
+      setAllocationTerms(overview.subscriptionTerms || null);
       setAllocationCapabilityError(false);
     }).catch(() => {
       if (!current) return;
       setAllocationCapability(null);
+      setAllocationTerms(null);
       setAllocationCapabilityError(true);
     });
     return () => { current = false; };
   }, [authorization?.permissions]);
-  const multiWorkspacePlan = hasMultiWorkspaceTerms(allocationCapability?.subscriptionTerms || null);
+  const multiWorkspacePlan = hasMultiWorkspaceTerms(allocationTerms);
   const canShowAllocation = canAllocate && (multiWorkspacePlan || allocationCapability?.mode === 'manual');
   const canUseManualAllocation = canShowAllocation && allocationCapability?.mode === 'manual'
     && allocationCapability.status === 'ready' && allocationCapability.manualAllocationAllowed;
