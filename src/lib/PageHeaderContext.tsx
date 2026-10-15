@@ -21,7 +21,7 @@ export interface PageHeaderConfig {
 
 interface PageHeaderContextValue {
   header: PageHeaderConfig | null;
-  setHeader: (header: PageHeaderConfig | null) => void;
+  setHeader: React.Dispatch<React.SetStateAction<PageHeaderConfig | null>>;
 }
 
 const PageHeaderContext = createContext<PageHeaderContextValue | null>(null);
