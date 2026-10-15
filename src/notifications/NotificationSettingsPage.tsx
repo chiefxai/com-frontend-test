@@ -42,7 +42,7 @@ export default function NotificationSettingsPage({ audience }: { audience: Notif
 
   const categories = [...new Set(events.map(event => event.category))];
   return (
-    <section className="mx-auto w-full max-w-4xl space-y-5 p-5 md:p-8" aria-label="Notification settings">
+    <section className="col-span-12 min-w-0 mx-auto w-full max-w-4xl space-y-5 p-5 md:p-8" aria-label="Notification settings">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-primary)]">Notification Settings</h1>

@@ -12,6 +12,13 @@ vi.mock('../notifications/api', () => ({
 }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 describe('unified notification preferences', () => {
+  it('fills the shared 12-column PageShell grid instead of collapsing to one column', async () => {
+    mock.preferences.mockResolvedValue([]);
+    render(<NotificationSettingsPage audience="organization" />);
+    const container = screen.getByRole('region', { name: 'Notification settings' });
+    expect(container).toHaveClass('col-span-12', 'min-w-0', 'w-full', 'max-w-4xl');
+  });
+
   it('allows each user to switch browser and email notifications independently', async () => {
     const event = { key:'campaign.completed',category:'Campaigns',label:'Campaign completed',defaults:{browser:true,email:false} };
     mock.preferences.mockResolvedValue([event]);
