@@ -49,12 +49,12 @@ beforeEach(()=>{
 afterEach(cleanup);
 
 describe('manual organization credit allocation',()=>{
-  it('explains the three-step flow without enabling financial transfers', async () => {
+  it('omits the onboarding walkthrough and preserves the credit pool', async () => {
     render(<ManualWorkspaceAllocation />);
-    expect(screen.getByText('Give credits to your workspaces')).toBeInTheDocument();
-    expect(screen.getByText('Pick a workspace')).toBeInTheDocument();
-    expect(screen.getByText('Choose credits')).toBeInTheDocument();
-    expect(screen.getByText('Check and confirm')).toBeInTheDocument();
+    expect(screen.queryByText('Give credits to your workspaces')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pick a workspace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Choose credits')).not.toBeInTheDocument();
+    expect(screen.queryByText('Check and confirm')).not.toBeInTheDocument();
     await screen.findByText('Organization credit pool');
     expect(mocks.confirmManualAllocation).not.toHaveBeenCalled();
   });
