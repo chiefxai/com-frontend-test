@@ -140,7 +140,7 @@ export default function WorkspaceManagement({
       // unsuccessful (or encourage a duplicate workspace submission).
       try {
         const policyResponse = await apiFetch('/api/settings/workspace-policy');
-        if (policyResponse.ok) { const refreshed=await policyResponse.json(); setSetup(refreshed); if (Array.isArray(refreshed.workspaces)) setWorkspaces(refreshed.workspaces); }
+        if (policyResponse.ok) { const refreshed=await policyResponse.json(); setSetup(refreshed); setIndustry(refreshed.policy.primaryIndustry); if (Array.isArray(refreshed.workspaces)) setWorkspaces(refreshed.workspaces); }
         if (redeemTopup) { const fundingResponse=await apiFetch('/api/billing/workspace-addons'); if (fundingResponse.ok) setTopupFunding(await fundingResponse.json()); }
         await onWorkspaceCreated();
       } catch {
