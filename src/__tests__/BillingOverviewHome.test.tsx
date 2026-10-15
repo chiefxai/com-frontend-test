@@ -16,6 +16,8 @@ vi.mock('../lib/billing/client', () => ({
   },
 }));
 
+const cash = (units: string) => ({ asset: 'INR', units, scale: 2 });
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.organizationOverview.mockResolvedValue({ activePeriod: null, nextPeriod: null, balances: [] });
