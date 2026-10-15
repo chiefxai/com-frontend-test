@@ -34,6 +34,31 @@ beforeEach(() => {
 });
 
 describe('Organization-owned telephony connector management', () => {
+  it('shows only platform-provided numbers when platform inventory is selected', async () => {
+    mocks.apiFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/telephony/providers') return response({ providers });
+      if (url === '/api/telephony/connectors') return response({ connectors });
+      if (url === '/api/telephony/workspaces') return response({ workspaces: [{ id: 'ws-1', name: 'Support workspace' }] });
+      if (url === '/api/telephony/numbers') return response({ numbers: [{
+        id: 'platform-1', phoneNumberE164: '+918071580130', displayName: 'chief voice',
+        ownerType: 'platform_managed', inventoryStatus: 'available', provisioningStatus: 'ready',
+      }] });
+      throw new Error('Unexpected ' + url);
+    });
+    render(<OrganizationTelephonyConnectors embedded view="platform" />);
+    expect(await screen.findByText('+918071580130 · chief voice')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Platform-managed numbers' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Provider account details' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved provider accounts')).not.toBeInTheDocument();
+  });
+
+  it('shows provider accounts without platform inventory in the existing connection view', async () => {
+    render(<OrganizationTelephonyConnectors embedded view="connection" />);
+    expect(await screen.findByText('Support account')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Provider account details' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Platform-managed numbers' })).not.toBeInTheDocument();
+  });
+
   it('renders complete connector setup inline without nesting a separate card', async () => {
     const onInventoryChange = vi.fn();
     const { container } = render(<section aria-label="Virtual number setup">

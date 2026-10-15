@@ -268,7 +268,7 @@ export default function SettingsView({
   };
 
   const [showProviderForm, setShowProviderForm] = useState(false);
-  const virtualNumberSetupRef = React.useRef<HTMLDivElement>(null);
+  const [numberSource, setNumberSource] = useState<'platform' | 'connection'>('platform');
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const loadAuditLogs = () => {
@@ -894,10 +894,10 @@ export default function SettingsView({
   const legacyVobizConnectionPanel = (
     <details className="rounded-xl border border-[var(--border)] p-4">
                       <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
-                        Existing Vobiz calling connection
+                        Vobiz.ai live calling configuration
                       </summary>
                       <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                        If your organization uses the older live Vobiz calling connection, manage it here.
+                        Manage your current Vobiz.ai live calling connection here.
                         Provider inventory accounts above do not automatically enable live calling.
                       </p>
                       <div className="mt-4">
@@ -1037,30 +1037,26 @@ export default function SettingsView({
                         Export CSV ({filteredNumbers.length})
                       </button>
                       <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => {
-                          if (visibleNumbers.length === 0) {
-                            virtualNumberSetupRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-                          } else {
-                            setShowProviderForm(true);
-                          }
-                        }} />
+                        setNumberSource('platform');
+                        setShowProviderForm(true);
+                      }} />
                     </>}
                   />
                 </div>
                 {multiWorkspaceUi && visibleNumbers.some(number => !numberWorkspaceId(number)) &&
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
                 {visibleNumbers.length === 0 ? (
-                  <div ref={virtualNumberSetupRef} className="min-w-0 w-full space-y-5 px-4 py-6 sm:px-6" aria-label="Virtual number setup">
-                    <div className="flex flex-col items-center justify-center gap-2 border-b border-[var(--border)] pb-5 text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
-                        <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
-                      </div>
-                      <h3 className="text-base font-semibold text-[var(--text-primary)]">No virtual numbers yet</h3>
-                      <p className="max-w-xl text-sm leading-6 text-[var(--text-secondary)]">
-                        Assign an available platform number to a workspace, or connect your telephony account and add your own numbers below.
-                      </p>
+                  <div className="flex min-w-0 flex-col items-center justify-center gap-3 px-5 py-12 text-center" aria-label="Virtual number empty state">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
+                      <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
                     </div>
-                    <OrganizationTelephonyConnectors embedded onInventoryChange={refreshVirtualNumberInventory} />
-                    {legacyVobizConnectionPanel}
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">No virtual numbers yet</h3>
+                    <p className="max-w-lg text-sm leading-6 text-[var(--text-secondary)]">
+                      Assign a number provided by your platform, or connect an existing calling account to add your own.
+                    </p>
+                    <Button type="button" onClick={() => { setNumberSource('platform'); setShowProviderForm(true); }}>
+                      Add or assign virtual number
+                    </Button>
                   </div>
                 ) : (() => {
                   const columns: Column<VirtualNumber>[] = [
@@ -1129,12 +1125,34 @@ export default function SettingsView({
                   open
                   onClose={() => setShowProviderForm(false)}
                   title="Add or assign virtual number"
-                  subtitle="Connect a provider, register phone numbers, or assign a platform-managed number to a workspace."
+                  subtitle="Choose a source, then register or assign a number to your workspace."
                   maxWidth="max-w-5xl"
                 >
                   <div className="min-w-0 space-y-5">
-                    <OrganizationTelephonyConnectors onInventoryChange={refreshVirtualNumberInventory} />
-                    {legacyVobizConnectionPanel}
+                    <div role="tablist" aria-label="Virtual number source" className="grid grid-cols-1 gap-2 rounded-xl bg-[var(--bg-subtle)] p-1 sm:grid-cols-2">
+                      {([
+                        { key: 'platform', label: 'Numbers provided by your platform' },
+                        { key: 'connection', label: 'Existing calling connection' },
+                      ] as const).map(option => (
+                        <button key={option.key} type="button" role="tab" aria-selected={numberSource === option.key}
+                          onClick={() => setNumberSource(option.key)}
+                          className={`min-w-0 rounded-lg px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${
+                            numberSource === option.key
+                              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+                              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                          }`}>
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div role="tabpanel" aria-label={numberSource === 'platform' ? 'Numbers provided by your platform' : 'Existing calling connection'} className="min-w-0">
+                      {numberSource === 'platform'
+                        ? <OrganizationTelephonyConnectors embedded view="platform" onInventoryChange={refreshVirtualNumberInventory} />
+                        : <div className="space-y-5">
+                            <OrganizationTelephonyConnectors embedded view="connection" onInventoryChange={refreshVirtualNumberInventory} />
+                            {legacyVobizConnectionPanel}
+                          </div>}
+                    </div>
                   </div>
                 </Modal>
               )}
