@@ -268,7 +268,13 @@ export default function BillingWorkspace({
             Only organization administrators can allocate credits to workspaces.
           </p>)}
       {(view === 'credits' || view === 'topup' || view === 'payments') && (
-        <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate} />
+        <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
+          creditUsage={workspaceBilling ? {
+            aiSpendInr: workspaceBilling.aiSpendInr,
+            phoneSpendInr: workspaceBilling.phoneSpendInr,
+            phoneChargesBillable,
+            periodLabel,
+          } : null} />
       )}
     </div>
   );
