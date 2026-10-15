@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { setAuthorization, legacyAuthorization } from '../lib/authorization';
 import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '../components/billing/BillingWorkspace';
 
@@ -16,7 +16,8 @@ vi.mock('../lib/billing/client', () => ({
 }));
 beforeEach(() => {
   setAuthorization(legacyAuthorization('Organization Admin'));
-  mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null });
+  mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null,
+    allocation: { mode:'manual',manualAllocationAllowed:true,workspaceLimit:10,workspaceCount:2,workspaceId:null,status:'ready' } });
   mocks.creditStatus.mockResolvedValue({ planName: 'Starter', planId: 'starter' });
   mocks.grace.mockResolvedValue({ eligibility: { requestEligible: true }, items: [] });
   mocks.renewal.mockResolvedValue({
@@ -128,6 +129,17 @@ describe('organization billing interface', () => {
     expect(defaults.onNavigate).toHaveBeenCalledWith('credits');
     fireEvent.click(screen.getByRole('button', { name: /Workspace invoices and payments/ }));
     expect(defaults.onNavigate).toHaveBeenCalledWith('payments');
+  });
+
+  it('hides Allocation for automatic single-workspace billing and redirects a direct Allocation URL', async () => {
+    const onNavigate = vi.fn();
+    mocks.organizationOverview.mockResolvedValue({ nextPeriod: null, balances: [], activePeriod: null,
+      allocation: { mode:'automatic',manualAllocationAllowed:false,workspaceLimit:1,workspaceCount:1,
+        workspaceId:'workspace-1',status:'ready' } });
+    render(<BillingWorkspace {...defaults} view="allocation" onNavigate={onNavigate} />);
+    expect(await screen.findByRole('navigation', { name:'Billing sections' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name:'Allocation' })).not.toBeInTheDocument();
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('credits'));
   });
 
   it('keeps four usage and balance cards alongside the compact current-plan card', () => {

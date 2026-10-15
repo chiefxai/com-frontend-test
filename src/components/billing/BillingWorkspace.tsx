@@ -11,6 +11,9 @@ import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/auth
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
 import SubscriptionActionCenter from './SubscriptionActionCenter';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
+import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
+import { billingClient } from '../../lib/billing/client';
+import type { BillingOverview } from '../../lib/billing/types';
 
 export interface WorkspaceBillingSnapshot {
   workspaceId: string;
@@ -98,6 +101,27 @@ export default function BillingWorkspace({
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
+  const [allocationCapability, setAllocationCapability] = React.useState<BillingOverview['allocation'] | null>(null);
+  const [allocationCapabilityError, setAllocationCapabilityError] = React.useState(false);
+  React.useEffect(() => {
+    let current = true;
+    if (!authorization?.permissions.includes('billing.organization.read')) return () => { current = false; };
+    billingClient.organizationOverview().then(overview => {
+      if (!current) return;
+      setAllocationCapability(overview.allocation || null);
+      setAllocationCapabilityError(false);
+    }).catch(() => {
+      if (!current) return;
+      setAllocationCapability(null);
+      setAllocationCapabilityError(true);
+    });
+    return () => { current = false; };
+  }, [authorization?.permissions]);
+  const canUseManualAllocation = canAllocate && allocationCapability?.mode === 'manual'
+    && allocationCapability.status === 'ready' && allocationCapability.manualAllocationAllowed;
+  React.useEffect(() => {
+    if (view === 'allocation' && allocationCapability && !canUseManualAllocation) onNavigate('credits');
+  }, [view, allocationCapability, canUseManualAllocation, onNavigate]);
   const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time' | null>(null);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
@@ -118,7 +142,7 @@ export default function BillingWorkspace({
           <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">{periodLabel}</span>
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
-          {sections.filter(row => row.key !== 'allocation' || canAllocate).map(({ key, label, icon: Icon }) => (
+          {sections.filter(row => row.key !== 'allocation' || canUseManualAllocation).map(({ key, label, icon: Icon }) => (
             <button key={key} type="button" aria-current={view === key ? 'page' : undefined}
               onClick={() => onNavigate(key)}
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${view === key
@@ -156,7 +180,7 @@ export default function BillingWorkspace({
         callCount={callCount}
         phoneChargesBillable={phoneChargesBillable}
         canManageSubscription={canManageSubscription}
-        canAllocate={canAllocate}
+        canAllocate={canUseManualAllocation}
         canSubmitPayment={canSubmitPayment}
         loadingUsage={loading}
         onOpenSubscriptionTask={openSubscriptionTask}
@@ -199,6 +223,7 @@ export default function BillingWorkspace({
             <Button type="button" size="sm" variant="secondary" icon={ReceiptText}
               onClick={() => onNavigate('payments')}>Workspace invoices and payments</Button>
           </div>
+          <SubscriptionCreditStatusPanel />
         </>
       )}
 
@@ -262,19 +287,25 @@ export default function BillingWorkspace({
         </section>
       )}
 
-      {view === 'allocation' && (canAllocate
+      {view === 'allocation' && (canUseManualAllocation
         ? <ManualWorkspaceAllocation />
-        : <p role="alert" className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
-            Only organization administrators can allocate credits to workspaces.
+        : <p role={allocationCapabilityError ? 'alert' : 'status'} className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
+            {allocationCapabilityError
+              ? 'Allocation availability could not be confirmed. Refresh billing to try again.'
+              : 'Checking whether manual allocation is available…'}
           </p>)}
       {(view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
+<<<<<<< HEAD
           creditUsage={workspaceBilling ? {
             aiSpendInr: workspaceBilling.aiSpendInr,
             phoneSpendInr: workspaceBilling.phoneSpendInr,
             phoneChargesBillable,
             periodLabel,
           } : null} />
+=======
+          manualAllocationAllowed={Boolean(canUseManualAllocation)} />
+>>>>>>> origin/main
       )}
     </div>
   );

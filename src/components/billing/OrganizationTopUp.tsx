@@ -1,10 +1,11 @@
 import React from 'react';
 import WorkspaceAddonPurchases, { type PaymentDisplayFilter, type PaymentStatusFilter } from './WorkspaceAddonPurchases';
+import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import { ArrowDownToLine, CheckCircle2, Clock3, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
-import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest } from '../../lib/billing/types';
+import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview } from '../../lib/billing/types';
 import KpiCard from '../ui/KpiCard';
 import { Card, CardHeader } from '../ui/Card';
 import FilterBar from '../ui/FilterBar';
@@ -26,11 +27,20 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
   return 'Invoice payment';
 }
 
+<<<<<<< HEAD
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate, creditUsage }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void; creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null }) {
   const { authorization } = useAuthorization();
+=======
+export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate,
+  manualAllocationAllowed = false }: { canSubmit?: boolean; view?: BillingPanel; onNavigate?: (view: BillingPanel) => void;
+  manualAllocationAllowed?: boolean }) {
+  const { can, authorization } = useAuthorization();
+>>>>>>> origin/main
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
+  const [automaticWorkspaceOverview, setAutomaticWorkspaceOverview] = React.useState<WorkspaceBillingOverview | null>(null);
+  const [workspaceCreditError, setWorkspaceCreditError] = React.useState('');
   const [overviewError, setOverviewError] = React.useState('');
   const [topupAvailable, setTopupAvailable] = React.useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = React.useState(false);
@@ -56,11 +66,34 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
 
   const loadOverview = React.useCallback(async () => {
     try {
-      setOverview(await billingClient.organizationOverview());
+      const current = await billingClient.organizationOverview();
+      setOverview(current);
+      if (current.allocation?.mode === 'automatic' && current.allocation.status === 'ready'
+          && current.allocation.workspaceId) {
+        const workspaceCredits = await billingClient.workspaceOverview(current.allocation.workspaceId);
+        if (workspaceCredits.workspaceId !== current.allocation.workspaceId
+            || workspaceCredits.uninitialized || workspaceCredits.status !== 'active') {
+          throw new Error('The automatically allocated workspace balance is unavailable.');
+        }
+        setAutomaticWorkspaceOverview(workspaceCredits);
+        setWorkspaceCreditError('');
+      } else if (current.allocation?.mode === 'automatic') {
+        setAutomaticWorkspaceOverview(null);
+        setWorkspaceCreditError('The subscription workspace is not ready for credit balance reporting.');
+      } else {
+        setAutomaticWorkspaceOverview(null);
+        setWorkspaceCreditError('');
+      }
       setOverviewError('');
     } catch (cause) {
-      setOverview(null);
-      setOverviewError(cause instanceof Error ? cause.message : 'Credit balances are currently unavailable.');
+      if (cause instanceof Error && /automatically allocated workspace balance/.test(cause.message)) {
+        setAutomaticWorkspaceOverview(null);
+        setWorkspaceCreditError(cause.message);
+      } else {
+        setOverview(null);
+        setAutomaticWorkspaceOverview(null);
+        setOverviewError(cause instanceof Error ? cause.message : 'Credit balances are currently unavailable.');
+      }
     }
   }, []);
 
@@ -94,7 +127,9 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   }, [loadOverview, loadHistory, loadCapabilities]);
   React.useEffect(() => { void refresh(); }, [refresh]);
   const recentPayments = overview?.recentPayments || history;
-  const balances = overview?.balances || [];
+  const automaticMode = overview?.allocation?.mode === 'automatic';
+  const balancesAvailable = Boolean(overview) && (!automaticMode || Boolean(automaticWorkspaceOverview));
+  const balances = automaticMode ? automaticWorkspaceOverview?.balances || [] : overview?.balances || [];
   const subscriptionCredits = balances.filter(balance => balance.kind === 'subscription');
   const topupCredits = balances.filter(balance => balance.kind === 'topup');
   const sumBalance = (items: typeof balances) => items.every(item => item.available.asset === 'INR' && item.available.scale === 2)
@@ -230,16 +265,36 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </>
       )}
 
+<<<<<<< HEAD
       {view === 'credits' && (
         <>
           <div className="col-span-12 grid grid-cols-12 gap-3" aria-label="Available credit balances">
+=======
+      {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
+      {(view === 'credits' || view === 'topup') && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
+                {manualAllocationAllowed && canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
+                  onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
+                {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
+                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
+              </div>
+            } />
+          <div className="grid grid-cols-12 gap-3">
+>>>>>>> origin/main
             <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-              label="Subscription credits remaining" value={overview ? sumBalance(subscriptionCredits) : '—'} />
+              label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
+              value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'} />
             <KpiCard span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-              label="Top-up credits remaining" value={overview ? sumBalance(topupCredits) : '—'} />
+              label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
+              value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
           </div>
+<<<<<<< HEAD
           <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
             <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
               action={
@@ -275,6 +330,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             <p className="mt-3 text-xs text-[var(--text-muted)]">Aggregate period costs, not individual credit debits. The plan and top-up balances above reflect the actual available ledger amounts. {creditUsage?.periodLabel || ''}</p>
           </Card>
         </>
+=======
+          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
+          {workspaceCreditError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
+        </Card>
+>>>>>>> origin/main
       )}
       {view === 'topup' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
