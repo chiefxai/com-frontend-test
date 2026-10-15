@@ -86,11 +86,12 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
     {!loading && data && <div className="mt-3 space-y-4">
       {data.period ? <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm">
         <span>{data.period.isTrial ? `Free trial (${data.period.trialDays} days):` : 'Current paid period:'} {subscriptionDateText(data.period.startsAt)} – {subscriptionDateText(data.period.endsAt)}</span>
-        {data.period.isTrial && <span>₹200 trial credits expire when the trial ends</span>}
+        {data.period.isTrial && <span>₹200 trial credits expire when the trial ends. Purchased credits have their own later expiry.</span>}
         {data.period.overdue && <strong className="text-amber-700">Plan has ended</strong>}
         {eligible && <strong className="text-[var(--accent)]">You can renew now</strong>}
       </div> : <p className="text-sm text-[var(--text-secondary)]">We do not have your plan dates yet.</p>}
 
+      {data.paidCreditsDuringTrial && data.period?.isTrial && <p role="status" className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-primary)]"><strong>Paid plan credits approved:</strong> {subscriptionAmountText(data.paidCreditsDuringTrial.amount)} was issued after payment approval; {subscriptionAmountText(data.paidCreditsDuringTrial.availableInOrganizationPool)} remains unallocated in your organization pool. These credits can be used alongside trial credits, and stay available after the trial credits expire (until {subscriptionDateText(data.paidCreditsDuringTrial.expiresAt)}). Your paid plan activates when the trial ends.</p>}
       {data.period && !eligible && <p role="status" className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">It is not time to renew yet. When renewal becomes available, you'll see a button here to check your next price.</p>}
 
       {eligible && (!quote || quote.expired) && !quote?.pendingPayment && <div className="flex flex-wrap items-end gap-3 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3">
@@ -118,7 +119,7 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
           <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Amount sent for review" : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Payment amount" : "Amount to pay"}</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.paymentAmount)}</dd></div>
           <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">Credits included with your next paid period</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.includedCredits)}</dd></div>
         </dl>
-        <p className="text-sm leading-6 text-[var(--text-secondary)]">The credits above are for your next paid period. You get them only after approval and when that period starts.</p>
+        <p className="text-sm leading-6 text-[var(--text-secondary)]">{data.period?.isTrial ? 'After approval, paid-plan credits become available alongside any remaining trial credits. The paid plan starts when the trial ends.' : 'Credits become available when your next paid billing period activates.'}</p>
         <details className="rounded-xl border border-[var(--border)] p-3 text-sm text-[var(--text-secondary)]">
           <summary className="cursor-pointer font-semibold text-[var(--text-primary)]">See how we worked out this price</summary>
           {quote.lines.length > 0 && <div className="mt-3 divide-y divide-[var(--border)]">{quote.lines.map((line, index) => <div key={`${line.code}-${index}`} className="flex justify-between gap-3 py-2"><span>{line.label} × {line.quantity}</span><span className="font-medium tabular-nums">{subscriptionAmountText(line.amount)}</span></div>)}</div>}
