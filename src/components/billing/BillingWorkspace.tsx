@@ -90,6 +90,13 @@ const descriptions: Record<BillingPanel, string> = {
 const money = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value) ? '—' : formatInr(value);
 
+function hasMultiWorkspaceTerms(termsSnapshot: Record<string, unknown> | null): boolean {
+  if (!termsSnapshot) return false;
+  const terms = (termsSnapshot.effectiveTerms || termsSnapshot.terms || termsSnapshot) as Record<string, unknown>;
+  const structure = terms.structure as Record<string, unknown> | undefined;
+  return structure?.mode === 'same_industry' || structure?.mode === 'mixed_industry';
+}
+
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
   workspaceId, view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
@@ -117,11 +124,13 @@ export default function BillingWorkspace({
     });
     return () => { current = false; };
   }, [authorization?.permissions]);
-  const canUseManualAllocation = canAllocate && allocationCapability?.mode === 'manual'
+  const multiWorkspacePlan = hasMultiWorkspaceTerms(allocationCapability?.subscriptionTerms || null);
+  const canShowAllocation = canAllocate && (multiWorkspacePlan || allocationCapability?.mode === 'manual');
+  const canUseManualAllocation = canShowAllocation && allocationCapability?.mode === 'manual'
     && allocationCapability.status === 'ready' && allocationCapability.manualAllocationAllowed;
   React.useEffect(() => {
-    if (view === 'allocation' && allocationCapability && !canUseManualAllocation) onNavigate('credits');
-  }, [view, allocationCapability, canUseManualAllocation, onNavigate]);
+    if (view === 'allocation' && allocationCapability && !canShowAllocation) onNavigate('credits');
+  }, [view, allocationCapability, canShowAllocation, onNavigate]);
   const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time' | null>(null);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
@@ -142,7 +151,7 @@ export default function BillingWorkspace({
           <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">{periodLabel}</span>
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
-          {sections.filter(row => row.key !== 'allocation' || canUseManualAllocation).map(({ key, label, icon: Icon }) => (
+          {sections.filter(row => row.key !== 'allocation' || canShowAllocation).map(({ key, label, icon: Icon }) => (
             <button key={key} type="button" aria-current={view === key ? 'page' : undefined}
               onClick={() => onNavigate(key)}
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${view === key
@@ -287,7 +296,7 @@ export default function BillingWorkspace({
         </section>
       )}
 
-      {view === 'allocation' && (canUseManualAllocation
+      {view === 'allocation' && (canShowAllocation
         ? <ManualWorkspaceAllocation />
         : <p role={allocationCapabilityError ? 'alert' : 'status'} className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
             {allocationCapabilityError
