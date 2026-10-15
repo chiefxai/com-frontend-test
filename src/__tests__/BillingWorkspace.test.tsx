@@ -1,14 +1,16 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { setAuthorization, legacyAuthorization } from '../lib/authorization';
 import BillingWorkspace, { formatCallTime, type BillingWorkspaceProps } from '../components/billing/BillingWorkspace';
 
 vi.mock('../components/billing/OrganizationTopUp', () => ({
   default: () => <div data-testid="organization-credit-ledger">Credit ledger</div>,
 }));
-const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn() }));
-vi.mock('../lib/billing/client', () => ({ billingClient: { workspaceOverview: mocks.workspaceOverview } }));
+const mocks = vi.hoisted(() => ({ workspaceOverview: vi.fn(), organizationOverview: vi.fn() }));
+vi.mock('../lib/billing/client', () => ({ billingClient: {
+  workspaceOverview: mocks.workspaceOverview, organizationOverview: mocks.organizationOverview,
+} }));
 beforeEach(() => {
   setAuthorization(legacyAuthorization('Organization Admin'));
   mocks.workspaceOverview.mockResolvedValue({ orgId: 'org-1', workspaceId: 'workspace-1', workspaceName: 'Main office',
@@ -16,6 +18,7 @@ beforeEach(() => {
       { kind: 'subscription', available: {asset:'INR',units:'12500',scale:2}, held: {asset:'INR',units:'500',scale:2}, expiresAt:'2026-11-01T00:00:00Z' },
       { kind: 'topup', available: {asset:'INR',units:'7000',scale:2}, held: {asset:'INR',units:'0',scale:2}, expiresAt:null },
     ] });
+  mocks.organizationOverview.mockReturnValue(new Promise(() => {}));
 });
 afterEach(() => { cleanup(); setAuthorization(null); vi.clearAllMocks(); });
 
@@ -101,6 +104,17 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('plan');
     fireEvent.click(screen.getByRole('button', { name: 'Credits' }));
     expect(onNavigate).toHaveBeenCalledWith('credits');
+  });
+
+  it('hides Allocation for a single-workspace subscription and redirects a direct Allocation URL', async () => {
+    const onNavigate = vi.fn();
+    mocks.organizationOverview.mockResolvedValue({ allocation: { mode:'automatic',manualAllocationAllowed:false,
+      workspaceLimit:1,workspaceCount:1,workspaceId:'workspace-1',status:'ready' } });
+    render(<BillingWorkspace {...defaults} view="allocation" onNavigate={onNavigate} />);
+    expect(await screen.findByRole('navigation', { name:'Billing sections' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name:'Allocation' })).not.toBeInTheDocument();
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('credits'));
+    expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
   });
 
   it('keeps Add credits hidden for viewers without submission permission', () => {

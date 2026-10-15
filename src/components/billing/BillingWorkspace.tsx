@@ -12,6 +12,8 @@ import SubscriptionRenewal from './SubscriptionRenewal';
 import SubscriptionUpgradePreview from './SubscriptionUpgradePreview';
 import SubscriptionGraceRequest from './SubscriptionGraceRequest';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
+import { billingClient } from '../../lib/billing/client';
+import type { BillingOverview } from '../../lib/billing/types';
 
 export interface WorkspaceBillingSnapshot {
   workspaceId: string;
@@ -96,6 +98,27 @@ export default function BillingWorkspace({
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
+  const [allocationCapability, setAllocationCapability] = React.useState<BillingOverview['allocation'] | null>(null);
+  const [allocationCapabilityError, setAllocationCapabilityError] = React.useState(false);
+  React.useEffect(() => {
+    let current = true;
+    if (!authorization?.permissions.includes('billing.organization.read')) return () => { current = false; };
+    billingClient.organizationOverview().then(overview => {
+      if (!current) return;
+      setAllocationCapability(overview.allocation || null);
+      setAllocationCapabilityError(false);
+    }).catch(() => {
+      if (!current) return;
+      setAllocationCapability(null);
+      setAllocationCapabilityError(true);
+    });
+    return () => { current = false; };
+  }, [authorization?.permissions]);
+  const canUseManualAllocation = canAllocate && allocationCapability?.mode === 'manual'
+    && allocationCapability.status === 'ready' && allocationCapability.manualAllocationAllowed;
+  React.useEffect(() => {
+    if (view === 'allocation' && allocationCapability && !canUseManualAllocation) onNavigate('credits');
+  }, [view, allocationCapability, canUseManualAllocation, onNavigate]);
   if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
       ? <WorkspaceAllocatedBilling workspaceId={workspaceId || workspaceBilling?.workspaceId || ''} />
@@ -109,7 +132,7 @@ export default function BillingWorkspace({
           <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">{periodLabel}</span>
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
-          {sections.filter(row => row.key !== 'allocation' || canAllocate).map(({ key, label, icon: Icon }) => (
+          {sections.filter(row => row.key !== 'allocation' || canUseManualAllocation).map(({ key, label, icon: Icon }) => (
             <button key={key} type="button" aria-current={view === key ? 'page' : undefined}
               onClick={() => onNavigate(key)}
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${view === key
@@ -252,13 +275,16 @@ export default function BillingWorkspace({
         </>
       )}
 
-      {view === 'allocation' && (canAllocate
+      {view === 'allocation' && (canUseManualAllocation
         ? <ManualWorkspaceAllocation />
-        : <p role="alert" className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
-            Only organization administrators can allocate credits to workspaces.
+        : <p role={allocationCapabilityError ? 'alert' : 'status'} className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
+            {allocationCapabilityError
+              ? 'Allocation availability could not be confirmed. Refresh billing to try again.'
+              : 'Checking whether manual allocation is available…'}
           </p>)}
       {(view === 'dashboard' || view === 'credits' || view === 'topup' || view === 'payments' || view === 'plan') && (
-        <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate} />
+        <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
+          manualAllocationAllowed={canUseManualAllocation} />
       )}
     </div>
   );

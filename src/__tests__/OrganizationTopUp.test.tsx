@@ -5,6 +5,7 @@ import OrganizationTopUp from '../components/billing/OrganizationTopUp';
 
 const mocks = vi.hoisted(() => ({
   organizationOverview: vi.fn(),
+  workspaceOverview: vi.fn(),
   subscriptionCreditStatus: vi.fn(),
   payments: vi.fn(),
   submitPaymentWithProof: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../lib/billing/client', () => ({
   billingClient: {
     organizationOverview: mocks.organizationOverview,
+    workspaceOverview: mocks.workspaceOverview,
     subscriptionCreditStatus: mocks.subscriptionCreditStatus,
     payments: mocks.payments,
     submitPaymentWithProof: mocks.submitPaymentWithProof,
@@ -53,11 +55,15 @@ const overview = {
   recentPayments: [payment],
   outstandingInvoices: [],
   subscriptionTerms: null,
+  allocation: { mode:'manual' as const, manualAllocationAllowed:true, workspaceLimit:5,
+    workspaceCount:2, workspaceId:null, status:'ready' as const },
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.organizationOverview.mockResolvedValue(overview);
+  mocks.workspaceOverview.mockResolvedValue({ orgId:'org-1',workspaceId:'workspace-1',workspaceName:'Main office',
+    status:'active',uninitialized:false,balances:[] });
   mocks.subscriptionCreditStatus.mockResolvedValue({
     planName:'Enterprise',planId:'enterprise',
     configuredMonthlyCredits:cash('250000'),entitlementSource:'organization_plan_snapshot',
@@ -94,6 +100,23 @@ describe('organization billing views', () => {
     expect(await screen.findByText('Awaiting admin verification')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'View credits' }));
     expect(onNavigate).toHaveBeenCalledWith('credits');
+  });
+
+  it('shows the sole workspace balances for an automatic single-workspace plan', async () => {
+    mocks.organizationOverview.mockResolvedValue({ ...overview, allocation: {
+      mode:'automatic',manualAllocationAllowed:false,workspaceLimit:1,workspaceCount:1,
+      workspaceId:'workspace-1',status:'ready',
+    }, balances: [] });
+    mocks.workspaceOverview.mockResolvedValue({ orgId:'org-1',workspaceId:'workspace-1',workspaceName:'Main office',
+      status:'active',uninitialized:false,balances:[
+        { kind:'subscription',available:cash('175000'),held:cash('0'),expiresAt:'2026-11-01T00:00:00.000Z' },
+        { kind:'topup',available:cash('225000'),held:cash('0'),expiresAt:null },
+      ] });
+    render(<OrganizationTopUp view="credits" />);
+    expect(await screen.findByText('₹1,750.00')).toBeInTheDocument();
+    expect(screen.getByText('₹2,250.00')).toBeInTheDocument();
+    expect(mocks.workspaceOverview).toHaveBeenCalledWith('workspace-1');
+    expect(screen.queryByRole('button', { name:'Allocate credits' })).not.toBeInTheDocument();
   });
 
   it('keeps the credit top-up form gated and hides it after a successful receipt submission', async () => {

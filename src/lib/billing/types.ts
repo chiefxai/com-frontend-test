@@ -64,6 +64,14 @@ export interface BillingOverview {
   recentPayments: PaymentRequest[];
   outstandingInvoices: BillingInvoice[];
   subscriptionTerms: Record<string, unknown> | null;
+  allocation: {
+    mode: 'automatic' | 'manual' | 'unknown';
+    manualAllocationAllowed: boolean;
+    workspaceLimit: number | null;
+    workspaceCount: number;
+    workspaceId: string | null;
+    status: 'ready' | 'not_ready' | 'review_required' | 'unavailable';
+  };
 }
 
 export interface WorkspaceBillingOverview {
@@ -114,7 +122,7 @@ export interface SubscriptionCreditStatus {
   issuedThisPeriod: BillingAmount | null;
   currentPeriod: { id: string; status: string; startsAt: string; endsAt: string } | null;
   state: 'unverified_plan' | 'no_included_credits' | 'awaiting_approved_subscription'
-    | 'awaiting_period_activation' | 'activation_incomplete' | 'issued_to_organization_pool';
+    | 'awaiting_period_activation' | 'activation_incomplete' | 'issued_to_organization_pool' | 'issued_to_workspace';
 }
 
 export interface ManualAllocationBalance {

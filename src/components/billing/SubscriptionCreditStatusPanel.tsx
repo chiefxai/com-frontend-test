@@ -20,6 +20,7 @@ const explanations: Record<SubscriptionCreditStatus['state'], string> = {
   awaiting_period_activation: 'The subscription payment has been approved. The funded subscription period is awaiting billing-lifecycle activation.',
   activation_incomplete: 'The billing period is active, but its included credit grant is missing. Contact platform support to reconcile the subscription ledger; do not issue credits manually.',
   issued_to_organization_pool: 'Subscription credits have been issued to the organization credit pool. An Organization Admin can distribute them to workspaces through Allocation.',
+  issued_to_workspace: 'Subscription credits have been issued and automatically transferred to the single entitled workspace.',
 };
 
 export default function SubscriptionCreditStatusPanel() {
