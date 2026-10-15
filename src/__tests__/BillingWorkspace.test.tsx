@@ -98,7 +98,7 @@ describe('organization billing interface', () => {
   it('offers direct navigation to the major billing sections', () => {
     const onNavigate = vi.fn();
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Usage & limits' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Usage' }));
     expect(onNavigate).toHaveBeenCalledWith('usage');
     fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
     expect(onNavigate).toHaveBeenCalledWith('payments');
@@ -118,9 +118,10 @@ describe('organization billing interface', () => {
 
   it('shows a simple subscription overview and hides extra billing details by default', async () => {
     render(<BillingWorkspace {...defaults} view="plan" />);
-    expect(screen.getByText('Your subscription')).toBeInTheDocument();
+    expect(screen.queryByText('Your subscription')).not.toBeInTheDocument();
     expect(screen.getByText('Estimated monthly plan price')).toBeInTheDocument();
-    expect(screen.getByText('Plan price and calling credits are different.')).toBeInTheDocument();
+    expect(screen.queryByText('Plan price and calling credits are different.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See my credits' })).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
