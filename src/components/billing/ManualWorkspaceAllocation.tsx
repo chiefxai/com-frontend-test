@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, CheckCircle2, RefreshCw, ShieldCheck, Wallet, Building2 } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
+import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
 import { billingClient, createBillingMutation, BillingApiError } from '../../lib/billing/client';
 import type {
@@ -129,15 +130,15 @@ export default function ManualWorkspaceAllocation() {
               Your credit balance is not ready yet. Contact platform support before sending credits to workspaces.
             </p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-12 gap-3">
               {orgBalances.length ? orgBalances.map(row => (
-                <div key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/50 px-4 py-3">
-                  <p className="text-xs text-[var(--text-secondary)]">{friendlyKind(row.kind)} not yet shared</p>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{formatCreditAmount(row.available)}</p>
-                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">Held: {formatCreditAmount(row.held)}</p>
-                </div>
-              )) : <p className="text-xs text-[var(--text-muted)]">No unallocated active credit positions.</p>}
+                <KpiCard key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
+                  span={{ xs: 12, sm: 6, xl: 4 }} icon={Wallet} iconPosition="top-left"
+                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                  label={friendlyKind(row.kind) + ' not yet shared'}
+                  value={formatCreditAmount(row.available)}
+                  sub={`Held: ${formatCreditAmount(row.held)}`} />
+              )) : <p className="col-span-12 text-xs text-[var(--text-muted)]">No unallocated active credit positions.</p>}
             </div>
           )}
         {snapshot && !snapshot.uninitialized && !snapshot.writable && (
