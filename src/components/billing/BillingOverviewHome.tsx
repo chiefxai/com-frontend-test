@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from '../ui/Card';
+import KpiCard from '../ui/KpiCard';
 import { CalendarClock, CreditCard, PhoneCall, Wallet, Sparkles } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse } from '../../lib/billing/types';
@@ -26,17 +27,6 @@ interface Props {
 }
 const money = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value) ? '—' : formatInr(value);
-
-function Tile({ title, amount, description, icon: Icon }: {
-  title: string; amount: React.ReactNode; description: string; icon: React.ElementType;
-}) {
-  return <Card padding="none" className="!p-4 min-w-0">
-    <Icon aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
-    <p className="mt-3 text-sm text-[var(--text-secondary)]">{title}</p>
-    <p className="mt-1 break-words text-2xl font-bold tabular-nums text-[var(--text-primary)]">{amount}</p>
-    <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">{description}</p>
-  </Card>;
-}
 
 /** Compact billing home: key balances on the left, current plan on the right. */
 export default function BillingOverviewHome({
@@ -83,17 +73,17 @@ export default function BillingOverviewHome({
 
   return <section className="col-span-12 min-w-0 space-y-4" aria-label="Your billing overview">
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Billing balances and usage">
-        <Tile title="Plan credits remaining" icon={Wallet}
-          amount={overview ? availableCredits(overview.balances,'subscription') : '—'}
-          description="Approved plan credits still in the organization pool" />
-        <Tile title="Extra credits remaining" icon={CreditCard}
-          amount={overview ? availableCredits(overview.balances,'topup') : '—'}
-          description="Approved top-ups still in the organization pool" />
-        <Tile title="AI usage cost" icon={Sparkles} amount={money(usage?.aiSpendInr)}
-          description="AI voice and post-call processing this period" />
-        <Tile title="Call usage" icon={PhoneCall} amount={callCount ?? '—'}
-          description={`Calls · ${usage?.aiMinutesUsed == null ? 'Time unavailable' : Math.round(usage.aiMinutesUsed) + ' call minutes'}`} />
+      <div className="grid min-w-0 grid-cols-12 gap-3" aria-label="Billing balances and usage">
+        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Plan credits remaining" icon={Wallet}
+          value={overview ? availableCredits(overview.balances,'subscription') : '—'}
+          sub="Approved plan credits still in the organization pool" />
+        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Extra credits remaining" icon={CreditCard}
+          value={overview ? availableCredits(overview.balances,'topup') : '—'}
+          sub="Approved top-ups still in the organization pool" />
+        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="AI usage cost" icon={Sparkles} value={money(usage?.aiSpendInr)}
+          sub="AI voice and post-call processing this period" />
+        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
+          sub={`Calls · ${usage?.aiMinutesUsed == null ? 'Time unavailable' : Math.round(usage.aiMinutesUsed) + ' call minutes'}`} />
       </div>
       <Card padding="none" className="min-w-0 !rounded-2xl !p-5 sm:!p-6" >
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Your plan right now</p>
