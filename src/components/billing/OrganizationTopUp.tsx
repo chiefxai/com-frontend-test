@@ -231,18 +231,8 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
 
       {view === 'credits' && (
-        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
-            action={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
-                {canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
-                  onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
-                {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
-                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
-              </div>
-            } />
-          <div className="grid grid-cols-12 gap-3">
+        <>
+          <div className="col-span-12 grid grid-cols-12 gap-3" aria-label="Available credit balances">
             <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
               label="Subscription credits remaining" value={overview ? sumBalance(subscriptionCredits) : '—'} />
@@ -250,8 +240,21 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
               label="Top-up credits remaining" value={overview ? sumBalance(topupCredits) : '—'} />
           </div>
-          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
-        </Card>
+          <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+            <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
+              action={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
+                  {canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
+                    onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
+                  {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
+                    disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
+                </div>
+              } />
+            <p className="text-sm text-[var(--text-secondary)]">Plan credits and approved top-up credits remain in separate pools until allocated to workspaces.</p>
+            {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
+          </Card>
+        </>
       )}
       {view === 'topup' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
