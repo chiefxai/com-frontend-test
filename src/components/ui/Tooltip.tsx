@@ -45,7 +45,10 @@ export default function Tooltip({ label, side = 'bottom', children, className = 
   };
 
   return (
-    <div ref={ref} className={className} onMouseEnter={handleEnter} onMouseLeave={() => setPos(null)}>
+    <div ref={ref} className={className} onMouseEnter={handleEnter} onMouseLeave={() => setPos(null)}
+      onFocusCapture={handleEnter} onBlurCapture={event => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPos(null);
+      }}>
       {children}
       {pos && (
         <div

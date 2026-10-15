@@ -137,6 +137,10 @@ export default function SubscriptionTermsPolicyEditor({ open = true, onClose }: 
   const updateTax = (index: number, tax: TaxRule) => update({ taxes: draft.taxes.map((current, i) => i === index ? tax : current) });
   const togglePostpaidMode = (mode: PostpaidMode) => update({ postpaid: { ...draft.postpaid, workspaceModes: draft.postpaid.workspaceModes.includes(mode) ? draft.postpaid.workspaceModes.filter(item => item !== mode) : [...draft.postpaid.workspaceModes, mode] } });
 
+  // Keep financial terms configurable, but do not show the informational
+  // policy card in the plan list until Configure is selected.
+  if (!open) return null;
+
   return <Card padding="sm" className="sm:!p-5">
     <CardHeader title="Subscription financial terms" subtitle="Explicit terms copied into versioned plan quotes. These settings do not change existing purchased periods." icon={AlertTriangle} />
     {error && <p role="alert" className="mb-3 rounded-lg border border-rose-300/60 bg-rose-500/5 p-3 text-xs text-rose-700">{error}</p>}
