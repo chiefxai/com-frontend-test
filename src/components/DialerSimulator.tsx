@@ -55,6 +55,7 @@ import EmptyState from './ui/EmptyState';
 import DataTable, { Column } from './ui/DataTable';
 import SlideOver from './ui/SlideOver';
 import Badge from './ui/Badge';
+import KpiCard from './ui/KpiCard';
 import Tooltip from './ui/Tooltip';
 import VoiceSimulatorWorkspace from './VoiceSimulatorWorkspace';
 import { apiFetch } from '../lib/api';
@@ -1899,17 +1900,15 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         <>
           <VoiceSimulatorWorkspace className="flex-1 w-full h-full min-h-0"
             header={
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">Outbound campaign workspace</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Live campaign performance at a glance.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{totalLeadsInTask.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">targets</span></span>
-                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{completedLeadsInTask.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">dialed</span></span>
-                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{skippedLeadsInTask.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">skipped</span></span>
-                  <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] dark:border-emerald-900/40 dark:bg-emerald-950/20"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{conversionPercent}%</span><span className="ml-1 text-emerald-700/70 dark:text-emerald-400/70">conversion</span></span>
-                </div>
+              <div className="grid grid-cols-12 gap-3" aria-label="Outbound campaign performance">
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Activity} iconPosition="top-left"
+                  label="Targets" value={totalLeadsInTask.toLocaleString()} sub="In selected campaign" />
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall} iconPosition="top-left"
+                  label="Dialed" value={completedLeadsInTask.toLocaleString()} sub="Completed calls" />
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneOff} iconPosition="top-left"
+                  label="Skipped" value={skippedLeadsInTask.toLocaleString()} sub="Skipped contacts" />
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} iconPosition="top-left"
+                  label="Conversion" value={`${conversionPercent}%`} sub="Interested among completed calls" />
               </div>
             }
           >
@@ -2431,16 +2430,15 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         <>
         <VoiceSimulatorWorkspace
           header={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-primary)]">Inbound call workspace</p>
-                <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Call activity across your receiving numbers.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{realInboundCallLogs.length.toLocaleString()}</span><span className="ml-1 text-[var(--text-muted)]">calls</span></span>
-                <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]"><span className="font-semibold text-[var(--text-primary)]">{realInboundCallLogs.length > 0 ? Math.round(realInboundCallLogs.reduce((acc, l) => acc + l.duration, 0) / realInboundCallLogs.length) : 0}s</span><span className="ml-1 text-[var(--text-muted)]">avg duration</span></span>
-                <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] dark:border-emerald-900/40 dark:bg-emerald-950/20"><span className="font-semibold text-emerald-700 dark:text-emerald-400">{realInboundCallLogs.length > 0 ? Math.round((realInboundCallLogs.filter(l => l.sentiment === 'Positive').length / realInboundCallLogs.length) * 100) : 0}%</span><span className="ml-1 text-emerald-700/70 dark:text-emerald-400/70">positive</span></span>
-              </div>
+            <div className="grid grid-cols-12 gap-3" aria-label="Inbound call performance">
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneIncoming} iconPosition="top-left"
+                label="Inbound calls" value={realInboundCallLogs.length.toLocaleString()} sub="Recorded calls" />
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Clock} iconPosition="top-left"
+                label="Average duration" value={`${realInboundCallLogs.length > 0 ? Math.round(realInboundCallLogs.reduce((acc, log) => acc + log.duration, 0) / realInboundCallLogs.length) : 0}s`} sub="Across inbound calls" />
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Smile} iconPosition="top-left"
+                label="Positive sentiment" value={`${realInboundCallLogs.length > 0 ? Math.round((realInboundCallLogs.filter(log => log.sentiment === 'Positive').length / realInboundCallLogs.length) * 100) : 0}%`} sub="Calls marked positive" />
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall} iconPosition="top-left"
+                label="Receiving numbers" value={activeVirtualNumbers.length.toLocaleString()} sub="Configured virtual numbers" />
             </div>
           }
         >

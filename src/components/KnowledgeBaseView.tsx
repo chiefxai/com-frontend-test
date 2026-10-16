@@ -122,30 +122,17 @@ export default function KnowledgeBaseView() {
         </div>
       ) : (
         <div className="col-span-12 space-y-5">
-          <section className="min-h-[560px] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
-            <div className="border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-[var(--text-primary)]">Knowledge workspace</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">Manage sources and test retrieval without leaving this page.</p>
-                </div>
-                <div className="hidden items-center gap-2 md:flex">
-                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
-                    <span className="font-semibold text-[var(--text-primary)]">{documents.length}</span>
-                    <span className="ml-1 text-[var(--text-muted)]">sources</span>
-                  </span>
-                  <span className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-[10px]">
-                    <span className="font-semibold text-[var(--text-primary)]">{totalChunks}</span>
-                    <span className="ml-1 text-[var(--text-muted)]">chunks</span>
-                  </span>
-                  <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400">
-                    Retrieval Ready
-                  </span>
-                </div>
-              </div>
-            </div>
+          <div className="grid grid-cols-12 gap-3" aria-label="Knowledge base summary">
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={BookOpen} iconPosition="top-left"
+              label="Sources" value={documents.length.toLocaleString()} sub="Documents available to AI agents" />
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Database} iconPosition="top-left"
+              label="Indexed chunks" value={totalChunks.toLocaleString()} sub="Searchable content segments" />
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Sparkles} iconPosition="top-left"
+              label="Retrieval status" value={documents.length > 0 ? 'Ready' : 'Add sources'}
+              sub={documents.length > 0 ? 'Knowledge is available to agents' : 'Add a document to enable retrieval'} />
+          </div>
 
-            <div className="min-h-[500px] p-3 sm:p-4 xl:p-5">
+          <div className="min-h-[500px]">
               <div className="mb-3 flex items-center justify-between gap-3 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] p-2.5 lg:hidden">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500"><BookOpen className="h-4 w-4" /></div>
@@ -321,7 +308,6 @@ export default function KnowledgeBaseView() {
               </div>
               </div>
             </div>
-          </section>
         </div>
       )}
 
