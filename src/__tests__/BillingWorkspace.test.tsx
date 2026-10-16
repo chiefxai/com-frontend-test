@@ -120,17 +120,23 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('credits');
   });
 
-  it('shows a simple subscription overview and hides extra billing details by default', async () => {
+  it('opens the renewal overlay from the expired plan card', async () => {
+    mocks.renewal.mockResolvedValue({
+      subscription: { lifecycleStatus: 'suspended', accessState: 'billing_suspended', planId: 'starter', planVersion: 1, version: 1 },
+      period: { endsAt: new Date(Date.now() - 86400000).toISOString(), renewalEligible: true, overdue: true, startsAt: new Date(Date.now() - 31 * 86400000).toISOString() },
+      quote: null, payment: { submissionEnabled: false, purpose: 'subscription' },
+    });
     render(<BillingWorkspace {...defaults} view="dashboard" />);
     expect(screen.queryByText('Your subscription')).not.toBeInTheDocument();
     expect(screen.getByText('Estimated monthly plan price')).toBeInTheDocument();
     expect(screen.queryByText('Plan price and calling credits are different.')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'See my credits' })).not.toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /Keep my plan going/ })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
+    const renewButton = await screen.findByRole('button', { name: 'Renew plan' });
+    expect(screen.queryByRole('button', { name: /Keep my plan going/ })).not.toBeInTheDocument();
+    fireEvent.click(renewButton);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Renew your plan' })).toBeInTheDocument();
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Show extra plan details/ })).not.toBeInTheDocument();
-
   });
 
   it('hides Allocation for automatic single-workspace billing and redirects a direct Allocation URL', async () => {
