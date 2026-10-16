@@ -37,7 +37,7 @@ describe('organization subscription renewal', () => {
     expect(screen.queryByText(/₹200 trial credits expire when the trial ends/)).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Choose your next subscription plan'), { target: { value: 'growth' } });
     fireEvent.click(screen.getByRole('button', { name: 'See my plan price' }));
-    await screen.findByRole('button', { name: 'Send receipt for review' });
+    await screen.findByLabelText('Bank or UPI payment reference');
     expect(mocks.createQuote).toHaveBeenCalledWith({ targetPlanId: 'growth', targetPlanVersion: 4, acknowledgeFeatureLoss: false }, expect.objectContaining({ idempotencyKey: expect.any(String) }));
   });
 
@@ -82,7 +82,7 @@ describe('organization subscription renewal', () => {
     fireEvent.change(screen.getByLabelText('Bank or UPI payment reference'), { target: { value: 'UTR-RENEW-1' } });
     const proof = new File(['%PDF'], 'receipt.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText(/Payment receipt/), { target: { files: [proof] } });
-    fireEvent.submit(screen.getByRole('button', { name: 'Send receipt for review' }).closest('form')!);
+    fireEvent.submit(screen.getByLabelText('Bank or UPI payment reference').closest('form')!);
     await waitFor(() => expect(mocks.submit).toHaveBeenCalledWith({ schemaVersion: 1, purpose: 'subscription', quoteId: 'renewal-1', expectedAmount: amount, paymentReference: 'UTR-RENEW-1' }, proof, expect.objectContaining({ idempotencyKey: expect.any(String) })));
   });
 
