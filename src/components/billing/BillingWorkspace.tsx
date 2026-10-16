@@ -210,13 +210,7 @@ export default function BillingWorkspace({
               <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                 label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
             </div>
-            {canManageSubscription
-              ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
-              : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
-                  Only your organization's billing administrators can start, renew, or change a subscription.
-                </p>}
-            <section className="space-y-3" aria-labelledby="subscription-quick-links-heading">
-              <h3 id="subscription-quick-links-heading" className="text-sm font-semibold text-[var(--text-primary)]">Quick links</h3>
+            <section className="space-y-3" aria-label="Billing shortcuts">
               <div className="grid grid-cols-12 gap-3">
                 <button type="button" onClick={() => onNavigate('credits')}
                   className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
@@ -231,6 +225,11 @@ export default function BillingWorkspace({
               </div>
             </section>
             <SubscriptionCreditStatusPanel />
+            {canManageSubscription
+              ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
+              : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+                  Only your organization's billing administrators can start, renew, or change a subscription.
+                </p>}
           </section>
         </>
       )}
