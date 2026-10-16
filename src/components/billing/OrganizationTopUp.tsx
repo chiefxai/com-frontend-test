@@ -1,7 +1,7 @@
 import React from 'react';
 import WorkspaceAddonPurchases, { type PaymentDisplayFilter, type PaymentStatusFilter } from './WorkspaceAddonPurchases';
 import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
-import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
+import { useAuthorization } from '../../lib/authorization';
 import { ArrowDownToLine, CheckCircle2, Clock3, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
@@ -10,6 +10,7 @@ import KpiCard from '../ui/KpiCard';
 import { Card, CardHeader } from '../ui/Card';
 import FilterBar from '../ui/FilterBar';
 import Button from '../ui/Button';
+import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
 
 type Quote = { quoteId: string; paymentAmount: BillingAmount; topupCredits: BillingAmount; validUntil: string };
 const TOPUP_PRESETS = [500, 1000, 2500, 5000] as const;
@@ -33,7 +34,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null;
   manualAllocationAllowed?: boolean }) {
   const { can, authorization } = useAuthorization();
-  const canAllocate = canAllocateOrganizationCredits(authorization);
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
   const [automaticWorkspaceOverview, setAutomaticWorkspaceOverview] = React.useState<WorkspaceBillingOverview | null>(null);
@@ -319,6 +319,15 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             </div>
             <p className="mt-3 text-xs text-[var(--text-muted)]">Aggregate period costs, not individual credit debits. The plan and top-up balances above reflect the actual available ledger amounts. {creditUsage?.periodLabel || ''}</p>
           </Card>
+      )}
+      {view === 'credits' && manualAllocationAllowed && (
+        <section className="col-span-12 space-y-3" aria-labelledby="workspace-credit-allocation-heading">
+          <div>
+            <h2 id="workspace-credit-allocation-heading" className="text-base font-semibold text-[var(--text-primary)]">Workspace allocation</h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Share available credits with the workspaces on your multi-workspace plan.</p>
+          </div>
+          <ManualWorkspaceAllocation />
+        </section>
       )}
       {view === 'topup' && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
