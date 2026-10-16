@@ -114,15 +114,15 @@ export default function BillingOverviewHome({
   return <section className="col-span-12 min-w-0 space-y-4" aria-label="Your billing overview">
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
       <div className="grid min-w-0 grid-cols-12 gap-3" aria-label="Billing balances and usage">
-        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Plan credits remaining" icon={Wallet}
+        <KpiCard compact span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Plan credits remaining" icon={Wallet}
           value={visibleBalances ? availableCredits(visibleBalances,'subscription') : '—'}
           sub={usesWorkspaceCredits ? 'Available in your subscription workspace' : 'Approved plan credits still in the organization pool'} />
-        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Extra credits remaining" icon={CreditCard}
+        <KpiCard compact span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Extra credits remaining" icon={CreditCard}
           value={visibleBalances ? availableCredits(visibleBalances,'topup') : '—'}
           sub={usesWorkspaceCredits ? 'Extra credits available in your subscription workspace' : 'Approved top-ups still in the organization pool'} />
-        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="AI usage cost" icon={Sparkles} value={money(usage?.aiSpendInr)}
+        <KpiCard compact span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="AI usage cost" icon={Sparkles} value={money(usage?.aiSpendInr)}
           sub="AI voice and post-call processing this period" />
-        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
+        <KpiCard compact span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
           sub={`Calls · ${usage?.aiMinutesUsed == null ? 'Time unavailable' : Math.round(usage.aiMinutesUsed) + ' call minutes'}`} />
       </div>
       <Card padding="none" className="min-w-0 !rounded-2xl !p-5 sm:!p-6" >
@@ -156,11 +156,11 @@ export default function BillingOverviewHome({
       </Card>
     </div>
     <div id="billing-subscription-details" className="grid grid-cols-12 gap-3 scroll-mt-6" aria-label="Subscription pricing and allowances">
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+      <KpiCard compact span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
         label="Estimated monthly plan price" value={money(pricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+      <KpiCard compact span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
         label="Workspaces" value={pricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+      <KpiCard compact span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
         label="Extra work types" value={pricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
     </div>
       {showWorkspaceAllocation && <Card padding="sm" className="col-span-12 min-w-0">
