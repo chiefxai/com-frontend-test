@@ -105,10 +105,6 @@ export default function SubscriptionRenewal({ canSubmit = false, embedded = fals
 
       {quote && <section className="space-y-5">
         {canPay && <form onSubmit={submitPayment} className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--text-primary)]">Renew your plan</h3>
-            <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Pay {subscriptionAmountText(quote.paymentAmount)} using your usual payment method, then add the reference and receipt. We’ll review it before renewing your plan.</p>
-          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-medium text-[var(--text-primary)]">Bank or UPI payment reference
               <input className="mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-500/15" required maxLength={160} value={reference} disabled={busy} autoComplete="off" placeholder="Enter transaction ID" onChange={event => { setReference(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} />

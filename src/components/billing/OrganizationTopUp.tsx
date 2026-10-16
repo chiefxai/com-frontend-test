@@ -29,8 +29,10 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 }
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate,
-  creditUsage, manualAllocationAllowed = false }: { canSubmit?: boolean; view?: BillingPanel;
+  creditUsage, manualAllocationAllowed = false, embeddedTopup = false, onTopupClose }: { canSubmit?: boolean; view?: BillingPanel;
   onNavigate?: (view: BillingPanel) => void;
+  embeddedTopup?: boolean;
+  onTopupClose?: () => void;
   creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null;
   manualAllocationAllowed?: boolean }) {
   const { can } = useAuthorization();
@@ -278,7 +280,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           ...(workspaceCreditError ? [workspaceCreditError] : []),
         ]}
       />}
-      {view === 'topup' && (
+      {view === 'topup' && !embeddedTopup && (
         <section className="col-span-12 min-w-0 space-y-4" aria-label="Credit balances">
           <div className="flex flex-wrap items-start justify-end gap-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -332,7 +334,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           <ManualWorkspaceAllocation />
         </section>
       )}
-      {view === 'topup' && (
+      {view === 'topup' && !embeddedTopup && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
           <CardHeader title="Add credits" subtitle="Credits become available after your receipt is approved" icon={Wallet}
             action={<Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void refresh()}>Refresh</Button>} />
@@ -401,7 +403,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             {error && <p role="alert" className="text-xs text-rose-600 dark:text-rose-300">{error}</p>}
             <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-4">
               <Button type="button" size="sm" variant="secondary" disabled={busy}
-                onClick={() => { setShowForm(false); if (view === 'topup') onNavigate?.('credits'); }}>
+                onClick={() => { setShowForm(false); if (embeddedTopup) onTopupClose?.(); else if (view === 'topup') onNavigate?.('credits'); }}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" size="sm" loading={busy} disabled={Boolean(success)}>

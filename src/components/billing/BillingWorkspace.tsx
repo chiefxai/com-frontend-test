@@ -135,6 +135,7 @@ export default function BillingWorkspace({
   }, [view, allocationCapability, canShowAllocation, onNavigate]);
   const [renewalDialogOpen, setRenewalDialogOpen] = React.useState(false);
   const [graceDialogOpen, setGraceDialogOpen] = React.useState(false);
+  const [topupDialogOpen, setTopupDialogOpen] = React.useState(false);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
@@ -165,7 +166,7 @@ export default function BillingWorkspace({
           ))}
           {canSubmitPayment && (
             <button type="button" aria-current={view === 'topup' ? 'page' : undefined}
-              onClick={() => onNavigate('topup')}
+              onClick={() => setTopupDialogOpen(true)}
               className={`ml-auto inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${view === 'topup'
                 ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                 : 'bg-[var(--accent)] text-white hover:opacity-90'}`}>
@@ -256,6 +257,12 @@ export default function BillingWorkspace({
           } : null}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
       )}
+      {canSubmitPayment && <Modal open={topupDialogOpen} onClose={() => setTopupDialogOpen(false)}
+        title="Add usage credits" subtitle="Submit a payment reference and receipt for approval."
+        maxWidth="max-w-2xl" className="!max-h-[92vh]">
+        {topupDialogOpen && <OrganizationTopUp canSubmit={canSubmitPayment} view="topup" embeddedTopup
+          onTopupClose={() => setTopupDialogOpen(false)} />}
+      </Modal>}
       {canManageSubscription && <>
         <Modal open={renewalDialogOpen} onClose={() => setRenewalDialogOpen(false)}
           title="Renew your plan" subtitle="Get the current renewal price and submit your payment receipt."
