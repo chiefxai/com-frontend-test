@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  Filter,
   FolderPlus,
   Gauge,
   Layers3,
@@ -282,34 +281,32 @@ export default function CampaignView({
                   <span className="hidden sm:inline text-[11px] text-[var(--text-muted)] shrink-0">
                     {filteredCampaigns.length} of {campaigns.length}
                   </span>
-                  <div className="h-8 px-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] flex items-center gap-1.5 shrink-0">
-                    <Filter className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-                    <select
-                      value={campaignFilter}
-                      onChange={(event) =>
-                        setCampaignFilter(event.target.value as CampaignFilter)
-                      }
-                      className="bg-transparent text-[11px] font-medium text-[var(--text-primary)] outline-none cursor-pointer"
-                    >
-                      <option value="All">All status</option>
-                      <option value="Running">Running</option>
-                      <option value="Paused">Paused</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Draft">Draft</option>
-                    </select>
-                  </div>
                 </div>
               }
             >
               <div className="border-b border-[var(--border)] p-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-                  <input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search campaigns by name or ID..."
-                    className="w-full h-10 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15"
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative min-w-[180px] flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+                    <input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search campaigns by name or ID..."
+                      className="w-full h-10 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15"
+                    />
+                  </div>
+                  <select
+                    aria-label="Filter campaigns by status"
+                    value={campaignFilter}
+                    onChange={(event) => setCampaignFilter(event.target.value as CampaignFilter)}
+                    className="h-10 rounded-[9px] border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 text-xs font-medium text-[var(--text-primary)] outline-none cursor-pointer"
+                  >
+                    <option value="All">All status</option>
+                    <option value="Running">Running</option>
+                    <option value="Paused">Paused</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Draft">Draft</option>
+                  </select>
                 </div>
               </div>
 

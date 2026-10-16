@@ -427,10 +427,8 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           <CardHeader title="Payments and workspace invoices"
             subtitle="One place to check receipts, invoices, and extra workspace charges"
             icon={ReceiptText} action={
-              <Button type="button" variant="secondary" size="sm" icon={RefreshCw}
-                onClick={() => void refresh()}>Refresh</Button>
-            } />
-          <FilterBar className="mb-4"
+              <div className="flex flex-wrap items-center justify-end gap-2">
+          <FilterBar className="!mb-0"
             search={{ value: paymentSearch, onChange: setPaymentSearch, placeholder: 'Find a payment or workspace…' }}
             hasActiveFilters={activityView !== 'all' || historyFilter !== 'all' || paymentStatus !== 'all' || Boolean(paymentSearch)}
             onClear={() => {
@@ -471,6 +469,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                 ] },
             ]}
           />
+
+                <Button type="button" variant="secondary" size="sm" icon={RefreshCw}
+                  onClick={() => void refresh()}>Refresh</Button>
+              </div>
+            } />
           {historyError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">
             Submitted payments could not be loaded: {historyError}. Workspace invoices may still be available.
           </p>}

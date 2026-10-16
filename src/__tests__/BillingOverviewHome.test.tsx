@@ -5,7 +5,7 @@ import BillingOverviewHome from '../components/billing/BillingOverviewHome';
 
 const mocks = vi.hoisted(() => ({
   apiFetch: vi.fn(), organizationOverview: vi.fn(), subscriptionCreditStatus: vi.fn(),
-  subscriptionRenewal: vi.fn(),
+  subscriptionRenewal: vi.fn(), subscriptionGraceRequests: vi.fn(),
 }));
 vi.mock('../lib/api', () => ({ apiFetch: mocks.apiFetch }));
 vi.mock('../lib/billing/client', () => ({
@@ -13,6 +13,7 @@ vi.mock('../lib/billing/client', () => ({
     organizationOverview: mocks.organizationOverview,
     subscriptionCreditStatus: mocks.subscriptionCreditStatus,
     subscriptionRenewal: mocks.subscriptionRenewal,
+    subscriptionGraceRequests: mocks.subscriptionGraceRequests,
   },
 }));
 
@@ -22,6 +23,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.organizationOverview.mockResolvedValue({ activePeriod: null, nextPeriod: null, balances: [] });
   mocks.subscriptionCreditStatus.mockResolvedValue({ planName: 'Starter', planId: 'starter' });
+  mocks.subscriptionGraceRequests.mockResolvedValue({ eligibility: { requestEligible: true }, items: [] });
   mocks.subscriptionRenewal.mockResolvedValue({
     subscription: { planId: 'starter', lifecycleStatus: 'active', accessState: 'operational' },
     period: { endsAt: new Date(Date.now() + 15 * 86400000).toISOString(), renewalEligible: false },
@@ -38,7 +40,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Billing Overview current plan card', () => {
-  it('shows balances beside the current plan and defaults to View my plan', async () => {
+  it('shows balances beside the current plan without a details button', async () => {
     const onNavigate = vi.fn();
     render(<BillingOverviewHome
       onNavigate={onNavigate} onOpenSubscriptionTask={vi.fn()}
@@ -51,7 +53,7 @@ describe('Billing Overview current plan card', () => {
       expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.queryByText('Plan and extra workspace charges')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Pay to continue' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Subscription details' }));
+    expect(screen.queryByRole('button', { name: 'Subscription details' })).not.toBeInTheDocument();
     expect(onNavigate).not.toHaveBeenCalled();
   });
 

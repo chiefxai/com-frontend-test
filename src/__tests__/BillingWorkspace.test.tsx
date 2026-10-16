@@ -95,7 +95,7 @@ describe('organization billing interface', () => {
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
   });
 
-  it('offers direct navigation to the major billing sections', () => {
+  it('offers direct navigation and opens the Add credits overlay', async () => {
     const onNavigate = vi.fn();
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: 'Usage' }));
@@ -103,7 +103,8 @@ describe('organization billing interface', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
     expect(onNavigate).toHaveBeenCalledWith('payments');
     fireEvent.click(screen.getByRole('button', { name: 'Add credits' }));
-    expect(onNavigate).toHaveBeenCalledWith('topup');
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Add usage credits' })).toBeInTheDocument();
   });
 
   it('keeps subscription details in Overview and retains direct Credits navigation', () => {
@@ -155,7 +156,7 @@ describe('organization billing interface', () => {
     expect(screen.getByText('Your plan right now')).toBeInTheDocument();
     for (const title of ['Plan credits remaining','Extra credits remaining','AI usage cost','Call usage'])
       expect(screen.getByText(title)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Subscription details' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Subscription details' })).not.toBeInTheDocument();
   });
 
   it('removes workspace monthly spending controls without hiding usage totals', () => {
