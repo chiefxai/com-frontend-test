@@ -51,7 +51,7 @@ describe('Billing Overview current plan card', () => {
       expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.queryByText('Plan and extra workspace charges')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Pay to continue' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'View my plan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Subscription details' }));
     expect(onNavigate).toHaveBeenCalledWith('plan');
   });
 
