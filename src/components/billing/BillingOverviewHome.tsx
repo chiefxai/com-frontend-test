@@ -125,37 +125,36 @@ export default function BillingOverviewHome({
         <KpiCard span={{ xs: 12, sm: 6 }}  iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
           sub={`Calls · ${usage?.aiMinutesUsed == null ? 'Time unavailable' : Math.round(usage.aiMinutesUsed) + ' call minutes'}`} />
       </div>
-      <Card padding="none" className="min-w-0 !rounded-2xl !p-5 sm:!p-6" >
+      <Card padding="none" className="min-w-0 !rounded-2xl !p-4 sm:!p-5" >
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Your plan right now</p>
-        <h2 className="mt-2 break-words text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+        <h2 className="mt-1.5 break-words text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
           {planName || (loading ? 'Checking your plan…' : 'Plan name unavailable')}
         </h2>
-        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
           {planStatus}{endsAt ? ` · Ends ${displayDate(endsAt)}` : ''}
         </p>
-        {actionRequired && <div role="status" className="mt-5 rounded-xl border border-amber-300/70 bg-amber-500/10 p-4">
+        {actionRequired && <div role="status" className="mt-3 rounded-lg border border-amber-300/70 bg-amber-500/10 px-3 py-2.5">
           <div className="flex items-start gap-3">
-            <CalendarClock aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <CalendarClock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div className="text-sm text-[var(--text-primary)]">
               {notice.expired ? (
                 <>
-                  <p>Your plan has expired.</p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/70 p-3">
+                  <p className="font-medium leading-5">Your plan has expired.</p>
+                  <div className="mt-1.5 grid grid-cols-2 gap-3 text-xs">
+                    <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Renewal</p>
-                      <p className="mt-1 font-semibold text-[var(--text-primary)]">
+                      <p className="mt-0.5 truncate font-semibold text-[var(--text-primary)]">
                         {notice.pendingPayment ? 'Payment pending' : notice.canRenew ? 'Renewal available' : 'Contact platform admin'}
                       </p>
-                      {notice.canRenew && <p className="mt-1 text-xs text-[var(--text-secondary)]">Renew to restore subscription access.</p>}
                     </div>
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/70 p-3">
+                    <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Grace time</p>
-                      <p className="mt-1 font-semibold text-[var(--text-primary)]">
+                      <p className="mt-0.5 truncate font-semibold text-[var(--text-primary)]">
                         {notice.inGrace ? `${notice.graceDays} day(s) remaining`
                           : renewal?.graceRequest?.status === 'pending' ? 'Request pending' : 'No active grace period'}
                       </p>
                       {notice.inGrace && notice.graceEnd &&
-                        <p className="mt-1 text-xs text-[var(--text-secondary)]">Until {displayDate(notice.graceEnd)}</p>}
+                        <p className="mt-0.5 text-[10px] text-[var(--text-secondary)]">Until {displayDate(notice.graceEnd)}</p>}
                     </div>
                   </div>
                 </>
@@ -167,7 +166,7 @@ export default function BillingOverviewHome({
             </div>
           </div>
         </div>}
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {showPay && <Button type="button" variant="primary" size="sm" icon={CreditCard}
             onClick={() => onOpenSubscriptionTask('renew')}>{notice.expired ? 'Renew plan' : 'Pay to continue'}</Button>}
           <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('billing-subscription-details')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}>Subscription details</Button>
