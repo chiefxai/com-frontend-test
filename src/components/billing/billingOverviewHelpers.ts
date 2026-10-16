@@ -60,10 +60,12 @@ export function renewalNotice(
     ? restrictionDeadline : null);
   const inGrace = expired && permittedBillingAccess && Boolean(graceEnd && Date.parse(graceEnd) > nowMs);
   const graceDays = inGrace ? daysUntil(graceEnd, nowMs) : null;
+  const billingSuspended = access === 'billing_suspended';
   const canRenew = Boolean(response && period?.renewalEligible && !nextPeriodScheduled
     && !response.quote?.pendingPayment
     && permittedBillingAccess
-    && (inGrace || (!expired && until !== null && until <= 7)));
+    // Keep renewal available after billing suspension so admins can pay to restore access.
+    && (inGrace || (!expired && until !== null && until <= 7) || (expired && billingSuspended)));
   return { expired, daysLeft: until, inGrace, graceDays, graceEnd, canRenew,
     pendingPayment: Boolean(response?.quote?.pendingPayment), nextPeriodScheduled };
 }
