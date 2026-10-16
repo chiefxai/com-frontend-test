@@ -70,10 +70,8 @@ export function formatCallTime(minutes: number | null | undefined): string {
 
 const sections: { key: BillingPanel; label: string; icon: React.ElementType }[] = [
   { key: 'dashboard', label: 'Overview', icon: Activity },
-  { key: 'plan', label: 'Subscription', icon: CreditCard },
   { key: 'usage', label: 'Usage', icon: PhoneCall },
   { key: 'credits', label: 'Credits', icon: Wallet },
-  { key: 'allocation', label: 'Allocation', icon: Wallet },
   { key: 'payments', label: 'Payments', icon: ReceiptText },
 ];
 
@@ -82,7 +80,6 @@ const descriptions: Record<BillingPanel, string> = {
   plan: 'Your plan, its price, and simple steps to manage it.',
   usage: 'Recorded call costs and usage totals.',
   credits: 'Available credits from your plan and approved top-ups.',
-  allocation: 'Assign organization-owned credit grants to workspaces and review transfer history.',
   topup: 'Submit a payment receipt for additional usage credits.',
   payments: 'Track payments and verification status.',
 };
@@ -128,7 +125,7 @@ export default function BillingWorkspace({
     return () => { current = false; };
   }, [authorization?.permissions]);
   const multiWorkspacePlan = hasMultiWorkspaceTerms(allocationTerms);
-  const canShowAllocation = canAllocate && (multiWorkspacePlan || allocationCapability?.mode === 'manual');
+  const canShowAllocation = canAllocate && multiWorkspacePlan && allocationCapability?.mode === 'manual';
   const canUseManualAllocation = canShowAllocation && allocationCapability?.mode === 'manual'
     && allocationCapability.status === 'ready' && allocationCapability.manualAllocationAllowed;
   React.useEffect(() => {
@@ -139,7 +136,7 @@ export default function BillingWorkspace({
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
     setInitialSubscriptionTask(task);
-    onNavigate('plan');
+    onNavigate('dashboard');
   };
     if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
@@ -183,52 +180,57 @@ export default function BillingWorkspace({
       )}
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
 
-      {view === 'dashboard' && <BillingOverviewHome
-        onNavigate={onNavigate}
-        onOpenCallLogs={onOpenCallLogs}
-        callLogs={callLogs}
-        pricing={organizationPricing}
-        usage={workspaceBilling}
-        callCount={callCount}
-        phoneChargesBillable={phoneChargesBillable}
-        canManageSubscription={canManageSubscription}
-        canAllocate={canUseManualAllocation}
-        canSubmitPayment={canSubmitPayment}
-        loadingUsage={loading}
-        onOpenSubscriptionTask={openSubscriptionTask}
-      />}
-
-      {view === 'plan' && (
+      {view === 'dashboard' && (
         <>
-          <div className="col-span-12 grid grid-cols-12 gap-3">
-            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-              label="Estimated monthly plan price" value={money(organizationPricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
-            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-              label="Workspaces" value={organizationPricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
-            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-              label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
-          </div>
-          {canManageSubscription
-            ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
-            : <p className="col-span-12 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
-                Only your organization's billing administrators can start, renew, or change a subscription.
-              </p>}
-          <section className="col-span-12 space-y-3" aria-labelledby="subscription-quick-links-heading">
-            <h2 id="subscription-quick-links-heading" className="text-sm font-semibold text-[var(--text-primary)]">Quick links</h2>
-            <div className="grid grid-cols-12 gap-3">
-              <button type="button" onClick={() => onNavigate('credits')}
-                className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
-                <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><Wallet aria-hidden="true" className="h-4 w-4" /></span>
-                <span className="text-sm font-semibold text-[var(--text-primary)]">View remaining credits</span>
-              </button>
-              <button type="button" onClick={() => onNavigate('payments')}
-                className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
-                <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><ReceiptText aria-hidden="true" className="h-4 w-4" /></span>
-                <span className="text-sm font-semibold text-[var(--text-primary)]">Workspace invoices and payments</span>
-              </button>
+          <BillingOverviewHome
+            onNavigate={onNavigate}
+            onOpenCallLogs={onOpenCallLogs}
+            callLogs={callLogs}
+            pricing={organizationPricing}
+            usage={workspaceBilling}
+            callCount={callCount}
+            phoneChargesBillable={phoneChargesBillable}
+            canManageSubscription={canManageSubscription}
+            canAllocate={canUseManualAllocation}
+            canSubmitPayment={canSubmitPayment}
+            loadingUsage={loading}
+            onOpenSubscriptionTask={openSubscriptionTask}
+          />
+          <section id="billing-subscription-details" className="col-span-12 space-y-4 scroll-mt-6" aria-labelledby="billing-subscription-heading">
+            <div>
+              <h2 id="billing-subscription-heading" className="text-lg font-semibold text-[var(--text-primary)]">Subscription</h2>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Plan pricing, included workspaces, and subscription actions.</p>
             </div>
+            <div className="grid grid-cols-12 gap-3">
+              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                label="Estimated monthly plan price" value={money(organizationPricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
+              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                label="Workspaces" value={organizationPricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
+              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+                label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
+            </div>
+            {canManageSubscription
+              ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
+              : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+                  Only your organization's billing administrators can start, renew, or change a subscription.
+                </p>}
+            <section className="space-y-3" aria-labelledby="subscription-quick-links-heading">
+              <h3 id="subscription-quick-links-heading" className="text-sm font-semibold text-[var(--text-primary)]">Quick links</h3>
+              <div className="grid grid-cols-12 gap-3">
+                <button type="button" onClick={() => onNavigate('credits')}
+                  className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
+                  <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><Wallet aria-hidden="true" className="h-4 w-4" /></span>
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">View remaining credits</span>
+                </button>
+                <button type="button" onClick={() => onNavigate('payments')}
+                  className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
+                  <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><ReceiptText aria-hidden="true" className="h-4 w-4" /></span>
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">Workspace invoices and payments</span>
+                </button>
+              </div>
+            </section>
+            <SubscriptionCreditStatusPanel />
           </section>
-          <SubscriptionCreditStatusPanel />
         </>
       )}
 
@@ -275,13 +277,6 @@ export default function BillingWorkspace({
         </section>
       )}
 
-      {view === 'allocation' && (canShowAllocation
-        ? <ManualWorkspaceAllocation />
-        : <p role={allocationCapabilityError ? 'alert' : 'status'} className="col-span-12 px-3 py-4 text-xs text-[var(--text-secondary)]">
-            {allocationCapabilityError
-              ? 'Allocation availability could not be confirmed. Refresh billing to try again.'
-              : 'Checking whether manual allocation is available…'}
-          </p>)}
       {(view === 'credits' || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
           creditUsage={workspaceBilling ? {
