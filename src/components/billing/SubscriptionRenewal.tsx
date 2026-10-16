@@ -7,7 +7,7 @@ import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import { subscriptionAmountText, subscriptionDateText } from './InitialSubscriptionPurchase';
 
-export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?: boolean }) {
+export default function SubscriptionRenewal({ canSubmit = false, embedded = false }: { canSubmit?: boolean; embedded?: boolean }) {
   const { can, authorization } = useAuthorization();
   const billingAdmin = can('billing.read') && ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization?.organizationRole || '');
   const [data, setData] = React.useState<SubscriptionRenewalResponse | null>(null);
@@ -77,8 +77,8 @@ export default function SubscriptionRenewal({ canSubmit = false }: { canSubmit?:
   const selectionBlocked = Boolean(selectedPlan?.impact?.conflicts.length);
   const canPay = Boolean(quote?.payable && !quote.pendingPayment && data?.payment.submissionEnabled && canSubmit);
 
-  return <Card padding="sm" className="col-span-12 sm:!p-5">
-    <CardHeader title="Renew your plan" subtitle="Check your end date, see the price, and send a receipt when you are ready." icon={CalendarClock} />
+  return <Card padding="sm" className={embedded ? "sm:!p-5" : "col-span-12 sm:!p-5"}>
+    {!embedded && <CardHeader title="Renew your plan" subtitle="Check your end date, see the price, and send a receipt when you are ready." icon={CalendarClock} />}
     {loading && <p role="status" className="text-sm text-[var(--text-muted)]">Checking when you can renew…</p>}
     {error && <p role="alert" className="mt-3 rounded-lg border border-rose-300/60 bg-rose-500/5 p-3 text-xs text-rose-700">{error}</p>}
     {success && <p role="status" className="mt-3 rounded-lg border border-emerald-300/60 bg-emerald-500/5 p-3 text-xs text-emerald-800">{success}</p>}
