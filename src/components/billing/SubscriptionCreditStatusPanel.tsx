@@ -44,11 +44,11 @@ export default function SubscriptionCreditStatusPanel({
   return (
     <section className="col-span-12 min-w-0 space-y-4" aria-label="Monthly credit amounts">
       <div className="grid grid-cols-12 gap-3">
-        <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CreditCard} iconPosition="top-left"
+        <KpiCard compact span={{ xs: 12, sm: 6, lg: 3 }} icon={CreditCard} iconPosition="top-left"
           iconBg="var(--accent-subtle)" iconColor="var(--accent)"
           label={`Credits promised each month (${status?.planName || 'your plan'})`}
           value={status ? displayInr(status.configuredMonthlyCredits) : '—'} />
-        <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} iconPosition="top-left"
+        <KpiCard compact span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} iconPosition="top-left"
           iconBg="var(--accent-subtle)" iconColor="var(--accent)"
           label="Credits added this period"
           value={status ? displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 })) : '—'} />

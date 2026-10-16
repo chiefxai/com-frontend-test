@@ -120,7 +120,7 @@ export default function ManualWorkspaceAllocation() {
       {!loading && !snapshot?.uninitialized && orgBalances.length > 0 && (
         <div className="col-span-12 grid grid-cols-12 gap-3">
               {orgBalances.map(row => (
-                <KpiCard key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
+                <KpiCard compact key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
                   span={{ xs: 12, sm: 6, xl: 4 }} icon={Wallet} iconPosition="top-left"
                   iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                   label={friendlyKind(row.kind) + ' not yet shared'}
