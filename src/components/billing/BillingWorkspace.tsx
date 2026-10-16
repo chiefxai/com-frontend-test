@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Clock3, CreditCard, PhoneCall, Plus, ReceiptText, Wallet, Building2, Layers3, RefreshCw, ChartNoAxesCombined } from 'lucide-react';
+import { Activity, Clock3, PhoneCall, Plus, ReceiptText, Wallet, RefreshCw, ChartNoAxesCombined } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
@@ -197,14 +197,6 @@ export default function BillingWorkspace({
             onOpenSubscriptionTask={openSubscriptionTask}
           />
           <section id="billing-subscription-details" className="col-span-12 space-y-4 scroll-mt-6">
-            <div className="grid grid-cols-12 gap-3">
-              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                label="Estimated monthly plan price" value={money(organizationPricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
-              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                label="Workspaces" value={organizationPricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
-              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
-            </div>
             {canManageSubscription
               ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
               : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
