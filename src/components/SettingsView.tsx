@@ -163,12 +163,15 @@ export default function SettingsView({
   // Billing section is part of the URL, so refresh/deep links and browser
   // back/forward keep exactly the same page.
   const billingPath = billingLocation.pathname.split('/').filter(Boolean);
-  const billingPanels: readonly BillingPanel[] = ['dashboard','plan','usage','allocation','credits','topup','payments'];
+  const billingPanels: readonly BillingPanel[] = ['dashboard','usage','credits','topup','payments'];
   const billingPanelCandidate = billingPath[0] === 'administration' && billingPath[1] === 'billing' ? billingPath[2] : undefined;
-  const billingPanel: BillingPanel = billingPanelCandidate && billingPanels.includes(billingPanelCandidate as BillingPanel)
-    ? billingPanelCandidate as BillingPanel : 'dashboard';
+  const normalizedBillingCandidate = billingPanelCandidate === 'plan' ? 'dashboard'
+    : billingPanelCandidate === 'allocation' ? 'credits' : billingPanelCandidate;
+  const billingPanel: BillingPanel = normalizedBillingCandidate && billingPanels.includes(normalizedBillingCandidate as BillingPanel)
+    ? normalizedBillingCandidate as BillingPanel : 'dashboard';
   const setBillingPanel = React.useCallback((panel: BillingPanel) => {
-    billingNavigate(panel === 'dashboard' ? '/administration/billing' : `/administration/billing/${panel}`);
+    const normalizedPanel = panel === 'plan' ? 'dashboard' : panel === 'allocation' ? 'credits' : panel;
+    billingNavigate(normalizedPanel === 'dashboard' ? '/administration/billing' : `/administration/billing/${normalizedPanel}`);
   }, [billingNavigate]);
   const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
   // Customers with one purchased workspace reach their phone numbers directly.
@@ -973,7 +976,7 @@ export default function SettingsView({
                   : <>
                       <button type="button" onClick={() => setBillingPanel('dashboard')} className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]">Billing & Usage</button>
                       <span className="text-[var(--border)]">/</span>
-                      <span className="truncate text-sm font-semibold">{billingPanel === 'plan' ? 'Subscription' : billingPanel === 'usage' ? 'Usage' : billingPanel === 'payments' ? 'Payments' : billingPanel === 'topup' ? 'Add Credits' : 'Credits'}</span>
+                      <span className="truncate text-sm font-semibold">{billingPanel === 'usage' ? 'Usage' : billingPanel === 'payments' ? 'Payments' : billingPanel === 'topup' ? 'Add Credits' : 'Credits'}</span>
                     </>
                 : !multiWorkspaceUi
                   ? <span className="truncate text-sm font-semibold">Phone Numbers</span>

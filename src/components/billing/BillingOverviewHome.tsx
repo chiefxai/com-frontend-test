@@ -149,7 +149,7 @@ export default function BillingOverviewHome({
         <div className="mt-5 flex flex-wrap gap-2">
           {showPay && <Button type="button" variant="primary" size="sm" icon={CreditCard}
             onClick={() => onOpenSubscriptionTask('renew')}>Pay to continue</Button>}
-          <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('plan')}>View my plan</Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('billing-subscription-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Subscription details</Button>
         </div>
         {errors.length > 0 && !loading &&
           <p role="alert" className="mt-4 text-xs text-amber-700">{errors.join(' ')}</p>}
