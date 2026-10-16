@@ -76,9 +76,9 @@ export function mayPreviewUpgrade(planId: string | null | undefined): boolean {
   return /^(free|trial|starter|basic|standard|growth|professional|pro)(?:[-_].*)?$/i.test((planId || '').trim());
 }
 
-/** Offer a grace *request* only when payment is still due near the current
- * period deadline and the backend explicitly permits creating a request.
- * Approved, scheduled, paid, or already-pending renewals must not be prompted. */
+/** Offer a grace request only when the backend explicitly permits one.
+ * This includes expired unpaid billing suspensions; paid, scheduled, and
+ * already-pending renewals must not be prompted. */
 export function mayAskForMoreTime(
   response: SubscriptionRenewalResponse | null,
   grace: SubscriptionGraceResponse | null,
@@ -89,5 +89,5 @@ export function mayAskForMoreTime(
   const notice = renewalNotice(response, nowMs, nextPeriodScheduled);
   if (notice.pendingPayment || ['paid', 'scheduled', 'fulfilled'].includes((response.quote?.status || '').toLowerCase())) return false;
   if (['security_suspended', 'manual_suspended'].includes(response.subscription.accessState)) return false;
-  return notice.inGrace || (!notice.expired && notice.daysLeft !== null && notice.daysLeft <= 7);
+  return notice.expired || notice.inGrace || (notice.daysLeft !== null && notice.daysLeft <= 7);
 }
