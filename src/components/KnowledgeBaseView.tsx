@@ -123,11 +123,11 @@ export default function KnowledgeBaseView() {
       ) : (
         <div className="col-span-12 space-y-5">
           <div className="grid grid-cols-12 gap-3" aria-label="Knowledge base summary">
-            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={BookOpen} iconPosition="top-left"
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={BookOpen}
               label="Sources" value={documents.length.toLocaleString()} sub="Documents available to AI agents" />
-            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Database} iconPosition="top-left"
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Database}
               label="Indexed chunks" value={totalChunks.toLocaleString()} sub="Searchable content segments" />
-            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Sparkles} iconPosition="top-left"
+            <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Sparkles}
               label="Retrieval status" value={documents.length > 0 ? 'Ready' : 'Add sources'}
               sub={documents.length > 0 ? 'Knowledge is available to agents' : 'Add a document to enable retrieval'} />
           </div>
