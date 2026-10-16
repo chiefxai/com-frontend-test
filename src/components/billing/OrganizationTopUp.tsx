@@ -263,8 +263,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
 
       {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel
-        headerActions={canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
-          disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
         extraKpis={<>
           <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Wallet} iconPosition="top-left"
             iconBg="var(--accent-subtle)" iconColor="var(--accent)"

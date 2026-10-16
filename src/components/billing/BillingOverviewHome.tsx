@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardHeader } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
-import { CalendarClock, CreditCard, PhoneCall, Wallet, Sparkles } from 'lucide-react';
+import { Building2, CalendarClock, CreditCard, Layers3, PhoneCall, Wallet, Sparkles } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse, WorkspaceBillingOverview } from '../../lib/billing/types';
 import type { CallLog } from '../../types';
@@ -30,7 +30,7 @@ const money = (value: number | null | undefined) =>
 
 /** Compact billing home: key balances on the left, current plan on the right. */
 export default function BillingOverviewHome({
-  onNavigate, onOpenSubscriptionTask, usage, callCount, canManageSubscription,
+  onNavigate, onOpenSubscriptionTask, pricing, usage, callCount, canManageSubscription,
 }: Props) {
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
   const [workspaceCredits, setWorkspaceCredits] = React.useState<WorkspaceBillingOverview | null>(null);
@@ -149,7 +149,7 @@ export default function BillingOverviewHome({
         <div className="mt-5 flex flex-wrap gap-2">
           {showPay && <Button type="button" variant="primary" size="sm" icon={CreditCard}
             onClick={() => onOpenSubscriptionTask('renew')}>Pay to continue</Button>}
-          <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('billing-subscription-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Subscription details</Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('billing-subscription-details')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}>Subscription details</Button>
         </div>
         {errors.length > 0 && !loading &&
           <p role="alert" className="mt-4 text-xs text-amber-700">{errors.join(' ')}</p>}
@@ -190,5 +190,13 @@ export default function BillingOverviewHome({
           </table>
         </div>}
       </Card>}
+    <div id="billing-subscription-details" className="grid grid-cols-12 gap-3 scroll-mt-6" aria-label="Subscription pricing and allowances">
+      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+        label="Estimated monthly plan price" value={money(pricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
+      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+        label="Workspaces" value={pricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
+      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+        label="Extra work types" value={pricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
+    </div>
   </section>;
 }
