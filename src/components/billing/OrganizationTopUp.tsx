@@ -262,8 +262,25 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         </>
       )}
 
-      {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
-      {(view === 'credits' || view === 'topup') && (
+      {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel
+        headerActions={canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
+          disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
+        extraKpis={<>
+          <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Wallet} iconPosition="top-left"
+            iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+            label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
+            value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'} />
+          <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={ArrowDownToLine} iconPosition="top-left"
+            iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+            label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
+            value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
+        </>}
+        balanceErrors={[
+          ...(overviewError ? [`Could not load credit balances: ${overviewError}`] : []),
+          ...(workspaceCreditError ? [workspaceCreditError] : []),
+        ]}
+      />}
+      {view === 'topup' && (
         <section className="col-span-12 min-w-0 space-y-4" aria-label="Credit balances">
           <div className="flex flex-wrap items-start justify-end gap-3">
             <div className="flex flex-wrap items-center gap-2">

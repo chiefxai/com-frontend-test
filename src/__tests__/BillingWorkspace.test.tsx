@@ -111,7 +111,11 @@ describe('organization billing interface', () => {
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
     expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Subscription' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Subscription' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Subscription' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Plan pricing, included workspaces, and subscription actions.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /View remaining credits/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Workspace invoices and payments/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Refresh status' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Credits' }));
     expect(onNavigate).toHaveBeenCalledWith('credits');
   });
@@ -126,10 +130,7 @@ describe('organization billing interface', () => {
     expect(screen.getByRole('button', { name: /Start a new plan/ })).toBeInTheDocument();
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Show extra plan details/ })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /View remaining credits/ }));
-    expect(defaults.onNavigate).toHaveBeenCalledWith('credits');
-    fireEvent.click(screen.getByRole('button', { name: /Workspace invoices and payments/ }));
-    expect(defaults.onNavigate).toHaveBeenCalledWith('payments');
+
   });
 
   it('hides Allocation for automatic single-workspace billing and redirects a direct Allocation URL', async () => {
