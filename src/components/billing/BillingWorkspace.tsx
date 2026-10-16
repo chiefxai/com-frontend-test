@@ -11,6 +11,7 @@ import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/auth
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
 import Modal from '../ui/Modal';
 import SubscriptionRenewal from './SubscriptionRenewal';
+import SubscriptionGraceRequest from './SubscriptionGraceRequest';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview } from '../../lib/billing/types';
@@ -133,11 +134,12 @@ export default function BillingWorkspace({
     if (view === 'allocation' && allocationCapability && !canShowAllocation) onNavigate('credits');
   }, [view, allocationCapability, canShowAllocation, onNavigate]);
   const [renewalDialogOpen, setRenewalDialogOpen] = React.useState(false);
+  const [graceDialogOpen, setGraceDialogOpen] = React.useState(false);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
-    if (task !== 'renew') return;
-    setRenewalDialogOpen(true);
+    if (task === 'renew') setRenewalDialogOpen(true);
+    if (task === 'more-time') setGraceDialogOpen(true);
   };
     if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
@@ -254,11 +256,18 @@ export default function BillingWorkspace({
           } : null}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
       )}
-      {canManageSubscription && <Modal open={renewalDialogOpen} onClose={() => setRenewalDialogOpen(false)}
-        title="Renew your plan" subtitle="Get the current renewal price and submit your payment receipt."
-        maxWidth="max-w-3xl" className="!max-h-[92vh]">
-        <SubscriptionRenewal canSubmit={canSubmitPayment} embedded />
-      </Modal>}
+      {canManageSubscription && <>
+        <Modal open={renewalDialogOpen} onClose={() => setRenewalDialogOpen(false)}
+          title="Renew your plan" subtitle="Get the current renewal price and submit your payment receipt."
+          maxWidth="max-w-3xl" className="!max-h-[92vh]">
+          <SubscriptionRenewal canSubmit={canSubmitPayment} embedded />
+        </Modal>
+        <Modal open={graceDialogOpen} onClose={() => setGraceDialogOpen(false)}
+          title="Ask for more time" subtitle="Request a later payment deadline from your billing team."
+          maxWidth="max-w-3xl" className="!max-h-[92vh]">
+          <SubscriptionGraceRequest />
+        </Modal>
+      </>}
     </div>
   );
 }
