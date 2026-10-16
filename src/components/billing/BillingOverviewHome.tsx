@@ -137,11 +137,32 @@ export default function BillingOverviewHome({
           <div className="flex items-start gap-3">
             <CalendarClock aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
             <div className="text-sm text-[var(--text-primary)]">
-              {notice.inGrace
+              {notice.expired ? (
+                <>
+                  <p>Your plan has expired.</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/70 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Renewal</p>
+                      <p className="mt-1 font-semibold text-[var(--text-primary)]">
+                        {notice.pendingPayment ? 'Payment pending' : notice.canRenew ? 'Renewal available' : 'Contact platform admin'}
+                      </p>
+                      {notice.canRenew && <p className="mt-1 text-xs text-[var(--text-secondary)]">Renew to restore subscription access.</p>}
+                    </div>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]/70 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Grace time</p>
+                      <p className="mt-1 font-semibold text-[var(--text-primary)]">
+                        {notice.inGrace ? `${notice.graceDays} day(s) remaining`
+                          : renewal?.graceRequest?.status === 'pending' ? 'Request pending' : 'No active grace period'}
+                      </p>
+                      {notice.inGrace && notice.graceEnd &&
+                        <p className="mt-1 text-xs text-[var(--text-secondary)]">Until {displayDate(notice.graceEnd)}</p>}
+                    </div>
+                  </div>
+                </>
+              ) : notice.inGrace
                 ? `Payment grace period: ${notice.graceDays} day(s) remaining.`
-                : notice.expired ? 'Your plan has expired.'
                 : `Your plan ends in ${daysLeft} day(s).`}
-              {notice.inGrace && notice.graceEnd &&
+              {!notice.expired && notice.inGrace && notice.graceEnd &&
                 <p className="mt-1 text-xs">Grace deadline: {displayDate(notice.graceEnd)}</p>}
             </div>
           </div>
