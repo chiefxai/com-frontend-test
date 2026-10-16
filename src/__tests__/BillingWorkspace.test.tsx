@@ -95,7 +95,7 @@ describe('organization billing interface', () => {
     expect(screen.queryByTestId('organization-credit-ledger')).not.toBeInTheDocument();
   });
 
-  it('offers direct navigation to the major billing sections', () => {
+  it('offers direct navigation and opens the Add credits overlay', async () => {
     const onNavigate = vi.fn();
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
     fireEvent.click(screen.getByRole('button', { name: 'Usage' }));
