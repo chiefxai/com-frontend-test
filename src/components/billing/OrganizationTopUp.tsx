@@ -33,7 +33,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   onNavigate?: (view: BillingPanel) => void;
   creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null;
   manualAllocationAllowed?: boolean }) {
-  const { can, authorization } = useAuthorization();
+  const { can } = useAuthorization();
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
   const [automaticWorkspaceOverview, setAutomaticWorkspaceOverview] = React.useState<WorkspaceBillingOverview | null>(null);
@@ -277,8 +277,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
-              {manualAllocationAllowed && canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
-                onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
               {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
                 disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
             </div>
