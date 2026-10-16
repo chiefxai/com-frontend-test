@@ -94,14 +94,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('organization billing views', () => {
-  it('shows available balances and the separate subscription credit status', async () => {
+  it('shows credit balances and subscription KPIs without redundant headings', async () => {
     const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
-    expect(screen.getByText('Available credits')).toBeInTheDocument();
+    expect(screen.queryByText('Available credits')).not.toBeInTheDocument();
     expect(await screen.findByText('₹3,000.00')).toBeInTheDocument();
     expect(screen.getByText('₹1,500.00')).toBeInTheDocument();
     expect(screen.getByText('Subscription credits remaining')).toBeInTheDocument();
     expect(screen.getByText('Top-up credits remaining')).toBeInTheDocument();
-    expect(await screen.findByText('Monthly usage credits')).toBeInTheDocument();
+    expect(await screen.findByText(/Credits promised each month/)).toBeInTheDocument();
+    expect(screen.getByText('Credits added this period')).toBeInTheDocument();
     expect(screen.queryByText('Current plan period')).not.toBeInTheDocument();
     expect(mocks.subscriptionCreditStatus).toHaveBeenCalled();
     rerender(<OrganizationTopUp view="plan" canSubmit />);
