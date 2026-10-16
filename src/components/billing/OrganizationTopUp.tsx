@@ -216,10 +216,10 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               } />
             <p className="mb-4 text-sm leading-6 text-[var(--text-secondary)]">These credits help pay for services like AI calls. Credits included in your plan and credits you buy are kept separate.</p>
             <div className="grid grid-cols-12 gap-3">
-              <KpiCard compact colSpan={6} span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
+              <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={Wallet} 
                 label="From your plan" value={overview ? sumBalance(subscriptionCredits) : '—'}
                 sub="Included with your plan" />
-              <KpiCard compact colSpan={6} span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
+              <KpiCard colSpan={6} span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} 
                 label="Credits you added" value={overview ? sumBalance(topupCredits) : '—'}
                 sub="Approved top-up payments" />
             </div>
@@ -264,11 +264,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
 
       {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel
         extraKpis={<>
-          <KpiCard compact span={{ xs: 12, sm: 6, lg: 3 }} icon={Wallet} iconPosition="top-left"
+          <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Wallet} 
             iconBg="var(--accent-subtle)" iconColor="var(--accent)"
             label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
             value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'} />
-          <KpiCard compact span={{ xs: 12, sm: 6, lg: 3 }} icon={ArrowDownToLine} iconPosition="top-left"
+          <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={ArrowDownToLine} 
             iconBg="var(--accent-subtle)" iconColor="var(--accent)"
             label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
             value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
@@ -288,11 +288,11 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
             </div>
           </div>
           <div className="grid grid-cols-12 gap-3">
-            <KpiCard compact span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
+            <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} 
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
               label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
               value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'} />
-            <KpiCard compact span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} iconPosition="top-left"
+            <KpiCard span={{ xs: 12, sm: 6 }} icon={ArrowDownToLine} 
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
               label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
               value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
