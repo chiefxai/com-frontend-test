@@ -106,18 +106,18 @@ describe('organization billing interface', () => {
     expect(onNavigate).toHaveBeenCalledWith('topup');
   });
 
-  it('keeps primary billing navigation without an Explore billing card', () => {
+  it('keeps subscription details in Overview and retains direct Credits navigation', () => {
     const onNavigate = vi.fn();
     render(<BillingWorkspace {...defaults} onNavigate={onNavigate} />);
     expect(screen.queryByText('Explore billing')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Subscription' }));
-    expect(onNavigate).toHaveBeenCalledWith('plan');
+    expect(screen.queryByRole('button', { name: 'Subscription' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Subscription' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Credits' }));
     expect(onNavigate).toHaveBeenCalledWith('credits');
   });
 
   it('shows a simple subscription overview and hides extra billing details by default', async () => {
-    render(<BillingWorkspace {...defaults} view="plan" />);
+    render(<BillingWorkspace {...defaults} view="dashboard" />);
     expect(screen.queryByText('Your subscription')).not.toBeInTheDocument();
     expect(screen.getByText('Estimated monthly plan price')).toBeInTheDocument();
     expect(screen.queryByText('Plan price and calling credits are different.')).not.toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('organization billing interface', () => {
     expect(screen.getByText('Your plan right now')).toBeInTheDocument();
     for (const title of ['Plan credits remaining','Extra credits remaining','AI usage cost','Call usage'])
       expect(screen.getByText(title)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'View my plan' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Subscription details' })).toBeInTheDocument();
   });
 
   it('removes workspace monthly spending controls without hiding usage totals', () => {
