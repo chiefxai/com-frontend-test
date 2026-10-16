@@ -9,7 +9,8 @@ import type { CallLog } from '../../types';
 import { formatInr } from '../../lib/pricing';
 import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/authorization';
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
-import SubscriptionActionCenter from './SubscriptionActionCenter';
+import Modal from '../ui/Modal';
+import SubscriptionRenewal from './SubscriptionRenewal';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview } from '../../lib/billing/types';
@@ -131,17 +132,12 @@ export default function BillingWorkspace({
   React.useEffect(() => {
     if (view === 'allocation' && allocationCapability && !canShowAllocation) onNavigate('credits');
   }, [view, allocationCapability, canShowAllocation, onNavigate]);
-  const [initialSubscriptionTask, setInitialSubscriptionTask] = React.useState<'start' | 'renew' | 'upgrade' | 'more-time' | null>(null);
+  const [renewalDialogOpen, setRenewalDialogOpen] = React.useState(false);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
-    setInitialSubscriptionTask(task);
-    onNavigate('dashboard');
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        document.getElementById('billing-subscription-actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
+    if (task !== 'renew') return;
+    setRenewalDialogOpen(true);
   };
     if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
@@ -201,13 +197,7 @@ export default function BillingWorkspace({
             loadingUsage={loading}
             onOpenSubscriptionTask={openSubscriptionTask}
           />
-          <section id="billing-subscription-actions" className="col-span-12 space-y-4 scroll-mt-6">
-            {canManageSubscription
-              ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
-              : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
-                  Only your organization's billing administrators can start, renew, or change a subscription.
-                </p>}
-          </section>
+
         </>
       )}
 
@@ -264,6 +254,11 @@ export default function BillingWorkspace({
           } : null}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
       )}
+      {canManageSubscription && <Modal open={renewalDialogOpen} onClose={() => setRenewalDialogOpen(false)}
+        title="Renew your plan" subtitle="Get the current renewal price and submit your payment receipt."
+        maxWidth="max-w-3xl" className="!max-h-[92vh]">
+        <SubscriptionRenewal canSubmit={canSubmitPayment} embedded />
+      </Modal>}
     </div>
   );
 }
