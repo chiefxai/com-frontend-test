@@ -158,12 +158,12 @@ export default function ComplianceView() {
     >
       <div className="col-span-12 space-y-5">
         <div className="grid grid-cols-12 gap-3" aria-label="Compliance summary">
-          <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={ShieldCheck} iconPosition="top-left"
+          <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={ShieldCheck}
             label="Calling protection" value={isRestricted ? 'Protected' : 'Open'}
             sub={isRestricted ? 'Outbound calls limited to scheduled hours' : 'No calling-hour restriction'} />
-          <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={ShieldBan} iconPosition="top-left"
+          <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={ShieldBan}
             label="Do-not-call numbers" value={dnc.length.toLocaleString()} sub="Excluded from outbound campaigns" />
-          <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Clock3} iconPosition="top-left"
+          <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Clock3}
             label="Allowed calling hours" value={hoursLabel} sub={isRestricted ? `Timezone: ${window_.timezone}` : 'No time restrictions'} />
         </div>
 

@@ -1901,13 +1901,13 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
           <VoiceSimulatorWorkspace className="flex-1 w-full h-full min-h-0"
             header={
               <div className="grid grid-cols-12 gap-3" aria-label="Outbound campaign performance">
-                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Activity} iconPosition="top-left"
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Activity}
                   label="Targets" value={totalLeadsInTask.toLocaleString()} sub="In selected campaign" />
-                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall} iconPosition="top-left"
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall}
                   label="Dialed" value={completedLeadsInTask.toLocaleString()} sub="Completed calls" />
-                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneOff} iconPosition="top-left"
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneOff}
                   label="Skipped" value={skippedLeadsInTask.toLocaleString()} sub="Skipped contacts" />
-                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} iconPosition="top-left"
+                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2}
                   label="Conversion" value={`${conversionPercent}%`} sub="Interested among completed calls" />
               </div>
             }
@@ -2431,13 +2431,13 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         <VoiceSimulatorWorkspace
           header={
             <div className="grid grid-cols-12 gap-3" aria-label="Inbound call performance">
-              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneIncoming} iconPosition="top-left"
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneIncoming}
                 label="Inbound calls" value={realInboundCallLogs.length.toLocaleString()} sub="Recorded calls" />
-              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Clock} iconPosition="top-left"
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Clock}
                 label="Average duration" value={`${realInboundCallLogs.length > 0 ? Math.round(realInboundCallLogs.reduce((acc, log) => acc + log.duration, 0) / realInboundCallLogs.length) : 0}s`} sub="Across inbound calls" />
-              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Smile} iconPosition="top-left"
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Smile}
                 label="Positive sentiment" value={`${realInboundCallLogs.length > 0 ? Math.round((realInboundCallLogs.filter(log => log.sentiment === 'Positive').length / realInboundCallLogs.length) * 100) : 0}%`} sub="Calls marked positive" />
-              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall} iconPosition="top-left"
+              <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall}
                 label="Receiving numbers" value={activeVirtualNumbers.length.toLocaleString()} sub="Configured virtual numbers" />
             </div>
           }
