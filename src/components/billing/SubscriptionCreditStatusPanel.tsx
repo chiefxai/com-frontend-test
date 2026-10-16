@@ -51,21 +51,21 @@ export default function SubscriptionCreditStatusPanel({
         <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
           disabled={loading} onClick={() => void load()}>Refresh status</Button>
       </div>
+      <div className="grid grid-cols-12 gap-3">
+        <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CreditCard} iconPosition="top-left"
+          iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+          label={`Credits promised each month (${status?.planName || 'your plan'})`}
+          value={status ? displayInr(status.configuredMonthlyCredits) : '—'} />
+        <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} iconPosition="top-left"
+          iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+          label="Credits added this period"
+          value={status ? displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 })) : '—'} />
+        {extraKpis}
+      </div>
       {loading ? <p role="status" className="text-sm text-[var(--text-muted)]">Checking subscription credit status…</p>
         : error ? <p role="alert" className="text-sm text-rose-600">{error}</p>
           : status && (
             <div className="space-y-3">
-              <div className="grid grid-cols-12 gap-3">
-                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CreditCard} iconPosition="top-left"
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label={`Credits promised each month (${status.planName || 'your plan'})`}
-                  value={displayInr(status.configuredMonthlyCredits)} />
-                <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} iconPosition="top-left"
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label="Credits added this period"
-                  value={displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 }))} />
-                {extraKpis}
-              </div>
               {explanations[status.state] && <p role="status" className="flex items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm leading-6 text-[var(--text-secondary)]">
                   {status.state === 'issued_to_organization_pool'
                     ? <CheckCircle2 aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
