@@ -215,12 +215,12 @@ export default function BillingWorkspace({
                 { title: 'Call time', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total speaking time', icon: Clock3 },
                 { title: 'AI costs', value: money(workspaceBilling?.aiSpendInr), detail: 'Voice AI and call processing', icon: ChartNoAxesCombined },
               ].map(({ title, value, detail, icon }) =>
-                <KpiCard key={title} span={{ xs: 12, sm: 6, lg: 3 }} iconPosition="top-left"
+                <KpiCard compact key={title} span={{ xs: 12, sm: 6, lg: 3 }} iconPosition="top-left"
                   iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                   label={title} value={value} sub={detail} icon={icon} />)}
             </div>
             {rechargeBased && <div className="col-span-12 grid grid-cols-12 gap-3">
-              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Wallet} iconPosition="top-left"
+              <KpiCard compact span={{ xs: 12, sm: 6, lg: 4 }} icon={Wallet} iconPosition="top-left"
                 iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                 label="Call credits ready to use" value={formatInr(Math.max(0,rechargeBalanceInr-rechargeReservedInr))}
                 sub="Balance after credits reserved for calls in progress" />
