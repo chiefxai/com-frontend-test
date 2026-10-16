@@ -19,7 +19,6 @@ interface KpiCardProps {
   /** Responsive 12-column export metadata, matching Widget's grid contract. */
   span?: { xs?: number; sm?: number; md?: number; lg?: number; xl?: number };
   className?: string;
-  compact?: boolean;
   onClick?: () => void;
 }
 
@@ -82,7 +81,6 @@ export default function KpiCard({
   colSpan = 3,
   span,
   className = '',
-  compact = false,
   onClick,
 }: KpiCardProps) {
   const colClass = span
@@ -146,7 +144,7 @@ export default function KpiCard({
           </div>
         ) : null}
 
-        <div className={iconPosition === 'top-left' ? (compact ? 'mt-2' : 'mt-3') : ''}>
+        <div className={iconPosition === 'top-left' ? 'mt-3' : ''}>
           <div className={hasSecondary && iconPosition !== 'top-left' ? 'flex items-center min-w-0 gap-3' : ''}>
             <div className="min-w-0">
           <span
@@ -159,7 +157,7 @@ export default function KpiCard({
           <span
             className={
               iconPosition === 'top-left'
-                ? `${compact ? 'text-xl' : 'text-2xl'} font-bold tracking-tight mt-1 block`
+                ? 'text-2xl font-bold tracking-tight mt-1 block'
                 : 'text-sm font-semibold block truncate'
             }
             style={{ color: 'var(--text-primary)' }}
@@ -192,7 +190,7 @@ export default function KpiCard({
 
   const layoutClass =
     iconPosition === 'top-left'
-      ? `flex flex-col justify-between ${compact ? 'min-h-[96px]' : 'min-h-[120px]'}`
+      ? 'flex flex-col justify-between min-h-[120px]'
       : iconPosition === 'left'
         ? 'flex items-center gap-4'
         : 'flex items-center justify-between gap-3';
@@ -212,7 +210,7 @@ export default function KpiCard({
       data-grid-span-md={resolvedSpan.md}
       data-grid-span-lg={resolvedSpan.lg}
       data-grid-span-xl={resolvedSpan.xl}
-      className={`${colClass} rounded-[14px] border ${compact ? 'p-3' : 'p-5'} shadow-[var(--shadow-card)] ${layoutClass} ${onClick ? 'cursor-pointer hover:shadow-[var(--shadow-card)] transition-shadow duration-150' : ''} ${className}`}
+      className={`${colClass} rounded-[14px] border p-5 shadow-[var(--shadow-card)] ${layoutClass} ${onClick ? 'cursor-pointer hover:shadow-[var(--shadow-card)] transition-shadow duration-150' : ''} ${className}`}
       style={cardStyle}
       onClick={onClick}
     >

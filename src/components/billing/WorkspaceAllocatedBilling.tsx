@@ -53,8 +53,8 @@ function WorkspaceAllocatedBillingContent({ workspaceId }: { workspaceId: string
             subtitle="Current workspace only" icon={kind === 'subscription' ? CreditCard : Wallet} />
           {balances.length === 0 ? <p className="text-xs text-[var(--text-muted)]">No {kind === 'subscription' ? 'subscription' : 'top-up'} credits allocated.</p>
             : <div className="grid grid-cols-12 gap-3">{balances.map((balance, index) => (
-              <KpiCard compact key={index} span={{ xs: 12 }} icon={kind === 'subscription' ? CreditCard : Wallet}
-                iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+              <KpiCard key={index} span={{ xs: 12 }} icon={kind === 'subscription' ? CreditCard : Wallet}
+                 iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                 label="Available for usage" value={formatBillingAmount(balance.available)}
                 sub={<>Reserved for active usage: {formatBillingAmount(balance.held)} · {balance.expiresAt
                   ? `Expires ${new Date(balance.expiresAt).toLocaleDateString('en-IN')}` : 'No expiry'}</>} />
