@@ -5,6 +5,7 @@ import type { SubscriptionRenewalResponse } from '../../lib/billing/types';
 import { useAuthorization } from '../../lib/authorization';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
+import Badge from '../ui/Badge';
 import { subscriptionAmountText, subscriptionDateText } from './InitialSubscriptionPurchase';
 
 export default function SubscriptionRenewal({ canSubmit = false, embedded = false }: { canSubmit?: boolean; embedded?: boolean }) {
@@ -83,7 +84,7 @@ export default function SubscriptionRenewal({ canSubmit = false, embedded = fals
     {error && <p role="alert" className="mt-3 rounded-lg border border-rose-300/60 bg-rose-500/5 p-3 text-xs text-rose-700">{error}</p>}
     {success && <p role="status" className="mt-3 rounded-lg border border-emerald-300/60 bg-emerald-500/5 p-3 text-xs text-emerald-800">{success}</p>}
     {!loading && notFound && <p role="status" className="mt-3 text-xs text-[var(--text-secondary)]">We could not find a plan to renew yet. If you are starting a new plan, choose “Start a new plan” above.</p>}
-    {!loading && data && <div className="mt-3 space-y-4">
+    {!loading && data && <div className="mt-5 space-y-5">
       {data.period ? <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4 text-sm">
         <span>{data.period.isTrial ? `Free trial (${data.period.trialDays} days):` : 'Current paid period:'} {subscriptionDateText(data.period.startsAt)} – {subscriptionDateText(data.period.endsAt)}</span>
         {data.period.isTrial && <span>₹200 trial credits expire when the trial ends. Purchased credits have their own later expiry.</span>}
@@ -111,13 +112,20 @@ export default function SubscriptionRenewal({ canSubmit = false, embedded = fals
         <Button type="button" size="sm" variant="primary" icon={RefreshCw} loading={busy} disabled={busy} onClick={() => void createQuote()}>{quote?.expired ? 'Get an updated price' : 'See my renewal price'}</Button>
       </div>}
 
-      {quote && <div className="space-y-4 rounded-xl border border-[var(--border)] p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-base font-semibold">Your renewal price</h3><p className="mt-1 text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Your payment is being checked." : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Your payment has been recorded." : quote.expired ? "This price has expired." : quote.payable ? "Ready when you are." : "This price cannot be paid right now."}</p><p className="mt-1 text-xs text-[var(--text-muted)]">Price valid until {subscriptionDateText(quote.validUntil)}</p></div>
+      {quote && <div className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-base)] p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h3 className="text-base font-semibold text-[var(--text-primary)]">Your renewal price</h3>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Your payment is being checked." : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Your payment has been recorded." : quote.expired ? "This price has expired." : quote.payable ? "Review the total, then send your receipt after payment." : "This price cannot be paid right now."}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Price valid until {subscriptionDateText(quote.validUntil)}</p>
+          </div>
+          <Badge color={quote.pendingPayment ? "amber" : quote.expired ? "rose" : quote.payable ? "green" : "slate"} dot>
+            {quote.pendingPayment ? "Under review" : quote.expired ? "Expired" : quote.payable ? "Ready to pay" : "Unavailable"}
+          </Badge>
         </div>
         
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">{quote.pendingPayment ? "Amount sent for review" : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Payment amount" : "Amount to pay"}</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.paymentAmount)}</dd></div>
-          <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><dt className="text-sm text-[var(--text-secondary)]">Credits included with your next paid period</dt><dd className="mt-1 text-2xl font-bold">{subscriptionAmountText(quote.includedCredits)}</dd></div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4"><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{quote.pendingPayment ? "Amount sent for review" : ["paid", "scheduled", "fulfilled"].includes(quote.status.toLowerCase()) ? "Payment amount" : "Amount to pay"}</dt><dd className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">{subscriptionAmountText(quote.paymentAmount)}</dd><p className="mt-1 text-xs text-[var(--text-muted)]">Plan renewal price</p></div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-4"><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Credits included</dt><dd className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">{subscriptionAmountText(quote.includedCredits)}</dd><p className="mt-1 text-xs text-[var(--text-muted)]">Added when your next period starts</p></div>
         </dl>
         <p className="text-sm leading-6 text-[var(--text-secondary)]">{data.period?.isTrial ? 'After approval, paid-plan credits become available alongside any remaining trial credits. The paid plan starts when the trial ends.' : 'Credits become available when your next paid billing period activates.'}</p>
         <details className="rounded-xl border border-[var(--border)] p-3 text-sm text-[var(--text-secondary)]">
@@ -127,13 +135,29 @@ export default function SubscriptionRenewal({ canSubmit = false, embedded = fals
           <p className="mt-2 break-all text-xs">For support: {quote.quoteId}</p>
         </details>
         {quote.pendingPayment && <p role="status" className="rounded-lg bg-amber-500/10 p-3 text-sm text-[var(--text-secondary)]"><AlertCircle className="mr-1 inline h-4 w-4" />We received your receipt. It is waiting for someone to check it.</p>}
-        {canPay && <form onSubmit={submitPayment} className="space-y-3 rounded-xl border border-[var(--border)] p-4">
-          <h3 className="flex items-center gap-2 text-base font-semibold"><CreditCard className="h-5 w-5" />Already paid? Send us your receipt.</h3>
-          <p className="text-xs text-[var(--text-secondary)]">First pay {subscriptionAmountText(quote.paymentAmount)} using your usual payment method. Then enter the payment ID and upload your receipt. We will check it before renewing your plan.</p>
-          <label className="block text-xs font-medium text-[var(--text-secondary)]">Bank or UPI payment reference<input className="mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm" required maxLength={160} value={reference} disabled={busy} onChange={event => { setReference(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} /></label>
-          <label className="block text-xs font-medium text-[var(--text-secondary)]">Payment receipt<input className="mt-1.5 block w-full text-xs" required type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={busy} onChange={event => { setProof(event.target.files?.[0] || null); setPaymentKey(newBillingIdempotencyKey()); }} /><span className="mt-1 block text-[11px] text-[var(--text-muted)]">PDF, JPG, PNG or WEBP, up to 10 MB.</span></label>
-          <label className="block text-xs font-medium text-[var(--text-secondary)]">Note (optional)<textarea className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm" maxLength={2000} rows={2} value={note} disabled={busy} onChange={event => { setNote(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} /></label>
-          <Button type="submit" size="sm" variant="primary" disabled={!proof || !reference.trim() || busy} loading={busy}>Send receipt for review</Button>
+        {canPay && <form onSubmit={submitPayment} className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[var(--accent)]"><CreditCard className="h-5 w-5" /></div>
+            <div><h3 className="text-base font-semibold text-[var(--text-primary)]">Submit your payment</h3>
+              <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Pay {subscriptionAmountText(quote.paymentAmount)} using your usual payment method, then add the reference and receipt. We’ll review it before renewing your plan.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-[var(--text-primary)]">Bank or UPI payment reference
+              <input className="mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-500/15" required maxLength={160} value={reference} disabled={busy} autoComplete="off" placeholder="Enter transaction ID" onChange={event => { setReference(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} />
+            </label>
+            <label className="block text-sm font-medium text-[var(--text-primary)]">Payment receipt
+              <input className="mt-1.5 block w-full cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-2 text-xs text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[var(--text-primary)]" required type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={busy} onChange={event => { setProof(event.target.files?.[0] || null); setPaymentKey(newBillingIdempotencyKey()); }} />
+              <span className="mt-1.5 block text-xs text-[var(--text-muted)]">PDF, JPG, PNG or WEBP · up to 10 MB</span>
+            </label>
+          </div>
+          <label className="block text-sm font-medium text-[var(--text-primary)]">Note <span className="font-normal text-[var(--text-muted)]">(optional)</span>
+            <textarea className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-500/15" maxLength={2000} rows={3} placeholder="Add any details that will help us verify your payment" value={note} disabled={busy} onChange={event => { setNote(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} />
+          </label>
+          <div className="flex flex-col-reverse gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-[var(--text-muted)]">Your plan renews after the receipt is approved.</p>
+            <Button type="submit" size="md" variant="primary" icon={CreditCard} className="justify-center" disabled={!proof || !reference.trim() || busy} loading={busy}>Send receipt for review</Button>
+          </div>
         </form>}
         {!canPay && !quote.pendingPayment && <p className="text-xs text-[var(--text-secondary)]">{!quote.payable ? quote.expired ? "This price expired. Get an updated price before paying." : "Payment is not available for this plan right now." : !data.payment.submissionEnabled ? 'Sending receipts is not available right now. Ask your billing administrator for help.' : 'Only an account billing administrator can send a payment receipt.'}</p>}
       </div>}
