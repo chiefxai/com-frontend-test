@@ -137,6 +137,11 @@ export default function BillingWorkspace({
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
     setInitialSubscriptionTask(task);
     onNavigate('dashboard');
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById('billing-subscription-actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
   };
     if (!authorization?.permissions.includes('billing.organization.read')) {
     return authorization?.permissions.includes('billing.read')
@@ -196,7 +201,7 @@ export default function BillingWorkspace({
             loadingUsage={loading}
             onOpenSubscriptionTask={openSubscriptionTask}
           />
-          <section id="billing-subscription-details" className="col-span-12 space-y-4 scroll-mt-6">
+          <section id="billing-subscription-actions" className="col-span-12 space-y-4 scroll-mt-6">
             {canManageSubscription
               ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
               : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
