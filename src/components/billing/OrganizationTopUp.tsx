@@ -264,17 +264,25 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
 
       {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel />}
       {(view === 'credits' || view === 'topup') && (
-        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-          <CardHeader title="Available credits" subtitle="Remaining credits in your organization's two pools" icon={Wallet}
-            action={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
-                {manualAllocationAllowed && canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
-                  onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
-                {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
-                  disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
+        <section className="col-span-12 min-w-0 space-y-4" aria-labelledby="available-credits-heading">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]">
+                <Wallet aria-hidden="true" className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 id="available-credits-heading" className="text-base font-semibold text-[var(--text-primary)]">Available credits</h2>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">Remaining credits in your organization's two pools.</p>
               </div>
-            } />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="secondary" size="sm" icon={RefreshCw} onClick={() => void loadOverview()}>Refresh</Button>
+              {manualAllocationAllowed && canAllocate && onNavigate && <Button type="button" variant="secondary" size="sm" icon={Wallet}
+                onClick={() => onNavigate('allocation')}>Allocate credits</Button>}
+              {canSubmit && <Button type="button" variant="primary" size="sm" icon={Plus}
+                disabled={!canTopup} onClick={() => onNavigate ? onNavigate('topup') : setShowForm(true)}>Add credits</Button>}
+            </div>
+          </div>
           <div className="grid grid-cols-12 gap-3">
             <KpiCard span={{ xs: 12, sm: 6 }} icon={Wallet} iconPosition="top-left"
               iconBg="var(--accent-subtle)" iconColor="var(--accent)"
@@ -286,9 +294,9 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
               value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
           </div>
           <p className="text-sm text-[var(--text-secondary)]">Plan credits and approved top-up credits remain in separate pools until allocated to workspaces.</p>
-          {overviewError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
-          {workspaceCreditError && <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
-        </Card>
+          {overviewError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
+          {workspaceCreditError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
+        </section>
       )}
       {view === 'credits' && (
           <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
