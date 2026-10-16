@@ -1,9 +1,8 @@
 import React from 'react';
-import { CreditCard, RefreshCw, CheckCircle2, Info } from 'lucide-react';
+import { CreditCard, CheckCircle2, Info } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingAmount, SubscriptionCreditStatus } from '../../lib/billing/types';
 import KpiCard from '../ui/KpiCard';
-import Button from '../ui/Button';
 
 const displayInr = (amount: BillingAmount | null): string => {
   if (!amount) return 'Not verified';
@@ -24,11 +23,9 @@ const explanations: Record<SubscriptionCreditStatus['state'], string> = {
 };
 
 export default function SubscriptionCreditStatusPanel({
-  headerActions,
   extraKpis,
   balanceErrors = [],
 }: {
-  headerActions?: React.ReactNode;
   extraKpis?: React.ReactNode;
   balanceErrors?: string[];
 }) {
@@ -45,12 +42,7 @@ export default function SubscriptionCreditStatusPanel({
   React.useEffect(() => { void load(); }, [load]);
 
   return (
-    <section className="col-span-12 min-w-0 space-y-3" aria-label="Monthly credit amounts">
-      <div className="flex flex-wrap justify-end gap-2">
-        {headerActions}
-        <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
-          disabled={loading} onClick={() => void load()}>Refresh status</Button>
-      </div>
+    <section className="col-span-12 min-w-0 space-y-4" aria-label="Monthly credit amounts">
       <div className="grid grid-cols-12 gap-3">
         <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CreditCard} iconPosition="top-left"
           iconBg="var(--accent-subtle)" iconColor="var(--accent)"
