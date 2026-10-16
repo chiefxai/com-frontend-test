@@ -155,6 +155,14 @@ export default function BillingOverviewHome({
           <p role="alert" className="mt-4 text-xs text-amber-700">{errors.join(' ')}</p>}
       </Card>
     </div>
+    <div id="billing-subscription-details" className="grid grid-cols-12 gap-3 scroll-mt-6" aria-label="Subscription pricing and allowances">
+      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+        label="Estimated monthly plan price" value={money(pricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
+      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+        label="Workspaces" value={pricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
+      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+        label="Extra work types" value={pricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
+    </div>
       {showWorkspaceAllocation && <Card padding="sm" className="col-span-12 min-w-0">
         <CardHeader title="Current workspace allocation"
           subtitle={currentWorkspaceAllocation?.workspaceName || usage?.workspaceName || 'Selected workspace'}
@@ -190,13 +198,6 @@ export default function BillingOverviewHome({
           </table>
         </div>}
       </Card>}
-    <div id="billing-subscription-details" className="grid grid-cols-12 gap-3 scroll-mt-6" aria-label="Subscription pricing and allowances">
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-        label="Estimated monthly plan price" value={money(pricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-        label="Workspaces" value={pricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-        label="Extra work types" value={pricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
-    </div>
+
   </section>;
 }
