@@ -9,7 +9,7 @@ import type { BillingPanel } from './OrganizationTopUp';
 import type { OrganizationSubscriptionPrice, WorkspaceBillingSnapshot } from './BillingWorkspace';
 import { formatInr } from '../../lib/pricing';
 import Button from '../ui/Button';
-import { availableCredits, daysUntil, displayDate, renewalNotice } from './billingOverviewHelpers';
+import { availableCredits, daysUntil, displayDate, mayAskForMoreTime, renewalNotice } from './billingOverviewHelpers';
 
 interface Props {
   onNavigate: (section: BillingPanel) => void;
@@ -37,6 +37,7 @@ export default function BillingOverviewHome({
   const [currentWorkspaceAllocation, setCurrentWorkspaceAllocation] = React.useState<WorkspaceBillingOverview | null>(null);
   const [creditStatus, setCreditStatus] = React.useState<SubscriptionCreditStatus | null>(null);
   const [renewal, setRenewal] = React.useState<SubscriptionRenewalResponse | null>(null);
+  const [canRequestGrace, setCanRequestGrace] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [errors, setErrors] = React.useState<string[]>([]);
   React.useEffect(() => {
@@ -48,7 +49,8 @@ export default function BillingOverviewHome({
       billingClient.organizationOverview(),
       billingClient.subscriptionCreditStatus(),
       canManageSubscription ? billingClient.subscriptionRenewal() : Promise.resolve(null),
-    ]).then(async ([balances, credits, period]) => {
+      canManageSubscription ? billingClient.subscriptionGraceRequests() : Promise.resolve(null),
+    ]).then(async ([balances, credits, period, grace]) => {
       if (cancelled) return;
       const failures: string[] = [];
       if (balances.status === 'fulfilled') {
@@ -86,6 +88,9 @@ export default function BillingOverviewHome({
       else { setCreditStatus(null); failures.push('Plan information could not be loaded.'); }
       if (period.status === 'fulfilled') setRenewal(period.value);
       else { setRenewal(null); failures.push('Renewal status could not be loaded.'); }
+      const nextPeriodScheduled = balances.status === 'fulfilled' && Boolean(balances.value.nextPeriod);
+      setCanRequestGrace(period.status === 'fulfilled' && grace.status === 'fulfilled'
+        && mayAskForMoreTime(period.value, grace.value, Date.now(), nextPeriodScheduled));
       if (!cancelled) {
         setErrors(failures);
         setLoading(false);
@@ -169,7 +174,8 @@ export default function BillingOverviewHome({
         <div className="mt-3 flex flex-wrap gap-2">
           {showPay && <Button type="button" variant="primary" size="sm" icon={CreditCard}
             onClick={() => onOpenSubscriptionTask('renew')}>{notice.expired ? 'Renew plan' : 'Pay to continue'}</Button>}
-          <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('billing-subscription-details')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}>Subscription details</Button>
+          {canRequestGrace && <Button type="button" variant="secondary" size="sm" icon={CalendarClock}
+            onClick={() => onOpenSubscriptionTask('more-time')}>Ask for more time</Button>}
         </div>
         {errors.length > 0 && !loading &&
           <p role="alert" className="mt-4 text-xs text-amber-700">{errors.join(' ')}</p>}
