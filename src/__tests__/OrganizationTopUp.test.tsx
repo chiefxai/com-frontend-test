@@ -111,7 +111,7 @@ describe('organization billing views', () => {
 
   it('explains credit types clearly and shows a payment review summary', async () => {
     const { rerender } = render(<OrganizationTopUp view="credits" canSubmit />);
-    expect(screen.getByText('Available credits')).toBeInTheDocument();
+    expect(screen.queryByText('Available credits')).not.toBeInTheDocument();
     expect(await screen.findByText('Subscription credits remaining')).toBeInTheDocument();
     rerender(<OrganizationTopUp view="payments" canSubmit />);
     expect(screen.getByText('Payments and workspace invoices')).toBeInTheDocument();
