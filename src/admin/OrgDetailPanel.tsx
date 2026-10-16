@@ -58,6 +58,9 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
   const [trialRecoveryDays, setTrialRecoveryDays] = useState('7');
   const [trialRecoveryBusy, setTrialRecoveryBusy] = useState(false);
   const [trialRecoveryNotice, setTrialRecoveryNotice] = useState('');
+  const [reactivationDays, setReactivationDays] = useState('7');
+  const [showReactivationForm, setShowReactivationForm] = useState(false);
+  const [reactivationNotice, setReactivationNotice] = useState('');
   const [invitationBusy, setInvitationBusy] = useState(false);
   const [invitationNotice, setInvitationNotice] = useState('');
 
@@ -233,20 +236,51 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
 
   const handleToggleSuspend = async () => {
     if (!detail) return;
-    // Keep the action correct even if the API returns the status with a
-    // different casing (for example "suspended" instead of "Suspended").
     const isSuspended = String(detail.status || '').toLowerCase() === 'suspended';
-    const suspending = !isSuspended;
-    if (!window.confirm(suspending ? `Suspend "${detail.name}"? Their team will be locked out immediately.` : `Revoke the suspension for "${detail.name}"?`)) return;
+    if (isSuspended) {
+      setActionError(null);
+      setReactivationNotice('');
+      setShowReactivationForm(true);
+      return;
+    }
+    if (!window.confirm(`Suspend "${detail.name}"? Their team will be locked out immediately.`)) return;
     setBusy(true);
     setActionError(null);
     try {
-      const res = await apiFetch(`/api/platform/organizations/${orgId}/${suspending ? 'suspend' : 'reactivate'}`, { method: 'POST' });
+      const res = await apiFetch(`/api/platform/organizations/${orgId}/suspend`, { method: 'POST' });
       if (!res.ok) throw new Error((await res.json()).error || 'Action failed');
       load();
       onChanged();
     } catch (err: any) {
       setActionError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReactivateWithGrace = async () => {
+    const days = Number(reactivationDays);
+    if (!Number.isInteger(days) || days < 1 || days > 7) {
+      setActionError('Grace period must be from 1 to 7 days.');
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    setReactivationNotice('');
+    try {
+      const res = await apiFetch('/api/platform/organizations/' + encodeURIComponent(orgId) + '/reactivate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ graceDays: days }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || 'Unable to reactivate this organization.');
+      setShowReactivationForm(false);
+      setReactivationNotice('Organization reactivated with ' + result.grace.days + ' days of access grace, through ' + new Date(result.grace.grantedUntil).toLocaleDateString() + '.');
+      load();
+      onChanged();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to reactivate this organization.');
     } finally {
       setBusy(false);
     }
@@ -374,6 +408,29 @@ export default function OrgDetailPanel({ orgId, onClose, onChanged }: { orgId: s
                 <Button type="button" size="sm" variant="danger" icon={Trash2}
                   className="ml-auto" disabled={busy} onClick={openDeleteModal}>Delete</Button>
               </div>
+              {reactivationNotice && <p role="status" className="mt-3 rounded-lg border border-emerald-300/60 bg-emerald-500/5 p-2.5 text-xs text-emerald-700 dark:text-emerald-300">
+                {reactivationNotice}
+              </p>}
+              {String(detail.status || '').toLowerCase() === 'suspended' && showReactivationForm && <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-3">
+                <h3 className="text-xs font-semibold text-[var(--text-primary)]">Reactivate with access grace</h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                  Grant up to 7 days of access even when the organization has no pending grace request. Existing requests can still be handled in Reviews &amp; Requests.
+                </p>
+                <label className="mt-3 block max-w-xs text-[11px] font-semibold text-[var(--text-secondary)]">
+                  Grace period (days)
+                  <input type="number" min="1" max="7" step="1" value={reactivationDays}
+                    onChange={event => setReactivationDays(event.target.value)} disabled={busy}
+                    className={FIELD_CLASS + ' mt-1'} />
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button type="button" size="sm" icon={PlayCircle} disabled={busy}
+                    onClick={() => void handleReactivateWithGrace()}>
+                    {busy ? 'Reactivating…' : 'Reactivate organization'}
+                  </Button>
+                  <Button type="button" size="sm" variant="secondary" disabled={busy}
+                    onClick={() => setShowReactivationForm(false)}>Cancel</Button>
+                </div>
+              </div>}
               {actionError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-500/10 dark:text-rose-300">
                 {actionError}
               </p>}
