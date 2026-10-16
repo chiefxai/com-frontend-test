@@ -2,7 +2,6 @@ import React from 'react';
 import { CreditCard, RefreshCw, CheckCircle2, Info } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingAmount, SubscriptionCreditStatus } from '../../lib/billing/types';
-import { Card, CardHeader } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
 
@@ -38,13 +37,22 @@ export default function SubscriptionCreditStatusPanel() {
   React.useEffect(() => { void load(); }, [load]);
 
   return (
-    <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-      <CardHeader title="Monthly usage credits" subtitle="See what your plan includes and what has actually been added"
-        icon={CreditCard}
-        action={<Button type="button" size="sm" variant="secondary" icon={RefreshCw}
-          disabled={loading} onClick={() => void load()}>Refresh status</Button>} />
-      {loading ? <p role="status" className="text-xs text-[var(--text-muted)]">Checking subscription credit status…</p>
-        : error ? <p role="alert" className="text-xs text-rose-600">{error}</p>
+    <section className="col-span-12 min-w-0 space-y-4" aria-labelledby="monthly-usage-credits-heading">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]">
+            <CreditCard aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 id="monthly-usage-credits-heading" className="text-base font-semibold text-[var(--text-primary)]">Monthly usage credits</h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">See what your plan includes and what has actually been added.</p>
+          </div>
+        </div>
+        <Button type="button" size="sm" variant="secondary" icon={RefreshCw}
+          disabled={loading} onClick={() => void load()}>Refresh status</Button>
+      </div>
+      {loading ? <p role="status" className="text-sm text-[var(--text-muted)]">Checking subscription credit status…</p>
+        : error ? <p role="alert" className="text-sm text-rose-600">{error}</p>
           : status && (
             <div className="space-y-3">
               <div className="grid grid-cols-12 gap-3">
@@ -70,6 +78,6 @@ export default function SubscriptionCreditStatusPanel() {
               )}
             </div>
           )}
-    </Card>
+    </section>
   );
 }
