@@ -11,7 +11,6 @@ import { useAuthorization, canAllocateOrganizationCredits } from '../../lib/auth
 import ManualWorkspaceAllocation from './ManualWorkspaceAllocation';
 import SubscriptionActionCenter from './SubscriptionActionCenter';
 import WorkspaceAllocatedBilling from './WorkspaceAllocatedBilling';
-import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview } from '../../lib/billing/types';
 
@@ -197,11 +196,7 @@ export default function BillingWorkspace({
             loadingUsage={loading}
             onOpenSubscriptionTask={openSubscriptionTask}
           />
-          <section id="billing-subscription-details" className="col-span-12 space-y-4 scroll-mt-6" aria-labelledby="billing-subscription-heading">
-            <div>
-              <h2 id="billing-subscription-heading" className="text-lg font-semibold text-[var(--text-primary)]">Subscription</h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">Plan pricing, included workspaces, and subscription actions.</p>
-            </div>
+          <section id="billing-subscription-details" className="col-span-12 space-y-4 scroll-mt-6">
             <div className="grid grid-cols-12 gap-3">
               <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                 label="Estimated monthly plan price" value={money(organizationPricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
@@ -210,21 +205,6 @@ export default function BillingWorkspace({
               <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)"
                 label="Extra work types" value={organizationPricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
             </div>
-            <section className="space-y-3" aria-label="Billing shortcuts">
-              <div className="grid grid-cols-12 gap-3">
-                <button type="button" onClick={() => onNavigate('credits')}
-                  className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
-                  <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><Wallet aria-hidden="true" className="h-4 w-4" /></span>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">View remaining credits</span>
-                </button>
-                <button type="button" onClick={() => onNavigate('payments')}
-                  className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
-                  <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><ReceiptText aria-hidden="true" className="h-4 w-4" /></span>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">Workspace invoices and payments</span>
-                </button>
-              </div>
-            </section>
-            <SubscriptionCreditStatusPanel />
             {canManageSubscription
               ? <SubscriptionActionCenter canSubmitPayment={canSubmitPayment} initialTask={initialSubscriptionTask} />
               : <p className="rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
