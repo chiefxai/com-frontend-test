@@ -127,30 +127,7 @@ export default function SubscriptionRenewal({ canSubmit = false, embedded = fals
           </div>
         </form>}
         {quote.pendingPayment && <p role="status" className="rounded-lg bg-amber-500/10 p-3 text-sm text-[var(--text-secondary)]"><AlertCircle className="mr-1 inline h-4 w-4" />We received your receipt. It is waiting for someone to check it.</p>}
-        {canPay && <form onSubmit={submitPayment} className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[var(--accent)]"><CreditCard className="h-5 w-5" /></div>
-            <div><h3 className="text-base font-semibold text-[var(--text-primary)]">Submit your payment</h3>
-              <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">Pay {subscriptionAmountText(quote.paymentAmount)} using your usual payment method, then add the reference and receipt. We’ll review it before renewing your plan.</p>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-[var(--text-primary)]">Bank or UPI payment reference
-              <input className="mt-1.5 block h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-500/15" required maxLength={160} value={reference} disabled={busy} autoComplete="off" placeholder="Enter transaction ID" onChange={event => { setReference(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} />
-            </label>
-            <label className="block text-sm font-medium text-[var(--text-primary)]">Payment receipt
-              <input className="mt-1.5 block w-full cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-2 text-xs text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[var(--text-primary)]" required type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={busy} onChange={event => { setProof(event.target.files?.[0] || null); setPaymentKey(newBillingIdempotencyKey()); }} />
-              <span className="mt-1.5 block text-xs text-[var(--text-muted)]">PDF, JPG, PNG or WEBP · up to 10 MB</span>
-            </label>
-          </div>
-          <label className="block text-sm font-medium text-[var(--text-primary)]">Note <span className="font-normal text-[var(--text-muted)]">(optional)</span>
-            <textarea className="mt-1.5 block w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-blue-500/15" maxLength={2000} rows={3} placeholder="Add any details that will help us verify your payment" value={note} disabled={busy} onChange={event => { setNote(event.target.value); setPaymentKey(newBillingIdempotencyKey()); }} />
-          </label>
-          <div className="flex flex-col-reverse gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-[var(--text-muted)]">Your plan renews after the receipt is approved.</p>
-            <Button type="submit" size="md" variant="primary" icon={CreditCard} className="justify-center" disabled={!proof || !reference.trim() || busy} loading={busy}>Send receipt for review</Button>
-          </div>
-        </form>}
+        
         {!canPay && !quote.pendingPayment && <p className="text-xs text-[var(--text-secondary)]">{!quote.payable ? quote.expired ? "This price expired. Get an updated price before paying." : "Payment is not available for this plan right now." : !data.payment.submissionEnabled ? 'Sending receipts is not available right now. Ask your billing administrator for help.' : 'Only an account billing administrator can send a payment receipt.'}</p>}
       </section>}
     </div>}
