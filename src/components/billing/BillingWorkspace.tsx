@@ -213,12 +213,21 @@ export default function BillingWorkspace({
             : <p className="col-span-12 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
                 Only your organization's billing administrators can start, renew, or change a subscription.
               </p>}
-          <div className="col-span-12 flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="secondary" icon={Wallet}
-              onClick={() => onNavigate('credits')}>View remaining credits</Button>
-            <Button type="button" size="sm" variant="secondary" icon={ReceiptText}
-              onClick={() => onNavigate('payments')}>Workspace invoices and payments</Button>
-          </div>
+          <section className="col-span-12 space-y-3" aria-labelledby="subscription-quick-links-heading">
+            <h2 id="subscription-quick-links-heading" className="text-sm font-semibold text-[var(--text-primary)]">Quick links</h2>
+            <div className="grid grid-cols-12 gap-3">
+              <button type="button" onClick={() => onNavigate('credits')}
+                className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
+                <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><Wallet aria-hidden="true" className="h-4 w-4" /></span>
+                <span className="text-sm font-semibold text-[var(--text-primary)]">View remaining credits</span>
+              </button>
+              <button type="button" onClick={() => onNavigate('payments')}
+                className="col-span-12 flex min-h-16 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)] hover:bg-[var(--bg-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:col-span-6">
+                <span className="rounded-lg bg-[var(--accent-subtle)] p-2 text-[var(--accent)]"><ReceiptText aria-hidden="true" className="h-4 w-4" /></span>
+                <span className="text-sm font-semibold text-[var(--text-primary)]">Workspace invoices and payments</span>
+              </button>
+            </div>
+          </section>
           <SubscriptionCreditStatusPanel />
         </>
       )}
