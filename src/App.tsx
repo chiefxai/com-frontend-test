@@ -106,6 +106,7 @@ export default function App() {
   // 'checking' → spinner, 'ok' → show app, 'denied' → no-access screen.
   const [membershipStatus, setMembershipStatus] = useState<'checking' | 'ok' | 'denied'>('checking');
   const [membershipError, setMembershipError] = useState<string>('');
+  const [subscriptionAccessState, setSubscriptionAccessState] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -460,6 +461,7 @@ export default function App() {
     setDbRole('');
     setHasLoaded(false);
     setMembershipStatus('checking');
+    setSubscriptionAccessState(null);
     setMultipleWorkspacesEnabled(false);
     setWorkspaceSharingEnabled(false);
     let cancelled = false;
@@ -500,6 +502,7 @@ export default function App() {
         }
         if (cancelled) return;
         setAuthorization(session.authorization || null);
+        setSubscriptionAccessState(session.subscriptionAccess?.state || null);
         setMultipleWorkspacesEnabled(session.workspaceCapabilities?.multipleWorkspaces === true);
         setWorkspaceSharingEnabled(session.workspaceCapabilities?.sharing === true);
         setStorageScope(kcUser.id, selected ? `${selectedRow.orgId}:${selected}` : null);
@@ -514,6 +517,7 @@ export default function App() {
       .catch((error) => {
         if (cancelled) return;
         resetUserFlags();
+        setSubscriptionAccessState(null);
         setMembershipError(error.message || 'Could not load your workspaces. Please retry.');
         setMembershipStatus('denied');
       });
@@ -523,7 +527,7 @@ export default function App() {
 
   // Live call events — SSE stream, authenticated with a short-lived ticket.
   useEffect(() => {
-    if (!kcUser || !hasLoaded || !can('workspace.read')) return;
+    if (!kcUser || !hasLoaded || !can('workspace.read') || subscriptionAccessState === 'billing_suspended') return;
     let source: EventSource | null = null;
     let closed = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -599,7 +603,7 @@ export default function App() {
     };
   // kcUser?.id, not the object — see the comment above; otherwise every
   // token refresh tore down and reopened this SSE connection too.
-  }, [kcUser?.id, hasLoaded, refreshDialerTasks]);
+  }, [kcUser?.id, hasLoaded, refreshDialerTasks, subscriptionAccessState]);
 
   // Redirect if a non-lending org lands on a lending-only route or a retired route.
   useEffect(() => {
