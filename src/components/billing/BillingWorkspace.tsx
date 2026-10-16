@@ -80,6 +80,7 @@ const descriptions: Record<BillingPanel, string> = {
   plan: 'Your plan, its price, and simple steps to manage it.',
   usage: 'Recorded call costs and usage totals.',
   credits: 'Available credits from your plan and approved top-ups.',
+  allocation: 'Review and assign credits to eligible workspaces.',
   topup: 'Submit a payment receipt for additional usage credits.',
   payments: 'Track payments and verification status.',
 };
