@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Clock3, PhoneCall, Plus, ReceiptText, Wallet, RefreshCw, ChartNoAxesCombined } from 'lucide-react';
+import { Activity, Plus, ReceiptText, Wallet, RefreshCw } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
@@ -71,16 +71,15 @@ export function formatCallTime(minutes: number | null | undefined): string {
 
 const sections: { key: BillingPanel; label: string; icon: React.ElementType }[] = [
   { key: 'dashboard', label: 'Overview', icon: Activity },
-  { key: 'usage', label: 'Usage', icon: PhoneCall },
-  { key: 'credits', label: 'Credits', icon: Wallet },
+  { key: 'credits', label: 'Credits and usage', icon: Wallet },
   { key: 'payments', label: 'Payments', icon: ReceiptText },
 ];
 
 const descriptions: Record<BillingPanel, string> = {
   dashboard: 'Your subscription, usage and credit balances in one place.',
   plan: 'Your plan, its price, and simple steps to manage it.',
-  usage: 'Recorded call costs and usage totals.',
-  credits: 'Available credits from your plan and approved top-ups.',
+  usage: 'Review available credits and this period’s usage.',
+  credits: 'Review available credits and this period’s usage.',
   allocation: 'Review and assign credits to eligible workspaces.',
   topup: 'Submit a payment receipt for additional usage credits.',
   payments: 'Track payments and verification status.',
@@ -98,6 +97,7 @@ export default function BillingWorkspace({
   onSaveBudget, budgetSaving, budgetError,
 }: BillingWorkspaceProps) {
   const periodLabel = workspaceBilling?.budgetPeriod?.label || 'Current billing period';
+  const creditsAndUsageView = view === 'credits' || view === 'usage';
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [allocationCapability, setAllocationCapability] = React.useState<BillingOverview['allocation'] | null>(null);
@@ -148,7 +148,7 @@ export default function BillingWorkspace({
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
           {sections.filter(row => row.key !== 'allocation' || canShowAllocation).map(({ key, label, icon: Icon }) => (
-            <button key={key} type="button" aria-current={view === key ? 'page' : undefined}
+            <button key={key} type="button" aria-current={view === key || (key === 'credits' && view === 'usage') ? 'page' : undefined}
               onClick={() => onNavigate(key)}
               className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${view === key
                 ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
@@ -176,12 +176,12 @@ export default function BillingWorkspace({
       )}
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
 
-      {view === 'credits' && canAllocate && allocationCapabilityError && (
+      {creditsAndUsageView && canAllocate && allocationCapabilityError && (
         <p role="status" className="col-span-12 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
           Workspace allocation availability could not be checked. Refresh the billing page to try again.
         </p>
       )}
-      {view === 'credits' && canShowAllocation && !canUseManualAllocation && (
+      {creditsAndUsageView && canShowAllocation && !canUseManualAllocation && (
         <section className="col-span-12 rounded-xl border border-[var(--border)] p-4" aria-label="Workspace allocation status">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Workspace allocation</h2>
           <p role="status" className="mt-1 text-xs text-[var(--text-secondary)]">
@@ -212,19 +212,8 @@ export default function BillingWorkspace({
         </>
       )}
 
-      {view === 'usage' && (
-        <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Usage">
-            <div className="col-span-12 grid grid-cols-12 gap-3">
-              {[
-                { title: 'Usage cost so far', value: money(workspaceBilling?.periodSpendInr), detail: 'All workspaces combined', icon: Activity },
-                { title: 'Calls', value: callCount ?? '—', detail: 'Recorded this period', icon: PhoneCall },
-                { title: 'Call time', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total speaking time', icon: Clock3 },
-                { title: 'AI costs', value: money(workspaceBilling?.aiSpendInr), detail: 'Voice AI and call processing', icon: ChartNoAxesCombined },
-              ].map(({ title, value, detail, icon }) =>
-                <KpiCard key={title} span={{ xs: 12, sm: 6, lg: 3 }} 
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label={title} value={value} sub={detail} icon={icon} />)}
-            </div>
+      {creditsAndUsageView && (
+        <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Credits and usage">
             {rechargeBased && <div className="col-span-12 grid grid-cols-12 gap-3">
               <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Wallet} 
                 iconBg="var(--accent-subtle)" iconColor="var(--accent)"
@@ -255,14 +244,8 @@ export default function BillingWorkspace({
         </section>
       )}
 
-      {(view === 'credits' || view === 'topup' || view === 'payments') && (
-        <OrganizationTopUp canSubmit={canSubmitPayment} view={view} onNavigate={onNavigate}
-          creditUsage={workspaceBilling ? {
-            aiSpendInr: workspaceBilling.aiSpendInr,
-            phoneSpendInr: workspaceBilling.phoneSpendInr,
-            phoneChargesBillable,
-            periodLabel,
-          } : null}
+      {(creditsAndUsageView || view === 'topup' || view === 'payments') && (
+        <OrganizationTopUp canSubmit={canSubmitPayment} view={creditsAndUsageView ? 'credits' : view} onNavigate={onNavigate}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
       )}
       {canSubmitPayment && <Modal open={topupDialogOpen} onClose={() => setTopupDialogOpen(false)}

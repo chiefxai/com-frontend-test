@@ -4,6 +4,10 @@ export interface PieChartSlice {
   label: string;
   value: number;
   color: string;
+  /** Exact or user-friendly value to show in the hover tooltip. */
+  displayValue?: string;
+  /** Tooltip label for displayValue; defaults to Count. */
+  valueLabel?: string;
 }
 
 interface PieChartProps {
@@ -61,6 +65,7 @@ function describeSlice(cx: number, cy: number, outerRadius: number, innerRadius:
 // so their geometry stays inside the viewBox and does not depend on CSS rotation
 // or stroke clipping in browser/PDF renderers.
 export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, centerLabel, className = '' }: PieChartProps) {
+  const [hoveredSliceIndex, setHoveredSliceIndex] = React.useState<number | null>(null);
   const chartSize = Number.isFinite(size) && size > 0 ? size : 160;
   const safeSlices = slices.filter(slice => Number.isFinite(slice.value) && slice.value > 0);
   const total = safeSlices.reduce((sum, slice) => sum + slice.value, 0);
@@ -70,6 +75,7 @@ export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, c
   const outerRadius = Math.max(0, chartSize / 2 - 1);
   const innerRatio = Math.max(0, Math.min(0.95, Number.isFinite(innerRadiusRatio) ? innerRadiusRatio : 0.6));
   const innerRadius = outerRadius * innerRatio;
+  const hoveredSlice = hoveredSliceIndex === null ? null : safeSlices[hoveredSliceIndex] || null;
 
   if (total <= 0) {
     return (
@@ -105,15 +111,29 @@ export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, c
               d={describeSlice(cx, cy, outerRadius, innerRadius, start, end)}
               fill={slice.color}
               fillRule="evenodd"
+              tabIndex={0}
+              aria-label={`${slice.label}, ${((slice.value / total) * 100).toFixed(1)} percent, ${slice.valueLabel || 'Count'}: ${slice.displayValue ?? slice.value}`}
+              onMouseEnter={() => setHoveredSliceIndex(index)}
+              onMouseLeave={() => setHoveredSliceIndex(null)}
+              onFocus={() => setHoveredSliceIndex(index)}
+              onBlur={() => setHoveredSliceIndex(null)}
             >
-              <title>{`${slice.label}: ${slice.value}`}</title>
+              <title>{`${slice.label} · ${((slice.value / total) * 100).toFixed(1)}% · ${slice.valueLabel || 'Count'}: ${slice.displayValue ?? slice.value}`}</title>
             </path>
           );
         })}
       </svg>
       {innerRatio > 0 && (
         <div className="absolute inset-0 flex items-center justify-center">
-          {centerLabel ?? (
+          {hoveredSlice ? (
+            <div aria-live="polite" className="pointer-events-none w-[82%] text-center">
+              <p className="truncate text-[11px] font-semibold leading-4 text-[var(--text-primary)]">{hoveredSlice.label}</p>
+              <p className="text-sm font-bold tabular-nums text-[var(--text-primary)]">{((hoveredSlice.value / total) * 100).toFixed(1)}%</p>
+              <p className="truncate text-[10px] leading-4 text-[var(--text-secondary)]">
+                {hoveredSlice.valueLabel || 'Count'}: {hoveredSlice.displayValue ?? hoveredSlice.value.toLocaleString()}
+              </p>
+            </div>
+          ) : centerLabel ?? (
             <div className="text-center">
               <p className="text-lg font-bold text-[var(--text-primary)]">{total}</p>
               <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wide">Total</p>

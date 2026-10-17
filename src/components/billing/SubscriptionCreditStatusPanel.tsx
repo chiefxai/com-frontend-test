@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, CheckCircle2, Info } from 'lucide-react';
+import { CheckCircle2, Info } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingAmount, SubscriptionCreditStatus } from '../../lib/billing/types';
 import KpiCard from '../ui/KpiCard';
@@ -44,10 +44,6 @@ export default function SubscriptionCreditStatusPanel({
   return (
     <section className="col-span-12 min-w-0 space-y-4" aria-label="Monthly credit amounts">
       <div className="grid grid-cols-12 gap-3">
-        <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CreditCard} 
-          iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-          label={`Credits promised each month (${status?.planName || 'your plan'})`}
-          value={status ? displayInr(status.configuredMonthlyCredits) : '—'} />
         <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} 
           iconBg="var(--accent-subtle)" iconColor="var(--accent)"
           label="Credits added this period"

@@ -976,7 +976,7 @@ export default function SettingsView({
                   : <>
                       <button type="button" onClick={() => setBillingPanel('dashboard')} className="text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]">Billing & Usage</button>
                       <span className="text-[var(--border)]">/</span>
-                      <span className="truncate text-sm font-semibold">{billingPanel === 'usage' ? 'Usage' : billingPanel === 'payments' ? 'Payments' : billingPanel === 'topup' ? 'Add Credits' : 'Credits'}</span>
+                      <span className="truncate text-sm font-semibold">{billingPanel === 'usage' || billingPanel === 'credits' ? 'Credits and usage' : billingPanel === 'payments' ? 'Payments' : billingPanel === 'topup' ? 'Add Credits' : 'Credits'}</span>
                     </>
                 : !multiWorkspaceUi
                   ? <span className="truncate text-sm font-semibold">Phone Numbers</span>

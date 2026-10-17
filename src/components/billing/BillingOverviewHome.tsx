@@ -9,7 +9,7 @@ import type { BillingPanel } from './OrganizationTopUp';
 import type { OrganizationSubscriptionPrice, WorkspaceBillingSnapshot } from './BillingWorkspace';
 import { formatInr } from '../../lib/pricing';
 import Button from '../ui/Button';
-import { availableCredits, daysUntil, displayDate, mayAskForMoreTime, renewalNotice } from './billingOverviewHelpers';
+import { availableCredits, daysUntil, displayBillingAmount, displayDate, mayAskForMoreTime, renewalNotice } from './billingOverviewHelpers';
 
 interface Props {
   onNavigate: (section: BillingPanel) => void;
@@ -138,6 +138,15 @@ export default function BillingOverviewHome({
         <p className="mt-1 text-xs text-[var(--text-secondary)]">
           {planStatus}{endsAt ? ` · Ends ${displayDate(endsAt)}` : ''}
         </p>
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[var(--bg-subtle)] px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Credits promised each month</p>
+            <p className="mt-0.5 truncate text-lg font-bold tabular-nums text-[var(--text-primary)]">
+              {creditStatus ? displayBillingAmount(creditStatus.configuredMonthlyCredits) : loading ? 'Checking…' : '—'}
+            </p>
+          </div>
+          <CreditCard aria-hidden="true" className="h-5 w-5 shrink-0 text-[var(--accent)]" />
+        </div>
         {actionRequired && <div role="status" className="mt-3 rounded-lg border border-amber-300/70 bg-amber-500/10 px-3 py-2.5">
           <div className="flex items-start gap-3">
             <CalendarClock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />

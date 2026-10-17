@@ -29,11 +29,10 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 }
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate,
-  creditUsage, manualAllocationAllowed = false, embeddedTopup = false, onTopupClose }: { canSubmit?: boolean; view?: BillingPanel;
+  manualAllocationAllowed = false, embeddedTopup = false, onTopupClose }: { canSubmit?: boolean; view?: BillingPanel;
   onNavigate?: (view: BillingPanel) => void;
   embeddedTopup?: boolean;
   onTopupClose?: () => void;
-  creditUsage?: { aiSpendInr: number; phoneSpendInr: number; phoneChargesBillable: boolean; periodLabel: string } | null;
   manualAllocationAllowed?: boolean }) {
   const { can } = useAuthorization();
   const [showForm, setShowForm] = React.useState(false);
@@ -302,28 +301,6 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
                     {overviewError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">Could not load credit balances: {overviewError}</p>}
           {workspaceCreditError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">{workspaceCreditError}</p>}
         </section>
-      )}
-      {view === 'credits' && (
-          <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-            <CardHeader title="Credit usage activity" subtitle="AI processing and phone-service costs recorded for the current period" icon={ReceiptText}
-              action={onNavigate ? <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('usage')}>View usage</Button> : undefined} />
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[500px] text-left text-xs">
-                <thead className="border-b border-[var(--border)] text-[var(--text-secondary)]">
-                  <tr><th scope="col" className="pb-3 pr-4 font-medium">Activity</th><th scope="col" className="pb-3 pr-4 font-medium">Period cost</th><th scope="col" className="pb-3 font-medium">Billing treatment</th></tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
-                  <tr><th scope="row" className="py-3 pr-4 font-semibold">AI credits / processing</th>
-                    <td className="py-3 pr-4 tabular-nums">{creditUsage ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(creditUsage.aiSpendInr) : '—'}</td>
-                    <td className="py-3 text-[var(--text-secondary)]">AI usage this billing period</td></tr>
-                  <tr><th scope="row" className="py-3 pr-4 font-semibold">Call credits / phone service</th>
-                    <td className="py-3 pr-4 tabular-nums">{creditUsage ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(creditUsage.phoneSpendInr) : '—'}</td>
-                    <td className="py-3 text-[var(--text-secondary)]">{creditUsage?.phoneChargesBillable ? 'Included in recorded phone charges' : 'Provider estimate; billed separately'}</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-xs text-[var(--text-muted)]">Aggregate period costs, not individual credit debits. The plan and top-up balances above reflect the actual available ledger amounts. {creditUsage?.periodLabel || ''}</p>
-          </Card>
       )}
       {view === 'credits' && manualAllocationAllowed && (
         <section className="col-span-12" aria-label="Workspace credit allocation controls">
