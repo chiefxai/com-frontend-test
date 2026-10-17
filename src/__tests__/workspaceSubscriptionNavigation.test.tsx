@@ -14,7 +14,7 @@ vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ showToast: mocks.s
 vi.mock('../shared/theme/ThemeContext', () => ({
   useTheme: () => ({ mode: 'light', resolved: 'light', setMode: vi.fn() }),
 }));
-vi.mock('../components/NotificationBell', () => ({
+vi.mock('../notifications/NotificationBell', () => ({
   default: () => <button type="button" aria-label="Notifications">Alerts</button>,
 }));
 vi.mock('../components/WorkspaceManagement', () => ({

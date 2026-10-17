@@ -62,7 +62,15 @@ export function permissionForRequest(path: string,method: string): string | null
   if (/^\/api\/workspace-sharing\/records\/[^/]+\/copies$/.test(path)) return 'workspace.share.copy';
   if (/^\/api\/workspace-sharing\/records(?:\/|$)/.test(path)) return 'workspace.read';
   if (/^\/api\/workspace-sharing\/grants(?:\/|$)/.test(path)) return read ? 'workspace.read' : 'workspace.settings.manage';
-  if (/^\/api\/notifications(?:\/|$)/.test(path)) return 'notifications.read';
+  // Platform notification mutations are protected by the platform-admin router.
+  if (/^\/api\/platform\/notifications(?:\/|$)/.test(path)) return 'platform.manage';
+  if (/^\/api\/notifications(?:\/|$)/.test(path)) {
+    // These operations only change the signed-in user's own notification state.
+    // Let the backend authenticate and scope them instead of blocking on stale
+    // client authorization cached from before notifications.read was granted.
+    if (!read && ['/api/notifications/read','/api/notifications/clear','/api/notifications/preferences'].includes(path)) return null;
+    return 'notifications.read';
+  }
   if (/^\/api\/billing\/workspaces\/[^/]+\/(?:overview|usage|ledger)$/.test(path) && read) return 'billing.workspace.read';
   if (path === '/api/billing/topup-quotes' && !read) return 'billing.payment.submit';
   if (/^\/api\/billing\/workspace-addons(?:\/|$)/.test(path) && !read) return 'billing.payment.submit';

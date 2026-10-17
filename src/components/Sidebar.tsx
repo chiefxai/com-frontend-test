@@ -5,7 +5,7 @@ import Tooltip from './ui/Tooltip';
 import SidebarFrame from './ui/SidebarFrame';
 import SidebarBrand from './ui/SidebarBrand';
 import CommonDropdown from './ui/CommonDropdown';
-import NotificationBell from './NotificationBell';
+import NotificationBell from '../notifications/NotificationBell';
 import ProfileMenu, { type ProfileMenuProps } from './ProfileMenu';
 import {
   LayoutDashboard,

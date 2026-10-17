@@ -47,6 +47,8 @@ export const notificationClient = {
     request<{ updated: number }>(notificationBase(audience) + '/read', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(id ? { id } : {}),
     }),
+  clear: async (audience: NotificationAudience) =>
+    request<{ cleared: number }>(notificationBase(audience) + '/clear', { method: 'POST' }),
   platformStreamTicket: async () =>
     (await request<{ ticket: string }>(notificationBase('platform') + '/stream-ticket', { method: 'POST' })).ticket,
 };

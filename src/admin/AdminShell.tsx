@@ -22,7 +22,7 @@ import PageHeaderBar from '../components/ui/PageHeaderBar';
 import Tooltip from '../components/ui/Tooltip';
 import { PageHeaderProvider, usePageHeaderContext } from '../lib/PageHeaderContext';
 import SidebarBrand from '../components/ui/SidebarBrand';
-import NotificationBell from '../components/NotificationBell';
+import NotificationBell from '../notifications/NotificationBell';
 import NotificationSettingsPage from '../notifications/NotificationSettingsPage';
 
 const NAV: { path: string; label: string; icon: React.ElementType }[] = [
