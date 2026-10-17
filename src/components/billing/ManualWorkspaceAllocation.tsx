@@ -1,8 +1,9 @@
 import React from 'react';
 import { ArrowRight, CheckCircle2, RefreshCw, ShieldCheck, Wallet, Building2 } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
-import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
+import Modal from '../ui/Modal';
+import PieChart from '../ui/PieChart';
 import { billingClient, createBillingMutation, BillingApiError } from '../../lib/billing/client';
 import type {
   BillingAmount, ManualAllocationOverview, ManualAllocationPreview,
@@ -32,6 +33,7 @@ export function unitsFromInput(input: string, scale: number): string | null {
   return units > 0n ? units.toString() : null;
 }
 const friendlyKind = (kind: string) => kind === 'topup' ? 'Top-up credits' : 'Subscription credits';
+const workspaceChartColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#65a30d'];
 
 export default function ManualWorkspaceAllocation() {
   const [snapshot, setSnapshot] = React.useState<ManualAllocationOverview | null>(null);
@@ -42,6 +44,8 @@ export default function ManualWorkspaceAllocation() {
   const [workspaceId, setWorkspaceId] = React.useState('');
   const [inputAmount, setInputAmount] = React.useState('');
   const [preview, setPreview] = React.useState<ManualAllocationPreview | null>(null);
+  const [allocationDialogOpen, setAllocationDialogOpen] = React.useState(false);
+  const [selectedChartBalanceKey, setSelectedChartBalanceKey] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [pending, setPending] = React.useState<ReturnType<typeof createBillingMutation<{ journalId: string; grantId: string }>> | null>(null);
 
@@ -114,24 +118,47 @@ export default function ManualWorkspaceAllocation() {
   const rowsByWorkspace = snapshot?.workspaces.map(workspace => ({
     ...workspace, balances: workspaceBalances.filter(row => row.ownerId === workspace.id),
   })) || [];
+  const chartBalanceOptions = Array.from(new Map([...workspaceBalances, ...orgBalances].map(balance => {
+    const key = `${balance.kind}:${balance.available.asset}:${balance.available.scale}`;
+    return [key, { key, kind: balance.kind, asset: balance.available.asset, scale: balance.available.scale }];
+  })).values());
+  const selectedChartBalance = chartBalanceOptions.find(option => option.key === selectedChartBalanceKey) || chartBalanceOptions[0];
+  const chartBalances = selectedChartBalance ? rowsByWorkspace.map((workspace, index) => {
+    const balance = workspace.balances.find(row => row.kind === selectedChartBalance.kind
+      && row.available.asset === selectedChartBalance.asset && row.available.scale === selectedChartBalance.scale);
+    return { workspace, balance, index, units: balance ? BigInt(balance.available.units) : 0n };
+  }) : [];
+  const unallocatedBalance = selectedChartBalance
+    ? orgBalances.filter(row => row.kind === selectedChartBalance.kind
+      && row.available.asset === selectedChartBalance.asset && row.available.scale === selectedChartBalance.scale)
+      .reduce((units, row) => units + BigInt(row.available.units), 0n)
+    : 0n;
+  const largestChartBalance = chartBalances.reduce((largest, row) => row.units > largest ? row.units : largest,
+    unallocatedBalance);
+  const chartSlices = largestChartBalance > 0n ? chartBalances.filter(row => row.units > 0n).map(row => ({
+    label: row.workspace.name,
+    value: Number((row.units * 1_000_000n) / largestChartBalance),
+    color: workspaceChartColors[row.index % workspaceChartColors.length],
+  })).concat(unallocatedBalance > 0n ? [{
+    label: 'Unallocated · Organization pool',
+    value: Number((unallocatedBalance * 1_000_000n) / largestChartBalance),
+    color: '#64748b',
+  }] : []) : [];
+  const chartTotal = chartBalances.reduce((total, row) => total + row.units, unallocatedBalance);
+  const chartTotalAmount: BillingAmount | null = selectedChartBalance ? {
+    asset: selectedChartBalance.asset, scale: selectedChartBalance.scale, units: chartTotal.toString(),
+  } : null;
 
   return (
     <div className="col-span-12 grid grid-cols-12 gap-4 md:gap-5" id="manual-credit-allocation">
-      {!loading && !snapshot?.uninitialized && orgBalances.length > 0 && (
-        <div className="col-span-12 grid grid-cols-12 gap-3">
-              {orgBalances.map(row => (
-                <KpiCard key={row.kind + '-' + row.available.asset + '-' + row.available.scale}
-                  span={{ xs: 12, sm: 6, xl: 4 }} icon={Wallet} 
-                  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                  label={friendlyKind(row.kind) + ' not yet shared'}
-                  value={formatCreditAmount(row.available)}
-                  sub={`Held: ${formatCreditAmount(row.held)}`} />
-              ))}
-            </div>
-      )}
       <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
         <CardHeader title="Organization credit pool" icon={Wallet}
-          action={<Button type="button" size="sm" variant="secondary" icon={RefreshCw} onClick={() => void refresh()} disabled={busy || loading}>Refresh</Button>} />
+          action={<div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="secondary" icon={RefreshCw} onClick={() => void refresh()} disabled={busy || loading}>Refresh</Button>
+            <Button type="button" size="sm" variant="primary" icon={ArrowRight} onClick={() => setAllocationDialogOpen(true)} disabled={loading || !snapshot || snapshot.uninitialized}>
+              Send credits
+            </Button>
+          </div>} />
         {error && <p role="alert" className="mb-3 rounded-lg border border-rose-300/50 bg-rose-500/5 px-3 py-2 text-xs text-rose-600">{error}</p>}
         {notice && <p role="status" className="mb-3 flex items-center gap-2 text-xs text-[var(--text-primary)]">
           <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-600" />{notice}</p>}
@@ -145,10 +172,12 @@ export default function ManualWorkspaceAllocation() {
         )}
       </Card>
 
-      <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-7 sm:!p-5">
-        <CardHeader title="Send credits to a workspace" subtitle="Choose where the credits go. Nothing moves until you confirm." icon={ArrowRight} />
+      <Modal open={allocationDialogOpen} onClose={() => { if (!busy) setAllocationDialogOpen(false); }}
+        title="Send credits to a workspace" subtitle="Choose where the credits go. Nothing moves until you confirm."
+        maxWidth="max-w-2xl" className="!max-h-[92vh]">
+        <div className="space-y-4">
         {snapshot && !snapshot.transfersEnabled && (
-          <p role="status" className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs leading-5 text-[var(--text-secondary)]">
+          <p role="status" className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs leading-5 text-[var(--text-secondary)]">
             You can check a transfer, but sending credits is not enabled yet. The platform team must enable it first.
           </p>
         )}
@@ -235,12 +264,47 @@ export default function ManualWorkspaceAllocation() {
             </Button>
           </div>
         )}
-      </Card>
+        </div>
+      </Modal>
 
       <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-5 sm:!p-5">
         <CardHeader title="Workspace balances" subtitle="See how many credits each workspace can use" icon={ShieldCheck} />
         <p className="mb-3 flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]"><Building2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /> Workspace balances are separate from the organization pool above.</p>
-        {rowsByWorkspace.length ? <div className="max-h-[390px] space-y-3 overflow-auto">
+        {rowsByWorkspace.length || selectedChartBalance ? <>
+          {selectedChartBalance && <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
+            {chartBalanceOptions.length > 1 && <label className="mb-3 flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)]">
+              <span>Credit type</span>
+              <select aria-label="Workspace balance chart credit type" className="max-w-[65%] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1.5 text-xs text-[var(--text-primary)]"
+                value={selectedChartBalance.key} onChange={event => setSelectedChartBalanceKey(event.target.value)}>
+                {chartBalanceOptions.map(option => <option key={option.key} value={option.key}>{friendlyKind(option.kind)} · {option.asset}</option>)}
+              </select>
+            </label>}
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <PieChart slices={chartSlices} size={136} centerLabel={<div className="max-w-[90px] text-center">
+                <p className="truncate text-xs font-bold text-[var(--text-primary)]">{chartTotalAmount ? formatCreditAmount(chartTotalAmount) : '—'}</p>
+                <p className="text-[9px] uppercase tracking-wide text-[var(--text-muted)]">Available</p>
+              </div>} />
+              <div className="w-full min-w-0 space-y-1.5">
+                {chartBalances.map(row => <div key={row.workspace.id} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[var(--text-secondary)]">
+                    <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.units > 0n ? workspaceChartColors[row.index % workspaceChartColors.length] : 'var(--border)' }} />
+                    <span className="truncate">{row.workspace.name}</span>
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">{row.balance ? formatCreditAmount(row.balance.available) : formatCreditAmount({ ...selectedChartBalance, units: '0' })}</span>
+                </div>)}
+                <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-1.5 text-[11px]">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[var(--text-secondary)]">
+                    <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: '#64748b' }} />
+                    <span className="truncate">Unallocated · Organization pool</span>
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
+                    {formatCreditAmount({ ...selectedChartBalance, units: unallocatedBalance.toString() })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>}
+          {rowsByWorkspace.length ? <div className="max-h-[290px] space-y-3 overflow-auto">
           {rowsByWorkspace.map(row => (
             <div key={row.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
               <p className="text-xs font-semibold text-[var(--text-primary)]">{row.name}
@@ -256,7 +320,9 @@ export default function ManualWorkspaceAllocation() {
               )) : <p className="mt-1 text-[11px] text-[var(--text-muted)]">No credits given to this workspace yet.</p>}
             </div>
           ))}
-        </div> : <p className="text-xs text-[var(--text-muted)]">No workspaces available.</p>}
+          </div>
+          : <p className="text-xs text-[var(--text-muted)]">No workspaces available.</p>}
+        </> : <p className="text-xs text-[var(--text-muted)]">No workspace or organization pool balances available.</p>}
       </Card>
 
       <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">

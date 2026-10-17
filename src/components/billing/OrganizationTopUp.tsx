@@ -326,11 +326,7 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
           </Card>
       )}
       {view === 'credits' && manualAllocationAllowed && (
-        <section className="col-span-12 space-y-3" aria-labelledby="workspace-credit-allocation-heading">
-          <div>
-            <h2 id="workspace-credit-allocation-heading" className="text-base font-semibold text-[var(--text-primary)]">Workspace allocation</h2>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">Share available credits with the workspaces on your multi-workspace plan.</p>
-          </div>
+        <section className="col-span-12" aria-label="Workspace credit allocation controls">
           <ManualWorkspaceAllocation />
         </section>
       )}
