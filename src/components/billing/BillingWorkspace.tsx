@@ -89,13 +89,6 @@ const descriptions: Record<BillingPanel, string> = {
 const money = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value) ? '—' : formatInr(value);
 
-function hasMultiWorkspaceTerms(termsSnapshot: Record<string, unknown> | null): boolean {
-  if (!termsSnapshot) return false;
-  const terms = (termsSnapshot.effectiveTerms || termsSnapshot.terms || termsSnapshot) as Record<string, unknown>;
-  const structure = terms.structure as Record<string, unknown> | undefined;
-  return structure?.mode === 'same_industry' || structure?.mode === 'mixed_industry';
-}
-
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
   workspaceId, view, onNavigate, workspaceBilling, organizationPricing, callCount, loading, error,
@@ -108,7 +101,6 @@ export default function BillingWorkspace({
   const { authorization } = useAuthorization();
   const canAllocate = canAllocateOrganizationCredits(authorization);
   const [allocationCapability, setAllocationCapability] = React.useState<BillingOverview['allocation'] | null>(null);
-  const [allocationTerms, setAllocationTerms] = React.useState<BillingOverview['subscriptionTerms']>(null);
   const [allocationCapabilityError, setAllocationCapabilityError] = React.useState(false);
   React.useEffect(() => {
     let current = true;
@@ -116,18 +108,18 @@ export default function BillingWorkspace({
     billingClient.organizationOverview().then(overview => {
       if (!current) return;
       setAllocationCapability(overview.allocation || null);
-      setAllocationTerms(overview.subscriptionTerms || null);
       setAllocationCapabilityError(false);
     }).catch(() => {
       if (!current) return;
       setAllocationCapability(null);
-      setAllocationTerms(null);
       setAllocationCapabilityError(true);
     });
     return () => { current = false; };
   }, [authorization?.permissions]);
-  const multiWorkspacePlan = hasMultiWorkspaceTerms(allocationTerms);
-  const canShowAllocation = canAllocate && multiWorkspacePlan && allocationCapability?.mode === 'manual';
+  // The backend resolves manual mode from effective terms and legacy saved
+  // workspace policy. Do not independently infer it from subscriptionTerms:
+  // older organizations may have a workspace policy but no billing terms row.
+  const canShowAllocation = canAllocate && allocationCapability?.mode === 'manual';
   const canUseManualAllocation = canShowAllocation && allocationCapability?.mode === 'manual'
     && allocationCapability.status === 'ready' && allocationCapability.manualAllocationAllowed;
   React.useEffect(() => {
@@ -183,6 +175,22 @@ export default function BillingWorkspace({
         </div>
       )}
       {loading && <p role="status" className="col-span-12 text-xs text-[var(--text-muted)]">Refreshing billing totals…</p>}
+
+      {view === 'credits' && canAllocate && allocationCapabilityError && (
+        <p role="status" className="col-span-12 rounded-lg border border-amber-300/60 bg-amber-500/5 p-3 text-xs text-[var(--text-secondary)]">
+          Workspace allocation availability could not be checked. Refresh the billing page to try again.
+        </p>
+      )}
+      {view === 'credits' && canShowAllocation && !canUseManualAllocation && (
+        <section className="col-span-12 rounded-xl border border-[var(--border)] p-4" aria-label="Workspace allocation status">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Workspace allocation</h2>
+          <p role="status" className="mt-1 text-xs text-[var(--text-secondary)]">
+            {allocationCapability?.status === 'review_required'
+              ? 'The number of workspaces exceeds this plan’s limit. Review the plan or workspace setup before allocating credits.'
+              : 'Workspace allocation is not ready for this plan yet. Check the workspace and subscription setup.'}
+          </p>
+        </section>
+      )}
 
       {view === 'dashboard' && (
         <>
