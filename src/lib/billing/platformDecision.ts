@@ -48,6 +48,7 @@ export async function decidePlatformPayment(
 export interface PlatformPaymentReview {
   id: string;
   orgId: string;
+  organizationName?: string | null;
   purpose: 'subscription' | 'topup' | 'invoice';
   status: string;
   version: number;

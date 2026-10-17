@@ -138,7 +138,7 @@ export default function PaymentReviewsPage() {
       loading={loading && rows.length === 0}
       emptyMessage="No matching payments."
       columns={[
-        { key: 'organization', header: 'Organization', cell: row => <span className="font-mono text-xs">{row.orgId}</span> },
+        { key: 'organization', header: 'Organization', cell: row => <div><div className="font-medium">{row.organizationName || row.orgId}</div><div className="font-mono text-xs text-[var(--text-muted)]">{row.orgId}</div></div> },
         { key: 'reference', header: 'Reference', cell: row => row.paymentReference || '—' },
         { key: 'purpose', header: 'Purpose', cell: row => paymentPurpose(row) },
         { key: 'expected', header: 'Expected amount', cell: row => <span className="font-semibold">{formatAmount(row.expectedAmount)}</span>, align: 'right' },
@@ -158,7 +158,7 @@ export default function PaymentReviewsPage() {
       className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">Load more</button>}
     {selected && <div className="space-y-4 rounded-xl border border-[var(--border)] p-5">
       <h3 className="font-semibold">Review {paymentPurpose(selected)} · {formatAmount(selected.expectedAmount)}</h3>
-      <p className="text-sm">Organization: {selected.orgId} · Reference: {selected.paymentReference || '—'} ·
+      <p className="text-sm">Organization: {selected.organizationName || selected.orgId} <span className="font-mono text-xs text-[var(--text-muted)]">({selected.orgId})</span> · Reference: {selected.paymentReference || '—'} ·
         Version: {selected.version}</p>
       <p className="text-sm">Expected: {formatAmount(selected.expectedAmount)}. Check the bank record independently.</p>
       {selected.subscriptionUpgrade && <section aria-label="Subscription upgrade quote details" className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
