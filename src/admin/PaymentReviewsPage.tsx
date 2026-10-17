@@ -9,6 +9,7 @@ import DataTable, { type Column } from '../components/ui/DataTable';
 import Widget from '../components/ui/Widget';
 import FilterBar from '../components/ui/FilterBar';
 import Button from '../components/ui/Button';
+import { useToast } from '../components/ui/Toast';
 
 const formatAmount = (amount: PlatformPaymentReview['expectedAmount']) => {
   const digits = BigInt(amount.units);
@@ -32,10 +33,10 @@ export default function PaymentReviewsPage() {
   const [receivedUnits, setReceivedUnits] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ type: PaymentDecision; key: string } | null>(null);
+  const { showToast } = useToast();
 
   const load = useCallback(async (nextCursor?: string | null, append = false) => {
     setLoading(true);
@@ -97,13 +98,13 @@ export default function PaymentReviewsPage() {
           receivedAmount: { ...selected.expectedAmount, units: receivedUnits },
         } : { reason: reason.trim() }),
       }, { idempotencyKey: action.key });
-      setSuccess(decision === 'approve' && selected.purpose === 'topup'
+      showToast(decision === 'approve' && selected.purpose === 'topup'
         ? outcome.funding?.status === 'active'
           ? `Top-up approved. ${formatAmount(selected.expectedAmount)} in usage credits was issued to this organization's credit pool.`
           : 'Top-up approved. Verify credit funding status before communicating the new balance.'
         : decision === 'approve' && selected.workspaceAddon
           ? `Workspace payment approved for ${selected.workspaceAddon.name}. Its paid access period has been activated.`
-          : `Payment ${decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'sent for clarification'}.`);
+          : `Payment ${decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'sent for clarification'}.`, 'success');
       setSelected(null);
       setPendingAction(null);
       await load();
@@ -116,7 +117,6 @@ export default function PaymentReviewsPage() {
 
   return <section className="space-y-5">
     {error && <p role="alert" className="rounded-lg border border-rose-200 p-3 text-xs text-rose-700">{error}</p>}
-    {success && <p role="status" className="rounded-lg border border-emerald-200 p-3 text-xs text-emerald-700">{success}</p>}
     <Widget showHeader={false} padding="none">
       <div className="border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
         <FilterBar
