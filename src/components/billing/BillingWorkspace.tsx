@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Plus, ReceiptText, Wallet, RefreshCw } from 'lucide-react';
+import { Activity, Clock3, PhoneCall, Plus, ReceiptText, Wallet, RefreshCw, ChartNoAxesCombined } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
@@ -214,39 +214,46 @@ export default function BillingWorkspace({
 
       {creditsAndUsageView && (
         <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Credits and usage">
-            {rechargeBased && <div className="col-span-12 grid grid-cols-12 gap-3">
-              <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Wallet} 
+          <div className="col-span-12 grid grid-cols-12 gap-3">
+            {[
+              { title: 'Usage cost so far', value: money(workspaceBilling?.periodSpendInr), detail: 'All workspaces combined', icon: Activity },
+              { title: 'Calls', value: callCount ?? '—', detail: 'Recorded this period', icon: PhoneCall },
+              { title: 'Call time', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total speaking time', icon: Clock3 },
+              { title: 'AI costs', value: money(workspaceBilling?.aiSpendInr), detail: 'Voice AI and call processing', icon: ChartNoAxesCombined },
+              ...(rechargeBased ? [{ title: 'Call credits ready to use', value: formatInr(Math.max(0, rechargeBalanceInr - rechargeReservedInr)), detail: 'After credits reserved for calls in progress', icon: Wallet }] : []),
+            ].map(({ title, value, detail, icon }) =>
+              <KpiCard key={title} span={{ xs: 12, sm: 6, lg: 3 }}
                 iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                label="Call credits ready to use" value={formatInr(Math.max(0,rechargeBalanceInr-rechargeReservedInr))}
-                sub="Balance after credits reserved for calls in progress" />
-            </div>}
-          <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
-            <CardHeader title="Usage activity breakdown" subtitle="Aggregate charges and call activity for the current billing period" icon={Activity}
-              action={onOpenCallLogs ? <Button type="button" size="sm" variant="secondary" onClick={onOpenCallLogs}>View call logs</Button> : undefined} />
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-xs">
-                <thead className="border-b border-[var(--border)] text-[var(--text-secondary)]">
-                  <tr><th scope="col" className="pb-3 pr-4 font-medium">Activity</th><th scope="col" className="pb-3 pr-4 font-medium">Usage</th><th scope="col" className="pb-3 pr-4 font-medium">Cost</th><th scope="col" className="pb-3 font-medium">Details</th></tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
-                  <tr><th scope="row" className="py-3 pr-4 font-semibold">AI credits / processing</th><td className="py-3 pr-4">{formatCallTime(workspaceBilling?.aiMinutesUsed)}</td>
-                    <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.aiSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">Voice AI usage this period</td></tr>
-                  <tr><th scope="row" className="py-3 pr-4 font-semibold">Call credits / phone service</th><td className="py-3 pr-4">{callCount ?? '—'} calls</td>
-                    <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.phoneSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Phone charges included in billing' : 'Provider estimate; billed separately'}</td></tr>
-                  <tr><th scope="row" className="py-3 pr-4 font-semibold">Total recorded usage</th><td className="py-3 pr-4">{periodLabel}</td>
-                    <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.periodSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">Billing-period aggregate; not an additional charge</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-xs text-[var(--text-muted)]">These are period-level totals from billing data, not individual credit ledger transactions. Phone provider estimates may be billed separately.</p>
-          </Card>
-
+                label={title} value={value} sub={detail} icon={icon} />)}
+          </div>
         </section>
       )}
 
       {(creditsAndUsageView || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={creditsAndUsageView ? 'credits' : view} onNavigate={onNavigate}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} />
+      )}
+      {creditsAndUsageView && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Usage activity breakdown" subtitle="Aggregate charges and call activity for the current billing period" icon={Activity}
+            action={onOpenCallLogs ? <Button type="button" size="sm" variant="secondary" onClick={onOpenCallLogs}>View call logs</Button> : undefined} />
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-xs">
+              <thead className="border-b border-[var(--border)] text-[var(--text-secondary)]">
+                <tr><th scope="col" className="pb-3 pr-4 font-medium">Activity</th><th scope="col" className="pb-3 pr-4 font-medium">Usage</th><th scope="col" className="pb-3 pr-4 font-medium">Cost</th><th scope="col" className="pb-3 font-medium">Details</th></tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
+                <tr><th scope="row" className="py-3 pr-4 font-semibold">AI credits / processing</th><td className="py-3 pr-4">{formatCallTime(workspaceBilling?.aiMinutesUsed)}</td>
+                  <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.aiSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">Voice AI usage this period</td></tr>
+                <tr><th scope="row" className="py-3 pr-4 font-semibold">Call credits / phone service</th><td className="py-3 pr-4">{callCount ?? '—'} calls</td>
+                  <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.phoneSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">{phoneChargesBillable ? 'Phone charges included in billing' : 'Provider estimate; billed separately'}</td></tr>
+                <tr><th scope="row" className="py-3 pr-4 font-semibold">Total recorded usage</th><td className="py-3 pr-4">{periodLabel}</td>
+                  <td className="py-3 pr-4 font-semibold tabular-nums">{money(workspaceBilling?.periodSpendInr)}</td><td className="py-3 text-[var(--text-secondary)]">Billing-period aggregate; not an additional charge</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-[var(--text-muted)]">These are period-level totals from billing data, not individual credit ledger transactions. Phone provider estimates may be billed separately.</p>
+        </Card>
       )}
       {canSubmitPayment && <Modal open={topupDialogOpen} onClose={() => setTopupDialogOpen(false)}
         title="Add usage credits" subtitle="Submit a payment reference and receipt for approval."
