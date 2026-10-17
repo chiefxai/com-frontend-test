@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardHeader } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
-import { Building2, CalendarClock, CreditCard, Layers3, PhoneCall, Wallet, Sparkles } from 'lucide-react';
+import { Building2, CalendarClock, CreditCard, PhoneCall, Wallet, Sparkles } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
 import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse, WorkspaceBillingOverview } from '../../lib/billing/types';
 import type { CallLog } from '../../types';
@@ -182,12 +182,10 @@ export default function BillingOverviewHome({
       </Card>
     </div>
     <div id="billing-subscription-details" className="grid grid-cols-12 gap-3 scroll-mt-6" aria-label="Subscription pricing and allowances">
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={CreditCard}  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+      <KpiCard span={{ xs: 12, sm: 6, lg: 6 }} icon={CreditCard}  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
         label="Estimated monthly plan price" value={money(pricing?.totalMonthlyInr)} sub="Before taxes and usage charges" />
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Building2}  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+      <KpiCard span={{ xs: 12, sm: 6, lg: 6 }} icon={Building2}  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
         label="Workspaces" value={pricing?.workspaceCount ?? '—'} sub="Offices or teams on this plan" />
-      <KpiCard span={{ xs: 12, sm: 6, lg: 4 }} icon={Layers3}  iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-        label="Extra work types" value={pricing?.additionalIndustries ?? '—'} sub="Additional industries in your plan" />
     </div>
       {showWorkspaceAllocation && <Card padding="sm" className="col-span-12 min-w-0">
         <CardHeader title="Current workspace allocation"

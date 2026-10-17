@@ -338,7 +338,6 @@ export default function DialerSimulator({
   mode,
   setMode,
   orgSettings,
-  setOrgSettings,
   isOrganizationAdmin = false,
   isActive = true
 }: DialerSimulatorProps) {
@@ -737,18 +736,9 @@ Real Tamil speakers do not say the "correct" written form of a word. They contra
       connectorManaged: true as const,
     })),
   ].filter((number, index, all) => all.findIndex(candidate => candidate.number === number.number) === index);
-  // Backend-persisted (orgSettings.defaultOutboundNumber, via
-  // POST /api/settings/org) instead of plain component state — this used
-  // to reset to the first dialable number on every page reload, even on
-  // the same browser, and never carried over to a different device on the
-  // same account. setSelectedOutboundNumber below writes through to
-  // orgSettings so every change is saved automatically (the existing
-  // debounced org-settings sync already running in App.tsx picks it up).
+  // Use the organization's saved caller ID for outbound calls; if it is no
+  // longer available, fall back to its first ready number.
   const [selectedOutboundNumber, setSelectedOutboundNumberState] = useState<string>('');
-  const setSelectedOutboundNumber = (number: string) => {
-    setSelectedOutboundNumberState(number);
-    setOrgSettings?.((prev) => ({ ...prev, defaultOutboundNumber: number }));
-  };
   useEffect(() => {
     if (dialableNumbers.length === 0) return;
     if (selectedOutboundNumber && dialableNumbers.some(number => number.number === selectedOutboundNumber)) return;
@@ -1854,21 +1844,11 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
         taskPage
           ? undefined
           : dialerMode === 'outbound' ? (
-              <div className="flex items-center gap-2">
-              <label className="flex items-center text-xs text-[var(--text-muted)]">Caller ID
-                <select aria-label="Outbound caller ID" className="ml-2 h-9 max-w-64 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-2 text-xs text-[var(--text-primary)]" value={selectedOutboundNumber} onChange={event => setSelectedOutboundNumber(event.target.value)} disabled={dialableNumbers.length === 0}>
-                  {dialableNumbers.length === 0 && <option value="">No ready outbound number</option>}
-                  {dialableNumbers.map(number => <option key={number.number} value={number.number}>
-                    {number.friendlyName || number.number}{'connectorManaged' in number && number.connectorManaged ? ' · Connector managed' : ''}
-                  </option>)}
-                </select>
-              </label>
               <IconButton
                 icon={Plus}
                 label="New outbound campaign"
                 onClick={() => setShowAssignTask(true)}
               />
-              </div>
             ) : undefined
       }
       toolbar={
@@ -2138,7 +2118,7 @@ Currently on question ${nextIndex} out of ${selectedTask.questions.length}. Next
                   New outbound campaign
                 </Button>
               </div>
-              <div className="flex min-h-[360px] flex-1 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-6 py-10">
+              <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-6 py-10">
                 <div className="flex max-w-sm flex-col items-center text-center">
                   <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--bg-subtle)]">
                     <Megaphone className="h-6 w-6 text-[var(--text-muted)]" />
