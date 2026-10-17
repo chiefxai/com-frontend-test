@@ -71,7 +71,7 @@ export default function PaymentReviewsPage() {
       // Opens a short-lived private signed URL. It is never persisted in app state.
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to open receipt.');
+      showToast(cause instanceof Error ? cause.message : 'Unable to open receipt.', 'error');
     }
   };
 
@@ -111,7 +111,7 @@ export default function PaymentReviewsPage() {
       setPendingAction(null);
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Payment decision failed.');
+      showToast(cause instanceof Error ? cause.message : 'Payment decision failed.', 'error');
     } finally {
       setBusy(false);
     }

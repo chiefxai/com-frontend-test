@@ -107,7 +107,10 @@ export default function NotificationBell({ audience, placement = 'header' }: Pro
           <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
             <span className="text-sm font-semibold text-[var(--text-primary)]">Notifications</span>
             <div className="flex items-center gap-3">
-              {unread > 0 && <button type="button" onClick={() => void mark()} className="text-[11px] text-[var(--text-secondary)] hover:text-blue-600">Mark all read</button>}
+              {unread > 0 && <button type="button" aria-label="Mark all notifications as read" title="Mark all as read"
+                onClick={() => void mark()} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+                <CheckCheck aria-hidden="true" className="h-4 w-4" />
+              </button>}
               <button type="button" aria-label="Notification settings" title="Notification settings" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" onClick={() => { setOpen(false); navigate(settingsPath); }}>
                 <Settings2 className="h-4 w-4" />
               </button>
@@ -120,19 +123,26 @@ export default function NotificationBell({ audience, placement = 'header' }: Pro
             </div>}
             {!loading && rows.length === 0 && !error && <div className="flex flex-col items-center gap-2 p-10 text-xs text-[var(--text-muted)]"><MailCheck className="h-6 w-6" /> All caught up</div>}
             {rows.map(row => (
-              <button key={row.id} type="button" className={`flex w-full items-start gap-3 border-b border-[var(--border)] px-4 py-3 text-left last:border-0 hover:bg-[var(--bg-subtle)] ${row.readAt ? '' : 'bg-blue-500/5'}`}
-                onClick={() => {
-                  if (!row.readAt) void mark(row.id);
-                  if (row.actionPath?.startsWith('/') && !row.actionPath.startsWith('//')) { setOpen(false); navigate(row.actionPath); }
-                }}>
-                <span className="mt-0.5 shrink-0">{notificationIcon(row.eventKey)}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold text-[var(--text-primary)]">{row.title}</span>
-                  <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">{row.message}</span>
-                  <span className="mt-1 block text-[10px] text-[var(--text-muted)]">{timeAgo(row.occurredAt)}</span>
-                </span>
-                {!row.readAt && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-label="Unread" />}
-              </button>
+              <div key={row.id} className={`flex items-start gap-2 border-b border-[var(--border)] px-3 py-2 last:border-0 ${row.readAt ? '' : 'bg-blue-500/5'}`}>
+                <button type="button" className="flex min-w-0 flex-1 items-start gap-3 rounded-lg px-1 py-1 text-left hover:bg-[var(--bg-subtle)]"
+                  onClick={() => {
+                    if (!row.readAt) void mark(row.id);
+                    if (row.actionPath?.startsWith('/') && !row.actionPath.startsWith('//')) { setOpen(false); navigate(row.actionPath); }
+                  }}>
+                  <span className="mt-0.5 shrink-0">{notificationIcon(row.eventKey)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold text-[var(--text-primary)]">{row.title}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">{row.message}</span>
+                    <span className="mt-1 block text-[10px] text-[var(--text-muted)]">{timeAgo(row.occurredAt)}</span>
+                  </span>
+                  {!row.readAt && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-label="Unread" />}
+                </button>
+                {!row.readAt && <button type="button" aria-label={`Mark ${row.title} as read`} title="Mark as read"
+                  onClick={() => void mark(row.id)}
+                  className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]">
+                  <CheckCheck aria-hidden="true" className="h-4 w-4" />
+                </button>}
+              </div>
             ))}
           </div>
         </div>
