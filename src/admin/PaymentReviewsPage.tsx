@@ -79,11 +79,13 @@ export default function PaymentReviewsPage() {
     if (!selected || busy) return;
     if (decision === 'approve' && (!selected.proofAvailable || !reviewedProof ||
       !/^\d+$/.test(receivedUnits) || receivedUnits !== selected.expectedAmount.units)) {
-      setError('Inspect the receipt and verify the exact expected payment amount before approval.');
+      setError('');
+      showToast('Inspect the receipt and verify the exact expected payment amount before approval.', 'error');
       return;
     }
     if (decision !== 'approve' && !reason.trim()) {
-      setError('A reason is required for rejection or clarification.');
+      setError('');
+      showToast('A reason is required for rejection or clarification.', 'error');
       return;
     }
     // Same action reuses its stable key if a retry is necessary.
