@@ -30,7 +30,8 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate,
   manualAllocationAllowed = false, embeddedTopup = false, onTopupClose,
-  callCount = null, callTime = '—', aiSpendInr = null, phoneSpendInr = null }: { canSubmit?: boolean; view?: BillingPanel;
+  callCount = null, callTime = '—', aiSpendInr = null, phoneSpendInr = null,
+  allocationDialogOpen = false, onAllocationDialogOpenChange }: { canSubmit?: boolean; view?: BillingPanel;
   onNavigate?: (view: BillingPanel) => void;
   embeddedTopup?: boolean;
   onTopupClose?: () => void;
@@ -38,7 +39,9 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
   callCount?: number | null;
   callTime?: string;
   aiSpendInr?: number | null;
-  phoneSpendInr?: number | null }) {
+  phoneSpendInr?: number | null;
+  allocationDialogOpen?: boolean;
+  onAllocationDialogOpenChange?: (open: boolean) => void }) {
   const { can } = useAuthorization();
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
@@ -315,7 +318,8 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
       )}
       {view === 'credits' && manualAllocationAllowed && (
         <section className="col-span-12" aria-label="Workspace credit allocation controls">
-          <ManualWorkspaceAllocation />
+          <ManualWorkspaceAllocation allocationDialogOpen={allocationDialogOpen}
+            onAllocationDialogOpenChange={onAllocationDialogOpenChange || (() => {})} />
         </section>
       )}
       {view === 'credits' && can('billing.organization.read') && (

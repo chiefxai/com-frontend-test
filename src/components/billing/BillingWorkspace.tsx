@@ -127,6 +127,7 @@ export default function BillingWorkspace({
   const [renewalDialogOpen, setRenewalDialogOpen] = React.useState(false);
   const [graceDialogOpen, setGraceDialogOpen] = React.useState(false);
   const [topupDialogOpen, setTopupDialogOpen] = React.useState(false);
+  const [manualAllocationDialogOpen, setManualAllocationDialogOpen] = React.useState(false);
   const canManageSubscription = Boolean(authorization && authorization.permissions.includes('billing.read') &&
     ['Owner', 'Organization Admin', 'Billing Admin'].includes(authorization.organizationRole || ''));
   const openSubscriptionTask = (task: 'start' | 'renew' | 'upgrade' | 'more-time') => {
@@ -143,7 +144,11 @@ export default function BillingWorkspace({
       <Card padding="none" className="col-span-12 min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
           <p className="text-xs font-medium text-[var(--text-secondary)]">{descriptions[view]}</p>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {creditsAndUsageView && canUseManualAllocation && <Button type="button" size="sm" variant="primary"
+              icon={Plus} onClick={() => setManualAllocationDialogOpen(true)}>Send credits</Button>}
           <span className="rounded-lg bg-[var(--bg-subtle)] px-3 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]">{periodLabel}</span>
+          </div>
         </div>
         <nav aria-label="Billing sections" className="flex gap-1 overflow-x-auto border-t border-[var(--border)] p-2 sm:px-3">
           {sections.filter(row => row.key !== 'allocation' || canShowAllocation).map(({ key, label, icon: Icon }) => (
@@ -215,7 +220,9 @@ export default function BillingWorkspace({
         <OrganizationTopUp canSubmit={canSubmitPayment} view={creditsAndUsageView ? 'credits' : view} onNavigate={onNavigate}
           manualAllocationAllowed={Boolean(canUseManualAllocation)} callCount={callCount}
           callTime={formatCallTime(workspaceBilling?.aiMinutesUsed)}
-          aiSpendInr={workspaceBilling?.aiSpendInr ?? null} phoneSpendInr={workspaceBilling?.phoneSpendInr ?? null} />
+          aiSpendInr={workspaceBilling?.aiSpendInr ?? null} phoneSpendInr={workspaceBilling?.phoneSpendInr ?? null}
+          allocationDialogOpen={manualAllocationDialogOpen}
+          onAllocationDialogOpenChange={setManualAllocationDialogOpen} />
       )}
       {creditsAndUsageView && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
@@ -35,7 +35,10 @@ export function unitsFromInput(input: string, scale: number): string | null {
 const friendlyKind = (kind: string) => kind === 'topup' ? 'Top-up credits' : 'Subscription credits';
 const workspaceChartColors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777', '#0891b2', '#4f46e5', '#65a30d'];
 
-export default function ManualWorkspaceAllocation() {
+export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllocationDialogOpenChange }: {
+  allocationDialogOpen: boolean;
+  onAllocationDialogOpenChange: (open: boolean) => void;
+}) {
   const [snapshot, setSnapshot] = React.useState<ManualAllocationOverview | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
@@ -44,7 +47,6 @@ export default function ManualWorkspaceAllocation() {
   const [workspaceId, setWorkspaceId] = React.useState('');
   const [inputAmount, setInputAmount] = React.useState('');
   const [preview, setPreview] = React.useState<ManualAllocationPreview | null>(null);
-  const [allocationDialogOpen, setAllocationDialogOpen] = React.useState(false);
   const [selectedChartBalanceKey, setSelectedChartBalanceKey] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [pending, setPending] = React.useState<ReturnType<typeof createBillingMutation<{ journalId: string; grantId: string }>> | null>(null);
@@ -156,7 +158,7 @@ export default function ManualWorkspaceAllocation() {
 
   return (
     <div className="col-span-12 grid grid-cols-12 gap-4 md:gap-5" id="manual-credit-allocation">
-      <Modal open={allocationDialogOpen} onClose={() => { if (!busy) setAllocationDialogOpen(false); }}
+      <Modal open={allocationDialogOpen} onClose={() => { if (!busy) onAllocationDialogOpenChange(false); }}
         title="Send credits to a workspace" subtitle="Choose where the credits go. Nothing moves until you confirm."
         maxWidth="max-w-2xl" className="!max-h-[92vh]">
         <div className="space-y-4">
@@ -253,12 +255,13 @@ export default function ManualWorkspaceAllocation() {
 
       <Card padding="sm" className="col-span-12 min-w-0 lg:col-span-6 sm:!p-5">
         <CardHeader title="Workspace balances" icon={ShieldCheck}
-          action={<div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="secondary" icon={RefreshCw} onClick={() => void refresh()} disabled={busy || loading}>Refresh</Button>
-            <Button type="button" size="sm" variant="primary" icon={ArrowRight} onClick={() => setAllocationDialogOpen(true)} disabled={loading || !snapshot || snapshot.uninitialized}>
-              Send credits
-            </Button>
-          </div>} />
+          action={chartBalanceOptions.length > 1 ? <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <span className="sr-only">Credit type</span>
+            <select aria-label="Workspace balance chart credit type" className="max-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1.5 text-xs text-[var(--text-primary)]"
+              value={selectedChartBalance?.key || ''} onChange={event => setSelectedChartBalanceKey(event.target.value)}>
+              {chartBalanceOptions.map(option => <option key={option.key} value={option.key}>{friendlyKind(option.kind)} · {option.asset}</option>)}
+            </select>
+          </label> : undefined} />
         {error && <p role="alert" className="mb-3 rounded-lg border border-rose-300/50 bg-rose-500/5 px-3 py-2 text-xs text-rose-600">{error}</p>}
         {notice && <p role="status" className="mb-3 flex items-center gap-2 text-xs text-[var(--text-primary)]">
           <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-600" />{notice}</p>}
@@ -271,34 +274,11 @@ export default function ManualWorkspaceAllocation() {
         )}
         {rowsByWorkspace.length || selectedChartBalance ? <>
           {selectedChartBalance && <div className="mb-4 px-1 py-2">
-            {chartBalanceOptions.length > 1 && <label className="mb-3 flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)]">
-              <span>Credit type</span>
-              <select aria-label="Workspace balance chart credit type" className="max-w-[65%] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1.5 text-xs text-[var(--text-primary)]"
-                value={selectedChartBalance.key} onChange={event => setSelectedChartBalanceKey(event.target.value)}>
-                {chartBalanceOptions.map(option => <option key={option.key} value={option.key}>{friendlyKind(option.kind)} · {option.asset}</option>)}
-              </select>
-            </label>}
             <div className="flex flex-col items-center gap-4">
               <PieChart slices={visibleChartSlices} size={240} centerLabel={<div className="max-w-[135px] text-center">
                 <p className="truncate text-xs font-bold text-[var(--text-primary)]">{chartTotalAmount ? formatCreditAmount(chartTotalAmount) : '—'}</p>
                 <p className="text-[9px] uppercase tracking-wide text-[var(--text-muted)]">Available</p>
               </div>} />
-              {visibleChartSlices.length > 0 && <ul aria-label="Workspace credit allocation breakdown" className="w-full space-y-2">
-                {visibleChartSlices.map(slice => {
-                  const total = visibleChartSlices.reduce((sum, item) => sum + item.value, 0);
-                  const percentage = total > 0 ? (slice.value / total) * 100 : 0;
-                  return <li key={slice.label} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="flex min-w-0 items-center gap-2 text-[var(--text-secondary)]">
-                      <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
-                      <span className="truncate">{slice.label}</span>
-                    </span>
-                    <span className="shrink-0 text-right tabular-nums text-[var(--text-primary)]">
-                      <span className="font-semibold">{slice.displayValue}</span>
-                      <span className="ml-2 text-[var(--text-muted)]">{percentage.toFixed(1)}%</span>
-                    </span>
-                  </li>;
-                })}
-              </ul>}
             </div>
           </div>}
           {!selectedChartBalance && <p className="text-center text-xs text-[var(--text-muted)]">No credit balances available to chart.</p>}

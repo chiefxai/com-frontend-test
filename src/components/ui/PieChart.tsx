@@ -66,6 +66,7 @@ function describeSlice(cx: number, cy: number, outerRadius: number, innerRadius:
 // or stroke clipping in browser/PDF renderers.
 export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, centerLabel, className = '' }: PieChartProps) {
   const [hoveredSliceIndex, setHoveredSliceIndex] = React.useState<number | null>(null);
+  const tooltipId = React.useId();
   const chartSize = Number.isFinite(size) && size > 0 ? size : 160;
   const safeSlices = slices.filter(slice => Number.isFinite(slice.value) && slice.value > 0);
   const total = safeSlices.reduce((sum, slice) => sum + slice.value, 0);
@@ -113,6 +114,7 @@ export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, c
               fillRule="evenodd"
               tabIndex={0}
               aria-label={`${slice.label}, ${((slice.value / total) * 100).toFixed(1)} percent, ${slice.valueLabel || 'Count'}: ${slice.displayValue ?? slice.value}`}
+              aria-describedby={hoveredSliceIndex === index ? tooltipId : undefined}
               onMouseEnter={() => setHoveredSliceIndex(index)}
               onMouseLeave={() => setHoveredSliceIndex(null)}
               onFocus={() => setHoveredSliceIndex(index)}
@@ -125,15 +127,7 @@ export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, c
       </svg>
       {innerRatio > 0 && (
         <div className="absolute inset-0 flex items-center justify-center">
-          {hoveredSlice ? (
-            <div aria-live="polite" className="pointer-events-none w-[82%] text-center">
-              <p className="truncate text-[11px] font-semibold leading-4 text-[var(--text-primary)]">{hoveredSlice.label}</p>
-              <p className="text-sm font-bold tabular-nums text-[var(--text-primary)]">{((hoveredSlice.value / total) * 100).toFixed(1)}%</p>
-              <p className="truncate text-[10px] leading-4 text-[var(--text-secondary)]">
-                {hoveredSlice.valueLabel || 'Count'}: {hoveredSlice.displayValue ?? hoveredSlice.value.toLocaleString()}
-              </p>
-            </div>
-          ) : centerLabel ?? (
+          {centerLabel ?? (
             <div className="text-center">
               <p className="text-lg font-bold text-[var(--text-primary)]">{total}</p>
               <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wide">Total</p>
@@ -141,6 +135,13 @@ export default function PieChart({ slices, size = 160, innerRadiusRatio = 0.6, c
           )}
         </div>
       )}
+      {hoveredSlice && <div id={tooltipId} role="tooltip" className="pointer-events-none absolute left-1/2 top-0 z-10 w-max max-w-[min(220px,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-left shadow-lg">
+        <p className="truncate text-xs font-semibold text-[var(--text-primary)]">{hoveredSlice.label}</p>
+        <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+          <span className="font-semibold tabular-nums text-[var(--accent)]">{((hoveredSlice.value / total) * 100).toFixed(1)}%</span>
+          <span className="truncate text-[var(--text-secondary)]">{hoveredSlice.valueLabel || 'Count'}: {hoveredSlice.displayValue ?? hoveredSlice.value.toLocaleString()}</span>
+        </div>
+      </div>}
     </div>
   );
 }
