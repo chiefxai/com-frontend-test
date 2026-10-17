@@ -1,7 +1,6 @@
 import React from 'react';
-import { Activity, Clock3, PhoneCall, Plus, ReceiptText, Wallet, RefreshCw, ChartNoAxesCombined } from 'lucide-react';
+import { Activity, Plus, ReceiptText, Wallet, RefreshCw } from 'lucide-react';
 import { Card, CardHeader } from '../ui/Card';
-import KpiCard from '../ui/KpiCard';
 import Button from '../ui/Button';
 import OrganizationTopUp, { type BillingPanel } from './OrganizationTopUp';
 import BillingOverviewHome from './BillingOverviewHome';
@@ -59,6 +58,9 @@ export interface BillingWorkspaceProps {
   budgetError: string;
 }
 
+const money = (value: number | null | undefined) =>
+  value == null || !Number.isFinite(value) ? '—' : formatInr(value);
+
 /** Period call duration is returned as minutes, including fractional minutes. */
 export function formatCallTime(minutes: number | null | undefined): string {
   if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';
@@ -84,9 +86,6 @@ const descriptions: Record<BillingPanel, string> = {
   topup: 'Submit a payment receipt for additional usage credits.',
   payments: 'Track payments and verification status.',
 };
-
-const money = (value: number | null | undefined) =>
-  value == null || !Number.isFinite(value) ? '—' : formatInr(value);
 
 /** Organization-wide charges must never be presented as a workspace-level bill. */
 export default function BillingWorkspace({
@@ -212,26 +211,11 @@ export default function BillingWorkspace({
         </>
       )}
 
-      {creditsAndUsageView && (
-        <section className="col-span-12 grid grid-cols-12 gap-4" aria-label="Credits and usage">
-          <div className="col-span-12 grid grid-cols-12 gap-3">
-            {[
-              { title: 'Usage cost so far', value: money(workspaceBilling?.periodSpendInr), detail: 'All workspaces combined', icon: Activity },
-              { title: 'Calls', value: callCount ?? '—', detail: 'Recorded this period', icon: PhoneCall },
-              { title: 'Call time', value: formatCallTime(workspaceBilling?.aiMinutesUsed), detail: 'Total speaking time', icon: Clock3 },
-              { title: 'AI costs', value: money(workspaceBilling?.aiSpendInr), detail: 'Voice AI and call processing', icon: ChartNoAxesCombined },
-              ...(rechargeBased ? [{ title: 'Call credits ready to use', value: formatInr(Math.max(0, rechargeBalanceInr - rechargeReservedInr)), detail: 'After credits reserved for calls in progress', icon: Wallet }] : []),
-            ].map(({ title, value, detail, icon }) =>
-              <KpiCard key={title} span={{ xs: 12, sm: 6, lg: 3 }}
-                iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-                label={title} value={value} sub={detail} icon={icon} />)}
-          </div>
-        </section>
-      )}
-
       {(creditsAndUsageView || view === 'topup' || view === 'payments') && (
         <OrganizationTopUp canSubmit={canSubmitPayment} view={creditsAndUsageView ? 'credits' : view} onNavigate={onNavigate}
-          manualAllocationAllowed={Boolean(canUseManualAllocation)} />
+          manualAllocationAllowed={Boolean(canUseManualAllocation)} callCount={callCount}
+          callTime={formatCallTime(workspaceBilling?.aiMinutesUsed)}
+          aiSpendInr={workspaceBilling?.aiSpendInr ?? null} phoneSpendInr={workspaceBilling?.phoneSpendInr ?? null} />
       )}
       {creditsAndUsageView && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">

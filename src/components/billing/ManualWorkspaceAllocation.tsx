@@ -137,17 +137,18 @@ export default function ManualWorkspaceAllocation() {
     unallocatedBalance);
   const chartSlices = largestChartBalance > 0n ? chartBalances.filter(row => row.units > 0n).map(row => ({
     label: row.workspace.name,
-    value: Math.max(1, Number((row.units * 1_000_000n) / largestChartBalance)),
+    value: Number((row.units * 10_000_000_000_000n) / largestChartBalance),
     color: workspaceChartColors[row.index % workspaceChartColors.length],
     displayValue: selectedChartBalance ? formatCreditAmount({ ...selectedChartBalance, units: row.units.toString() }) : undefined,
     valueLabel: 'Credits',
   })).concat(unallocatedBalance > 0n ? [{
     label: 'Unallocated · Organization pool',
-    value: Math.max(1, Number((unallocatedBalance * 1_000_000n) / largestChartBalance)),
+    value: Number((unallocatedBalance * 10_000_000_000_000n) / largestChartBalance),
     color: '#64748b',
     displayValue: selectedChartBalance ? formatCreditAmount({ ...selectedChartBalance, units: unallocatedBalance.toString() }) : undefined,
     valueLabel: 'Credits',
   }] : []) : [];
+  const visibleChartSlices = chartSlices.filter(slice => slice.value > 0);
   const chartTotal = chartBalances.reduce((total, row) => total + row.units, unallocatedBalance);
   const chartTotalAmount: BillingAmount | null = selectedChartBalance ? {
     asset: selectedChartBalance.asset, scale: selectedChartBalance.scale, units: chartTotal.toString(),
@@ -269,7 +270,7 @@ export default function ManualWorkspaceAllocation() {
           </p>
         )}
         {rowsByWorkspace.length || selectedChartBalance ? <>
-          {selectedChartBalance && <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)]/40 p-3">
+          {selectedChartBalance && <div className="mb-4 px-1 py-2">
             {chartBalanceOptions.length > 1 && <label className="mb-3 flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)]">
               <span>Credit type</span>
               <select aria-label="Workspace balance chart credit type" className="max-w-[65%] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1.5 text-xs text-[var(--text-primary)]"
@@ -277,11 +278,27 @@ export default function ManualWorkspaceAllocation() {
                 {chartBalanceOptions.map(option => <option key={option.key} value={option.key}>{friendlyKind(option.kind)} · {option.asset}</option>)}
               </select>
             </label>}
-            <div className="flex flex-col items-center gap-3">
-              <PieChart slices={chartSlices} size={220} centerLabel={<div className="max-w-[125px] text-center">
+            <div className="flex flex-col items-center gap-4">
+              <PieChart slices={visibleChartSlices} size={240} centerLabel={<div className="max-w-[135px] text-center">
                 <p className="truncate text-xs font-bold text-[var(--text-primary)]">{chartTotalAmount ? formatCreditAmount(chartTotalAmount) : '—'}</p>
                 <p className="text-[9px] uppercase tracking-wide text-[var(--text-muted)]">Available</p>
               </div>} />
+              {visibleChartSlices.length > 0 && <ul aria-label="Workspace credit allocation breakdown" className="w-full space-y-2">
+                {visibleChartSlices.map(slice => {
+                  const total = visibleChartSlices.reduce((sum, item) => sum + item.value, 0);
+                  const percentage = total > 0 ? (slice.value / total) * 100 : 0;
+                  return <li key={slice.label} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="flex min-w-0 items-center gap-2 text-[var(--text-secondary)]">
+                      <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
+                      <span className="truncate">{slice.label}</span>
+                    </span>
+                    <span className="shrink-0 text-right tabular-nums text-[var(--text-primary)]">
+                      <span className="font-semibold">{slice.displayValue}</span>
+                      <span className="ml-2 text-[var(--text-muted)]">{percentage.toFixed(1)}%</span>
+                    </span>
+                  </li>;
+                })}
+              </ul>}
             </div>
           </div>}
           {!selectedChartBalance && <p className="text-center text-xs text-[var(--text-muted)]">No credit balances available to chart.</p>}

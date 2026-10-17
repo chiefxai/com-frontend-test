@@ -2,7 +2,7 @@ import React from 'react';
 import WorkspaceAddonPurchases, { type PaymentDisplayFilter, type PaymentStatusFilter } from './WorkspaceAddonPurchases';
 import SubscriptionCreditStatusPanel from './SubscriptionCreditStatusPanel';
 import { useAuthorization } from '../../lib/authorization';
-import { ArrowDownToLine, CheckCircle2, Clock3, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
+import { ArrowDownToLine, CheckCircle2, Clock3, PhoneCall, Plus, RefreshCw, Wallet, ReceiptText, Info } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { billingClient, newBillingIdempotencyKey } from '../../lib/billing/client';
 import type { BillingAmount, BillingOverview, PaymentHistoryType, PaymentRequest, WorkspaceBillingOverview } from '../../lib/billing/types';
@@ -29,11 +29,16 @@ export function paymentTypeLabel(payment: PaymentRequest): string {
 }
 
 export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard', onNavigate,
-  manualAllocationAllowed = false, embeddedTopup = false, onTopupClose }: { canSubmit?: boolean; view?: BillingPanel;
+  manualAllocationAllowed = false, embeddedTopup = false, onTopupClose,
+  callCount = null, callTime = '—', aiSpendInr = null, phoneSpendInr = null }: { canSubmit?: boolean; view?: BillingPanel;
   onNavigate?: (view: BillingPanel) => void;
   embeddedTopup?: boolean;
   onTopupClose?: () => void;
-  manualAllocationAllowed?: boolean }) {
+  manualAllocationAllowed?: boolean;
+  callCount?: number | null;
+  callTime?: string;
+  aiSpendInr?: number | null;
+  phoneSpendInr?: number | null }) {
   const { can } = useAuthorization();
   const [showForm, setShowForm] = React.useState(false);
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
@@ -265,13 +270,19 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
 
       {view === 'credits' && can('billing.organization.read') && <SubscriptionCreditStatusPanel
         extraKpis={<>
+          <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={PhoneCall}
+            iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+            label="Calls" value={callCount ?? '—'} sub="Recorded this period" />
+          <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Clock3}
+            iconBg="var(--accent-subtle)" iconColor="var(--accent)"
+            label="Call time" value={callTime} sub="Total speaking time" />
           <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={Wallet} 
             iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-            label={automaticMode ? 'Workspace subscription credits' : 'Subscription credits remaining'}
+            label="Subscription credits remaining"
             value={balancesAvailable ? sumBalance(subscriptionCredits) : '—'} />
           <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={ArrowDownToLine} 
             iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-            label={automaticMode ? 'Workspace top-up credits' : 'Top-up credits remaining'}
+            label="Top-up credits remaining"
             value={balancesAvailable ? sumBalance(topupCredits) : '—'} />
         </>}
         balanceErrors={[
@@ -306,6 +317,23 @@ export default function OrganizationTopUp({ canSubmit = false, view = 'dashboard
         <section className="col-span-12" aria-label="Workspace credit allocation controls">
           <ManualWorkspaceAllocation />
         </section>
+      )}
+      {view === 'credits' && can('billing.organization.read') && (
+        <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">
+          <CardHeader title="Usage costs and remaining credits" subtitle="Period costs and the available balance by credit source" icon={ReceiptText} />
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'Call cost', value: phoneSpendInr == null ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(phoneSpendInr), detail: 'Phone service this period' },
+              { label: 'AI cost', value: aiSpendInr == null ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(aiSpendInr), detail: 'Voice AI this period' },
+              { label: 'Subscription credits remaining', value: balancesAvailable ? sumBalance(subscriptionCredits) : '—', detail: 'Available from your plan' },
+              { label: 'Top-up credits remaining', value: balancesAvailable ? sumBalance(topupCredits) : '—', detail: 'Available from approved top-ups' },
+            ].map(row => <div key={row.label} className="rounded-xl bg-[var(--bg-subtle)] px-4 py-3">
+              <dt className="text-[11px] font-medium text-[var(--text-secondary)]">{row.label}</dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums text-[var(--text-primary)]">{row.value}</dd>
+              <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{row.detail}</p>
+            </div>)}
+          </dl>
+        </Card>
       )}
       {view === 'topup' && !embeddedTopup && (
         <Card padding="sm" className="col-span-12 min-w-0 sm:!p-5">

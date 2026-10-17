@@ -1,16 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Info } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
-import type { BillingAmount, SubscriptionCreditStatus } from '../../lib/billing/types';
-import KpiCard from '../ui/KpiCard';
-
-const displayInr = (amount: BillingAmount | null): string => {
-  if (!amount) return 'Not verified';
-  if (amount.asset !== 'INR' || amount.scale !== 2) return amount.asset + ' ' + amount.units;
-  const units = BigInt(amount.units);
-  const whole = (units / 100n).toLocaleString('en-IN');
-  return `₹${whole}.${(units % 100n).toString().padStart(2, '0')}`;
-};
+import type { SubscriptionCreditStatus } from '../../lib/billing/types';
 
 const explanations: Record<SubscriptionCreditStatus['state'], string> = {
   unverified_plan: 'We cannot confirm how many monthly credits came with this older plan. Ask platform support to check it.',
@@ -43,13 +34,7 @@ export default function SubscriptionCreditStatusPanel({
 
   return (
     <section className="col-span-12 min-w-0 space-y-4" aria-label="Monthly credit amounts">
-      <div className="grid grid-cols-12 gap-3">
-        <KpiCard span={{ xs: 12, sm: 6, lg: 3 }} icon={CheckCircle2} 
-          iconBg="var(--accent-subtle)" iconColor="var(--accent)"
-          label="Credits added this period"
-          value={status ? displayInr(status.issuedThisPeriod || (status.state === 'unverified_plan' ? null : { asset: 'INR', units: '0', scale: 2 })) : '—'} />
-        {extraKpis}
-      </div>
+      {extraKpis && <div className="grid grid-cols-12 gap-3">{extraKpis}</div>}
       {loading ? <p role="status" className="text-sm text-[var(--text-muted)]">Checking subscription credit status…</p>
         : error ? <p role="alert" className="text-sm text-rose-600">{error}</p>
           : status && (
