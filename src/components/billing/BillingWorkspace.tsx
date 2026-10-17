@@ -178,6 +178,7 @@ export default function BillingWorkspace({
         pricing={organizationPricing}
         usage={workspaceBilling}
         callCount={callCount}
+        workspaceId={workspaceId || workspaceBilling?.workspaceId}
         phoneChargesBillable={phoneChargesBillable}
         canManageSubscription={canManageSubscription}
         canAllocate={canUseManualAllocation}

@@ -3,7 +3,7 @@ import { Card } from '../ui/Card';
 import KpiCard from '../ui/KpiCard';
 import { CalendarClock, CreditCard, PhoneCall, Wallet, Sparkles } from 'lucide-react';
 import { billingClient } from '../../lib/billing/client';
-import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse } from '../../lib/billing/types';
+import type { BillingOverview, SubscriptionCreditStatus, SubscriptionRenewalResponse, WorkspaceBillingOverview } from '../../lib/billing/types';
 import type { CallLog } from '../../types';
 import type { BillingPanel } from './OrganizationTopUp';
 import type { OrganizationSubscriptionPrice, WorkspaceBillingSnapshot } from './BillingWorkspace';
@@ -22,6 +22,7 @@ interface Props {
   phoneChargesBillable: boolean;
   canManageSubscription: boolean;
   canAllocate: boolean;
+  workspaceId?: string;
   canSubmitPayment: boolean;
   loadingUsage: boolean;
 }
@@ -30,9 +31,10 @@ const money = (value: number | null | undefined) =>
 
 /** Compact billing home: key balances on the left, current plan on the right. */
 export default function BillingOverviewHome({
-  onNavigate, onOpenSubscriptionTask, usage, callCount, canManageSubscription,
+  onNavigate, onOpenSubscriptionTask, usage, callCount, canManageSubscription, workspaceId,
 }: Props) {
   const [overview, setOverview] = React.useState<BillingOverview | null>(null);
+  const [workspaceOverview, setWorkspaceOverview] = React.useState<WorkspaceBillingOverview | null>(null);
   const [creditStatus, setCreditStatus] = React.useState<SubscriptionCreditStatus | null>(null);
   const [renewal, setRenewal] = React.useState<SubscriptionRenewalResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -40,11 +42,13 @@ export default function BillingOverviewHome({
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setWorkspaceOverview(null);
     void Promise.allSettled([
       billingClient.organizationOverview(),
       billingClient.subscriptionCreditStatus(),
       canManageSubscription ? billingClient.subscriptionRenewal() : Promise.resolve(null),
-    ]).then(([balances, credits, period]) => {
+      workspaceId ? billingClient.workspaceOverview(workspaceId) : Promise.resolve(null),
+    ]).then(([balances, credits, period, workspaceBalances]) => {
       if (cancelled) return;
       const failures: string[] = [];
       if (balances.status === 'fulfilled') setOverview(balances.value);
@@ -53,11 +57,22 @@ export default function BillingOverviewHome({
       else { setCreditStatus(null); failures.push('Plan information could not be loaded.'); }
       if (period.status === 'fulfilled') setRenewal(period.value);
       else { setRenewal(null); failures.push('Renewal status could not be loaded.'); }
+      if (workspaceBalances.status === 'fulfilled') {
+        if (workspaceId && workspaceBalances.value && workspaceBalances.value.workspaceId !== workspaceId) {
+          setWorkspaceOverview(null);
+          failures.push('Current workspace credits could not be verified.');
+        } else {
+          setWorkspaceOverview(workspaceBalances.value);
+        }
+      } else {
+        setWorkspaceOverview(null);
+        failures.push('Current workspace credits could not be loaded.');
+      }
       setErrors(failures);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [canManageSubscription]);
+  }, [canManageSubscription, workspaceId]);
 
   const now = Date.now();
   const endsAt = renewal?.period?.endsAt || overview?.activePeriod?.endsAt || null;
@@ -80,6 +95,12 @@ export default function BillingOverviewHome({
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Extra credits remaining" icon={CreditCard}
           value={overview ? availableCredits(overview.balances,'topup') : '—'}
           sub="Approved top-ups still in the organization pool" />
+        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Current workspace plan credits remaining" icon={Wallet}
+          value={workspaceOverview && !workspaceOverview.uninitialized ? availableCredits(workspaceOverview.balances,'subscription') : '—'}
+          sub={workspaceOverview?.uninitialized ? 'Workspace billing setup is pending' : workspaceOverview?.workspaceName ? `Available in ${workspaceOverview.workspaceName}` : 'Available in the selected workspace'} />
+        <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Current workspace extra credits remaining" icon={CreditCard}
+          value={workspaceOverview && !workspaceOverview.uninitialized ? availableCredits(workspaceOverview.balances,'topup') : '—'}
+          sub={workspaceOverview?.uninitialized ? 'Workspace billing setup is pending' : workspaceOverview?.workspaceName ? `Available in ${workspaceOverview.workspaceName}` : 'Available in the selected workspace'} />
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="AI usage cost" icon={Sparkles} value={money(usage?.aiSpendInr)}
           sub="AI voice and post-call processing this period" />
         <KpiCard span={{ xs: 12, sm: 6 }} iconPosition="top-left" iconBg="var(--accent-subtle)" iconColor="var(--accent)" label="Call usage" icon={PhoneCall} value={callCount ?? '—'}
