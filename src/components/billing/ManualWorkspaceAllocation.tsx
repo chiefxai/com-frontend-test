@@ -43,7 +43,7 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
-  const [grantId, setGrantId] = React.useState('');
+  const [creditPoolKind, setCreditPoolKind] = React.useState<'subscription' | 'topup'>('subscription');
   const [workspaceId, setWorkspaceId] = React.useState('');
   const [inputAmount, setInputAmount] = React.useState('');
   const [preview, setPreview] = React.useState<ManualAllocationPreview | null>(null);
@@ -57,7 +57,8 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
     try {
       const next = await billingClient.manualAllocationOverview();
       setSnapshot(next);
-      setGrantId(current => next.grants.some(grant => grant.id === current) ? current : '');
+      setCreditPoolKind(current => next.grants.some(grant => grant.kind === current)
+        ? current : next.grants.some(grant => grant.kind === 'subscription') ? 'subscription' : 'topup');
       setWorkspaceId(current => next.workspaces.some(row => row.id === current && row.status.toLowerCase() === 'active') ? current : '');
       setPreview(null);
       setPending(null);
@@ -74,11 +75,26 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
     setError('');
     setNotice('');
   };
-  const grant = snapshot?.grants.find(row => row.id === grantId);
+  const poolGrants = (snapshot?.grants || []).filter(row => row.kind === creditPoolKind)
+    .sort((a, b) => (a.expiresAt || '9999-12-31').localeCompare(b.expiresAt || '9999-12-31'));
+  const poolAmount = poolGrants.length ? {
+    ...poolGrants[0].available,
+    units: poolGrants.reduce((sum, row) => sum + BigInt(row.available.units), 0n).toString(),
+  } : null;
+  const requestedUnitsByGrant = (row: typeof poolGrants[number]) => unitsFromInput(inputAmount, row.available.scale);
+  const grant = poolGrants.find(row => {
+    const requested = requestedUnitsByGrant(row);
+    return Boolean(requested && BigInt(requested) <= BigInt(row.available.units));
+  }) || poolGrants[0];
   const units = grant ? unitsFromInput(inputAmount, grant.available.scale) : null;
+  const largestGrantUnits = poolGrants.reduce((largest, row) => {
+    const value = BigInt(row.available.units);
+    return value > largest ? value : largest;
+  }, 0n);
+  const amountFitsGrant = Boolean(grant && units && BigInt(units) <= BigInt(grant.available.units));
   const previewAllocation = async () => {
-    if (!grant || !workspaceId || !units) {
-      setError('Select an active workspace, a credit grant and a valid positive amount.');
+    if (!grant || !workspaceId || !units || !amountFitsGrant) {
+      setError('Select an active workspace, a credit pool and a valid positive amount that fits within one available grant.');
       return;
     }
     setBusy(true); setError(''); setNotice(''); setPreview(null); setPending(null);
@@ -179,14 +195,21 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
           </label>
           <label className="text-xs font-semibold text-[var(--text-secondary)]">
             Credit source
-            <select aria-label="Credit source" value={grantId} disabled={busy || loading}
-              onChange={event => { setGrantId(event.target.value); setInputAmount(''); invalidatePreview(); }}
+            <select aria-label="Credit source" value={creditPoolKind} disabled={busy || loading}
+              onChange={event => { setCreditPoolKind(event.target.value as 'subscription' | 'topup'); setInputAmount(''); invalidatePreview(); }}
               className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]">
-              <option value="">Select available credits</option>
-              {snapshot?.grants.map(row => <option key={row.id} value={row.id}>
-                {friendlyKind(row.kind)} · {formatCreditAmount(row.available)}
-                {row.expiresAt ? ' · Expires ' + new Date(row.expiresAt).toLocaleDateString('en-IN') : ''}
-              </option>)}
+              <option value="subscription" disabled={!snapshot?.grants.some(row => row.kind === 'subscription')}>
+                Subscription credits pool{snapshot?.grants.some(row => row.kind === 'subscription') ? ` · ${formatCreditAmount({
+                  ...snapshot.grants.find(row => row.kind === 'subscription')!.available,
+                  units: snapshot.grants.filter(row => row.kind === 'subscription').reduce((sum, row) => sum + BigInt(row.available.units), 0n).toString(),
+                })}` : ' · ₹0.00'}
+              </option>
+              <option value="topup" disabled={!snapshot?.grants.some(row => row.kind === 'topup')}>
+                Top-up credits pool{snapshot?.grants.some(row => row.kind === 'topup') ? ` · ${formatCreditAmount({
+                  ...snapshot.grants.find(row => row.kind === 'topup')!.available,
+                  units: snapshot.grants.filter(row => row.kind === 'topup').reduce((sum, row) => sum + BigInt(row.available.units), 0n).toString(),
+                })}` : ' · ₹0.00'}
+              </option>
             </select>
           </label>
         </div>
@@ -195,11 +218,10 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
           <input aria-label="Amount to allocate" inputMode="decimal" value={inputAmount}
             onChange={event => { setInputAmount(event.target.value); invalidatePreview(); }}
             disabled={busy || !grant}
-            placeholder={grant ? 'Enter amount · available ' + formatCreditAmount(grant.available) : 'Select a credit source'}
+            placeholder={poolAmount ? 'Enter amount · pool available ' + formatCreditAmount(poolAmount) : 'Select a credit source'}
             className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]" />
-          {grant && <span className="mt-1 block text-[11px] font-normal text-[var(--text-muted)]">
-            Available: {formatCreditAmount(grant.available)}
-            {grant.expiresAt ? ' · Expires ' + new Date(grant.expiresAt).toLocaleDateString('en-IN') : ' · Does not expire'}
+          {poolAmount && <span className="mt-1 block text-[11px] font-normal text-[var(--text-muted)]">
+            Pool available: {formatCreditAmount(poolAmount)}{grant && ` · Largest single grant: ${formatCreditAmount({ ...grant.available, units: largestGrantUnits.toString() })}`}
           </span>}
         </label>
         <div className="mt-3">
@@ -207,8 +229,10 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
           <p className="mt-1 text-xs text-[var(--text-muted)]">Pick a common amount or type your own above.</p>
           <div role="group" aria-label="Quick allocation amounts" className="mt-2 flex flex-wrap gap-2">
             {[100, 300, 500, 1000].map(value => {
-              const presetUnits = grant ? unitsFromInput(String(value), grant.available.scale) : null;
-              const enough = Boolean(grant && presetUnits && BigInt(presetUnits) <= BigInt(grant.available.units));
+              const enough = poolGrants.some(row => {
+                const presetUnits = unitsFromInput(String(value), row.available.scale);
+                return Boolean(presetUnits && BigInt(presetUnits) <= BigInt(row.available.units));
+              });
               return <button type="button" key={value} aria-label={`Allocate ₹${value.toLocaleString('en-IN')}`}
                 aria-pressed={inputAmount === String(value)} disabled={busy || loading || !enough}
                 onClick={() => { setInputAmount(String(value)); invalidatePreview(); }}
@@ -221,7 +245,7 @@ export default function ManualWorkspaceAllocation({ allocationDialogOpen, onAllo
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="sm" icon={ArrowRight} onClick={() => void previewAllocation()}
-            loading={busy} disabled={loading || !workspaceId || !grant || !units || !snapshot?.writable}>
+            loading={busy} disabled={loading || !workspaceId || !grant || !units || !amountFitsGrant || !snapshot?.writable}>
             Preview allocation
           </Button>
           {preview && <Button type="button" variant="ghost" size="sm" onClick={invalidatePreview}>Clear preview</Button>}

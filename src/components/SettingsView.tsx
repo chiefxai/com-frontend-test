@@ -1144,7 +1144,6 @@ export default function SettingsView({
               {platformNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{platformNumbersError}</p>}
               <Widget showHeader={false} padding="none">
                 <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
-                  <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Phone numbers</h3>
                   <FilterBar
                     search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
                     selects={[
@@ -1272,17 +1271,11 @@ export default function SettingsView({
                   </>}
                 >
                   <div className="space-y-4">
-                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Phone number
-                      <select aria-label="Phone number" className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]"
-                        value={allocationNumberId} disabled={Boolean(allocationSaving)}
-                        onChange={event => {
-                          const next = platformNumbers.find(number => number.id === event.target.value);
-                          setAllocationNumberId(event.target.value);
-                          setAllocationWorkspaceId(next?.assignedWorkspaceId || '');
-                        }}>
-                        {platformNumbers.map(number => <option key={number.id} value={number.id}>{number.phoneNumberE164}{number.displayName ? ` · ${number.displayName}` : ''}</option>)}
-                      </select>
-                    </label>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2.5">
+                      <p className="text-[11px] font-semibold text-[var(--text-muted)]">Phone number</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{selectedAllocationNumber?.phoneNumberE164 || 'Number unavailable'}</p>
+                      {selectedAllocationNumber?.displayName && <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{selectedAllocationNumber.displayName}</p>}
+                    </div>
                     <label className="block text-xs font-semibold text-[var(--text-secondary)]">Workspace
                       <select aria-label="Workspace" className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]"
                         value={allocationWorkspaceId} disabled={Boolean(allocationSaving)} onChange={event => setAllocationWorkspaceId(event.target.value)}>

@@ -517,7 +517,7 @@ export default function App() {
         resetUserFlags();
         setSubscriptionAccessState(null);
         if (error instanceof Error && error.message === 'The server did not confirm the selected workspace') {
-          showToast(error.message, 'error');
+          showToast("We couldn't verify the selected workspace. Please try again.", 'error');
           setMembershipError('Workspace access could not be verified. Please select a workspace and try again.');
         } else {
           setMembershipError(error.message || 'Could not load your workspaces. Please retry.');
