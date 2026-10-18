@@ -162,7 +162,13 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     '/api/billing/invoices', '/api/billing/contacts', '/api/billing/notification-policy',
     '/api/billing/allocations', '/api/billing/transfers', '/api/billing/allocation-rules',
   ];
-  const organizationResource = ['/api/settings/workspaces','/api/settings/workspace-policy'].includes(path)
+  // The organization settings namespace contains control-plane resources
+  // (for example, organization-wide phone numbers and workspace access). Its
+  // responses are not scoped to the currently selected workspace, so older
+  // deployments may omit X-Workspace-Id without making these responses stale.
+  const organizationSettingsResource = path.startsWith('/api/settings/organization/');
+  const organizationResource = organizationSettingsResource
+    || ['/api/settings/workspaces','/api/settings/workspace-policy'].includes(path)
     || organizationScopedBillingPaths.some((base) => path === base || path.startsWith(`${base}/`));
   if (res.ok && !discovery && selectedOrgId && selectedWorkspaceId) {
     const acknowledgedOrg = res.headers.get('X-Organization-Id');
