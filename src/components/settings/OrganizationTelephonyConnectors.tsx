@@ -176,20 +176,19 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange, emb
   const platformNumbers = Object.values(numbers).flat()
     .filter(number => number.ownerType === 'platform' || number.ownerType === 'platform_managed');
 
-  const renderNumber = (number: InventoryNumber, isPlatformNumber = false) => (
+  const renderNumber = (number: InventoryNumber) => (
     <li key={number.id} className="min-w-0 rounded-xl border border-[var(--border)] bg-white p-4 dark:bg-[var(--bg-surface)] sm:p-5">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-[var(--text-primary)]">
             {number.phoneNumberE164}{number.displayName ? ` · ${number.displayName}` : ''}
           </p>
-          {isPlatformNumber && <p className="mt-1 text-xs text-[var(--text-muted)]">Provided by your platform</p>}
         </div>
         <span className="inline-flex w-fit max-w-full shrink-0 rounded-full border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
           {number.assignedWorkspaceName ? `Assigned to ${number.assignedWorkspaceName}` : 'Available to assign'}
         </span>
       </div>
-      {!isPlatformNumber && number.provisioningStatus !== 'ready' ? (
+      {number.provisioningStatus !== 'ready' ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
           <p className="max-w-xl text-xs leading-5 text-[var(--text-secondary)]">
             Confirm this number is active in your provider account before assigning it.
@@ -360,12 +359,62 @@ export default function OrganizationTelephonyConnectors({ onInventoryChange, emb
 
     {view !== 'connection' && (
       <section className="mt-6 min-w-0 border-t border-[var(--border)] pt-5" aria-label="Platform-managed numbers">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Numbers provided by your platform</h3>
-        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
-          These numbers use platform-managed provider accounts. You can assign or unassign them for your workspaces.
-        </p>
-        {platformNumbers.length ? <ul className="mt-4 space-y-3">{platformNumbers.map(number => renderNumber(number, true))}</ul>
-          : <p className="mt-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">No platform-provided numbers are currently available for this organization.</p>}
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Platform numbers</h3>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Allocate a number to a workspace or release it back to the organization.</p>
+        </div>
+        {platformNumbers.length ? <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-xs">
+            <thead className="border-b border-[var(--border)] text-[var(--text-secondary)]">
+              <tr>
+                <th scope="col" className="pb-3 pr-4 font-medium">Phone number</th>
+                <th scope="col" className="pb-3 pr-4 font-medium">Status</th>
+                <th scope="col" className="pb-3 pr-4 font-medium">Workspace</th>
+                <th scope="col" className="pb-3 text-right font-medium">Allocation</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)] text-[var(--text-primary)]">
+              {platformNumbers.map(number => {
+                const assigned = Boolean(number.assignedWorkspaceId);
+                const selectedWorkspace = assignmentDraft[number.id] || '';
+                return <tr key={number.id}>
+                  <th scope="row" className="py-3 pr-4 font-semibold">
+                    <span className="whitespace-nowrap">{number.phoneNumberE164}</span>
+                    {number.displayName && <span className="mt-0.5 block font-normal text-[var(--text-muted)]">{number.displayName}</span>}
+                  </th>
+                  <td className="py-3 pr-4">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${assigned
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'}`}>
+                      {assigned ? 'Assigned' : 'Not assigned'}
+                    </span>
+                    <span className="mt-1 block capitalize text-[10px] text-[var(--text-muted)]">
+                      {String(number.provisioningStatus || number.inventoryStatus || 'available').replaceAll('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="py-3 pr-4 text-[var(--text-secondary)]">{number.assignedWorkspaceName || '—'}</td>
+                  <td className="py-3 text-right">
+                    <div className="flex min-w-[300px] items-center justify-end gap-2">
+                      <select aria-label={`Workspace allocation for ${number.phoneNumberE164}`}
+                        className="h-9 max-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-2 text-xs text-[var(--text-primary)]"
+                        value={selectedWorkspace} disabled={busy}
+                        onChange={event => setAssignmentDraft(current => ({ ...current, [number.id]: event.target.value }))}>
+                        <option value="">Choose workspace</option>
+                        {workspaceChoices.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+                      </select>
+                      <Button type="button" size="sm" variant={assigned ? 'secondary' : 'primary'} disabled={busy || !selectedWorkspace || selectedWorkspace === number.assignedWorkspaceId}
+                        onClick={() => void assignNumber(number)}>
+                        {assigned ? 'Reassign' : 'Allocate'}
+                      </Button>
+                      {assigned && <Button type="button" size="sm" variant="ghost" disabled={busy}
+                        onClick={() => void releaseNumber(number)}>Unallocate</Button>}
+                    </div>
+                  </td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div> : <p className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-6 text-center text-sm text-[var(--text-muted)]">No platform-provided numbers are currently available for this organization.</p>}
       </section>
     )}
   </Container>;

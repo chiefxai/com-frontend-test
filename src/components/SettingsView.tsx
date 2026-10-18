@@ -283,7 +283,6 @@ export default function SettingsView({
   };
 
   const [showProviderForm, setShowProviderForm] = useState(false);
-  const [numberSource, setNumberSource] = useState<'platform' | 'connection'>('platform');
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
   const loadAuditLogs = () => {
@@ -1035,7 +1034,9 @@ export default function SettingsView({
               {effectiveWorkspacePanel === 'numbers' && <>
               {organizationNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{organizationNumbersError} Only numbers in the currently selected workspace are shown.</p>}
               <Widget showHeader={false} padding="none">
+                {canManageOrganization && <OrganizationTelephonyConnectors embedded view="platform" onInventoryChange={refreshVirtualNumberInventory} />}
                 <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
+                  <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Additional organization numbers</h3>
                   <FilterBar
                     search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
                     selects={[
@@ -1051,10 +1052,7 @@ export default function SettingsView({
                         className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50">
                         Export CSV ({filteredNumbers.length})
                       </button>
-                      <IconButton icon={Plus} label="Add or assign virtual number" onClick={() => {
-                        setNumberSource('platform');
-                        setShowProviderForm(true);
-                      }} />
+                      <IconButton icon={Plus} label="Connect calling account" onClick={() => setShowProviderForm(true)} />
                     </>}
                   />
                 </div>
@@ -1065,12 +1063,12 @@ export default function SettingsView({
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
                       <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
                     </div>
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">No virtual numbers yet</h3>
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">No additional numbers yet</h3>
                     <p className="max-w-lg text-sm leading-6 text-[var(--text-secondary)]">
-                      Assign a number provided by your platform, or connect an existing calling account to add your own.
+                      Platform-provided numbers are listed above. Connect a calling account to add organization numbers.
                     </p>
-                    <Button type="button" onClick={() => { setNumberSource('platform'); setShowProviderForm(true); }}>
-                      Add or assign virtual number
+                    <Button type="button" onClick={() => setShowProviderForm(true)}>
+                      Connect calling account
                     </Button>
                   </div>
                 ) : (() => {
@@ -1139,35 +1137,13 @@ export default function SettingsView({
                 <Modal
                   open
                   onClose={() => setShowProviderForm(false)}
-                  title="Add or assign virtual number"
-                  subtitle="Choose a source, then register or assign a number to your workspace."
+                  title="Connect calling account"
+                  subtitle="Add a provider account and register the numbers you want to use."
                   maxWidth="max-w-5xl"
                 >
                   <div className="min-w-0 space-y-5">
-                    <div role="tablist" aria-label="Virtual number source" className="grid grid-cols-1 gap-2 rounded-xl bg-[var(--bg-subtle)] p-1 sm:grid-cols-2">
-                      {([
-                        { key: 'platform', label: 'Numbers provided by your platform' },
-                        { key: 'connection', label: 'Existing calling connection' },
-                      ] as const).map(option => (
-                        <button key={option.key} type="button" role="tab" aria-selected={numberSource === option.key}
-                          onClick={() => setNumberSource(option.key)}
-                          className={`min-w-0 rounded-lg px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${
-                            numberSource === option.key
-                              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
-                              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                          }`}>
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div role="tabpanel" aria-label={numberSource === 'platform' ? 'Numbers provided by your platform' : 'Existing calling connection'} className="min-w-0">
-                      {numberSource === 'platform'
-                        ? <OrganizationTelephonyConnectors embedded view="platform" onInventoryChange={refreshVirtualNumberInventory} />
-                        : <div className="space-y-5">
-                            <OrganizationTelephonyConnectors embedded view="connection" onInventoryChange={refreshVirtualNumberInventory} />
-                            {legacyVobizConnectionPanel}
-                          </div>}
-                    </div>
+                    <OrganizationTelephonyConnectors embedded view="connection" onInventoryChange={refreshVirtualNumberInventory} />
+                    {legacyVobizConnectionPanel}
                   </div>
                 </Modal>
               )}
