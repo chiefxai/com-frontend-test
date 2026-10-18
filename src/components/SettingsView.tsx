@@ -76,8 +76,8 @@ interface SettingsViewProps {
   onOpenCallLogs?: () => void;
   // Recharge-based wallet balance. This is shown only when the organization
   // is configured for recharge_based billing.
-  activeSubTab?: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api';
-  setActiveSubTab?: (sub: string) => void;
+  activeSubTab?: 'numbers' | 'team' | 'workspaces' | 'sharing' | 'billing' | 'api';
+  setActiveSubTab?: (sub: string, parentTab?: string) => void;
   currentUserEmail?: string;
   activeWorkspaceId?: string;
   multipleWorkspacesEnabled?: boolean;
@@ -108,6 +108,20 @@ interface WorkspaceMemberAssignment {
   featureFlags?: string[] | null;
   canDelete?: boolean;
 }
+
+interface PlatformInventoryNumber {
+  id: string;
+  phoneNumberE164: string;
+  displayName: string | null;
+  inventoryStatus: string;
+  provisioningStatus?: string;
+  ownerType?: string;
+  providerKey?: string;
+  assignedWorkspaceId?: string | null;
+  assignedWorkspaceName?: string | null;
+}
+
+type DisplayVirtualNumber = VirtualNumber & { platformInventory?: PlatformInventoryNumber };
 
 function ProviderBadge({ provider }: { provider: string }) {
   const p = (provider || '').toLowerCase();
@@ -156,8 +170,8 @@ export default function SettingsView({
   const canCreateTeamMembers = canManageOrgMembers || canManageWorkspaceMembers;
   const managerInWorkspace = authorization?.workspaceRole === 'Manager' && !canManageOrgMembers;
   // Use prop-controlled sub-tab when provided (driven by sidebar), fall back to internal state.
-  const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'billing' | 'api'>('numbers');
-  const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') || _internalSubTab;
+  const [_internalSubTab, _setInternalSubTab] = useState<'numbers' | 'team' | 'workspaces' | 'sharing' | 'billing' | 'api'>('numbers');
+  const subTab = (activeSubTabProp as 'numbers' | 'team' | 'workspaces' | 'sharing' | 'billing' | 'api') || _internalSubTab;
   const billingLocation = useLocation();
   const billingNavigate = useNavigate();
   // Billing section is part of the URL, so refresh/deep links and browser
@@ -173,7 +187,12 @@ export default function SettingsView({
     const normalizedPanel = panel === 'plan' ? 'dashboard' : panel === 'allocation' ? 'credits' : panel;
     billingNavigate(normalizedPanel === 'dashboard' ? '/administration/billing' : `/administration/billing/${normalizedPanel}`);
   }, [billingNavigate]);
-  const [workspacePanel, setWorkspacePanel] = useState<'overview' | 'numbers' | 'sharing'>('overview');
+  const workspacePanel: 'overview' | 'numbers' | 'sharing' = subTab === 'workspaces' ? 'overview' : subTab === 'sharing' ? 'sharing' : 'numbers';
+  const setWorkspacePanel = (panel: 'overview' | 'numbers' | 'sharing') => {
+    const route = panel === 'overview' ? 'workspaces' : panel;
+    if (setActiveSubTabProp) setActiveSubTabProp(route, 'settings');
+    else _setInternalSubTab(route as 'numbers' | 'team' | 'workspaces' | 'sharing' | 'billing' | 'api');
+  };
   // Customers with one purchased workspace reach their phone numbers directly.
   const multiWorkspaceUi = showWorkspaceManagement(multipleWorkspacesEnabled);
   const effectiveWorkspacePanel = multiWorkspaceUi ? workspacePanel : 'numbers';
@@ -212,12 +231,19 @@ export default function SettingsView({
     }
   }, []);
   React.useEffect(() => {
-    if (!['team','numbers','workspaces'].includes(subTab) || !canReadOrgMembers || !canReadOrganization) return;
+    if (!['team','numbers','workspaces','sharing'].includes(subTab) || !canReadOrgMembers || !canReadOrganization) return;
     void loadWorkspaceFeatures();
   }, [subTab, canReadOrgMembers, canReadOrganization, loadWorkspaceFeatures]);
 
   const [organizationNumbers, setOrganizationNumbers] = useState<VirtualNumber[] | null>(null);
   const [organizationNumbersError, setOrganizationNumbersError] = useState('');
+  const [platformNumbers, setPlatformNumbers] = useState<PlatformInventoryNumber[]>([]);
+  const [platformNumbersLoading, setPlatformNumbersLoading] = useState(false);
+  const [platformNumbersLoaded, setPlatformNumbersLoaded] = useState(false);
+  const [platformNumbersError, setPlatformNumbersError] = useState('');
+  const [numberAllocationBusy, setNumberAllocationBusy] = useState<string | null>(null);
+  const [allocationNumberId, setAllocationNumberId] = useState('');
+  const [allocationWorkspaceId, setAllocationWorkspaceId] = useState('');
   const loadOrganizationNumbers = React.useCallback(async () => {
     const response = await apiFetch('/api/settings/organization/numbers');
     const data = await response.json().catch(() => ({}));
@@ -226,13 +252,55 @@ export default function SettingsView({
     if (Array.isArray(data.workspaces)) setOrgWorkspaces(data.workspaces);
     setOrganizationNumbersError('');
   }, []);
-  const visibleNumbers = organizationNumbers || virtualNumbers;
+  const loadPlatformNumbers = React.useCallback(async () => {
+    if (!canManageOrganization) return;
+    setPlatformNumbersLoading(true);
+    try {
+      const [inventoryResponse, workspacesResponse] = await Promise.all([
+        apiFetch('/api/telephony/numbers'),
+        apiFetch('/api/telephony/workspaces'),
+      ]);
+      const [inventoryData, workspacesData] = await Promise.all([
+        inventoryResponse.json().catch(() => ({})),
+        workspacesResponse.json().catch(() => ({})),
+      ]);
+      if (!inventoryResponse.ok) throw new Error(inventoryData.error || 'Unable to load platform numbers.');
+      const inventory = Array.isArray(inventoryData.numbers) ? inventoryData.numbers as PlatformInventoryNumber[] : [];
+      setPlatformNumbers(inventory.filter(number => number.ownerType === 'platform' || number.ownerType === 'platform_managed'));
+      if (workspacesResponse.ok && Array.isArray(workspacesData.workspaces)) setOrgWorkspaces(workspacesData.workspaces);
+      setPlatformNumbersError('');
+    } catch (error) {
+      setPlatformNumbersError(error instanceof Error ? error.message : 'Unable to load platform numbers.');
+    } finally {
+      setPlatformNumbersLoading(false);
+      setPlatformNumbersLoaded(true);
+    }
+  }, [canManageOrganization]);
+  React.useEffect(() => {
+    if (subTab === 'numbers' && effectiveWorkspacePanel === 'numbers') void loadPlatformNumbers();
+  }, [subTab, effectiveWorkspacePanel, loadPlatformNumbers]);
+
+  const platformVirtualNumbers: DisplayVirtualNumber[] = platformNumbers.map(number => ({
+    id: `platform:${number.id}`,
+    number: number.phoneNumberE164,
+    provider: (number.providerKey || 'Platform') as VirtualNumber['provider'],
+    status: number.provisioningStatus === 'ready' || number.inventoryStatus === 'ready' ? 'Active' : 'Inactive',
+    friendlyName: number.displayName || '',
+    routingUrl: '',
+    incomingCallCount: 0,
+    outgoingCallCount: 0,
+    workspaceId: number.assignedWorkspaceId || '',
+    platformInventory: number,
+  }));
+  const visibleNumbers: DisplayVirtualNumber[] = [...(organizationNumbers || virtualNumbers), ...platformVirtualNumbers];
+  const numberInventoryLoading = platformNumbersLoading || (canManageOrganization && !platformNumbersLoaded) || (canReadOrganization && organizationNumbers === null && !organizationNumbersError);
   const refreshVirtualNumberInventory = () => {
     if (canReadOrganization) {
       void loadOrganizationNumbers().catch(error => {
         setOrganizationNumbersError(error instanceof Error ? error.message : 'Unable to refresh virtual numbers.');
       });
     }
+    void loadPlatformNumbers();
     loadChannels();
   };
   const [numberSearch, setNumberSearch] = useState('');
@@ -249,6 +317,46 @@ export default function SettingsView({
     (!numberProvider || number.provider === numberProvider) &&
     (!numberStatus || number.status === numberStatus) &&
     (!numberWorkspaceFilter || (numberWorkspaceFilter === '__unknown__' ? !numberWorkspaceId(number) : numberWorkspaceId(number) === numberWorkspaceFilter)));
+  const allocatePlatformNumber = async (number: PlatformInventoryNumber, workspaceId: string) => {
+    if (!workspaceId) return;
+    setNumberAllocationBusy(number.id);
+    try {
+      if (number.assignedWorkspaceId) {
+        const release = await apiFetch(`/api/telephony/numbers/${encodeURIComponent(number.id)}/release`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId: number.assignedWorkspaceId }),
+        });
+        const releaseData = await release.json().catch(() => ({}));
+        if (!release.ok) throw new Error(releaseData.error || 'Unable to release the current workspace assignment.');
+      }
+      const response = await apiFetch(`/api/telephony/numbers/${encodeURIComponent(number.id)}/assign`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Unable to allocate number.');
+      showToast('Number allocated to workspace.', 'success');
+      await loadPlatformNumbers();
+      refreshVirtualNumberInventory();
+      setAllocationNumberId('');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to allocate number.', 'error');
+    } finally { setNumberAllocationBusy(null); }
+  };
+  const unallocatePlatformNumber = async (number: PlatformInventoryNumber) => {
+    if (!number.assignedWorkspaceId) return;
+    setNumberAllocationBusy(number.id);
+    try {
+      const response = await apiFetch(`/api/telephony/numbers/${encodeURIComponent(number.id)}/release`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId: number.assignedWorkspaceId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Unable to unallocate number.');
+      showToast('Number returned to the organization pool.', 'success');
+      await loadPlatformNumbers();
+      refreshVirtualNumberInventory();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to unallocate number.', 'error');
+    } finally { setNumberAllocationBusy(null); }
+  };
   const exportFilteredNumbers = () => {
     const csvField = (value: unknown) => {
       const content = String(value ?? '').replace(/^[\s]*[=+\-@]/, match => "'" + match);
@@ -273,11 +381,11 @@ export default function SettingsView({
   };
 
   React.useEffect(() => {
-    if (!['numbers', 'workspaces'].includes(subTab) || !canReadOrganization) return;
+    if (!['numbers', 'workspaces', 'sharing'].includes(subTab) || !canReadOrganization) return;
     void loadOrganizationNumbers().catch(error => { setOrganizationNumbers(null); setOrganizationNumbersError(error.message || 'Unable to load organization numbers.'); });
   }, [subTab, workspacePanel, canReadOrganization, loadOrganizationNumbers]);
 
-  const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'billing' | 'api') => {
+  const setSubTab = (v: 'numbers' | 'team' | 'workspaces' | 'sharing' | 'billing' | 'api') => {
     _setInternalSubTab(v);
     setActiveSubTabProp?.(v);
   };
@@ -377,7 +485,7 @@ export default function SettingsView({
     }).catch(() => {});
   };
   useEffect(() => {
-    if (subTab === 'numbers' || subTab === 'workspaces') loadChannels();
+    if (subTab === 'numbers' || subTab === 'workspaces' || subTab === 'sharing') loadChannels();
   }, [subTab]);
 
   // Adds/updates the virtual-number entry for a just-connected number so it
@@ -536,7 +644,7 @@ export default function SettingsView({
     setOrgAccessError('');
   }, []);
   React.useEffect(() => {
-    if (!['team','numbers','workspaces'].includes(subTab) || !canReadOrgMembers) return;
+    if (!['team','numbers','workspaces','sharing'].includes(subTab) || !canReadOrgMembers) return;
     void loadOrganizationAccess().catch(error => setOrgAccessError(error.message || 'Unable to load workspace access.'));
   }, [subTab, canReadOrgMembers, loadOrganizationAccess, currentWorkspaceId]);
   const updateOrgAccess = async (memberId: string, workspaceId: string, role: string) => {
@@ -898,7 +1006,7 @@ export default function SettingsView({
   const globalRefresh = useRefresh();
   const handlePageRefresh = () => {
     if (subTab === 'billing') void loadBillingUsage();
-    if (subTab === 'numbers' || subTab === 'workspaces') loadChannels();
+    if (subTab === 'numbers' || subTab === 'workspaces' || subTab === 'sharing') loadChannels();
     else if (subTab === 'api') loadAuditLogs();
     globalRefresh?.();
   };
@@ -965,7 +1073,7 @@ export default function SettingsView({
   return (
     <PageShell
       title={
-        subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces'
+        subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' || subTab === 'sharing'
           ? <span className="flex min-w-0 items-center gap-2">
               <span className="text-[10px] font-medium text-[var(--text-muted)]">Administration</span>
               <span className="text-[var(--border)]">/</span>
@@ -991,16 +1099,16 @@ export default function SettingsView({
       }
       titleSuffix={subTab === 'billing' && can('billing.organization.read') && billingPanel !== 'dashboard'
         ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Billing & Usage" onClick={() => setBillingPanel('dashboard')} />
-        : (subTab === 'numbers' || subTab === 'workspaces') && multiWorkspaceUi && effectiveWorkspacePanel !== 'overview'
+        : (subTab === 'numbers' || subTab === 'workspaces' || subTab === 'sharing') && multiWorkspaceUi && effectiveWorkspacePanel !== 'overview'
           ? <IconButton icon={ArrowLeft} variant="secondary" label="Back to Workspaces & Numbers" onClick={() => setWorkspacePanel('overview')} />
           : undefined}
-      subtitle={subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' ? undefined : subTab === 'team' ? 'Manage staff and access.' : undefined}
+      subtitle={subTab === 'billing' || subTab === 'numbers' || subTab === 'workspaces' || subTab === 'sharing' ? undefined : subTab === 'team' ? 'Manage staff and access.' : undefined}
       onRefresh={handlePageRefresh}
     >
       <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
 
           {/* Compact workspace landing page with focused number and sharing views. */}
-          {(subTab === 'numbers' || subTab === 'workspaces') && (
+          {(subTab === 'numbers' || subTab === 'workspaces' || subTab === 'sharing') && (
             <div className="col-span-12 grid grid-cols-12 content-start gap-4 md:gap-5 xl:gap-6">
               {multiWorkspaceUi && <Widget showHeader={false} padding="sm">
                 <div role="tablist" aria-label="Workspace management views" className="flex flex-wrap gap-2">
@@ -1033,10 +1141,10 @@ export default function SettingsView({
               {effectiveWorkspacePanel === 'sharing' && <WorkspaceSharing enabled={workspaceSharingEnabled} />}
               {effectiveWorkspacePanel === 'numbers' && <>
               {organizationNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{organizationNumbersError} Only numbers in the currently selected workspace are shown.</p>}
+              {platformNumbersError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{platformNumbersError}</p>}
               <Widget showHeader={false} padding="none">
-                {canManageOrganization && <OrganizationTelephonyConnectors embedded view="platform" onInventoryChange={refreshVirtualNumberInventory} />}
                 <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)] p-4">
-                  <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Additional organization numbers</h3>
+                  <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Phone numbers</h3>
                   <FilterBar
                     search={{ value: numberSearch, onChange: setNumberSearch, placeholder: 'Number or label' }}
                     selects={[
@@ -1056,23 +1164,25 @@ export default function SettingsView({
                     </>}
                   />
                 </div>
-                {multiWorkspaceUi && visibleNumbers.some(number => !numberWorkspaceId(number)) &&
+                {multiWorkspaceUi && visibleNumbers.some(number => !number.platformInventory && !numberWorkspaceId(number)) &&
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)]">Workspace associations are shown only when provided by the number record; otherwise they appear as Unknown.</p>}
-                {visibleNumbers.length === 0 ? (
+                {visibleNumbers.length === 0 && (numberInventoryLoading || Boolean(platformNumbersError || organizationNumbersError)) ? (
+                  <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-[var(--text-muted)]">{numberInventoryLoading ? <><Loader2 className="h-4 w-4 animate-spin" />Loading phone numbers…</> : 'Phone numbers could not be loaded.'}</div>
+                ) : visibleNumbers.length === 0 ? (
                   <div className="flex min-w-0 flex-col items-center justify-center gap-3 px-5 py-12 text-center" aria-label="Virtual number empty state">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-subtle)]">
                       <Phone aria-hidden="true" className="h-5 w-5 text-[var(--accent)]" />
                     </div>
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">No additional numbers yet</h3>
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">No phone numbers yet</h3>
                     <p className="max-w-lg text-sm leading-6 text-[var(--text-secondary)]">
-                      Platform-provided numbers are listed above. Connect a calling account to add organization numbers.
+                      Connect a calling account to add organization numbers.
                     </p>
                     <Button type="button" onClick={() => setShowProviderForm(true)}>
                       Connect calling account
                     </Button>
                   </div>
                 ) : (() => {
-                  const columns: Column<VirtualNumber>[] = [
+                  const columns: Column<DisplayVirtualNumber>[] = [
                     {
                       key: 'number',
                       header: 'Telephone Number',
@@ -1093,19 +1203,32 @@ export default function SettingsView({
                     { key: 'workspace', header: 'Workspace', cell: (num) => {
                       const id = numberWorkspaceId(num);
                       const workspace = orgWorkspaces.find(row => row.id === id);
+                      if (!id && num.platformInventory) return <span className="text-xs text-[var(--text-muted)]">Not allocated</span>;
+                      if (!workspace && num.platformInventory?.assignedWorkspaceName) return <span className="text-xs text-[var(--text-secondary)]">{num.platformInventory.assignedWorkspaceName}</span>;
                       return workspace ? <button type="button" className="text-xs text-[var(--accent)] hover:underline"
                         onClick={() => openWorkspaceDetails(workspace)}>{workspace.name}</button>
                         : <span className="text-xs text-[var(--text-muted)]">Unknown</span>;
                     } },
-                    { key: 'provider', header: 'Gateway Provider', cell: (num) => <ProviderBadge provider={num.provider} /> },
-                    { key: 'load', header: 'Dial Load (In / Out)', cell: (num) => <span className="text-xs text-slate-500 dark:text-[var(--text-secondary)]">{num.incomingCallCount} in / {num.outgoingCallCount} out</span> },
+                    { key: 'provider', header: 'Gateway Provider', cell: (num) => num.platformInventory
+                      ? <span className="text-xs text-[var(--text-secondary)]">Platform managed</span>
+                      : <ProviderBadge provider={num.provider} /> },
+                    { key: 'load', header: 'Dial Load (In / Out)', cell: (num) => <span className="text-xs text-slate-500 dark:text-[var(--text-secondary)]">{num.platformInventory ? '—' : `${num.incomingCallCount} in / ${num.outgoingCallCount} out`}</span> },
                     {
                       key: 'status',
                       header: 'Status',
                       align: 'right',
                       cell: (num) => (
                         <div className="flex items-center justify-end gap-3">
-                          {num.status === 'Active' ? (
+                          {num.platformInventory ? <div className="flex flex-wrap items-center justify-end gap-2">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${num.platformInventory.assignedWorkspaceId ? 'bg-emerald-500/10 text-emerald-700' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'}`}>
+                              {num.platformInventory.assignedWorkspaceId ? 'Assigned' : 'Not assigned'}
+                            </span>
+                            {canManageOrganization && <>
+                              <Button type="button" size="sm" variant={num.platformInventory.assignedWorkspaceId ? 'secondary' : 'primary'} disabled={numberAllocationBusy === num.platformInventory.id}
+                                onClick={() => { setAllocationNumberId(num.platformInventory!.id); setAllocationWorkspaceId(num.platformInventory!.assignedWorkspaceId || ''); }}>{num.platformInventory.assignedWorkspaceId ? 'Reassign' : 'Allocate'}</Button>
+                              {num.platformInventory.assignedWorkspaceId && <Button type="button" size="sm" variant="ghost" disabled={numberAllocationBusy === num.platformInventory.id} onClick={() => void unallocatePlatformNumber(num.platformInventory!)}>Unallocate</Button>}
+                            </>}
+                          </div> : num.status === 'Active' ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
                             </span>
@@ -1114,7 +1237,7 @@ export default function SettingsView({
                               <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive
                             </span>
                           )}
-                          <IconButton icon={Trash2} variant="secondary" label="Delete number in current workspace" onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(organizationNumbers && !virtualNumbers.some(row => row.id === num.id))} className="text-rose-500 hover:text-rose-600" />
+                          {!num.platformInventory && <IconButton icon={Trash2} variant="secondary" label="Delete number in current workspace" onClick={() => handleDeleteNumber(num.id)} disabled={Boolean(organizationNumbers && !virtualNumbers.some(row => row.id === num.id))} className="text-rose-500 hover:text-rose-600" />}
                         </div>
                       ),
                     },
@@ -1131,6 +1254,46 @@ export default function SettingsView({
                   );
                 })()}
               </Widget>
+
+              {allocationNumberId && (() => {
+                const selectedAllocationNumber = platformNumbers.find(number => number.id === allocationNumberId) || null;
+                const allocationSaving = selectedAllocationNumber?.id === numberAllocationBusy;
+                return <Modal
+                  open
+                  onClose={() => { if (!allocationSaving) setAllocationNumberId(''); }}
+                  title="Allocate phone number"
+                  subtitle="Choose a platform number and the workspace that should use it."
+                  footer={<>
+                    <Button type="button" disabled={Boolean(allocationSaving)} onClick={() => setAllocationNumberId('')}>Cancel</Button>
+                    <Button type="button" variant="primary" disabled={!selectedAllocationNumber || !allocationWorkspaceId || allocationWorkspaceId === selectedAllocationNumber.assignedWorkspaceId || Boolean(allocationSaving)}
+                      loading={Boolean(allocationSaving)} onClick={() => selectedAllocationNumber && void allocatePlatformNumber(selectedAllocationNumber, allocationWorkspaceId)}>
+                      Save allocation
+                    </Button>
+                  </>}
+                >
+                  <div className="space-y-4">
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Phone number
+                      <select aria-label="Phone number" className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]"
+                        value={allocationNumberId} disabled={Boolean(allocationSaving)}
+                        onChange={event => {
+                          const next = platformNumbers.find(number => number.id === event.target.value);
+                          setAllocationNumberId(event.target.value);
+                          setAllocationWorkspaceId(next?.assignedWorkspaceId || '');
+                        }}>
+                        {platformNumbers.map(number => <option key={number.id} value={number.id}>{number.phoneNumberE164}{number.displayName ? ` · ${number.displayName}` : ''}</option>)}
+                      </select>
+                    </label>
+                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Workspace
+                      <select aria-label="Workspace" className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]"
+                        value={allocationWorkspaceId} disabled={Boolean(allocationSaving)} onChange={event => setAllocationWorkspaceId(event.target.value)}>
+                        <option value="">Select a workspace</option>
+                        {orgWorkspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
+                      </select>
+                    </label>
+                    {selectedAllocationNumber?.assignedWorkspaceName && <p className="text-xs text-[var(--text-muted)]">Currently assigned to {selectedAllocationNumber.assignedWorkspaceName}.</p>}
+                  </div>
+                </Modal>;
+              })()}
 
               {/* One unified setup dialog for provider accounts, numbers and workspace mapping. */}
               {showProviderForm && (

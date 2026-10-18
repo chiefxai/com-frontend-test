@@ -50,6 +50,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { QuestionFlow } from './features/workflows/types';
 import { useFeatureFlags } from './features/feature-flags/FeatureFlagContext';
 import NotificationSettingsPage from './notifications/NotificationSettingsPage';
+import { useToast } from './components/ui/Toast';
 
 // Each feature view is fetched the first time its workspace tab is opened.
 const DashboardView = React.lazy(() => import('./features/dashboard'));
@@ -99,6 +100,7 @@ const LOADING_MODULE_NAMES: Record<string, string> = {
 };
 
 export default function App() {
+  const { showToast } = useToast();
   // Auth state comes from Keycloak — no manual isAuthenticated flag needed.
   const { user: kcUser, logout } = useAuth();
 
@@ -151,10 +153,6 @@ export default function App() {
     dialer: 'outbound',
   };
   const activeSubTab = subSlug || DEFAULT_SUB_TAB[activeTab] || '';
-  useEffect(() => {
-    if (slug === 'administration' && subSlug === 'workspaces') navigate('/administration/numbers', { replace: true });
-  }, [slug, subSlug, navigate]);
-
   // Keep-alive tab rendering: once a tab has been visited, keep it mounted
   // (hidden via CSS instead of unmounted) so navigating back to it shows the
   // data it already loaded instantly instead of remounting the view, losing
@@ -518,7 +516,12 @@ export default function App() {
         if (cancelled) return;
         resetUserFlags();
         setSubscriptionAccessState(null);
-        setMembershipError(error.message || 'Could not load your workspaces. Please retry.');
+        if (error instanceof Error && error.message === 'The server did not confirm the selected workspace') {
+          showToast(error.message, 'error');
+          setMembershipError('Workspace access could not be verified. Please select a workspace and try again.');
+        } else {
+          setMembershipError(error.message || 'Could not load your workspaces. Please retry.');
+        }
         setMembershipStatus('denied');
       });
     return () => { cancelled = true; setStorageScope(null, null); resetUserFlags(); };
@@ -926,7 +929,7 @@ export default function App() {
             aiTokenCurrentRate={aiTokenCurrentRate}
             aiTokenUsage={aiTokenUsage}
             callProviderRate={callProviderRate}
-            activeSubTab={activeSubTab as 'numbers' | 'team' | 'workspaces' | 'billing' | 'api'}
+            activeSubTab={activeSubTab as 'numbers' | 'team' | 'workspaces' | 'sharing' | 'billing' | 'api'}
             setActiveSubTab={setActiveSubTab}
             currentUserEmail={kcUser?.email}
             activeWorkspaceId={activeWorkspaceId || orgSettings.id}

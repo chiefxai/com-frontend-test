@@ -97,7 +97,7 @@ export function canAccessTab(tab: string,subTab?: string) {
   if (tab === 'notification-settings') return can('notifications.read') || can('workspace.read');
   if (tab === 'settings') {
     if (!subTab) return can('workspace.settings.manage') || can('organization.members.read') || can('workspace.members.manage') || can('billing.read');
-    if (subTab === 'workspaces' || subTab === 'numbers') return can('organization.read') || can('organization.manage') || can('workspace.settings.manage');
+    if (subTab === 'workspaces' || subTab === 'numbers' || subTab === 'sharing') return can('organization.read') || can('organization.manage') || can('workspace.settings.manage');
     return (subTab === 'billing' ? can('billing.read') || can('billing.organization.read') || can('billing.workspace.read') : can(subTab === 'team' ? 'organization.members.read' : 'workspace.settings.manage'))
       || (subTab === 'team' && can('workspace.members.manage'));
   }
